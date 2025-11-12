@@ -1,0 +1,132 @@
+version: "2"
+run:
+  build-tags:
+  - conformance
+  - integration
+linters:
+  default: none
+  enable:
+  - asasalint
+  - asciicheck
+  - bidichk
+  - bodyclose
+  - canonicalheader
+  - contextcheck
+  - copyloopvar
+  - decorder
+  - dogsled
+  - durationcheck
+  - embeddedstructfieldcheck
+  - errcheck
+  - errname
+  - errorlint
+  - exptostd
+  - fatcontext
+  - gocheckcompilerdirectives
+  - goconst
+  - gocritic
+  - gocyclo
+  # - godoclint
+  - goheader
+  - gosec
+  - gosmopolitan
+  - govet
+  - iface
+  - ineffassign
+  - intrange
+  - iotamixing
+  - misspell
+  - mnd
+  - nolintlint
+  - perfsprint
+  - prealloc
+  - predeclared
+  - protogetter
+  - revive
+  - staticcheck
+  - tagliatelle
+  - testifylint
+  - thelper
+  - tparallel
+  - unconvert
+  - unparam
+  - unused
+  - usestdlibvars
+  - usetesting
+  - whitespace
+  - zerologlint
+  settings:
+    gocyclo:
+      min-complexity: 15
+    goheader:
+      values:
+        const:
+          MY COMPANY: Mia srl
+      template: |-
+        Copyright {{ MY COMPANY }}
+        SPDX-License-Identifier: AGPL-3.0-only or Commercial
+    mnd:
+      checks:
+      - case
+      - condition
+      - return
+    revive:
+      rules:
+      - name: var-naming
+        arguments:
+          - [] # allow list
+          - [] # block list
+          - - skip-package-name-checks: true # options
+    tagliatelle:
+      case:
+        rules:
+          yaml: camel
+        use-field-name: true
+    testifylint:
+      disable:
+      - require-error
+      go-require:
+        ignore-http-handlers: true
+    unparam:
+      check-exported: false
+    usetesting:
+      context-background: true
+      context-todo: true
+      os-chdir: true
+      os-mkdir-temp: true
+      os-setenv: true
+      os-temp-dir: true
+      os-create-temp: true
+  exclusions:
+    generated: lax
+    presets:
+    - comments
+    - common-false-positives
+    - legacy
+    - std-error-handling
+    rules:
+    - linters:
+      - errcheck
+      - goconst
+      - gocyclo
+      - gosec
+      - tagliatelle
+      path: _test\.go
+    paths:
+    - third_party$
+    - builtin$
+    - examples$
+formatters:
+  enable:
+  - gofmt
+  - goimports
+  settings:
+    gofmt:
+      simplify: true
+  exclusions:
+    generated: lax
+    paths:
+    - third_party$
+    - builtin$
+    - examples$
+    - zz_generated
