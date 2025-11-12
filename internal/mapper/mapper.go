@@ -6,6 +6,8 @@ package mapper
 import (
 	"errors"
 	"text/template"
+
+	"github.com/mia-platform/ibdm/internal/mapper/functions"
 )
 
 // Mapper will define how to map input data to an output structure defined by its Templates.
@@ -33,7 +35,7 @@ type MappedData struct {
 // New creates a new Mapper with the given identifier template and a specTemplates map.
 func New(identifierTemplate string, specTemplates map[string]string) (Mapper, error) {
 	var parsingErrs error
-	tmpl := template.New("main").Funcs(template.FuncMap{})
+	tmpl := template.New("main").Option("missingkey=zero").Funcs(templateFunctions())
 	idTemplate, err := tmpl.New("identifier").Parse(identifierTemplate)
 	if err != nil {
 		parsingErrs = err
@@ -60,4 +62,27 @@ func New(identifierTemplate string, specTemplates map[string]string) (Mapper, er
 // ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
 func (m *internalMapper) ApplyTemplates(_ map[string]any) (MappedData, error) {
 	return MappedData{}, nil
+}
+
+// templateFunctions returns the custom functions available for the user templates in addition
+// to the default ones provided by the text/template package.
+func templateFunctions() template.FuncMap {
+	return template.FuncMap{
+		// string functions
+		"trim":  functions.TrimSpace,
+		"upper": functions.ToUpper,
+		"lower": functions.ToLower,
+
+		// time functions
+		"now": functions.Now,
+
+		// cryptographic functions
+		"sha256sum": functions.Sha256Sum,
+		"sha512sum": functions.Sha512Sum,
+
+		// uuid functions
+		"uuidv4": functions.UUIDV4,
+		"uuidv6": functions.UUIDV6,
+		"uuidv7": functions.UUIDV7,
+	}
 }

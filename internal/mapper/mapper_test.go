@@ -17,7 +17,7 @@ func TestNewMapper(t *testing.T) {
 		t.Parallel()
 		mapper, err := New("{{ .name }}", map[string]string{
 			"key":      "name",
-			"otherKey": "{{ .otherKey }}",
+			"otherKey": "{{ .otherKey | trim }}",
 		})
 		assert.NoError(t, err)
 		assert.NotNil(t, mapper)
