@@ -4,12 +4,13 @@
 package functions
 
 import (
+	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
 )
 
 func Sha256Sum(input string) string {
-	hash := sha512.Sum512([]byte(input))
+	hash := sha256.Sum256([]byte(input))
 	return hex.EncodeToString(hash[:])
 }
 

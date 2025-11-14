@@ -5,6 +5,9 @@ package functions
 
 import "time"
 
-func Now() time.Time {
-	return time.Now()
+var nowFn = time.Now
+
+// Now returns the current time in UTC in RFC3339 format.
+func Now() string {
+	return nowFn().UTC().Format(time.RFC3339)
 }
