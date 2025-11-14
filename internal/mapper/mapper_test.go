@@ -5,6 +5,7 @@ package mapper
 
 import (
 	"testing"
+	"text/template"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,9 +26,7 @@ func TestNewMapper(t *testing.T) {
 		mapperInstance, ok := mapper.(*internalMapper)
 		require.True(t, ok)
 		require.NotNil(t, mapperInstance.idTemplate)
-		require.Len(t, mapperInstance.templates, 2)
-		require.NotNil(t, mapperInstance.templates["key"])
-		require.NotNil(t, mapperInstance.templates["otherKey"])
+		require.NotNil(t, mapperInstance.specTemplate)
 	})
 
 	t.Run("return error when one template is broken", func(t *testing.T) {
@@ -71,18 +70,102 @@ func TestMapper(t *testing.T) {
 	testCases := map[string]struct {
 		mapper        Mapper
 		input         map[string]any
-		expected      map[string]any
-		expectedError error
-	}{}
+		expected      MappedData
+		expectedError bool
+	}{
+		"simple mapping": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", map[string]string{
+					"key":           "name",
+					"string":        "{{ .name }}",
+					"otherKey":      "{{ .otherKey.value }}",
+					"nested":        "{{ .otherKey | toJSON }}",
+					"array":         "{{ .array | toJSON }}",
+					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+				"otherKey": map[string]any{
+					"string": "example",
+					"value":  42,
+				},
+				"array": []int{1, 2, 3},
+			},
+			expected: MappedData{
+				Identifier: "example",
+				Spec: map[string]any{
+					"key":      "name",
+					"string":   "example",
+					"otherKey": 42,
+					"nested": map[string]any{
+						"string": "example",
+						"value":  42,
+					},
+					"array":         []any{1, 2, 3},
+					"combinedField": "example-42",
+				},
+			},
+		},
+		"always casting identifier to a string": {
+			mapper: func() Mapper {
+				m, err := New("{{ .id }}", map[string]string{
+					"key": "name",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"id":   12345,
+				"name": "example",
+			},
+			expected: MappedData{
+				Identifier: "12345",
+				Spec: map[string]any{
+					"key": "name",
+				},
+			},
+		},
+		"identifier mapping with missing fields": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}-{{ .missingField }}", map[string]string{
+					"key": "name",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+			},
+			expectedError: true,
+		},
+		"spec mapping with missing fields": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", map[string]string{
+					"key":      "name",
+					"otherKey": "{{ .otherKey.value }}",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+			},
+			expectedError: true,
+		},
+	}
 
 	for testName, test := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
 			output, err := test.mapper.ApplyTemplates(test.input)
-			if test.expectedError != nil {
-				assert.Nil(t, output)
-				assert.ErrorIs(t, err, test.expectedError)
+			if test.expectedError {
+				var expectedError template.ExecError
+				assert.Empty(t, output)
+				assert.ErrorAs(t, err, &expectedError)
 				return
 			}
 

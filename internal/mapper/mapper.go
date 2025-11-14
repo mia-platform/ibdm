@@ -4,10 +4,14 @@
 package mapper
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/mia-platform/ibdm/internal/mapper/functions"
+	"gopkg.in/yaml.v3"
 )
 
 // Mapper will define how to map input data to an output structure defined by its Templates.
@@ -18,12 +22,16 @@ type Mapper interface {
 	ApplyTemplates(input map[string]any) (output MappedData, err error)
 }
 
+var (
+	errParsingSpecOutput = errors.New("error during casting to valid object")
+)
+
 var _ Mapper = &internalMapper{}
 
 // internalMapper is the default implementation of the Mapper interface.
 type internalMapper struct {
-	idTemplate *template.Template
-	templates  map[string]*template.Template
+	idTemplate   *template.Template
+	specTemplate *template.Template
 }
 
 // MappedData contains the result of applying a Mapper to some input data.
@@ -35,18 +43,21 @@ type MappedData struct {
 // New creates a new Mapper with the given identifier template and a specTemplates map.
 func New(identifierTemplate string, specTemplates map[string]string) (Mapper, error) {
 	var parsingErrs error
-	tmpl := template.New("main").Option("missingkey=zero").Funcs(templateFunctions())
+	tmpl := template.New("main").Option("missingkey=error").Funcs(templateFunctions())
 	idTemplate, err := tmpl.New("identifier").Parse(identifierTemplate)
 	if err != nil {
 		parsingErrs = err
 	}
 
-	templates := make(map[string]*template.Template, len(specTemplates))
+	specTemplateString := new(strings.Builder)
+	specTemplateString.WriteString("---\n")
 	for key, value := range specTemplates {
-		templates[key], err = tmpl.New(key).Parse(value)
-		if err != nil {
-			parsingErrs = errors.Join(parsingErrs, err)
-		}
+		specTemplateString.WriteString(key + ": " + value + "\n")
+	}
+
+	specTemplate, err := tmpl.New("spec").Parse(specTemplateString.String())
+	if err != nil {
+		parsingErrs = errors.Join(parsingErrs, err)
 	}
 
 	if parsingErrs != nil {
@@ -54,14 +65,27 @@ func New(identifierTemplate string, specTemplates map[string]string) (Mapper, er
 	}
 
 	return &internalMapper{
-		idTemplate: idTemplate,
-		templates:  templates,
+		idTemplate:   idTemplate,
+		specTemplate: specTemplate,
 	}, nil
 }
 
 // ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
-func (m *internalMapper) ApplyTemplates(_ map[string]any) (MappedData, error) {
-	return MappedData{}, nil
+func (m *internalMapper) ApplyTemplates(data map[string]any) (MappedData, error) {
+	identifier, err := executeIdentifierTemplate(m.idTemplate, data)
+	if err != nil {
+		return MappedData{}, err
+	}
+
+	specData, err := executeTemplatesMap(m.specTemplate, data)
+	if err != nil {
+		return MappedData{}, err
+	}
+
+	return MappedData{
+		Identifier: identifier,
+		Spec:       specData,
+	}, nil
 }
 
 // templateFunctions returns the custom functions available for the user templates in addition
@@ -69,9 +93,10 @@ func (m *internalMapper) ApplyTemplates(_ map[string]any) (MappedData, error) {
 func templateFunctions() template.FuncMap {
 	return template.FuncMap{
 		// string functions
-		"trim":  functions.TrimSpace,
-		"upper": functions.ToUpper,
-		"lower": functions.ToLower,
+		"trim":   functions.TrimSpace,
+		"upper":  functions.ToUpper,
+		"lower":  functions.ToLower,
+		"toJSON": functions.ToJSON,
 
 		// time functions
 		"now": functions.Now,
@@ -85,4 +110,26 @@ func templateFunctions() template.FuncMap {
 		"uuidv6": functions.UUIDV6,
 		"uuidv7": functions.UUIDV7,
 	}
+}
+
+// executeIdentifierTemplate executes a text/template named "identifier" with the given data.
+// Return the result as a string.
+func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (string, error) {
+	outputStrBuilder := new(strings.Builder)
+	err := tmpl.ExecuteTemplate(outputStrBuilder, "identifier", data)
+	return outputStrBuilder.String(), err
+}
+
+func executeTemplatesMap(templates *template.Template, data map[string]any) (map[string]any, error) {
+	output := make(map[string]any)
+	outputBuilder := new(bytes.Buffer)
+	err := templates.ExecuteTemplate(outputBuilder, "spec", data)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := yaml.Unmarshal(outputBuilder.Bytes(), output); err != nil {
+		return nil, fmt.Errorf("%w: %s", errParsingSpecOutput, err.Error())
+	}
+	return output, nil
 }
