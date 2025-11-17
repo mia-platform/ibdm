@@ -5,6 +5,7 @@ package functions
 
 import "github.com/google/uuid"
 
+// UUIDV6 generates a new UUID version 4.
 func UUIDV4() (string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -13,6 +14,7 @@ func UUIDV4() (string, error) {
 	return id.String(), nil
 }
 
+// UUIDV7 generates a new UUID version 6.
 func UUIDV6() (string, error) {
 	id, err := uuid.NewV6()
 	if err != nil {
@@ -21,6 +23,7 @@ func UUIDV6() (string, error) {
 	return id.String(), nil
 }
 
+// UUIDV4 generates a new UUID version 7.
 func UUIDV7() (string, error) {
 	id, err := uuid.NewV7()
 	if err != nil {

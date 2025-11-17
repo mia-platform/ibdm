@@ -5,6 +5,7 @@ package functions
 
 import "encoding/json"
 
+// ToJSON converts a value to its JSON string representation.
 func ToJSON(v any) string {
 	data, err := json.Marshal(v)
 	if err != nil {
