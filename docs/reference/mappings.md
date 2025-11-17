@@ -48,12 +48,12 @@ As an example, `{{ .aKey | lower }}` with a `aKey` containing `HELLO WORLD!` wil
 The `toJSON` function is used to transform complex data in JSON compatible form. This is needed
 if you have to put objects or arrays inside one of your key in the mapper.
 
-As an example, `{{ .aKey | toJSON }}` with a `aKey` containing an array of 5 numeber will return
+As an example, `{{ .aKey | toJSON }}` with a `aKey` containing an array of 5 number will return
 `[ 1, 2, 3, 4, 5 ]`.
 
 ### `now`
 
-The `now` function will return the actual timestamp when the mapping is occuring in UTC time zone
+The `now` function will return the actual timestamp when the mapping is occurring in UTC time zone
 following the [RFC3339] format.
 
 As an example `{{ now }}` will return `1969-07-20T20:17:40Z`.
@@ -62,14 +62,14 @@ As an example `{{ now }}` will return `1969-07-20T20:17:40Z`.
 
 The `sha256sum` function will return the hash of the data passed to it in 256 bit form.
 
-As an example `{{ .aKey | sha256sum }}` wiht a `aKey` containing `Hello World!` will return
+As an example `{{ .aKey | sha256sum }}` with a `aKey` containing `Hello World!` will return
 `7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069`.
 
 ### `sha512sum`
 
 The `sha512sum` function will return the hash of the data passed to it in 512 bit form.
 
-As an example `{{ .aKey | sha256sum }}` wiht a `aKey` containing `Hello World!` will return
+As an example `{{ .aKey | sha256sum }}` with a `aKey` containing `Hello World!` will return
 `861844d6704e8573fec34d967e20bcfef3d424cf48be04e6dc08f2bd58c729743371015ead891cc3cf1c9d34b49264b510751b1ff9e537937bc46b5d6ff4ecc8`.
 
 ### `uuidv4`
@@ -89,7 +89,7 @@ As an example `{{ uuidv6 }}` will return `01f0c399-715a-66be-bf48-62e7f2a0bc55`.
 
 ### `uuidv7`
 
-The `uuidv7` function will return a valid [UUID in the v7 format]. It's the preferred choise
+The `uuidv7` function will return a valid [UUID in the v7 format]. It's the preferred choice
 for generating UUIDs for DB usage when you don't have prior data or UUIDs generated with the
 v1 version.
 
