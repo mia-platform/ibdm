@@ -1,6 +1,6 @@
 # IBDM
 
-`ibdm` is used to export data from various supported systems, manipolate them to conform to
+`ibdm` is used to export data from various supported systems, manipulate them to conform to
 various CRDs and send the results to the Mia-Platform Catalog.
 
 ## Why `ibdm`?
@@ -9,7 +9,7 @@ various CRDs and send the results to the Mia-Platform Catalog.
 ESA implementation of the International Docking System Standard for allowing different spacecraft
 docking systems to operate between them.
 
-And this binary is something like that, its purpose is to allow the connect etherogeneus external
+And this binary is something like that, its purpose is to allow the connect heterogeneous external
 system with their data structure to the Mia-Platform Catalog with user predefined CRDs that
 are targeted to their needs and can hide complexities that are not needed or surface certain
 values to use them more easily.
