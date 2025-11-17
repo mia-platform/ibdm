@@ -155,6 +155,32 @@ func TestMapper(t *testing.T) {
 			},
 			expectedError: true,
 		},
+		"identifier with invalid characters": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}_invalid", map[string]string{
+					"key": "name",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+			},
+			expectedError: true,
+		},
+		"identifier too long": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", map[string]string{
+					"key": "name",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "a-very-long-name-that-exceeds-the-maximum-length-limit-imposed-by-the-identifier-validation-rules-set-in-place-to-ensure-compliance-with-kubernetes-naming-conventions-and-best-practices-which-stipulate-that-identifiers-must-not-only-contain-lowercase-alphanumeric-characters-dashes-or-dots",
+			},
+			expectedError: true,
+		},
 	}
 
 	for testName, test := range testCases {

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -22,8 +23,14 @@ type Mapper interface {
 	ApplyTemplates(input map[string]any) (output MappedData, err error)
 }
 
+const (
+	maxIdentifierLength = 253
+)
+
 var (
 	errParsingSpecOutput = errors.New("error during casting to valid object")
+
+	identifierRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 )
 
 var _ Mapper = &internalMapper{}
@@ -117,7 +124,16 @@ func templateFunctions() template.FuncMap {
 func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (string, error) {
 	outputStrBuilder := new(strings.Builder)
 	err := tmpl.ExecuteTemplate(outputStrBuilder, "identifier", data)
-	return outputStrBuilder.String(), err
+	generatedID := outputStrBuilder.String()
+
+	if !identifierRegex.MatchString(generatedID) || len(generatedID) > maxIdentifierLength {
+		return "", template.ExecError{
+			Name: "identifier",
+			Err:  fmt.Errorf("template: identifier: generated identifier '%s' is invalid; it can contain only lowercase alphanumeric characters, '-' or '.', must start and finish with an alphanumeric character and it can contain no more than %d characters", generatedID, maxIdentifierLength),
+		}
+	}
+
+	return generatedID, err
 }
 
 func executeTemplatesMap(templates *template.Template, data map[string]any) (map[string]any, error) {
