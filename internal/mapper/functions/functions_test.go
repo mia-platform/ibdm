@@ -57,6 +57,22 @@ func TestStringsFunctions(t *testing.T) {
 		assert.Equal(t, expected, TrimSpace(input))
 	})
 
+	t.Run("trimPrefix function", func(t *testing.T) {
+		t.Parallel()
+		input := "Hello, World!"
+		prefix := "Hello, "
+		expected := "World!"
+		assert.Equal(t, expected, TrimPrefix(prefix, input))
+	})
+
+	t.Run("trimSuffix function", func(t *testing.T) {
+		t.Parallel()
+		input := "Hello, World!"
+		suffix := " World!"
+		expected := "Hello,"
+		assert.Equal(t, expected, TrimSuffix(suffix, input))
+	})
+
 	t.Run("toUpper function", func(t *testing.T) {
 		t.Parallel()
 		input := "hello, world!"
@@ -69,6 +85,40 @@ func TestStringsFunctions(t *testing.T) {
 		input := "HELLO, WORLD!"
 		expected := "hello, world!"
 		assert.Equal(t, expected, ToLower(input))
+	})
+
+	t.Run("truncate function", func(t *testing.T) {
+		t.Parallel()
+		input := "Hello, World!"
+
+		assert.Equal(t, "Hello", Truncate(5, input))
+		assert.Equal(t, "World!", Truncate(-6, input))
+		assert.Equal(t, "Hello, World!", Truncate(20, input))
+		assert.Equal(t, "Hello, World!", Truncate(-20, input))
+	})
+
+	t.Run("split function", func(t *testing.T) {
+		t.Parallel()
+		input := "apple,banana,cherry"
+		sep := ","
+		expected := []string{"apple", "banana", "cherry"}
+		assert.Equal(t, expected, Split(sep, input))
+	})
+
+	t.Run("encodeBase64 function", func(t *testing.T) {
+		t.Parallel()
+		input := "hello world"
+		expected := "aGVsbG8gd29ybGQ="
+		assert.Equal(t, expected, EncodeBase64(input))
+	})
+
+	t.Run("decodeBase64", func(t *testing.T) {
+		t.Parallel()
+		input := "aGVsbG8gd29ybGQ="
+		expected := "hello world"
+		result, err := DecodeBase64(input)
+		require.NoError(t, err)
+		assert.Equal(t, expected, result)
 	})
 }
 

@@ -12,16 +12,26 @@ casted as a string.
 In addition to the [default functions] available to all Go Text Templates we give you access to
 these other ones:
 
-- [trim](#trim)
-- [upper](#upper)
-- [lower](#lower)
-- [toJSON](#tojson)
-- [now](#now)
-- [sha256sum](#sha256sum)
-- [sha512sum](#sha512sum)
-- [uuidv4](#uuidv4)
-- [uuidv6](#uuidv6)
-- [uuidv7](#uuidv7)
+- Strings Functions:
+	- [trim](#trim)
+	- [trimPrefix](#trimprefix)
+	- [trimSuffix](#trimsuffix)
+	- [upper](#upper)
+	- [lower](#lower)
+	- [truncate](#truncate)
+	- [split](#split)
+	- [encode64](#encode64)
+	- [decode64](#decode64)
+	- [toJSON](#tojson)
+- Time Functions:
+	- [now](#now)
+- Crypto Functions:
+	- [sha256sum](#sha256sum)
+	- [sha512sum](#sha512sum)
+- UUID Functions:
+	- [uuidv4](#uuidv4)
+	- [uuidv6](#uuidv6)
+	- [uuidv7](#uuidv7)
 
 ### `trim`
 
@@ -30,6 +40,20 @@ The `trim` function will remove all leading and trailing white space (as defined
 <!-- markdownlint-disable-next-line MD038 -->
 As an example, `{{ .aKey | trim }}` with a `aKey` containing ` a complex string   ` will return
 `a complex string`.
+
+### `trimPrefix`
+
+The `trimPrefix` function will remove the given substring from the beginning of the input.
+
+As an example, `{{ .aKey | trimPrefix "hello" }}` with a `aKey` containing `hello world` will return
+` world`.<!-- markdownlint-disable-line MD038 -->
+
+### `trimSuffix`
+
+The `trimSuffix` function will remove the given substring from the end of the input.
+
+As an example, `{{ .aKey | trimSuffix "world" }}` with a `aKey` containing `hello world` will return
+`hello `.<!-- markdownlint-disable-line MD038 -->
 
 ### `upper`
 
@@ -42,6 +66,38 @@ As an example, `{{ .aKey | upper }}` with a `aKey` containing `hello world!` wil
 The `lower` function will change all Unicode letters mapped to their lower case.
 
 As an example, `{{ .aKey | lower }}` with a `aKey` containing `HELLO WORLD!` will return `hello world!`.
+
+### `truncate`
+
+The `truncate` function can be used to truncate from the start or the end an input string. If you
+use a positive index it will be truncated from the beginning and with a negative one it will be
+truncated from the end. If the absolute valued of the index is greater then the lenght of the
+input string the original string will be returned.
+
+As an example, `{{ .aKey | truncate 5 }}` with a `aKey` containing `Hello World!` will return
+`World!`.  
+With a negative index `{{ .aKey | truncate -7 }}` will return `Hello`.
+
+### `split`
+
+The `split` function can be used to separate an input string using the given character as separator.
+
+As an example, `{{ .aKey | split "/" }}` with a `aKey` containing `hello/world` will return the
+list `[hello, world]`.
+
+### `encode64`
+
+The `encode64` function can be used to generate a base64 encoding of the input string.
+
+As an example. `{{ .aKey | encode64 }}` with a `aKey` containing `hello world!` will return
+`aGVsbG8gd29ybGQh`.
+
+### `decode64`
+
+The `decode64` function can be used to decode a string containing a base64 value.
+
+As an example. `{{ .aKey | decode64 }}` with a `aKey` containing `aGVsbG8gd29ybGQh` will return
+`hello world!`.
 
 ### `toJSON`
 
