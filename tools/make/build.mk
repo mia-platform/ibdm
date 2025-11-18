@@ -31,11 +31,12 @@ go/build/%:
 	$(eval OS:= $(word 1,$(subst /, ,$*)))
 	$(eval ARCH:= $(word 2,$(subst /, ,$*)))
 	$(eval ARM:= $(word 3,$(subst /, ,$*)))
+	$(eval EXT:= $(if $(filter windows,$(OS)),.exe,))
 	$(info Building image for $(OS) $(ARCH) $(ARM))
 
 	mkdir -p "$(BUILD_OUTPUT)/$(OS)/$(ARCH)$(if $(ARM),/v$(ARM),)"
 	GOOS=$(OS) GOARCH=$(ARCH) GOARM=$(ARM) CGO_ENABLED=0 go build -trimpath \
-		-ldflags "$(GO_LDFLAGS)" -o $(BUILD_OUTPUT)/$(OS)/$(ARCH)$(if $(ARM),/v$(ARM),)/$(CMDNAME) $(BUILD_PATH)
+		-ldflags "$(GO_LDFLAGS)" -o $(BUILD_OUTPUT)/$(OS)/$(ARCH)$(if $(ARM),/v$(ARM),)/$(CMDNAME)$(EXT) $(BUILD_PATH)
 
 .PHONY: build
 build: clean/bin go/build/$(GOOS)/$(GOARCH)/$(GOARM)
