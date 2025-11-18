@@ -181,6 +181,33 @@ func TestMapper(t *testing.T) {
 			},
 			expectedError: true,
 		},
+		"create string array from object array": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", map[string]string{
+					"key": `{{ pluck "key" .objects | toJSON }}`,
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+				"objects": []map[string]any{
+					{"key": "value1"},
+					{"key": "value2"},
+					{"key": "value3"},
+				},
+			},
+			expected: MappedData{
+				Identifier: "example",
+				Spec: map[string]any{
+					"key": []interface{}{
+						"value1",
+						"value2",
+						"value3",
+					},
+				},
+			},
+		},
 	}
 
 	for testName, test := range testCases {

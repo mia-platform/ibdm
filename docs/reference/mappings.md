@@ -22,7 +22,9 @@ these other ones:
 	- [split](#split)
 	- [encode64](#encode64)
 	- [decode64](#decode64)
+- Objects Functions:
 	- [toJSON](#tojson)
+	- [pluck](#pluck)
 - Time Functions:
 	- [now](#now)
 - Crypto Functions:
@@ -106,6 +108,14 @@ if you have to put objects or arrays inside one of your key in the mapper.
 
 As an example, `{{ .aKey | toJSON }}` with a `aKey` containing an array of 5 number will return
 `[ 1, 2, 3, 4, 5 ]`.
+
+### `pluck`
+
+The `pluck` function extracts the values associated with the specified key from a slice of objects
+and returns them as a new slice. Any object without the key will be skipped.
+
+As an example, `{{ pluck "key" .objects | toJSON }}` with a `aKey` containing
+`[{"key":"value1"},{"key":"value2","anotherKey":"value3"}]` will return `["value1", "value2"]`.
 
 ### `now`
 

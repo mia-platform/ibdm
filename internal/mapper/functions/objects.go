@@ -14,3 +14,16 @@ func ToJSON(v any) string {
 
 	return string(data)
 }
+
+// Pluck extracts the values associated with the specified key from a slice of maps and returns them
+// as a slice.
+func Pluck(key string, objects []map[string]any) []any {
+	result := make([]any, 0)
+	for _, obj := range objects {
+		if val, exists := obj[key]; exists {
+			result = append(result, val)
+		}
+	}
+
+	return result
+}

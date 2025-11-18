@@ -109,7 +109,10 @@ func templateFunctions() template.FuncMap {
 		"split":      functions.Split,
 		"encode64":   functions.EncodeBase64,
 		"decode64":   functions.DecodeBase64,
-		"toJSON":     functions.ToJSON,
+
+		// object functions
+		"toJSON": functions.ToJSON,
+		"pluck":  functions.Pluck,
 
 		// time functions
 		"now": functions.Now,

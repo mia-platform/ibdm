@@ -45,6 +45,18 @@ func TestObjectsFunctions(t *testing.T) {
 		expected := `{"age":30,"name":"Alice"}`
 		assert.Equal(t, expected, ToJSON(input))
 	})
+
+	t.Run("pluck function", func(t *testing.T) {
+		t.Parallel()
+
+		objects := []map[string]any{
+			{"id": 1, "value": "Alice"},
+			{"id": 2, "value": 1},
+			{"id": 3, "value": "Charlie"},
+		}
+		expected := []any{"Alice", 1, "Charlie"}
+		assert.Equal(t, expected, Pluck("value", objects))
+	})
 }
 
 func TestStringsFunctions(t *testing.T) {
