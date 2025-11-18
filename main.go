@@ -27,8 +27,8 @@ const (
 	appName  = "ibdm"
 	appShort = "ibdm is the CLI tool to create a Mia-Platform Catalog connector"
 
-	logLevelFlagName       = "log-level"
-	logeLevelShortFlagName = "v"
+	logLevelFlagName      = "log-level"
+	logLevelShortFlagName = "v"
 
 	versionCmdName = "version"
 	versionShort   = "Display the " + appName + " version."
@@ -51,7 +51,7 @@ type rootFlags struct {
 }
 
 func (f *rootFlags) AddFlags(flags *pflag.FlagSet) {
-	flags.StringVarP(&f.logLevel, logLevelFlagName, logeLevelShortFlagName, logLevelDefaultValue, heredoc.Doc(logLevelFlagUsage))
+	flags.StringVarP(&f.logLevel, logLevelFlagName, logLevelShortFlagName, logLevelDefaultValue, heredoc.Doc(logLevelFlagUsage))
 }
 
 func main() {
