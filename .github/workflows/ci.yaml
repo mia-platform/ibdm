@@ -1,0 +1,83 @@
+name: Continuous Integration
+on:
+  push:
+    branches:
+    - main
+    tags:
+    - "*"
+
+  pull_request:
+    branches:
+    - main
+    paths-ignore:
+    - .devcontainer
+    - docs/**
+    - .editorconfig
+    - .markdownlint.yaml
+    - "**/*.md"
+
+permissions: {}
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    env:
+      GOLANGCI_LINT_VERSION: "v2.6.2"
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      with:
+        show-progress: false
+    - name: Setup Golang
+      uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      with:
+        go-version-file: go.mod
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47 # v9.0.0
+      with:
+        version: ${{ env.GOLANGCI_LINT_VERSION }}
+        install-only: true
+    - name: Run lint
+      run: make ci-lint
+
+  test:
+    name: Run Tests
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+        - ubuntu-latest
+        - macos-latest
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      with:
+        show-progress: false
+    - name: Setup Golang
+      uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      with:
+        go-version-file: go.mod
+    - name: Run tests
+      run: make ci
+  #   - name: Send coverage to Coveralls (parallel)
+  #     uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+  #     with:
+  #       parallel: true
+  #       flag-name: run-${{ join(matrix.*, '-') }}
+
+  # upload-coverage:
+  #   needs: test
+  #   if: ${{ always() }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Coveralls Finished
+  #     uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+  #     with:
+  #       parallel-finished: true
+  #       carryforward: "run-ubuntu-latest,run-macos-latest"
