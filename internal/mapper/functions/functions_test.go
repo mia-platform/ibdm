@@ -57,6 +57,20 @@ func TestObjectsFunctions(t *testing.T) {
 		expected := []any{"Alice", 1, "Charlie"}
 		assert.Equal(t, expected, Pluck("value", objects))
 	})
+
+	t.Run("get function", func(t *testing.T) {
+		t.Parallel()
+
+		object := map[string]any{
+			"name": "Alice",
+			"age":  30,
+		}
+		expectedName := "Alice"
+		expectedAge := 30
+		assert.Equal(t, expectedName, Get("name", object, ""))
+		assert.Equal(t, expectedAge, Get("age", object, nil))
+		assert.Equal(t, true, Get("missing", object, true))
+	})
 }
 
 func TestStringsFunctions(t *testing.T) {

@@ -25,6 +25,7 @@ these other ones:
 - Objects Functions:
 	- [toJSON](#tojson)
 	- [pluck](#pluck)
+	- [get](#get)
 - Time Functions:
 	- [now](#now)
 - Crypto Functions:
@@ -115,7 +116,15 @@ The `pluck` function extracts the values associated with the specified key from 
 and returns them as a new slice. Any object without the key will be skipped.
 
 As an example, `{{ pluck "key" .objects | toJSON }}` with a `aKey` containing
-`[{"key":"value1"},{"key":"value2","anotherKey":"value3"}]` will return `["value1", "value2"]`.
+`[{"key":"value1"},{"key":"value2"},{"anotherKey":"value3"}]` will return `["value1", "value2"]`.
+
+### `get`
+
+The `get` function will return the chosen key from the object and the default value if the key is
+not present in the target object.
+
+As an example, `{{ get "key" .object "defaultValue" }}` with a `aKey` containing
+`{"key":"value1"}` will return `value1`.
 
 ### `now`
 

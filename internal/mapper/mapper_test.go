@@ -208,6 +208,29 @@ func TestMapper(t *testing.T) {
 				},
 			},
 		},
+		"use get value from missing key": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", map[string]string{
+					"key":       `{{ get "missingKey" . "defaultValue" }}`,
+					"nestedKey": `{{ get "nestedKey" .otherKey "defaultValue" }}`,
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+				"otherKey": map[string]any{
+					"nestedKey": "nestedValue",
+				},
+			},
+			expected: MappedData{
+				Identifier: "example",
+				Spec: map[string]any{
+					"key":       "defaultValue",
+					"nestedKey": "nestedValue",
+				},
+			},
+		},
 	}
 
 	for testName, test := range testCases {

@@ -27,3 +27,13 @@ func Pluck(key string, objects []map[string]any) []any {
 
 	return result
 }
+
+// Get retrieves the value associated with the specified key from the map. If the key does not exist,
+// it returns the provided default value.
+func Get(key string, object map[string]any, defaultValue any) any {
+	if val, exists := object[key]; exists {
+		return val
+	}
+
+	return defaultValue
+}

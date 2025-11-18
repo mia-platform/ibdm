@@ -113,6 +113,7 @@ func templateFunctions() template.FuncMap {
 		// object functions
 		"toJSON": functions.ToJSON,
 		"pluck":  functions.Pluck,
+		"get":    functions.Get,
 
 		// time functions
 		"now": functions.Now,
