@@ -9,9 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mia-platform/ibdm/internal/logger"
 )
 
 func TestRootCommand(t *testing.T) {

@@ -10,10 +10,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/mia-platform/ibdm/internal/logger"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
+	"github.com/mia-platform/ibdm/internal/logger"
 )
 
 var (

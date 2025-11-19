@@ -11,8 +11,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/mia-platform/ibdm/internal/mapper/functions"
 	"gopkg.in/yaml.v3"
+
+	"github.com/mia-platform/ibdm/internal/mapper/functions"
 )
 
 // Mapper will define how to map input data to an output structure defined by its Templates.

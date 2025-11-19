@@ -123,6 +123,9 @@ formatters:
   settings:
     gofmt:
       simplify: true
+    goimports:
+       local-prefixes:
+        - github.com/mia-platform/ibdm
   exclusions:
     generated: lax
     paths:
