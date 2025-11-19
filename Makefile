@@ -52,7 +52,7 @@ BUILD_OUTPUT:= $(PROJECT_DIR)/bin
 endif
 
 # Set here the name of the package you want to build
-CMDNAME:= idbm
+CMD_NAME:= ibdm
 BUILD_PATH:= .
 CONFORMANCE_TEST_PATH:= $(PROJECT_DIR)/tests/e2e
 

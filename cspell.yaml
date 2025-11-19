@@ -1,0 +1,27 @@
+version: "0.2"
+language: "en,en-GB,en-US"
+
+useGitignore: true
+allowCompoundWords: true
+
+words:
+- ibdm
+- tmpl
+- uuidv
+
+ignoreWords:
+- errln
+- goarch
+- goarm
+- gobin
+- golangci
+- gomod
+- goos
+- hclog
+- stretchr
+
+files:
+- '**/*.md'
+- '**/*.go'
+- '**/*.mk'
+- 'Makefile'

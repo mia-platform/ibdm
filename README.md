@@ -30,7 +30,7 @@ version manager tool like [gvm], [asdf-vm] or [mise-en-place].
 After you have clone or downloaded the source code on your machine you can run `make build` for
 building the binary for your machine. The result of the build can be found in the `bin` folder
 at the root of the repository.  
-You can find the binary at `bin/<operating-system>/<architecture>/idbm`.
+You can find the binary at `bin/<operating-system>/<architecture>/ibdm`.
 
 ### Running Tests
 
