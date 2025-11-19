@@ -81,6 +81,7 @@ func rootCmd() *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 
+		ValidArgsFunction: cobra.NoFileCompletions,
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			log := logger.FromContext(cmd.Context())
 			log.SetLevel(logger.LevelFromString(flag.logLevel))
@@ -102,13 +103,15 @@ func versionCmd() *cobra.Command {
 		Short: heredoc.Doc(versionShort),
 
 		Args: func(cmd *cobra.Command, args []string) error {
-			if err := cobra.NoArgs(cmd, args); err != nil {
+			err := cobra.NoArgs(cmd, args)
+			if err != nil {
 				cmd.PrintErrln(err)
 				_ = cmd.Usage()
 			}
 
-			return nil
+			return err
 		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 		Run: func(cmd *cobra.Command, _ []string) {
 			fmt.Fprintln(cmd.OutOrStdout(), versionString(Version, BuildDate, runtime.Version()))
 		},
