@@ -26,7 +26,7 @@ linters:
   - goconst
   - gocritic
   - gocyclo
-  # - godoclint
+  - godoclint
   - goheader
   - gosec
   - gosmopolitan

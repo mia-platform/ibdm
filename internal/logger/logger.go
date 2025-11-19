@@ -63,37 +63,37 @@ const (
 
 // Logger describes the interface that must be implemented by all loggers
 type Logger interface {
-	// WithName returns a new Logger instance with the specified name
+	// WithName returns a new Logger instance with the specified name.
 	WithName(name string) Logger
 
-	// SetLevel updates the logger level
+	// SetLevel updates the logger level.
 	SetLevel(level Level)
 
-	// Trace emit a message and key/value pairs at the TRACE level
+	// Trace emit a message and key/value pairs at the TRACE level.
 	Trace(msg string, args ...interface{})
 
-	// Debug emit a message and key/value pairs at the DEBUG level
+	// Debug emit a message and key/value pairs at the DEBUG level.
 	Debug(msg string, args ...interface{})
 
-	// Info emit a message and key/value pairs at the INFO level
+	// Info emit a message and key/value pairs at the INFO level.
 	Info(msg string, args ...interface{})
 
-	// Warn emit a message and key/value pairs at the WARN level
+	// Warn emit a message and key/value pairs at the WARN level.
 	Warn(msg string, args ...interface{})
 
-	// Error emit a message and key/value pairs at the ERROR level
+	// Error emit a message and key/value pairs at the ERROR level.
 	Error(msg string, args ...interface{})
 }
 
-// Make sure that intLogger is a Logger
+// Make sure that intLogger is a Logger.
 var _ Logger = &instance{}
 
-// instance is a Logger implementation
+// instance is a Logger implementation.
 type instance struct {
 	log hclog.Logger
 }
 
-// NewLogger creates a new logger instance
+// NewLogger creates a new logger instance.
 func NewLogger(writer io.Writer) Logger {
 	return &instance{
 		log: hclog.New(&hclog.LoggerOptions{

@@ -3,7 +3,7 @@
 
 package mapper
 
-// Ensure ParsingError implements the error interface
+// Ensure ParsingError implements the error interface.
 var _ error = &ParsingError{}
 
 var (

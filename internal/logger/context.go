@@ -7,7 +7,7 @@ import (
 	"context"
 )
 
-// WithContext returns a new context with the provided logger
+// WithContext returns a new context with the provided logger.
 func WithContext(ctx context.Context, logger Logger) context.Context {
 	return context.WithValue(ctx, contextKey, logger)
 }
