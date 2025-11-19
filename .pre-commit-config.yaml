@@ -29,6 +29,10 @@ repos:
   - id: trailing-whitespace
     name: Trims trailing whitespace
     args: [--markdown-linebreak-ext=md] # add exception for markdown linebreaks
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.4.1
+  hooks:
+  - id: codespell
 - repo: https://github.com/gitleaks/gitleaks
   rev: v8.29.0
   hooks:
