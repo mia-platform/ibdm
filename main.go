@@ -10,10 +10,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/mia-platform/ibdm/internal/logger"
+
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 var (
@@ -31,7 +31,7 @@ const (
 	logLevelShortFlagName = "v"
 
 	versionCmdName = "version"
-	versionShort   = "Display the " + appName + " version."
+	versionShort   = "Display the " + appName + " version"
 )
 
 var (
@@ -46,11 +46,14 @@ var (
 	logLevelFlagUsage    = "set the logging level (possible values: " + strings.Join(allLoggerLevels, ", ") + ")"
 )
 
+// rootFlags holds the global flags for the root command.
 type rootFlags struct {
 	logLevel string
 }
 
-func (f *rootFlags) AddFlags(flags *pflag.FlagSet) {
+// addFlags adds the cli flags to the cobra command.
+func (f *rootFlags) addFlags(cmd *cobra.Command) {
+	flags := cmd.PersistentFlags()
 	flags.StringVarP(&f.logLevel, logLevelFlagName, logLevelShortFlagName, logLevelDefaultValue, heredoc.Doc(logLevelFlagUsage))
 }
 
@@ -67,7 +70,7 @@ func main() {
 	os.Exit(exitCode)
 }
 
-// rootCmd return the base cobra command correctly configured
+// rootCmd return the base cobra command correctly configured.
 func rootCmd() *cobra.Command {
 	flag := &rootFlags{}
 
@@ -78,32 +81,41 @@ func rootCmd() *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 
-		Args: cobra.NoArgs,
-
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			log := logger.FromContext(cmd.Context())
 			log.SetLevel(logger.LevelFromString(flag.logLevel))
 		},
 	}
 
-	flag.AddFlags(cmd.PersistentFlags())
-	cmd.AddCommand(versionCmd())
+	flag.addFlags(cmd)
+	cmd.AddCommand(
+		versionCmd(),
+	)
 
 	return cmd
 }
 
+// versionCmd returns the cobra command that prints the version information.
 func versionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   versionCmdName,
 		Short: heredoc.Doc(versionShort),
 
-		Args: cobra.NoArgs,
+		Args: func(cmd *cobra.Command, args []string) error {
+			if err := cobra.NoArgs(cmd, args); err != nil {
+				cmd.PrintErrln(err)
+				_ = cmd.Usage()
+			}
+
+			return nil
+		},
 		Run: func(cmd *cobra.Command, _ []string) {
 			fmt.Fprintln(cmd.OutOrStdout(), versionString(Version, BuildDate, runtime.Version()))
 		},
 	}
 }
 
+// versionString formats the version information string.
 func versionString(version, buildDate, runtimeVersion string) string {
 	outputString := version
 	if buildDate != "" {
