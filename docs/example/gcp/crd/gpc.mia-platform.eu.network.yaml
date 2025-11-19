@@ -1,0 +1,53 @@
+---
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: networks.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: Network
+    plural: networks
+    singular: network
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                id:
+                  description: The unique identifier for the network resource
+                  type: string
+                name:
+                  description: The name of the network
+                  type: string
+                description:
+                  description: Human-readable description of the network
+                  type: string
+                mtu:
+                  description: Maximum transmission unit in bytes
+                  type: integer
+                routingConfig:
+                  description: Routing configuration for the network
+                  type: object
+                  properties:
+                    routingMode:
+                      description: Routing mode for the network (for example, REGIONAL or GLOBAL)
+                      type: string
+                  additionalProperties: true
+                updateTime:
+                  description: RFC 3339 timestamp for the last update to the network resource
+                  type: string
+                  format: date-time
+                location:
+                  description: Location context when applicable
+                  type: string
+              additionalProperties: true
+      served: true
+      storage: true

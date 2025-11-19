@@ -1,0 +1,83 @@
+---
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: nodepools.container.gcp.mia-platform.eu
+spec:
+  group: container.gcp.mia-platform.eu
+  names:
+    kind: NodePool
+    plural: nodepools
+    singular: node-pool
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                name:
+                  description: The name of the node pool
+                  type: string
+                locations:
+                  description: List of zones/locations where nodes are provisioned
+                  type: array
+                  items:
+                    type: string
+                config:
+                  description: Node configuration (disk, machine type, etc.)
+                  type: object
+                  properties:
+                    diskSizeGb:
+                      type: integer
+                    diskType:
+                      type: string
+                  additionalProperties: true
+                autoscaling:
+                  description: Autoscaling settings
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    locationPolicy:
+                      type: string
+                    maxNodeCount:
+                      type: integer
+                  additionalProperties: true
+                management:
+                  description: Node pool management settings
+                  type: object
+                  properties:
+                    autoRepair:
+                      type: boolean
+                    autoUpgrade:
+                      type: boolean
+                  additionalProperties: true
+                maxPodsConstraint:
+                  description: Maximum pods constraint
+                  type: object
+                  properties:
+                    maxPodsPerNode:
+                      type: string
+                  additionalProperties: true
+                status:
+                  description: Current status of the node pool (for example, RUNNING)
+                  type: string
+                version:
+                  description: Kubernetes version running on the nodes
+                  type: string
+                updateTime:
+                  description: RFC 3339 timestamp for last update
+                  type: string
+                  format: date-time
+                location:
+                  description: Location/region of the node pool
+                  type: string
+              additionalProperties: true
+      served: true
+      storage: true

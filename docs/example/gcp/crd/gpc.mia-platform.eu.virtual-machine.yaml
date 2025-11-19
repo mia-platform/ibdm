@@ -1,0 +1,108 @@
+---
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: virtualmachines.compute.gcp.mia-platform.eu
+spec:
+  group: compute.gcp.mia-platform.eu
+  names:
+    kind: VirtualMachine
+    plural: virtualmachines
+    singular: virtual-machine
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                id:
+                  description: The unique identifier for the instance
+                  type: string
+                name:
+                  description: Instance name
+                  type: string
+                description:
+                  description: Human-readable description
+                  type: string
+                cpuPlatform:
+                  description: CPU platform string
+                  type: string
+                deletionProtection:
+                  description: Whether deletion protection is enabled
+                  type: boolean
+                disks:
+                  description: Attached disk details
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      architecture:
+                        type: string
+                      autoDelete:
+                        type: boolean
+                      boot:
+                        type: boolean
+                      deviceName:
+                        type: string
+                      diskSizeGb:
+                        type: string
+                      interface:
+                        type: string
+                      mode:
+                        type: string
+                      type:
+                        type: string
+                    additionalProperties: true
+                labels:
+                  description: Labels attached to the instance
+                  type: object
+                  additionalProperties:
+                    type: string
+                scheduling:
+                  description: Scheduling settings for the instance
+                  type: object
+                  properties:
+                    automaticRestart:
+                      type: boolean
+                    onHostMaintenance:
+                      type: string
+                    preemptible:
+                      type: boolean
+                    provisioningModel:
+                      type: string
+                  additionalProperties: true
+                shieldedInstanceConfig:
+                  description: Shielded VM settings
+                  type: object
+                  properties:
+                    enableIntegrityMonitoring:
+                      type: boolean
+                    enableSecureBoot:
+                      type: boolean
+                    enableVtpm:
+                      type: boolean
+                  additionalProperties: true
+                status:
+                  description: Current status of the instance
+                  type: string
+                tags:
+                  description: Network tags and fingerprint
+                  type: object
+                  additionalProperties:
+                    type: string
+                updateTime:
+                  description: RFC 3339 timestamp for the last update
+                  type: string
+                  format: date-time
+                location:
+                  description: The region where the instance is deployed
+                  type: string
+              additionalProperties: true
+      served: true
+      storage: true
