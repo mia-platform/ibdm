@@ -33,7 +33,7 @@ func TestNewMapper(t *testing.T) {
 		t.Parallel()
 		mapper, err := New("{{ .name }}", map[string]string{
 			"key":      "name",
-			"otherKey": "{{ .otherKey | unknwonFunc }}",
+			"otherKey": "{{ .otherKey | unknownFunc }}",
 		})
 		assert.Nil(t, mapper)
 		assert.Error(t, err)
@@ -48,9 +48,9 @@ func TestNewMapper(t *testing.T) {
 
 	t.Run("return error when one or more template is broken", func(t *testing.T) {
 		t.Parallel()
-		mapper, err := New("{{ .name | unknwonFunc }}", map[string]string{
+		mapper, err := New("{{ .name | unknownFunc }}", map[string]string{
 			"key":      "name",
-			"otherKey": "{{ .otherKey | unknwonFunc }}",
+			"otherKey": "{{ .otherKey | unknownFunc }}",
 		})
 		assert.Nil(t, mapper)
 		assert.Error(t, err)

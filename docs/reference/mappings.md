@@ -74,7 +74,7 @@ As an example, `{{ .aKey | lower }}` with a `aKey` containing `HELLO WORLD!` wil
 
 The `truncate` function can be used to truncate from the start or the end an input string. If you
 use a positive index it will be truncated from the beginning and with a negative one it will be
-truncated from the end. If the absolute valued of the index is greater then the lenght of the
+truncated from the end. If the absolute valued of the index is greater then the length of the
 input string the original string will be returned.
 
 As an example, `{{ .aKey | truncate 5 }}` with a `aKey` containing `Hello World!` will return

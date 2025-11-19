@@ -21,7 +21,7 @@ func TestLoggerInContext(t *testing.T) {
 		assert.Equal(t, log, nullLogger)
 	})
 
-	t.Run("from empty context retunr null logger", func(t *testing.T) {
+	t.Run("from empty context return null logger", func(t *testing.T) {
 		t.Parallel()
 
 		log := FromContext(t.Context())

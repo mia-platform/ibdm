@@ -10,7 +10,7 @@ map data from a structure to a new one, without giving tools to do some more adv
 and it has been a limiting factor for some users.
 
 As an additional safekeeping we treat missing key paths from the original data as errors to avoid
-empty values that in some cases are rendered as `<no value>` and from wich we cannot infer what is
+empty values that in some cases are rendered as `<no value>` and from which we cannot infer what is
 the original data type to substitute to it.
 
 ## Identifier Template
@@ -18,11 +18,11 @@ the original data type to substitute to it.
 Every mapped data must have an unique identifier that will be used to identify it during insert,
 update and delete operations.
 
-To ensure this a seprate template is used from the ones used to fill out the other data.  
+To ensure this a separate template is used from the ones used to fill out the other data.  
 This template will have access to the same functions of the others one but ti will always cast
 as string and it will also checked on some specific constrains that are:
 
-- it must be long between 1 and 253 characters inclued
+- it must be long between 1 and 253 characters included
 - can contain only alphanumeric characters, `-` or `.`
 - must start with an alphanumeric character
 - must end with an alphanumeric character
@@ -35,11 +35,11 @@ Spec Templates are the collection of all the other templates that are needed to 
 We are limiting the possibility to add only flat keys as templates and leave the power of the
 template engine for creating complex data structure as values.  
 These limit is intentional for keeping the structure as lean as possible and simplify search and
-retrival of the information from the catalog.
+retrieval of the information from the catalog.
 
-The templates will be aggregated in YAML object and then the created file will be feeded to the
-template engine to create a YAML rappresentation of the data.  
-From this rappresentetion we will generate a dynamic structure that will be later sent to the
+The templates will be aggregated in YAML object and then the created file will be feed to the
+template engine to create a YAML representation of the data.  
+From this representation we will generate a dynamic structure that will be later sent to the
 Mia-Platform Catalog, so you can always keep in mind that the template must return valid YAML
 values (and because YAML is a JSON superset you can also return JSON valid values).
 
