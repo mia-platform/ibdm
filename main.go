@@ -13,6 +13,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
+	internalcmd "github.com/mia-platform/ibdm/internal/cmd"
 	"github.com/mia-platform/ibdm/internal/logger"
 )
 
@@ -90,6 +91,7 @@ func rootCmd() *cobra.Command {
 
 	flag.addFlags(cmd)
 	cmd.AddCommand(
+		internalcmd.RunCmd(),
 		versionCmd(),
 	)
 
