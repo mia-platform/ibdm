@@ -1,0 +1,7 @@
+type: yaml
+syncable: true
+mappings:
+  identifier: "{{ .name }}"
+  spec:
+    key: "{{ .value }}"
+    otherKey: "{{ .otherValue | functionName }}"
