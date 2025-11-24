@@ -1,0 +1,158 @@
+{
+    "asset": {
+        "ancestors": [
+            "projects/20318464073",
+            "folders/918177713511",
+            "organizations/566099688680"
+        ],
+        "assetType": "storage.googleapis.com/Bucket",
+        "name": "//storage.googleapis.com/bucket-test-ibdm",
+        "resource": {
+            "data": {
+                "acl": [],
+                "autoclass": {},
+                "billing": {},
+                "cors": [],
+                "customPlacementConfig": {},
+                "defaultObjectAcl": [],
+                "encryption": {
+                    "customerManagedEncryptionEnforcementConfig": {},
+                    "customerSuppliedEncryptionEnforcementConfig": {},
+                    "googleManagedEncryptionEnforcementConfig": {}
+                },
+                "etag": "CAw=",
+                "hierarchicalNamespace": {
+                    "enabled": false
+                },
+                "iamConfiguration": {
+                    "bucketPolicyOnly": {
+                        "enabled": true,
+                        "lockedTime": "2026-02-22T14:21:11.344Z"
+                    },
+                    "publicAccessPrevention": "enforced",
+                    "uniformBucketLevelAccess": {
+                        "enabled": true,
+                        "lockedTime": "2026-02-22T14:21:11.344Z"
+                    }
+                },
+                "id": "bucket-test-ibdm",
+                "ipFilter": {
+                    "publicNetworkSource": {},
+                    "vpcNetworkSources": []
+                },
+                "kind": "storage#bucket",
+                "labels": {
+                    "label-1": "value-2"
+                },
+                "lifecycle": {
+                    "rule": []
+                },
+                "location": "US-CENTRAL1",
+                "locationType": "region",
+                "logging": {},
+                "metageneration": 12,
+                "name": "bucket-test-ibdm",
+                "objectRetention": {},
+                "owner": {},
+                "projectNumber": 20318464073,
+                "retentionPolicy": {},
+                "selfLink": "https://www.googleapis.com/storage/v1/b/bucket-test-ibdm",
+                "softDeletePolicy": {
+                    "effectiveTime": "2025-11-24T14:21:11.000Z",
+                    "retentionDurationSeconds": 604800
+                },
+                "storageClass": "STANDARD",
+                "timeCreated": "2025-11-24T14:21:11.344Z",
+                "updated": "2025-11-24T15:14:11.027Z",
+                "versioning": {},
+                "website": {}
+            },
+            "discoveryDocumentUri": "https://www.googleapis.com/discovery/v1/apis/storage/v1/rest",
+            "discoveryName": "Bucket",
+            "location": "us-central1",
+            "parent": "//cloudresourcemanager.googleapis.com/projects/20318464073",
+            "version": "v1"
+        },
+        "updateTime": "2025-11-24T15:14:11.027878Z"
+    },
+    "priorAsset": {
+        "ancestors": [
+            "projects/20318464073",
+            "folders/918177713511",
+            "organizations/566099688680"
+        ],
+        "assetType": "storage.googleapis.com/Bucket",
+        "name": "//storage.googleapis.com/bucket-test-ibdm",
+        "resource": {
+            "data": {
+                "acl": [],
+                "autoclass": {},
+                "billing": {},
+                "cors": [],
+                "customPlacementConfig": {},
+                "defaultObjectAcl": [],
+                "encryption": {
+                    "customerManagedEncryptionEnforcementConfig": {},
+                    "customerSuppliedEncryptionEnforcementConfig": {},
+                    "googleManagedEncryptionEnforcementConfig": {}
+                },
+                "etag": "CAs=",
+                "hierarchicalNamespace": {
+                    "enabled": false
+                },
+                "iamConfiguration": {
+                    "bucketPolicyOnly": {
+                        "enabled": true,
+                        "lockedTime": "2026-02-22T14:21:11.344Z"
+                    },
+                    "publicAccessPrevention": "enforced",
+                    "uniformBucketLevelAccess": {
+                        "enabled": true,
+                        "lockedTime": "2026-02-22T14:21:11.344Z"
+                    }
+                },
+                "id": "bucket-test-ibdm",
+                "ipFilter": {
+                    "publicNetworkSource": {},
+                    "vpcNetworkSources": []
+                },
+                "kind": "storage#bucket",
+                "labels": {
+                    "label-1": "value-1"
+                },
+                "lifecycle": {
+                    "rule": []
+                },
+                "location": "US-CENTRAL1",
+                "locationType": "region",
+                "logging": {},
+                "metageneration": 11,
+                "name": "bucket-test-ibdm",
+                "objectRetention": {},
+                "owner": {},
+                "projectNumber": 20318464073,
+                "retentionPolicy": {},
+                "selfLink": "https://www.googleapis.com/storage/v1/b/bucket-test-ibdm",
+                "softDeletePolicy": {
+                    "effectiveTime": "2025-11-24T14:21:11.000Z",
+                    "retentionDurationSeconds": 604800
+                },
+                "storageClass": "STANDARD",
+                "timeCreated": "2025-11-24T14:21:11.344Z",
+                "updated": "2025-11-24T15:13:26.050Z",
+                "versioning": {},
+                "website": {}
+            },
+            "discoveryDocumentUri": "https://www.googleapis.com/discovery/v1/apis/storage/v1/rest",
+            "discoveryName": "Bucket",
+            "location": "us-central1",
+            "parent": "//cloudresourcemanager.googleapis.com/projects/20318464073",
+            "version": "v1"
+        },
+        "updateTime": "2025-11-24T15:13:26.050958Z"
+    },
+    "priorAssetState": "PRESENT",
+    "window": {
+        "startTime": "2025-11-24T15:14:11.027878Z"
+    }
+}
