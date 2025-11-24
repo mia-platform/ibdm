@@ -16,9 +16,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 
+	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 
 	"google.golang.org/api/iterator"
@@ -33,50 +36,9 @@ const (
 	loggerName = "ibdm:source:gcp"
 )
 
-type GCPAssetInterface interface {
-	newGCPAssetInstance(ctx context.Context) (gcpAssetInstance, error)
-	initAssetClient(ctx context.Context) error
-	closeAssetClient(ctx context.Context) error
-	StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) (err error)
-}
-
-type GCPPubSubEnvironmentVariables struct {
-	ProjectID      string `json:"projectId"`
-	TopicName      string `json:"topicName"`
-	SubscriptionID string `json:"subscriptionId"`
-}
-
-type GCPAssetEnvironmentVariables struct {
-	ProjectID string `json:"projectId"`
-}
-
-type GCPPubSubConfig struct {
-	ProjectID       string
-	TopicName       string
-	SubscriptionID  string
-	CredentialsJSON string
-}
-
-type GCPAssetConfig struct {
-	ProjectID string
-}
-
-type GCPInstance struct {
-	p *gcpPubSubInstance
-	a *gcpAssetInstance
-}
-
-type gcpPubSubInstance struct {
-	config GCPPubSubConfig
-
-	c *pubsub.Client
-}
-
-type gcpAssetInstance struct {
-	config GCPAssetConfig
-
-	c *asset.Client
-}
+var (
+	ErrMalformedEvent = errors.New("malformed event")
+)
 
 func checkPubSubEnvVariables(cfg GCPPubSubEnvironmentVariables) error {
 	errorsList := make([]error, 0)
@@ -103,6 +65,7 @@ func checkAssetEnvVariables(cfg GCPAssetEnvironmentVariables) error {
 }
 
 func NewGCPInstance(ctx context.Context) (*GCPInstance, error) {
+	log := logger.FromContext(ctx).WithName(loggerName)
 	assetInstance, err := newGCPAssetInstance(ctx)
 	if err != nil {
 		return nil, err
@@ -112,8 +75,9 @@ func NewGCPInstance(ctx context.Context) (*GCPInstance, error) {
 		return nil, err
 	}
 	return &GCPInstance{
-		a: assetInstance,
-		p: pubSubInstance,
+		a:   assetInstance,
+		p:   pubSubInstance,
+		log: log,
 	}, nil
 }
 
@@ -149,21 +113,34 @@ func newGCPAssetInstance(ctx context.Context) (*gcpAssetInstance, error) {
 	}, nil
 }
 
-func (p *gcpPubSubInstance) initPubSubClient(ctx context.Context) error {
-	client, err := pubsub.NewClient(ctx, p.config.ProjectID)
+func (g *GCPInstance) initPubSubClient(ctx context.Context) error {
+	client, err := pubsub.NewClient(ctx, g.p.config.ProjectID)
 	if err != nil {
 		return err
 	}
-	p.c = client
+	g.p.c = client
 	return nil
 }
 
-func (p *gcpAssetInstance) initAssetClient(ctx context.Context) error {
+func (g *GCPInstance) initPubSubSubscriber(ctx context.Context) error {
+	g.p.s = g.p.c.Subscriber(g.p.config.SubscriptionID)
+	g.log.Debug("starting to listen to Pub/Sub messages",
+		"projectId", g.p.config.ProjectID,
+		"topicName", g.p.config.TopicName,
+		"subscriptionId", g.p.config.SubscriptionID,
+	)
+	if g.p.s == nil {
+		return fmt.Errorf("failed to create Pub/Sub subscriber for subscription %s", g.p.config.SubscriptionID)
+	}
+	return nil
+}
+
+func (g *GCPInstance) initAssetClient(ctx context.Context) error {
 	client, err := asset.NewClient(ctx)
 	if err != nil {
 		return err
 	}
-	p.c = client
+	g.a.c = client
 	return nil
 }
 
@@ -220,7 +197,7 @@ func assetToMap(asset *assetpb.Asset) map[string]any {
 
 func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) (err error) {
 	if g.a.c == nil {
-		g.a.initAssetClient(ctx)
+		g.initAssetClient(ctx)
 	}
 	defer func() {
 		g.a.closeAssetClient(ctx)
@@ -239,7 +216,7 @@ func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string
 			break
 		}
 		results <- source.SourceData{
-			Type:      "gcpAsset",
+			Type:      asset.AssetType,
 			Operation: source.DataOperationUpsert,
 			Values:    assetToMap(asset),
 		}
@@ -248,29 +225,147 @@ func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string
 	return nil
 }
 
-// func (a *gcpAssetInstance) ListAssets(ctx context.Context, assetTypes []string) ([]*assetpb.Asset, error) {
-// 	if a.c == nil {
-// 		a.initAssetClient(ctx)
+func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.SourceData) (err error) {
+	if g.p.c == nil {
+		g.initPubSubClient(ctx)
+	}
+	defer g.Close(ctx)
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	g.initPubSubSubscriber(ctx)
+	err = g.p.s.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
+		var event GCPEvent
+		if err := json.Unmarshal(msg.Data, &event); err != nil {
+			fmt.Printf("malformed event: %s\n", err.Error())
+			msg.Nack()
+			return
+		}
+		results <- source.SourceData{
+			Type:      event.AssetType(),
+			Operation: event.Operation(),
+			Values:    event.Resource(),
+		}
+		msg.Ack()
+	})
+	if err != nil {
+		return fmt.Errorf("got error in Receive: %w", err)
+	}
+	return nil
+}
+
+// func (g *GCPInstance) listen(ctx context.Context, handler ListenerFunc) error {
+// 	err := g.initPubSubSubscriber(ctx)
+// 	if err != nil {
+// 		return err
 // 	}
-// 	defer func() {
-// 		a.closeAssetClient(ctx)
-// 	}()
-// 	req := &assetpb.ListAssetsRequest{
-// 		Parent:      "projects/" + a.config.ProjectID,
-// 		AssetTypes:  assetTypes,
-// 		ContentType: assetpb.ContentType_RESOURCE,
-// 	}
+// 	err = g.p.s.Receive(ctx, handlerPubSubMessage(g))
+// 	if err != nil {
+// 		g.log.Error("error receiving Pub/Sub messages", "error", err)
+// 		if status, ok := status.FromError(err); ok {
+// 			g.log.Error("gRPC status code", "error", err, "code", status.Code())
+// 			if status.Code() == codes.NotFound {
+// 				// If the subscription does not exist, then create the subscription.
+// 				subscription, err := g.p.c.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
+// 					Name:  g.p.config.SubscriptionID,
+// 					Topic: g.p.config.TopicName,
+// 				})
+// 				if err != nil {
+// 					g.log.Error("error creating Pub/Sub subscription", "error", err)
+// 					return err
+// 				}
 
-// 	it := a.c.ListAssets(ctx, req)
-
-// 	assets := make([]*assetpb.Asset, 0)
-
-// 	for {
-// 		response, err := it.Next()
-// 		if errors.Is(err, iterator.Done) {
-// 			break
+// 				g.p.s = g.p.c.Subscriber(subscription.GetName())
+// 				return g.p.s.Receive(ctx, handlerPubSubMessage(g))
+// 			}
 // 		}
-// 		assets = append(assets, response)
 // 	}
-// 	return assets, nil
+
+// 	return nil
+// }
+
+// func handlerPubSubMessage(g *GCPInstance) func(ctx context.Context, msg *pubsub.Message) {
+// 	return func(ctx context.Context, msg *pubsub.Message) {
+// 		g.log.Trace("received message from Pub/Sub",
+// 			"projectId", g.p.config.ProjectID,
+// 			"topicName", g.p.config.TopicName,
+// 			"subscriptionId", g.p.config.SubscriptionID,
+// 			"messageId", msg.ID,
+// 		)
+
+// 		if err := gcpHandlerListener(ctx, msg.Data); err != nil {
+// 			g.log.Error("error handling message",
+// 				"error", err,
+// 				"projectId", g.p.config.ProjectID,
+// 				"topicName", g.p.config.TopicName,
+// 				"subscriptionId", g.p.config.SubscriptionID,
+// 				"messageId", msg.ID,
+// 			)
+
+// 			msg.Nack()
+// 			return
+// 		}
+
+// 		// TODO: message is Acked here once the pipelines have received the message for processing.
+// 		// This means that if the pipeline fails after this point, the message will not be
+// 		// retried. Consider implementing, either:
+// 		// - a dead-letter queue or similar mechanism.
+// 		// - a way to be notified here if all the pipelins have processed the
+// 		//   message successfully in order to correctly ack/nack it.
+// 		msg.Ack()
+// 	}
+// }
+
+// func gcpHandlerListener(ctx context.Context, data []byte) error {
+// 	if err := json.Unmarshal(data, &event); err != nil {
+// 		return nil, fmt.Errorf("%w: %s", ErrMalformedEvent, err.Error())
+// 	}
+
+// 	event := &entities.Event{
+// 		PrimaryKeys: entities.PkFields{
+// 			{Key: "resourceName", Value: event.Name()},
+// 			{Key: "resourceType", Value: event.AssetType()},
+// 		},
+// 		OperationType: event.Operation(),
+// 		Type:          event.EventType(),
+// 		OriginalRaw:   data,
+// 	}
+
+// 	pipeline.AddMessage(event)
+// 	return nil
+// }
+
+// func (b *InventoryEventBuilder[T]) GetPipelineEvent(_ context.Context, data []byte) (entities.PipelineEvent, error) {
+// 	var event T
+// 	if err := json.Unmarshal(data, &event); err != nil {
+// 		return nil, fmt.Errorf("%w: %s", ErrMalformedEvent, err.Error())
+// 	}
+
+// 	return &entities.Event{
+// 		PrimaryKeys: entities.PkFields{
+// 			{Key: "resourceName", Value: event.Name()},
+// 			{Key: "resourceType", Value: event.AssetType()},
+// 		},
+// 		OperationType: event.Operation(),
+// 		Type:          event.EventType(),
+// 		OriginalRaw:   data,
+// 	}, nil
+// }
+
+// func newPubSub(
+// 	ctx context.Context,
+// 	log *logger.Logger,
+// 	client gcpclient.GCP,
+// ) error {
+// 	go func(ctx context.Context, log *logger.Logger, client *pubsub.Client) {
+// 		err := Listen(ctx, gcpHandlerListener(ctx))
+// 		if err != nil {
+// 			log.WithError(err).Error("error listening to GCP Pub/Sub")
+// 		}
+
+// 		client.Close()
+// 	}(ctx, log, client)
+
+// 	return nil
 // }

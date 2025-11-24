@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
@@ -26,7 +28,7 @@ type fakeAssetServiceServer struct {
 	assetpb.UnimplementedAssetServiceServer
 }
 
-func NewFakeAssetClient(ctx context.Context) (*asset.Client, *grpc.Server, net.Listener, error) {
+func newFakeAssetClient(ctx context.Context) (*asset.Client, *grpc.Server, net.Listener, error) {
 	// Setup the fake server.
 	fakeSrv := &fakeAssetServiceServer{}
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -100,7 +102,7 @@ func (s *fakeAssetServiceServer) ListAssets(ctx context.Context, req *assetpb.Li
 func TestListAvailableAssets(t *testing.T) {
 	ctx := t.Context()
 
-	client, gsrv, l, err := NewFakeAssetClient(ctx)
+	client, gsrv, l, err := newFakeAssetClient(ctx)
 
 	if err != nil {
 		gsrv.Stop()
@@ -139,7 +141,7 @@ func TestListAvailableAssets(t *testing.T) {
 func TestStartSyncProcessInjectFakeClient(t *testing.T) {
 	ctx := t.Context()
 
-	fakeClient, gsrv, l, err := NewFakeAssetClient(ctx)
+	fakeClient, gsrv, l, err := newFakeAssetClient(ctx)
 	if err != nil {
 		gsrv.Stop()
 		t.Fatalf("failed to create fake asset client: %v", err)
@@ -166,9 +168,52 @@ func TestStartSyncProcessInjectFakeClient(t *testing.T) {
 
 	close(results)
 	for result := range results {
-		fmt.Println("type", result)
 		assert.NotNil(t, result.Values)
-		if result.Type != "gcpAsset" {
+		if result.Type != "storage.googleapis.com/Bucket" && result.Type != "compute.googleapis.com/Network" {
+			t.Fatalf("unexpected result type: %s", result.Type)
+		}
+	}
+}
+
+func newFakeGCPPubSubInstance(ctx context.Context) (*gcpPubSubInstance, error) {
+	return &gcpPubSubInstance{
+		config: GCPPubSubConfig{
+			ProjectID:      "console-infrastructure-lab",
+			TopicName:      "mia-platform-resources-export",
+			SubscriptionID: "mia-platform-resources-export-subscription",
+		},
+	}, nil
+}
+
+func TestStartEventStream(t *testing.T) {
+	log := logger.NewLogger(os.Stdout)
+	ctx := logger.WithContext(t.Context(), log)
+
+	pubSubInstance, err := newFakeGCPPubSubInstance(ctx)
+	if err != nil {
+		t.Fatalf("failed to create fake GCP Pub/Sub instance: %v", err)
+	}
+
+	gcpInstance := &GCPInstance{
+		a:   &gcpAssetInstance{},
+		p:   pubSubInstance,
+		log: log,
+	}
+
+	results := make(chan source.SourceData, 10)
+
+	err = gcpInstance.StartEventStream(ctx, []string{"storage.googleapis.com/Bucket"}, results)
+	if err != nil {
+		t.Fatalf("StartEventStream returned error: %v", err)
+	}
+
+	close(results)
+	for result := range results {
+		fmt.Println("type", result.Type)
+		fmt.Println("type", result.Operation)
+		fmt.Println("type", result.Values)
+		assert.NotNil(t, result.Values)
+		if result.Type != "storage.googleapis.com/Bucket" {
 			t.Fatalf("unexpected result type: %s", result.Type)
 		}
 	}
