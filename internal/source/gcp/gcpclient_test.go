@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"testing"
 	"time"
 
@@ -186,8 +185,10 @@ func newFakeGCPPubSubInstance(ctx context.Context) (*gcpPubSubInstance, error) {
 }
 
 func TestStartEventStream(t *testing.T) {
-	log := logger.NewLogger(os.Stdout)
-	ctx := logger.WithContext(t.Context(), log)
+	ctx := t.Context()
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	log := logger.FromContext(ctx).WithName(loggerName)
 
 	pubSubInstance, err := newFakeGCPPubSubInstance(ctx)
 	if err != nil {
@@ -208,6 +209,7 @@ func TestStartEventStream(t *testing.T) {
 	}
 
 	close(results)
+	assert.Equal(t, 1, len(results))
 	for result := range results {
 		fmt.Println("type", result.Type)
 		fmt.Println("type", result.Operation)

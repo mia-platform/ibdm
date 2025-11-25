@@ -1,15 +1,6 @@
 // Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
-/*
-ogni funzione si gestisce la sua parte di variabili di ambiente così si evita di centralizzare in un punto unico il loro parse
-
-gestione tramite sync mutex per evitare race condition di lanci successivi, ogni source se lo gestisce in loco (nessuna gestione centralizzata uguale per tutti)
-mutex.TryLock() per evitare deadlock in caso di chiamate ricorsive con return nel caso in cui non possa acquisire il lock
-
-ricordarsi di usare il loggerName per inizializzare il logger in ogni file usando .withName(loggerName)
-*/
-
 package gcp
 
 import (
@@ -17,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/caarlos0/env/v11"
 
@@ -39,6 +29,8 @@ const (
 var (
 	ErrMalformedEvent = errors.New("malformed event")
 )
+
+// TODO: add mutex TryLock management for StartEventStream and StartSyncProcess to manage concurrency
 
 func checkPubSubEnvVariables(cfg GCPPubSubEnvironmentVariables) error {
 	errorsList := make([]error, 0)
@@ -231,14 +223,17 @@ func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []stri
 	}
 	defer g.Close(ctx)
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
+	return g.gcpListener(ctx, results)
+}
 
+func (g *GCPInstance) gcpListener(ctx context.Context, results chan<- source.SourceData) (err error) {
 	g.initPubSubSubscriber(ctx)
 	err = g.p.s.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
-		var event GCPEvent
-		if err := json.Unmarshal(msg.Data, &event); err != nil {
-			fmt.Printf("malformed event: %s\n", err.Error())
+		event, err := gcpListenerHandler(ctx, msg.Data)
+		if err != nil {
+			g.log.Error("failed to handle Pub/Sub message",
+				"messageId", msg.ID,
+			)
 			msg.Nack()
 			return
 		}
@@ -255,117 +250,11 @@ func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []stri
 	return nil
 }
 
-// func (g *GCPInstance) listen(ctx context.Context, handler ListenerFunc) error {
-// 	err := g.initPubSubSubscriber(ctx)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = g.p.s.Receive(ctx, handlerPubSubMessage(g))
-// 	if err != nil {
-// 		g.log.Error("error receiving Pub/Sub messages", "error", err)
-// 		if status, ok := status.FromError(err); ok {
-// 			g.log.Error("gRPC status code", "error", err, "code", status.Code())
-// 			if status.Code() == codes.NotFound {
-// 				// If the subscription does not exist, then create the subscription.
-// 				subscription, err := g.p.c.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
-// 					Name:  g.p.config.SubscriptionID,
-// 					Topic: g.p.config.TopicName,
-// 				})
-// 				if err != nil {
-// 					g.log.Error("error creating Pub/Sub subscription", "error", err)
-// 					return err
-// 				}
-
-// 				g.p.s = g.p.c.Subscriber(subscription.GetName())
-// 				return g.p.s.Receive(ctx, handlerPubSubMessage(g))
-// 			}
-// 		}
-// 	}
-
-// 	return nil
-// }
-
-// func handlerPubSubMessage(g *GCPInstance) func(ctx context.Context, msg *pubsub.Message) {
-// 	return func(ctx context.Context, msg *pubsub.Message) {
-// 		g.log.Trace("received message from Pub/Sub",
-// 			"projectId", g.p.config.ProjectID,
-// 			"topicName", g.p.config.TopicName,
-// 			"subscriptionId", g.p.config.SubscriptionID,
-// 			"messageId", msg.ID,
-// 		)
-
-// 		if err := gcpHandlerListener(ctx, msg.Data); err != nil {
-// 			g.log.Error("error handling message",
-// 				"error", err,
-// 				"projectId", g.p.config.ProjectID,
-// 				"topicName", g.p.config.TopicName,
-// 				"subscriptionId", g.p.config.SubscriptionID,
-// 				"messageId", msg.ID,
-// 			)
-
-// 			msg.Nack()
-// 			return
-// 		}
-
-// 		// TODO: message is Acked here once the pipelines have received the message for processing.
-// 		// This means that if the pipeline fails after this point, the message will not be
-// 		// retried. Consider implementing, either:
-// 		// - a dead-letter queue or similar mechanism.
-// 		// - a way to be notified here if all the pipelins have processed the
-// 		//   message successfully in order to correctly ack/nack it.
-// 		msg.Ack()
-// 	}
-// }
-
-// func gcpHandlerListener(ctx context.Context, data []byte) error {
-// 	if err := json.Unmarshal(data, &event); err != nil {
-// 		return nil, fmt.Errorf("%w: %s", ErrMalformedEvent, err.Error())
-// 	}
-
-// 	event := &entities.Event{
-// 		PrimaryKeys: entities.PkFields{
-// 			{Key: "resourceName", Value: event.Name()},
-// 			{Key: "resourceType", Value: event.AssetType()},
-// 		},
-// 		OperationType: event.Operation(),
-// 		Type:          event.EventType(),
-// 		OriginalRaw:   data,
-// 	}
-
-// 	pipeline.AddMessage(event)
-// 	return nil
-// }
-
-// func (b *InventoryEventBuilder[T]) GetPipelineEvent(_ context.Context, data []byte) (entities.PipelineEvent, error) {
-// 	var event T
-// 	if err := json.Unmarshal(data, &event); err != nil {
-// 		return nil, fmt.Errorf("%w: %s", ErrMalformedEvent, err.Error())
-// 	}
-
-// 	return &entities.Event{
-// 		PrimaryKeys: entities.PkFields{
-// 			{Key: "resourceName", Value: event.Name()},
-// 			{Key: "resourceType", Value: event.AssetType()},
-// 		},
-// 		OperationType: event.Operation(),
-// 		Type:          event.EventType(),
-// 		OriginalRaw:   data,
-// 	}, nil
-// }
-
-// func newPubSub(
-// 	ctx context.Context,
-// 	log *logger.Logger,
-// 	client gcpclient.GCP,
-// ) error {
-// 	go func(ctx context.Context, log *logger.Logger, client *pubsub.Client) {
-// 		err := Listen(ctx, gcpHandlerListener(ctx))
-// 		if err != nil {
-// 			log.WithError(err).Error("error listening to GCP Pub/Sub")
-// 		}
-
-// 		client.Close()
-// 	}(ctx, log, client)
-
-// 	return nil
-// }
+func gcpListenerHandler(ctx context.Context, data []byte) (event *GCPEvent, err error) {
+	fmt.Println("message data:", string(data))
+	if err = json.Unmarshal(data, &event); err != nil {
+		fmt.Printf("malformed event: %s\n", err.Error())
+		return nil, err
+	}
+	return event, nil
+}
