@@ -1,0 +1,11 @@
+type: valid
+mappings:
+  identifier: "{{ .id }}"
+  spec:
+    field1: "{{ .field1 }}"
+---
+type: mapper-type
+mappings:
+  identifier: "{{ .id }}"
+  spec:
+    field1: "{{ .field1 | invalidFunc }}"

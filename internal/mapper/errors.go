@@ -34,3 +34,15 @@ func (e *ParsingError) Error() string {
 func (e *ParsingError) Unwrap() error {
 	return e.err
 }
+
+func (e *ParsingError) Is(target error) bool {
+	if e == nil || target == nil {
+		return e == target
+	}
+
+	if t, ok := target.(*ParsingError); ok {
+		return e.Error() == t.Error()
+	}
+
+	return false
+}

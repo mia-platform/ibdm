@@ -22,9 +22,21 @@ func handleError(cmd *cobra.Command, err error) error {
 	case errors.Is(err, errNoArguments):
 		_ = cmd.Usage() // do not check error as we cannot do much about it
 		return nil
-	default:
+	case errors.Is(err, errInvalidIntegration):
 		cmd.PrintErrln(err)
 		_ = cmd.Usage() // do not check error as we cannot do much about it
 		return err
+	default:
+		cmd.PrintErrln(err)
+		return err
 	}
+}
+
+// unwrappedError returns the unwrapped error if available, otherwise it returns the original error.
+func unwrappedError(err error) error {
+	if unwrapped := errors.Unwrap(err); unwrapped != nil {
+		return unwrapped
+	}
+
+	return err
 }
