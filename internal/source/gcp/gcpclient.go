@@ -26,10 +26,6 @@ const (
 	loggerName = "ibdm:source:gcp"
 )
 
-var (
-	ErrMalformedEvent = errors.New("malformed event")
-)
-
 // TODO: add mutex TryLock management for StartEventStream and StartSyncProcess to manage concurrency
 
 func checkPubSubEnvVariables(cfg GCPPubSubEnvironmentVariables) error {
@@ -57,23 +53,25 @@ func checkAssetEnvVariables(cfg GCPAssetEnvironmentVariables) error {
 }
 
 func NewGCPInstance(ctx context.Context) (*GCPInstance, error) {
-	log := logger.FromContext(ctx).WithName(loggerName)
-	assetInstance, err := newGCPAssetInstance(ctx)
+	errorsList := make([]error, 0)
+	assetInstance, err := newGCPAssetInstance()
 	if err != nil {
-		return nil, err
+		errorsList = append(errorsList, err)
 	}
-	pubSubInstance, err := newGCPPubSubInstance(ctx)
+	pubSubInstance, err := newGCPPubSubInstance()
 	if err != nil {
-		return nil, err
+		errorsList = append(errorsList, err)
+	}
+	if len(errorsList) > 0 {
+		return nil, errors.Join(errorsList...)
 	}
 	return &GCPInstance{
-		a:   assetInstance,
-		p:   pubSubInstance,
-		log: log,
+		a: assetInstance,
+		p: pubSubInstance,
 	}, nil
 }
 
-func newGCPPubSubInstance(ctx context.Context) (*gcpPubSubInstance, error) {
+func newGCPPubSubInstance() (*gcpPubSubInstance, error) {
 	envVars, err := env.ParseAs[GCPPubSubEnvironmentVariables]()
 	if err != nil {
 		return nil, err
@@ -90,7 +88,7 @@ func newGCPPubSubInstance(ctx context.Context) (*gcpPubSubInstance, error) {
 	}, nil
 }
 
-func newGCPAssetInstance(ctx context.Context) (*gcpAssetInstance, error) {
+func newGCPAssetInstance() (*gcpAssetInstance, error) {
 	envVars, err := env.ParseAs[GCPAssetEnvironmentVariables]()
 	if err != nil {
 		return nil, err
@@ -105,38 +103,38 @@ func newGCPAssetInstance(ctx context.Context) (*gcpAssetInstance, error) {
 	}, nil
 }
 
-func (g *GCPInstance) initPubSubClient(ctx context.Context) error {
-	client, err := pubsub.NewClient(ctx, g.p.config.ProjectID)
+func (p *gcpPubSubInstance) initPubSubClient(ctx context.Context) error {
+	client, err := pubsub.NewClient(ctx, p.config.ProjectID)
 	if err != nil {
 		return err
 	}
-	g.p.c = client
+	p.c = client
 	return nil
 }
 
-func (g *GCPInstance) initPubSubSubscriber(ctx context.Context) error {
-	g.p.s = g.p.c.Subscriber(g.p.config.SubscriptionID)
-	g.log.Debug("starting to listen to Pub/Sub messages",
-		"projectId", g.p.config.ProjectID,
-		"topicName", g.p.config.TopicName,
-		"subscriptionId", g.p.config.SubscriptionID,
+func (p *gcpPubSubInstance) initPubSubSubscriber(log logger.Logger) error {
+	p.s = p.c.Subscriber(p.config.SubscriptionID)
+	log.Debug("starting to listen to Pub/Sub messages",
+		"projectId", p.config.ProjectID,
+		"topicName", p.config.TopicName,
+		"subscriptionId", p.config.SubscriptionID,
 	)
-	if g.p.s == nil {
-		return fmt.Errorf("failed to create Pub/Sub subscriber for subscription %s", g.p.config.SubscriptionID)
+	if p.s == nil {
+		return fmt.Errorf("failed to create Pub/Sub subscriber for subscription %s", p.config.SubscriptionID)
 	}
 	return nil
 }
 
-func (g *GCPInstance) initAssetClient(ctx context.Context) error {
+func (a *gcpAssetInstance) initAssetClient(ctx context.Context) error {
 	client, err := asset.NewClient(ctx)
 	if err != nil {
 		return err
 	}
-	g.a.c = client
+	a.c = client
 	return nil
 }
 
-func (p *gcpPubSubInstance) closePubSubClient(ctx context.Context) error {
+func (p *gcpPubSubInstance) closePubSubClient() error {
 	if p.c != nil {
 		if err := p.c.Close(); err != nil {
 			return err
@@ -146,23 +144,23 @@ func (p *gcpPubSubInstance) closePubSubClient(ctx context.Context) error {
 	return nil
 }
 
-func (p *gcpAssetInstance) closeAssetClient(ctx context.Context) error {
-	if p.c != nil {
-		if err := p.c.Close(); err != nil {
+func (a *gcpAssetInstance) closeAssetClient() error {
+	if a.c != nil {
+		if err := a.c.Close(); err != nil {
 			return err
 		}
-		p.c = nil
+		a.c = nil
 	}
 	return nil
 }
 
 func (g *GCPInstance) Close(ctx context.Context) error {
 	errorsList := make([]error, 0)
-	err := g.p.closePubSubClient(ctx)
+	err := g.p.closePubSubClient()
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
-	err = g.a.closeAssetClient(ctx)
+	err = g.a.closeAssetClient()
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
@@ -187,18 +185,30 @@ func assetToMap(asset *assetpb.Asset) map[string]any {
 	return out
 }
 
-func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) (err error) {
-	if g.a.c == nil {
-		g.initAssetClient(ctx)
-	}
-	defer func() {
-		g.a.closeAssetClient(ctx)
-	}()
-	req := &assetpb.ListAssetsRequest{
-		Parent:      "projects/" + g.a.config.ProjectID,
+func (a *gcpAssetInstance) getListAssetsRequest(typesToSync []string) *assetpb.ListAssetsRequest {
+	return &assetpb.ListAssetsRequest{
+		Parent:      "projects/" + a.config.ProjectID,
 		AssetTypes:  typesToSync,
 		ContentType: assetpb.ContentType_RESOURCE,
 	}
+}
+
+func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) error {
+	log := logger.FromContext(ctx).WithName(loggerName)
+	if g.a.c == nil {
+		err := g.a.initAssetClient(ctx)
+		if err != nil {
+			log.Error("failed to initialize Asset client", "error", err)
+			return err
+		}
+	}
+	defer func() {
+		if err := g.a.closeAssetClient(); err != nil {
+			log.Error("failed to close Asset client", "error", err)
+		}
+	}()
+
+	req := g.a.getListAssetsRequest(typesToSync)
 
 	it := g.a.c.ListAssets(ctx, req)
 
@@ -213,28 +223,35 @@ func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string
 			Values:    assetToMap(asset),
 		}
 	}
-
 	return nil
 }
 
-func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.SourceData) (err error) {
+func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.SourceData) error {
+	log := logger.FromContext(ctx).WithName(loggerName)
 	if g.p.c == nil {
-		g.initPubSubClient(ctx)
+		g.p.initPubSubClient(ctx)
 	}
 	defer g.Close(ctx)
 
-	return g.gcpListener(ctx, results)
+	return g.p.gcpListener(ctx, log, typesToStream, results)
 }
 
-func (g *GCPInstance) gcpListener(ctx context.Context, results chan<- source.SourceData) (err error) {
-	g.initPubSubSubscriber(ctx)
-	err = g.p.s.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
-		event, err := gcpListenerHandler(ctx, msg.Data)
+func (p *gcpPubSubInstance) gcpListener(ctx context.Context, log logger.Logger, typesToStream []string, results chan<- source.SourceData) error {
+	p.initPubSubSubscriber(log)
+	err := p.s.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
+		event, err := gcpListenerHandler(msg.Data)
 		if err != nil {
-			g.log.Error("failed to handle Pub/Sub message",
-				"messageId", msg.ID,
-			)
+			// TODO: manage to create the subscription if does not exist
+			log.Error("failed to handle Pub/Sub message", "messageId", msg.ID)
 			msg.Nack()
+			return
+		}
+		if !event.IsTypeIn(typesToStream) {
+			log.Debug("skipping event of unrequested type",
+				"messageId", msg.ID,
+				"eventType", event.AssetType(),
+			)
+			msg.Ack()
 			return
 		}
 		results <- source.SourceData{
@@ -250,10 +267,9 @@ func (g *GCPInstance) gcpListener(ctx context.Context, results chan<- source.Sou
 	return nil
 }
 
-func gcpListenerHandler(ctx context.Context, data []byte) (event *GCPEvent, err error) {
-	fmt.Println("message data:", string(data))
-	if err = json.Unmarshal(data, &event); err != nil {
-		fmt.Printf("malformed event: %s\n", err.Error())
+func gcpListenerHandler(data []byte) (*GCPEvent, error) {
+	var event *GCPEvent
+	if err := json.Unmarshal(data, &event); err != nil {
 		return nil, err
 	}
 	return event, nil

@@ -19,7 +19,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
@@ -188,7 +187,6 @@ func TestStartEventStream(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	log := logger.FromContext(ctx).WithName(loggerName)
 
 	pubSubInstance, err := newFakeGCPPubSubInstance(ctx)
 	if err != nil {
@@ -196,9 +194,8 @@ func TestStartEventStream(t *testing.T) {
 	}
 
 	gcpInstance := &GCPInstance{
-		a:   &gcpAssetInstance{},
-		p:   pubSubInstance,
-		log: log,
+		a: &gcpAssetInstance{},
+		p: pubSubInstance,
 	}
 
 	results := make(chan source.SourceData, 10)

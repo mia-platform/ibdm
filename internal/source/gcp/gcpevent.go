@@ -3,7 +3,11 @@
 
 package gcp
 
-import "github.com/mia-platform/ibdm/internal/source"
+import (
+	"slices"
+
+	"github.com/mia-platform/ibdm/internal/source"
+)
 
 type GCPEventAsset struct {
 	Ancestors  []string       `json:"ancestors"`
@@ -48,4 +52,8 @@ func (e GCPEvent) Operation() source.DataOperation {
 	default:
 		return source.DataOperationUpsert
 	}
+}
+
+func (e GCPEvent) IsTypeIn(types []string) bool {
+	return slices.Contains(types, e.AssetType())
 }

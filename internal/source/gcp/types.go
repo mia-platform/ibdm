@@ -9,7 +9,6 @@ import (
 	asset "cloud.google.com/go/asset/apiv1"
 	"cloud.google.com/go/pubsub/v2"
 
-	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
@@ -44,9 +43,8 @@ type GCPAssetConfig struct {
 }
 
 type GCPInstance struct {
-	p   *gcpPubSubInstance
-	a   *gcpAssetInstance
-	log logger.Logger
+	p *gcpPubSubInstance
+	a *gcpAssetInstance
 }
 
 type gcpPubSubInstance struct {
