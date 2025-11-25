@@ -173,14 +173,14 @@ func TestStartSyncProcessInjectFakeClient(t *testing.T) {
 	}
 }
 
-func newFakeGCPPubSubInstance(ctx context.Context) (*gcpPubSubInstance, error) {
+func newFakeGCPPubSubInstance() *gcpPubSubInstance {
 	return &gcpPubSubInstance{
 		config: GCPPubSubConfig{
 			ProjectID:      "console-infrastructure-lab",
 			TopicName:      "mia-platform-resources-export",
 			SubscriptionID: "mia-platform-resources-export-subscription",
 		},
-	}, nil
+	}
 }
 
 func TestStartEventStream(t *testing.T) {
@@ -188,10 +188,7 @@ func TestStartEventStream(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	pubSubInstance, err := newFakeGCPPubSubInstance(ctx)
-	if err != nil {
-		t.Fatalf("failed to create fake GCP Pub/Sub instance: %v", err)
-	}
+	pubSubInstance := newFakeGCPPubSubInstance()
 
 	gcpInstance := &GCPInstance{
 		a: &gcpAssetInstance{},
@@ -200,13 +197,13 @@ func TestStartEventStream(t *testing.T) {
 
 	results := make(chan source.SourceData, 10)
 
-	err = gcpInstance.StartEventStream(ctx, []string{"storage.googleapis.com/Bucket"}, results)
+	err := gcpInstance.StartEventStream(ctx, []string{"storage.googleapis.com/Bucket"}, results)
 	if err != nil {
 		t.Fatalf("StartEventStream returned error: %v", err)
 	}
 
 	close(results)
-	assert.Equal(t, 1, len(results))
+	assert.Len(t, results, 1)
 	for result := range results {
 		fmt.Println("type", result.Type)
 		fmt.Println("type", result.Operation)

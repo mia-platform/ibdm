@@ -80,11 +80,7 @@ func newGCPPubSubInstance() (*gcpPubSubInstance, error) {
 		return nil, err
 	}
 	return &gcpPubSubInstance{
-		config: GCPPubSubConfig{
-			ProjectID:      envVars.ProjectID,
-			TopicName:      envVars.TopicName,
-			SubscriptionID: envVars.SubscriptionID,
-		},
+		config: GCPPubSubConfig(envVars),
 	}, nil
 }
 
@@ -97,9 +93,7 @@ func newGCPAssetInstance() (*gcpAssetInstance, error) {
 		return nil, err
 	}
 	return &gcpAssetInstance{
-		config: GCPAssetConfig{
-			ProjectID: envVars.ProjectID,
-		},
+		config: GCPAssetConfig(envVars),
 	}, nil
 }
 
@@ -218,7 +212,7 @@ func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string
 			break
 		}
 		results <- source.SourceData{
-			Type:      asset.AssetType,
+			Type:      asset.GetAssetType(),
 			Operation: source.DataOperationUpsert,
 			Values:    assetToMap(asset),
 		}
@@ -229,7 +223,11 @@ func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string
 func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.SourceData) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if g.p.c == nil {
-		g.p.initPubSubClient(ctx)
+		err := g.p.initPubSubClient(ctx)
+		if err != nil {
+			log.Error("failed to initialize Pub/Sub client", "error", err)
+			return err
+		}
 	}
 	defer g.Close(ctx)
 
@@ -237,8 +235,12 @@ func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []stri
 }
 
 func (p *gcpPubSubInstance) gcpListener(ctx context.Context, log logger.Logger, typesToStream []string, results chan<- source.SourceData) error {
-	p.initPubSubSubscriber(log)
-	err := p.s.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
+	err := p.initPubSubSubscriber(log)
+	if err != nil {
+		log.Error("failed to initialize Pub/Sub subscriber", "error", err)
+		return err
+	}
+	err = p.s.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
 		event, err := gcpListenerHandler(msg.Data)
 		if err != nil {
 			// TODO: manage to create the subscription if does not exist

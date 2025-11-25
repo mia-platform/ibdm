@@ -8,16 +8,7 @@ import (
 
 	asset "cloud.google.com/go/asset/apiv1"
 	"cloud.google.com/go/pubsub/v2"
-
-	"github.com/mia-platform/ibdm/internal/source"
 )
-
-type GCPAssetInterface interface {
-	newGCPAssetInstance(ctx context.Context) (gcpAssetInstance, error)
-	initAssetClient(ctx context.Context) error
-	closeAssetClient(ctx context.Context) error
-	StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) (err error)
-}
 
 type ListenerFunc func(ctx context.Context, data []byte) error
 
@@ -32,10 +23,9 @@ type GCPAssetEnvironmentVariables struct {
 }
 
 type GCPPubSubConfig struct {
-	ProjectID       string
-	TopicName       string
-	SubscriptionID  string
-	CredentialsJSON string
+	ProjectID      string
+	TopicName      string
+	SubscriptionID string
 }
 
 type GCPAssetConfig struct {
