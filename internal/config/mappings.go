@@ -5,10 +5,15 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 
 	"gopkg.in/yaml.v3"
+)
+
+var (
+	ErrParsing = errors.New("error parsing")
 )
 
 // MappingConfig holds the configuration for mapping rules.
@@ -18,6 +23,7 @@ type MappingConfig struct {
 	Mappings Mappings `json:"mappings" yaml:"mappings"`
 }
 
+// Mappings holds the identifier and specification templates for mapping rules.
 type Mappings struct {
 	Identifier string            `json:"identifier" yaml:"identifier"`
 	Spec       map[string]string `json:"spec" yaml:"spec"`
@@ -50,7 +56,7 @@ func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 			}
 
 			// other error occurred during parsing, stop and return it
-			return nil, err
+			return nil, fmt.Errorf("%w %q: %w", ErrParsing, path, err)
 		}
 
 		// skip empty configs

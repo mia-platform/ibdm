@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestNewMappingsFromPath(t *testing.T) {
@@ -94,6 +93,10 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path:          filepath.Join(tempDir, "missing"),
 			expectedError: syscall.ENOENT,
 		},
+		"invalid mapping file return error": {
+			path:          filepath.Join("testdata", "invalid.yaml"),
+			expectedError: ErrParsing,
+		},
 	}
 
 	for name, test := range testCases {
@@ -111,15 +114,4 @@ func TestNewMappingsFromPath(t *testing.T) {
 			assert.Equal(t, test.expectedMappingConfigs, mappingConfigs)
 		})
 	}
-}
-
-func TestInvalidMappingFile(t *testing.T) {
-	t.Parallel()
-
-	expectedError := &yaml.TypeError{
-		Errors: []string{"line 2: cannot unmarshal !!str `syncable` into bool"},
-	}
-	mappings, err := NewMappingConfigsFromPath(filepath.Join("testdata", "invalid.yaml"))
-	assert.Empty(t, mappings)
-	assert.Equal(t, expectedError, err)
 }
