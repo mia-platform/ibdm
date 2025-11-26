@@ -41,7 +41,6 @@ type gcpPubSubInstance struct {
 	config GCPPubSubConfig
 
 	c *pubsub.Client
-	s *pubsub.Subscriber
 }
 
 type gcpAssetInstance struct {

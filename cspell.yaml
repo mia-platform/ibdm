@@ -8,6 +8,7 @@ words:
   - caarlos
   - gsrv
   - ibdm
+  - pubsubpb
   - structpb
   - tmpl
   - uuidv
@@ -22,7 +23,7 @@ ignoreWords:
   - hclog
   - stretchr
 files:
-  - '**/*.md'
-  - '**/*.go'
-  - '**/*.mk'
-  - 'Makefile'
+  - "**/*.md"
+  - "**/*.go"
+  - "**/*.mk"
+  - Makefile

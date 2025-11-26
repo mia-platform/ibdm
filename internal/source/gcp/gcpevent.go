@@ -29,16 +29,20 @@ type GCPEvent struct {
 	Deleted         bool           `json:"deleted"`
 }
 
-func (e GCPEvent) Name() string {
+func (e GCPEvent) GetAsset() GCPEventAsset {
+	return e.Asset
+}
+
+func (e GCPEvent) GetPriorAsset() GCPEventAsset {
+	return e.PriorAsset
+}
+
+func (e GCPEvent) GetName() string {
 	return e.Asset.Name
 }
 
-func (e GCPEvent) AssetType() string {
+func (e GCPEvent) GetAssetType() string {
 	return e.Asset.AssetType
-}
-
-func (e GCPEvent) Resource() map[string]any {
-	return e.Asset.Resource
 }
 
 func (e GCPEvent) Operation() source.DataOperation {
@@ -55,5 +59,5 @@ func (e GCPEvent) Operation() source.DataOperation {
 }
 
 func (e GCPEvent) IsTypeIn(types []string) bool {
-	return slices.Contains(types, e.AssetType())
+	return slices.Contains(types, e.GetAssetType())
 }

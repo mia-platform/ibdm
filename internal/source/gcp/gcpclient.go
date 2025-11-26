@@ -98,6 +98,9 @@ func newGCPAssetInstance() (*gcpAssetInstance, error) {
 }
 
 func (p *gcpPubSubInstance) initPubSubClient(ctx context.Context) error {
+	if p.c != nil {
+		return nil
+	}
 	client, err := pubsub.NewClient(ctx, p.config.ProjectID)
 	if err != nil {
 		return err
@@ -106,17 +109,13 @@ func (p *gcpPubSubInstance) initPubSubClient(ctx context.Context) error {
 	return nil
 }
 
-func (p *gcpPubSubInstance) initPubSubSubscriber(log logger.Logger) error {
-	p.s = p.c.Subscriber(p.config.SubscriptionID)
+func (p *gcpPubSubInstance) initPubSubSubscriber(log logger.Logger) *pubsub.Subscriber {
 	log.Debug("starting to listen to Pub/Sub messages",
 		"projectId", p.config.ProjectID,
 		"topicName", p.config.TopicName,
 		"subscriptionId", p.config.SubscriptionID,
 	)
-	if p.s == nil {
-		return fmt.Errorf("failed to create Pub/Sub subscriber for subscription %s", p.config.SubscriptionID)
-	}
-	return nil
+	return p.c.Subscriber(p.config.SubscriptionID)
 }
 
 func (a *gcpAssetInstance) initAssetClient(ctx context.Context) error {
@@ -179,6 +178,18 @@ func assetToMap(asset *assetpb.Asset) map[string]any {
 	return out
 }
 
+func eventAssetToMap(asset GCPEventAsset) map[string]any {
+	b, err := json.Marshal(asset)
+	if err != nil {
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil
+	}
+	return out
+}
+
 func (a *gcpAssetInstance) getListAssetsRequest(typesToSync []string) *assetpb.ListAssetsRequest {
 	return &assetpb.ListAssetsRequest{
 		Parent:      "projects/" + a.config.ProjectID,
@@ -222,25 +233,19 @@ func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string
 
 func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.SourceData) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
-	if g.p.c == nil {
-		err := g.p.initPubSubClient(ctx)
-		if err != nil {
-			log.Error("failed to initialize Pub/Sub client", "error", err)
-			return err
-		}
+	err := g.p.initPubSubClient(ctx)
+	if err != nil {
+		log.Error("failed to initialize Pub/Sub client", "error", err)
+		return err
 	}
-	defer g.Close(ctx)
+	defer g.p.closePubSubClient()
 
 	return g.p.gcpListener(ctx, log, typesToStream, results)
 }
 
 func (p *gcpPubSubInstance) gcpListener(ctx context.Context, log logger.Logger, typesToStream []string, results chan<- source.SourceData) error {
-	err := p.initPubSubSubscriber(log)
-	if err != nil {
-		log.Error("failed to initialize Pub/Sub subscriber", "error", err)
-		return err
-	}
-	err = p.s.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
+	subscriber := p.initPubSubSubscriber(log)
+	err := subscriber.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
 		event, err := gcpListenerHandler(msg.Data)
 		if err != nil {
 			// TODO: manage to create the subscription if does not exist
@@ -251,15 +256,29 @@ func (p *gcpPubSubInstance) gcpListener(ctx context.Context, log logger.Logger, 
 		if !event.IsTypeIn(typesToStream) {
 			log.Debug("skipping event of unrequested type",
 				"messageId", msg.ID,
-				"eventType", event.AssetType(),
+				"eventType", event.GetAssetType(),
 			)
 			msg.Ack()
 			return
 		}
+		var valuesMap map[string]any
+		if event.Operation() == source.DataOperationDelete {
+			valuesMap = eventAssetToMap(event.GetPriorAsset())
+		} else {
+			valuesMap = eventAssetToMap(event.GetAsset())
+		}
+		if valuesMap == nil {
+			log.Error("failed to convert asset to map",
+				"messageId", msg.ID,
+				"eventType", event.GetAssetType(),
+			)
+			msg.Nack()
+			return
+		}
 		results <- source.SourceData{
-			Type:      event.AssetType(),
+			Type:      event.GetAssetType(),
 			Operation: event.Operation(),
-			Values:    event.Resource(),
+			Values:    valuesMap,
 		}
 		msg.Ack()
 	})

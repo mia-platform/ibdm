@@ -5,19 +5,25 @@ package gcp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"testing"
 	"time"
 
 	asset "cloud.google.com/go/asset/apiv1"
 	assetpb "cloud.google.com/go/asset/apiv1/assetpb"
+	"cloud.google.com/go/pubsub/v2"
+	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
+	"cloud.google.com/go/pubsub/v2/pstest"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/source"
 )
@@ -183,9 +189,10 @@ func newFakeGCPPubSubInstance() *gcpPubSubInstance {
 	}
 }
 
-func TestStartEventStream(t *testing.T) {
+func TestRealStartEventStream(t *testing.T) {
+	t.Skip("Skipping real start event stream test")
 	ctx := t.Context()
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	pubSubInstance := newFakeGCPPubSubInstance()
@@ -213,4 +220,111 @@ func TestStartEventStream(t *testing.T) {
 			t.Fatalf("unexpected result type: %s", result.Type)
 		}
 	}
+}
+
+func mustCreateTopic(t *testing.T, c *pubsub.Client, name string) *pubsub.Publisher {
+	t.Helper()
+	_, err := c.TopicAdminClient.CreateTopic(t.Context(), &pubsubpb.Topic{Name: name})
+	require.NoError(t, err)
+	return c.Publisher(name)
+}
+
+func mustCreateSubConfig(t *testing.T, c *pubsub.Client, pbs *pubsubpb.Subscription) *pubsub.Subscriber {
+	t.Helper()
+	_, err := c.SubscriptionAdminClient.CreateSubscription(t.Context(), pbs)
+	require.NoError(t, err)
+	return c.Subscriber(pbs.Name)
+}
+
+func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string, subscriptionName string) (*pstest.Server, *pubsub.Client, *pubsub.Subscriber, func()) {
+	t.Helper()
+	ctx := t.Context()
+	srv := pstest.NewServer()
+
+	conn, err := grpc.NewClient(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+
+	client, err := pubsub.NewClient(ctx, config.ProjectID,
+		option.WithEndpoint(srv.Addr),
+		option.WithoutAuthentication(),
+		option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())),
+		option.WithTelemetryDisabled(),
+	)
+	require.NoError(t, err)
+
+	mustCreateTopic(t, client, topicName)
+	sub := mustCreateSubConfig(t, client, &pubsubpb.Subscription{
+		Name:               subscriptionName,
+		Topic:              topicName,
+		AckDeadlineSeconds: int32(15),
+	})
+
+	return srv, client, sub, func() {
+		srv.Close()
+		conn.Close()
+		client.Close()
+	}
+}
+
+func TestStartEventStream(t *testing.T) {
+	ctx := t.Context()
+
+	config := GCPPubSubConfig{
+		ProjectID:      "test-project",
+		TopicName:      "mia-platform-resources-export",
+		SubscriptionID: "mia-platform-resources-export-subscription",
+	}
+
+	topicName := fmt.Sprintf("projects/%s/topics/%s", config.ProjectID, config.TopicName)
+	subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", config.ProjectID, config.SubscriptionID)
+
+	payload, err := os.ReadFile("testdata/gcp-bucket-event.json")
+	require.NoError(t, err)
+
+	srv, client, _, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
+	defer cleanup()
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	srv.Publish(topicName, payload, nil)
+
+	pubSubInstance := &gcpPubSubInstance{
+		config: config,
+		c:      client,
+	}
+
+	gcpInstance := &GCPInstance{
+		a: &gcpAssetInstance{},
+		p: pubSubInstance,
+	}
+
+	results := make(chan source.SourceData, 1)
+
+	go func() {
+		if err := gcpInstance.StartEventStream(ctx, []string{"storage.googleapis.com/Bucket"}, results); err != nil {
+			t.Logf("StartEventStream returned error: %v", err)
+		}
+	}()
+
+	var payloadMap map[string]any
+	err = json.Unmarshal(payload, &payloadMap)
+	require.NoError(t, err)
+
+	payloadMapAsset, ok := payloadMap["asset"].(map[string]any)
+	require.True(t, ok)
+
+	select {
+	case res := <-results:
+		assert.NotNil(t, res.Values)
+		resultJson, _ := json.Marshal(res.Values)
+		fmt.Println("result JSON", string(resultJson))
+		assert.Equal(t, payloadMapAsset, res.Values)
+		if res.Type != "storage.googleapis.com/Bucket" {
+			t.Fatalf("unexpected result type: %s", res.Type)
+		}
+	case <-ctx.Done():
+		t.Fatalf("timeout waiting for event")
+	}
+	defer gcpInstance.Close(ctx)
 }
