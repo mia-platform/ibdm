@@ -119,6 +119,9 @@ func (p *gcpPubSubInstance) initPubSubSubscriber(log logger.Logger) *pubsub.Subs
 }
 
 func (a *gcpAssetInstance) initAssetClient(ctx context.Context) error {
+	if a.c != nil {
+		return nil
+	}
 	client, err := asset.NewClient(ctx)
 	if err != nil {
 		return err
@@ -200,12 +203,10 @@ func (a *gcpAssetInstance) getListAssetsRequest(typesToSync []string) *assetpb.L
 
 func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
-	if g.a.c == nil {
-		err := g.a.initAssetClient(ctx)
-		if err != nil {
-			log.Error("failed to initialize Asset client", "error", err)
-			return err
-		}
+	err := g.a.initAssetClient(ctx)
+	if err != nil {
+		log.Error("failed to initialize Asset client", "error", err)
+		return err
 	}
 	defer func() {
 		if err := g.a.closeAssetClient(); err != nil {
