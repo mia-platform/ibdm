@@ -33,7 +33,6 @@ type fakeAssetServiceServer struct {
 }
 
 func newFakeAssetClient(ctx context.Context) (*asset.Client, *grpc.Server, net.Listener, error) {
-	// Setup the fake server.
 	fakeSrv := &fakeAssetServiceServer{}
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -48,7 +47,6 @@ func newFakeAssetClient(ctx context.Context) (*asset.Client, *grpc.Server, net.L
 		}
 	}()
 
-	// Ensure server is ready (best-effort).
 	time.Sleep(10 * time.Millisecond)
 
 	client, err := asset.NewClient(ctx,
@@ -59,9 +57,7 @@ func newFakeAssetClient(ctx context.Context) (*asset.Client, *grpc.Server, net.L
 	return client, gsrv, l, err
 }
 
-// ListAssets implements the AssetService ListAssets RPC for the fake server.
 func (s *fakeAssetServiceServer) ListAssets(ctx context.Context, req *assetpb.ListAssetsRequest) (*assetpb.ListAssetsResponse, error) {
-	// Return a small set of fake assets.
 	assets := []*assetpb.Asset{
 		{
 			Name:      "//storage.googleapis.com/my-custom-bucket",
@@ -266,25 +262,19 @@ func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string,
 	}
 }
 
-func TestStartEventStream(t *testing.T) {
+func singleTestStartEventStream(t *testing.T, config GCPPubSubConfig, eventJsonPath string, typeToStream []string, nonMatchingTypes bool) {
 	ctx := t.Context()
-
-	config := GCPPubSubConfig{
-		ProjectID:      "test-project",
-		TopicName:      "mia-platform-resources-export",
-		SubscriptionID: "mia-platform-resources-export-subscription",
-	}
 
 	topicName := fmt.Sprintf("projects/%s/topics/%s", config.ProjectID, config.TopicName)
 	subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", config.ProjectID, config.SubscriptionID)
 
-	payload, err := os.ReadFile("testdata/gcp-bucket-event.json")
+	payload, err := os.ReadFile(eventJsonPath)
 	require.NoError(t, err)
 
 	srv, client, _, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
 	defer cleanup()
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 
 	srv.Publish(topicName, payload, nil)
@@ -302,29 +292,55 @@ func TestStartEventStream(t *testing.T) {
 	results := make(chan source.SourceData, 1)
 
 	go func() {
-		if err := gcpInstance.StartEventStream(ctx, []string{"storage.googleapis.com/Bucket"}, results); err != nil {
+		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
 			t.Logf("StartEventStream returned error: %v", err)
 		}
 	}()
+
+	var payloadEvent GCPEvent
+	err = json.Unmarshal(payload, &payloadEvent)
+	require.NoError(t, err)
 
 	var payloadMap map[string]any
 	err = json.Unmarshal(payload, &payloadMap)
 	require.NoError(t, err)
 
-	payloadMapAsset, ok := payloadMap["asset"].(map[string]any)
+	var resourceName string
+
+	if payloadEvent.Operation() == source.DataOperationDelete {
+		resourceName = "priorAsset"
+	} else {
+		resourceName = "asset"
+	}
+
+	payloadMapResource, ok := payloadMap[resourceName].(map[string]any)
 	require.True(t, ok)
 
-	select {
-	case res := <-results:
-		assert.NotNil(t, res.Values)
-		resultJson, _ := json.Marshal(res.Values)
-		fmt.Println("result JSON", string(resultJson))
-		assert.Equal(t, payloadMapAsset, res.Values)
-		if res.Type != "storage.googleapis.com/Bucket" {
-			t.Fatalf("unexpected result type: %s", res.Type)
+	if nonMatchingTypes {
+		assert.Len(t, results, 0)
+	} else {
+		select {
+		case res := <-results:
+			assert.NotNil(t, res.Values)
+			assert.Equal(t, payloadMapResource, res.Values)
+		case <-ctx.Done():
+			t.Fatalf("timeout waiting for event")
 		}
-	case <-ctx.Done():
-		t.Fatalf("timeout waiting for event")
 	}
+
 	defer gcpInstance.Close(ctx)
+}
+
+func TestStartEventStream(t *testing.T) {
+	config := GCPPubSubConfig{
+		ProjectID:      "test-project",
+		TopicName:      "mia-platform-resources-export",
+		SubscriptionID: "mia-platform-resources-export-subscription",
+	}
+	typeToStream := []string{"storage.googleapis.com/Bucket"}
+	singleTestStartEventStream(t, config, "testdata/event/gcp-bucket-modify.json", typeToStream, false)
+	singleTestStartEventStream(t, config, "testdata/event/gcp-bucket-delete.json", typeToStream, false)
+	typeToStream = []string{"compute.googleapis.com/Network"}
+	singleTestStartEventStream(t, config, "testdata/event/gcp-bucket-modify.json", typeToStream, true)
+	singleTestStartEventStream(t, config, "testdata/event/gcp-bucket-delete.json", typeToStream, true)
 }
