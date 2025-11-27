@@ -5,6 +5,9 @@ package pipeline
 
 import (
 	"context"
+	"maps"
+	"slices"
+	"time"
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/mapper"
@@ -14,72 +17,100 @@ const (
 	loggerName = "ibdm:pipeline"
 )
 
-type Data struct {
-	Type string
-	Data map[string]any
-}
-
 type Pipeline struct {
+	source      any
 	mappers     map[string]mapper.Mapper
-	dataChannel <-chan Data
-	destination Destination
+	destination DataDestination
 }
 
-type Destination interface {
-	Write(ctx context.Context, data mapper.MappedData) (err error)
-}
-
-func New(dataChannel <-chan Data, mappers map[string]mapper.Mapper, destination Destination) *Pipeline {
+func New(source any, mappers map[string]mapper.Mapper, destination DataDestination) *Pipeline {
 	return &Pipeline{
+		source:      source,
 		mappers:     mappers,
-		dataChannel: dataChannel,
 		destination: destination,
 	}
 }
 
-func (p *Pipeline) Run(ctx context.Context) {
+func (p *Pipeline) Start(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
-	log.Info("starting pipeline")
 
+	streamSource, ok := p.source.(EventSource)
+	if !ok {
+		return &unsupportedSourceError{
+			Message: "source does not support streaming data",
+		}
+	}
+
+	log.Trace("starting data pipeline")
+	channel := make(chan SourceData)
+
+	// use channel to signal when the mapping stream has exhausted all the queue messages
+	mappingDone := make(chan struct{})
+	go func() {
+		log.Trace("starting data mapping goroutine")
+		p.mappingData(ctx, channel)
+		mappingDone <- struct{}{}
+	}()
+
+	err := streamSource.StartEventStream(ctx, slices.Sorted(maps.Keys(p.mappers)), channel)
+	log.Trace("event stream finished, closing data channel")
+	close(channel)
+
+	<-mappingDone
+	log.Trace("data mapping goroutine finished")
+	return err
+}
+
+func (p *Pipeline) Stop(ctx context.Context, timeout time.Duration) error {
+	log := logger.FromContext(ctx).WithName(loggerName)
+	closableSource, ok := p.source.(ClosableSource)
+	if !ok {
+		log.Debug("source does not implement ClosableSource, skipping close")
+		return nil
+	}
+
+	log.Debug("stop source")
+	return closableSource.Close(ctx, timeout)
+}
+
+func (p *Pipeline) mappingData(ctx context.Context, channel <-chan SourceData) {
+	log := logger.FromContext(ctx).WithName(loggerName)
 	for {
 		select {
 		case <-ctx.Done():
-			err := ctx.Err()
-			switch err {
-			case context.Canceled:
-				log.Info("cancel signal received, stopping pipeline")
-				return
-			case context.DeadlineExceeded:
-				log.Info("timeout exceeded, stopping pipeline")
-				return
-			}
-		case data, ok := <-p.dataChannel:
+			log.Debug("pipeline cancelled from context", "error", ctx.Err())
+			return
+		case data, ok := <-channel:
 			if !ok {
-				log.Info("data channel closed, stopping pipeline")
 				return
 			}
+			mapper := p.mappers[data.Type]
+			if mapper == nil {
+				log.Debug("data type not mapped, skipping", "type", data.Type)
+				continue
+			}
 
-			p.consumeData(ctx, data)
+			output, err := mapper.ApplyTemplates(data.Values)
+			if err != nil {
+				log.Error("error applying mapper templates", "type", data.Type, "error", err)
+				continue
+			}
+
+			log.Debug("sending data", "type", data.Type, "operation", data.Operation)
+			switch data.Operation {
+			case DataOperationUpsert:
+				if err := p.destination.SendData(ctx, output); err != nil {
+					log.Error("error sending data to destination", "type", data.Type, "error", err)
+					continue
+				}
+			case DataOperationDelete:
+				if err := p.destination.DeleteData(ctx, output.Identifier); err != nil {
+					log.Error("error deleting data from destination", "type", data.Type, "error", err)
+					continue
+				}
+			}
+
+			log.Debug("data sent", "type", data.Type, "operation", data.Operation)
 		}
-	}
-}
-
-func (p *Pipeline) consumeData(ctx context.Context, data Data) {
-	log := logger.FromContext(ctx).WithName(loggerName)
-	mapper, exists := p.mappers[data.Type]
-	if !exists {
-		log.Trace("data discarded for missing template", "type", data.Type)
-		return
-	}
-
-	mappedData, err := mapper.ApplyTemplates(data.Data)
-	if err != nil {
-		log.Error("error mapping data", "error", err, "type", data.Type)
-		return
-	}
-
-	if err := p.destination.Write(ctx, mappedData); err != nil {
-		log.Error("error writing data to destination", "error", err, "type", data.Type)
-		return
 	}
 }

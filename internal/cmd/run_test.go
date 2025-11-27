@@ -39,7 +39,7 @@ func setupTestFileStructure(t *testing.T, baseDir string) {
 	}
 }
 
-func TestValidationCommand(t *testing.T) {
+func TestExitWithErrorOutput(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
