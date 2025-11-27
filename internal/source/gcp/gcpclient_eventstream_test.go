@@ -80,7 +80,7 @@ func mustCreateSubConfig(t *testing.T, c *pubsub.Client, pbs *pubsubpb.Subscript
 	return c.Subscriber(pbs.GetName())
 }
 
-func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string, subscriptionName string) (*pstest.Server, *pubsub.Client, *pubsub.Subscriber, func()) {
+func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string, subscriptionName string) (*pstest.Server, *pubsub.Client, func()) {
 	t.Helper()
 	ctx := t.Context()
 	srv := pstest.NewServer()
@@ -97,13 +97,13 @@ func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string,
 	require.NoError(t, err)
 
 	mustCreateTopic(t, client, topicName)
-	sub := mustCreateSubConfig(t, client, &pubsubpb.Subscription{
+	mustCreateSubConfig(t, client, &pubsubpb.Subscription{
 		Name:               subscriptionName,
 		Topic:              topicName,
 		AckDeadlineSeconds: int32(15),
 	})
 
-	return srv, client, sub, func() {
+	return srv, client, func() {
 		srv.Close()
 		conn.Close()
 		client.Close()
@@ -164,7 +164,7 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 	payload, err := os.ReadFile(bucketModifyEventJSONPath)
 	require.NoError(t, err)
 
-	srv, client, _, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
+	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
 
 	srv.Publish(topicName, payload, nil)
 
@@ -212,7 +212,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 	payload, err := os.ReadFile(bucketDeleteEventJSONPath)
 	require.NoError(t, err)
 
-	srv, client, _, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
+	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
 
 	srv.Publish(topicName, payload, nil)
 
@@ -260,7 +260,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 	payload, err := os.ReadFile(bucketModifyEventJSONPath)
 	require.NoError(t, err)
 
-	srv, client, _, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
+	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
 
 	srv.Publish(topicName, payload, nil)
 
@@ -300,7 +300,7 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 	payload, err := os.ReadFile(bucketDeleteEventJSONPath)
 	require.NoError(t, err)
 
-	srv, client, _, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
+	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
 
 	srv.Publish(topicName, payload, nil)
 
