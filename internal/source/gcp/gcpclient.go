@@ -239,7 +239,11 @@ func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []stri
 		log.Error("failed to initialize Pub/Sub client", "error", err)
 		return err
 	}
-	defer g.p.closePubSubClient()
+	defer func() {
+		if err = g.p.closePubSubClient(); err != nil {
+			log.Error("failed to close Pub/Sub client", "error", err)
+		}
+	}()
 
 	return g.p.gcpListener(ctx, log, typesToStream, results)
 }

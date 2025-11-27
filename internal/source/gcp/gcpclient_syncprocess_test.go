@@ -5,7 +5,9 @@ package gcp
 
 import (
 	"context"
+	"encoding/json"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -17,16 +19,74 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
 type fakeAssetServiceServer struct {
 	assetpb.UnimplementedAssetServiceServer
+
+	assets []*assetpb.Asset
 }
 
-func newFakeAssetClient(ctx context.Context) (*asset.Client, *grpc.Server, net.Listener, error) {
+var fakeAssets = []*assetpb.Asset{
+	{
+		Name:      "//storage.googleapis.com/my-custom-bucket",
+		AssetType: "storage.googleapis.com/Bucket",
+		Resource: &assetpb.Resource{
+			Data: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"id":   structpb.NewStringValue("my-custom-bucket"),
+					"name": structpb.NewStringValue("my-custom-bucket"),
+					"labels": structpb.NewStructValue(&structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"label1": structpb.NewStringValue("value1"),
+							"label2": structpb.NewStringValue("value2"),
+						},
+					}),
+				},
+			},
+		},
+	},
+	{
+		Name:      "//compute.googleapis.com/my-custom-network",
+		AssetType: "compute.googleapis.com/Network",
+		Resource: &assetpb.Resource{
+			Data: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"id":   structpb.NewStringValue("my-custom-network"),
+					"name": structpb.NewStringValue("my-custom-network"),
+					"labels": structpb.NewStructValue(&structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"label1": structpb.NewStringValue("value1"),
+							"label2": structpb.NewStringValue("value2"),
+						},
+					}),
+				},
+			},
+		},
+	},
+}
+
+func filterFakeAssetsByTypes(assets []*assetpb.Asset, types []string) []*assetpb.Asset {
+	typeSet := make(map[string]struct{})
+	for _, t := range types {
+		typeSet[t] = struct{}{}
+	}
+
+	filtered := make([]*assetpb.Asset, 0)
+	for _, a := range assets {
+		if _, ok := typeSet[a.GetAssetType()]; ok {
+			filtered = append(filtered, a)
+		}
+	}
+	return filtered
+}
+
+func newFakeAssetClient(ctx context.Context, fakeAssets []*assetpb.Asset) (*asset.Client, *grpc.Server, net.Listener, error) {
 	fakeSrv := &fakeAssetServiceServer{}
+	fakeSrv.assets = fakeAssets
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, nil, nil, err
@@ -51,90 +111,14 @@ func newFakeAssetClient(ctx context.Context) (*asset.Client, *grpc.Server, net.L
 }
 
 func (s *fakeAssetServiceServer) ListAssets(ctx context.Context, req *assetpb.ListAssetsRequest) (*assetpb.ListAssetsResponse, error) {
-	assets := []*assetpb.Asset{
-		{
-			Name:      "//storage.googleapis.com/my-custom-bucket",
-			AssetType: "storage.googleapis.com/Bucket",
-			Resource: &assetpb.Resource{
-				Data: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						"id":   structpb.NewStringValue("my-custom-bucket"),
-						"name": structpb.NewStringValue("my-custom-bucket"),
-						"labels": structpb.NewStructValue(&structpb.Struct{
-							Fields: map[string]*structpb.Value{
-								"label1": structpb.NewStringValue("value1"),
-								"label2": structpb.NewStringValue("value2"),
-							},
-						}),
-					},
-				},
-			},
-		},
-		{
-			Name:      "//compute.googleapis.com/my-custom-network",
-			AssetType: "compute.googleapis.com/Network",
-			Resource: &assetpb.Resource{
-				Data: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						"id":   structpb.NewStringValue("my-custom-network"),
-						"name": structpb.NewStringValue("my-custom-network"),
-						"labels": structpb.NewStructValue(&structpb.Struct{
-							Fields: map[string]*structpb.Value{
-								"label1": structpb.NewStringValue("value1"),
-								"label2": structpb.NewStringValue("value2"),
-							},
-						}),
-					},
-				},
-			},
-		},
-	}
-	return &assetpb.ListAssetsResponse{Assets: assets}, nil
+	return &assetpb.ListAssetsResponse{Assets: s.assets}, nil
 }
 
-func TestListAvailableAssets(t *testing.T) {
+func singleTestStartSyncProcess(t *testing.T, typesToSync []string, fakeAssets []*assetpb.Asset, empty bool) {
 	ctx := t.Context()
+	filteredFakeAssets := filterFakeAssetsByTypes(fakeAssets, typesToSync)
 
-	client, gsrv, l, err := newFakeAssetClient(ctx)
-
-	if err != nil {
-		gsrv.Stop()
-		t.Fatalf("failed to create asset client: %v", err)
-	}
-	defer func() {
-		_ = client.Close()
-		gsrv.Stop()
-		_ = l.Close()
-	}()
-
-	req := &assetpb.ListAssetsRequest{
-		Parent:      "projects/test-project",
-		AssetTypes:  []string{"storage.googleapis.com/Bucket", "compute.googleapis.com/Network"},
-		ContentType: assetpb.ContentType_RESOURCE,
-	}
-	it := client.ListAssets(ctx, req)
-	got := make([]*assetpb.Asset, 0)
-	for {
-		a, err := it.Next()
-		if err != nil {
-			break
-		}
-		got = append(got, a)
-	}
-
-	if len(got) != 2 {
-		t.Fatalf("expected 2 assets, got %d", len(got))
-	}
-
-	if got[0].GetName() == "" || got[1].GetName() == "" {
-		t.Fatalf("returned assets have empty names")
-	}
-}
-
-func TestStartSyncProcessInjectFakeClient(t *testing.T) {
-	ctx := t.Context()
-
-	fakeClient, gsrv, l, err := newFakeAssetClient(ctx)
+	fakeClient, gsrv, l, err := newFakeAssetClient(ctx, filteredFakeAssets)
 	if err != nil {
 		gsrv.Stop()
 		t.Fatalf("failed to create fake asset client: %v", err)
@@ -155,15 +139,105 @@ func TestStartSyncProcessInjectFakeClient(t *testing.T) {
 
 	results := make(chan source.SourceData, 10)
 
-	if err := gi.StartSyncProcess(ctx, []string{"storage.googleapis.com/Bucket", "compute.googleapis.com/Network"}, results); err != nil {
-		t.Fatalf("StartSyncProcess returned error: %v", err)
-	}
+	err = gi.StartSyncProcess(ctx, typesToSync, results)
+	require.NoError(t, err)
 
 	close(results)
-	for result := range results {
-		assert.NotNil(t, result.Values)
-		if result.Type != "storage.googleapis.com/Bucket" && result.Type != "compute.googleapis.com/Network" {
-			t.Fatalf("unexpected result type: %s", result.Type)
+	if empty {
+		assert.Empty(t, results, 0)
+	} else {
+		assetMap := assetToMap(filteredFakeAssets[0])
+		for result := range results {
+			assert.NotNil(t, result.Values)
+			assert.Equal(t, filteredFakeAssets[0].GetAssetType(), result.Type)
+			assert.Equal(t, source.DataOperationUpsert, result.Operation)
+			assert.Equal(t, assetMap, result.Values)
 		}
 	}
+}
+
+func TestStartSyncProcessClient_Success(t *testing.T) {
+	typesToSync := []string{"storage.googleapis.com/Bucket", "compute.googleapis.com/Network"}
+	fakeAssets = []*assetpb.Asset{
+		{
+			Name:      "//storage.googleapis.com/my-custom-bucket",
+			AssetType: "storage.googleapis.com/Bucket",
+			Resource: &assetpb.Resource{
+				Data: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"id":   structpb.NewStringValue("my-custom-bucket"),
+						"name": structpb.NewStringValue("my-custom-bucket"),
+						"labels": structpb.NewStructValue(&structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"label1": structpb.NewStringValue("value1"),
+								"label2": structpb.NewStringValue("value2"),
+							},
+						}),
+					},
+				},
+			},
+		},
+	}
+	singleTestStartSyncProcess(t, typesToSync, fakeAssets, false)
+}
+
+func TestStartSyncProcessClient_NoAssets(t *testing.T) {
+	typesToSync := []string{"compute.googleapis.com/Network"}
+	fakeAssets = []*assetpb.Asset{
+		{
+			Name:      "//storage.googleapis.com/my-custom-bucket",
+			AssetType: "storage.googleapis.com/Bucket",
+			Resource: &assetpb.Resource{
+				Data: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"id":   structpb.NewStringValue("my-custom-bucket"),
+						"name": structpb.NewStringValue("my-custom-bucket"),
+						"labels": structpb.NewStructValue(&structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"label1": structpb.NewStringValue("value1"),
+								"label2": structpb.NewStringValue("value2"),
+							},
+						}),
+					},
+				},
+			},
+		},
+	}
+	singleTestStartSyncProcess(t, typesToSync, fakeAssets, true)
+}
+
+func TestStartSyncProcessClient_SuccessLoadJson(t *testing.T) {
+	typesToSync := []string{"storage.googleapis.com/Bucket"}
+	fakeBucketBytes, err := os.ReadFile("testdata/sync/bucket-test.json")
+	require.NoError(t, err)
+	var fakeBucket *assetpb.Asset
+	err = json.Unmarshal(fakeBucketBytes, &fakeBucket)
+	require.NoError(t, err)
+	singleTestStartSyncProcess(t, typesToSync, []*assetpb.Asset{fakeBucket}, false)
+
+	typesToSync = []string{"compute.googleapis.com/Network"}
+	fakeNetworkBytes, err := os.ReadFile("testdata/sync/network-test.json")
+	require.NoError(t, err)
+	var fakeNetwork *assetpb.Asset
+	err = json.Unmarshal(fakeNetworkBytes, &fakeNetwork)
+	require.NoError(t, err)
+	singleTestStartSyncProcess(t, typesToSync, []*assetpb.Asset{fakeNetwork}, false)
+}
+
+func TestStartSyncProcessClient_NoAssetsLoadJson(t *testing.T) {
+	typesToSync := []string{"compute.googleapis.com/Network"}
+	fakeBucketBytes, err := os.ReadFile("testdata/sync/bucket-test.json")
+	require.NoError(t, err)
+	var fakeBucket *assetpb.Asset
+	err = json.Unmarshal(fakeBucketBytes, &fakeBucket)
+	require.NoError(t, err)
+	singleTestStartSyncProcess(t, typesToSync, []*assetpb.Asset{fakeBucket}, true)
+
+	typesToSync = []string{"storage.googleapis.com/Bucket"}
+	fakeNetworkBytes, err := os.ReadFile("testdata/sync/network-test.json")
+	require.NoError(t, err)
+	var fakeNetwork *assetpb.Asset
+	err = json.Unmarshal(fakeNetworkBytes, &fakeNetwork)
+	require.NoError(t, err)
+	singleTestStartSyncProcess(t, typesToSync, []*assetpb.Asset{fakeNetwork}, true)
 }

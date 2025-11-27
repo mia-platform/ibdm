@@ -77,7 +77,7 @@ func mustCreateSubConfig(t *testing.T, c *pubsub.Client, pbs *pubsubpb.Subscript
 	t.Helper()
 	_, err := c.SubscriptionAdminClient.CreateSubscription(t.Context(), pbs)
 	require.NoError(t, err)
-	return c.Subscriber(pbs.Name)
+	return c.Subscriber(pbs.GetName())
 }
 
 func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string, subscriptionName string) (*pstest.Server, *pubsub.Client, *pubsub.Subscriber, func()) {
@@ -110,13 +110,13 @@ func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string,
 	}
 }
 
-func singleTestStartEventStream(t *testing.T, config GCPPubSubConfig, eventJsonPath string, typeToStream []string, nonMatchingTypes bool) {
+func singleTestStartEventStream(t *testing.T, config GCPPubSubConfig, eventJSONPath string, typeToStream []string, nonMatchingTypes bool) {
 	ctx := t.Context()
 
 	topicName := fmt.Sprintf("projects/%s/topics/%s", config.ProjectID, config.TopicName)
 	subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", config.ProjectID, config.SubscriptionID)
 
-	payload, err := os.ReadFile(eventJsonPath)
+	payload, err := os.ReadFile(eventJSONPath)
 	require.NoError(t, err)
 
 	srv, client, _, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
@@ -165,7 +165,7 @@ func singleTestStartEventStream(t *testing.T, config GCPPubSubConfig, eventJsonP
 	require.True(t, ok)
 
 	if nonMatchingTypes {
-		assert.Len(t, results, 0)
+		assert.Empty(t, results, 0)
 	} else {
 		select {
 		case res := <-results:
