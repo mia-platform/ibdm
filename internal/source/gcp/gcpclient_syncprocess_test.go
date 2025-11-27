@@ -84,76 +84,57 @@ func filterFakeAssetsByTypes(assets []*assetpb.Asset, types []string) []*assetpb
 	return filtered
 }
 
-func newFakeAssetClient(ctx context.Context, fakeAssets []*assetpb.Asset) (*asset.Client, *grpc.Server, net.Listener, error) {
-	fakeSrv := &fakeAssetServiceServer{}
-	fakeSrv.assets = fakeAssets
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, nil, nil, err
+func newFakeAssetClient(t *testing.T, fakeAssets []*assetpb.Asset) (*asset.Client, func()) {
+	t.Helper()
+	fakeSrv := &fakeAssetServiceServer{
+		assets: fakeAssets,
 	}
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
 	gsrv := grpc.NewServer()
 	assetpb.RegisterAssetServiceServer(gsrv, fakeSrv)
 	fakeServerAddr := l.Addr().String()
 	go func() {
 		if err := gsrv.Serve(l); err != nil {
+			gsrv.Stop()
+			t.Logf("server listener failed: %v", err)
 			panic(err)
 		}
 	}()
 
 	time.Sleep(10 * time.Millisecond)
 
-	client, err := asset.NewClient(ctx,
+	client, err := asset.NewClient(t.Context(),
 		option.WithEndpoint(fakeServerAddr),
 		option.WithoutAuthentication(),
 		option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())),
 	)
-	return client, gsrv, l, err
-}
 
-func (s *fakeAssetServiceServer) ListAssets(ctx context.Context, req *assetpb.ListAssetsRequest) (*assetpb.ListAssetsResponse, error) {
-	return &assetpb.ListAssetsResponse{Assets: s.assets}, nil
-}
-
-func singleTestStartSyncProcess(t *testing.T, typesToSync []string, fakeAssets []*assetpb.Asset, empty bool) {
-	ctx := t.Context()
-	filteredFakeAssets := filterFakeAssetsByTypes(fakeAssets, typesToSync)
-
-	fakeClient, gsrv, l, err := newFakeAssetClient(ctx, filteredFakeAssets)
 	if err != nil {
 		gsrv.Stop()
 		t.Fatalf("failed to create fake asset client: %v", err)
 	}
-	defer func() {
-		_ = fakeClient.Close()
+
+	return client, func() {
+		_ = client.Close()
 		gsrv.Stop()
 		_ = l.Close()
-	}()
+	}
+}
 
-	gi := &GCPInstance{
+func setupGCPInstance(fakeClient *asset.Client) *GCPInstance {
+	return &GCPInstance{
 		a: &gcpAssetInstance{
 			config: GCPAssetConfig{ProjectID: "test-project"},
 			c:      fakeClient,
 		},
 		p: &gcpPubSubInstance{},
 	}
+}
 
-	results := make(chan source.SourceData, 10)
-
-	err = gi.StartSyncProcess(ctx, typesToSync, results)
-	require.NoError(t, err)
-
-	close(results)
-	if empty {
-		assert.Empty(t, results, 0)
-	} else {
-		assetMap := assetToMap(filteredFakeAssets[0])
-		for result := range results {
-			assert.NotNil(t, result.Values)
-			assert.Equal(t, filteredFakeAssets[0].GetAssetType(), result.Type)
-			assert.Equal(t, source.DataOperationUpsert, result.Operation)
-			assert.Equal(t, assetMap, result.Values)
-		}
-	}
+func (s *fakeAssetServiceServer) ListAssets(ctx context.Context, req *assetpb.ListAssetsRequest) (*assetpb.ListAssetsResponse, error) {
+	return &assetpb.ListAssetsResponse{Assets: s.assets}, nil
 }
 
 func TestStartSyncProcessClient_Success(t *testing.T) {
@@ -178,7 +159,26 @@ func TestStartSyncProcessClient_Success(t *testing.T) {
 			},
 		},
 	}
-	singleTestStartSyncProcess(t, typesToSync, fakeAssets, false)
+	filteredFakeAssets := filterFakeAssetsByTypes(fakeAssets, typesToSync)
+
+	fakeClient, cleanup := newFakeAssetClient(t, filteredFakeAssets)
+	defer cleanup()
+
+	gcpInstance := setupGCPInstance(fakeClient)
+
+	results := make(chan source.SourceData, 10)
+
+	err := gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
+	require.NoError(t, err)
+
+	close(results)
+	assetMap := assetToMap(filteredFakeAssets[0])
+	for result := range results {
+		assert.NotNil(t, result.Values)
+		assert.Equal(t, filteredFakeAssets[0].GetAssetType(), result.Type)
+		assert.Equal(t, source.DataOperationUpsert, result.Operation)
+		assert.Equal(t, assetMap, result.Values)
+	}
 }
 
 func TestStartSyncProcessClient_NoAssets(t *testing.T) {
@@ -203,41 +203,125 @@ func TestStartSyncProcessClient_NoAssets(t *testing.T) {
 			},
 		},
 	}
-	singleTestStartSyncProcess(t, typesToSync, fakeAssets, true)
+	filteredFakeAssets := filterFakeAssetsByTypes(fakeAssets, typesToSync)
+
+	fakeClient, cleanup := newFakeAssetClient(t, filteredFakeAssets)
+	defer cleanup()
+
+	gcpInstance := setupGCPInstance(fakeClient)
+
+	results := make(chan source.SourceData, 10)
+
+	err := gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
+	require.NoError(t, err)
+
+	close(results)
+	assert.Empty(t, results, 0)
 }
 
-func TestStartSyncProcessClient_SuccessLoadJson(t *testing.T) {
+func TestStartSyncProcessClient_Success_LoadJson_Bucket(t *testing.T) {
 	typesToSync := []string{"storage.googleapis.com/Bucket"}
 	fakeBucketBytes, err := os.ReadFile("testdata/sync/bucket-test.json")
 	require.NoError(t, err)
 	var fakeBucket *assetpb.Asset
 	err = json.Unmarshal(fakeBucketBytes, &fakeBucket)
 	require.NoError(t, err)
-	singleTestStartSyncProcess(t, typesToSync, []*assetpb.Asset{fakeBucket}, false)
 
-	typesToSync = []string{"compute.googleapis.com/Network"}
+	filteredFakeAssets := filterFakeAssetsByTypes([]*assetpb.Asset{fakeBucket}, typesToSync)
+
+	fakeClient, cleanup := newFakeAssetClient(t, filteredFakeAssets)
+	defer cleanup()
+
+	gcpInstance := setupGCPInstance(fakeClient)
+
+	results := make(chan source.SourceData, 10)
+
+	err = gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
+	require.NoError(t, err)
+
+	close(results)
+	assetMap := assetToMap(filteredFakeAssets[0])
+	for result := range results {
+		assert.NotNil(t, result.Values)
+		assert.Equal(t, filteredFakeAssets[0].GetAssetType(), result.Type)
+		assert.Equal(t, source.DataOperationUpsert, result.Operation)
+		assert.Equal(t, assetMap, result.Values)
+	}
+}
+
+func TestStartSyncProcessClient_Success_LoadJson_Network(t *testing.T) {
+	typesToSync := []string{"compute.googleapis.com/Network"}
 	fakeNetworkBytes, err := os.ReadFile("testdata/sync/network-test.json")
 	require.NoError(t, err)
 	var fakeNetwork *assetpb.Asset
 	err = json.Unmarshal(fakeNetworkBytes, &fakeNetwork)
 	require.NoError(t, err)
-	singleTestStartSyncProcess(t, typesToSync, []*assetpb.Asset{fakeNetwork}, false)
+
+	filteredFakeAssets := filterFakeAssetsByTypes([]*assetpb.Asset{fakeNetwork}, typesToSync)
+
+	fakeClient, cleanup := newFakeAssetClient(t, filteredFakeAssets)
+	defer cleanup()
+
+	gcpInstance := setupGCPInstance(fakeClient)
+
+	results := make(chan source.SourceData, 10)
+
+	err = gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
+	require.NoError(t, err)
+
+	close(results)
+	assetMap := assetToMap(filteredFakeAssets[0])
+	for result := range results {
+		assert.NotNil(t, result.Values)
+		assert.Equal(t, filteredFakeAssets[0].GetAssetType(), result.Type)
+		assert.Equal(t, source.DataOperationUpsert, result.Operation)
+		assert.Equal(t, assetMap, result.Values)
+	}
 }
 
-func TestStartSyncProcessClient_NoAssetsLoadJson(t *testing.T) {
+func TestStartSyncProcessClient_NoAssets_LoadJson_Bucket(t *testing.T) {
 	typesToSync := []string{"compute.googleapis.com/Network"}
 	fakeBucketBytes, err := os.ReadFile("testdata/sync/bucket-test.json")
 	require.NoError(t, err)
 	var fakeBucket *assetpb.Asset
 	err = json.Unmarshal(fakeBucketBytes, &fakeBucket)
 	require.NoError(t, err)
-	singleTestStartSyncProcess(t, typesToSync, []*assetpb.Asset{fakeBucket}, true)
 
-	typesToSync = []string{"storage.googleapis.com/Bucket"}
+	filteredFakeAssets := filterFakeAssetsByTypes([]*assetpb.Asset{fakeBucket}, typesToSync)
+
+	fakeClient, cleanup := newFakeAssetClient(t, filteredFakeAssets)
+	defer cleanup()
+
+	gcpInstance := setupGCPInstance(fakeClient)
+
+	results := make(chan source.SourceData, 10)
+
+	err = gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
+	require.NoError(t, err)
+
+	close(results)
+	assert.Empty(t, results, 0)
+}
+
+func TestStartSyncProcessClient_NoAssets_LoadJson_Network(t *testing.T) {
+	typesToSync := []string{"storage.googleapis.com/Bucket"}
 	fakeNetworkBytes, err := os.ReadFile("testdata/sync/network-test.json")
 	require.NoError(t, err)
 	var fakeNetwork *assetpb.Asset
 	err = json.Unmarshal(fakeNetworkBytes, &fakeNetwork)
 	require.NoError(t, err)
-	singleTestStartSyncProcess(t, typesToSync, []*assetpb.Asset{fakeNetwork}, true)
+	filteredFakeAssets := filterFakeAssetsByTypes([]*assetpb.Asset{fakeNetwork}, typesToSync)
+
+	fakeClient, cleanup := newFakeAssetClient(t, filteredFakeAssets)
+	defer cleanup()
+
+	gcpInstance := setupGCPInstance(fakeClient)
+
+	results := make(chan source.SourceData, 10)
+
+	err = gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
+	require.NoError(t, err)
+
+	close(results)
+	assert.Empty(t, results, 0)
 }
