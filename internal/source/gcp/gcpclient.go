@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/caarlos0/env/v11"
 
@@ -93,7 +94,8 @@ func newGCPAssetInstance() (*gcpAssetInstance, error) {
 		return nil, err
 	}
 	return &gcpAssetInstance{
-		config: GCPAssetConfig(envVars),
+		config:     GCPAssetConfig(envVars),
+		startMutex: sync.Mutex{},
 	}, nil
 }
 
@@ -203,6 +205,13 @@ func (a *gcpAssetInstance) getListAssetsRequest(typesToSync []string) *assetpb.L
 
 func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
+	if g.a.startMutex.TryLock() == false {
+		log.Error("sync process already running")
+		return nil
+	}
+
+	defer g.a.startMutex.Unlock()
+
 	err := g.a.initAssetClient(ctx)
 	if err != nil {
 		log.Error("failed to initialize Asset client", "error", err)

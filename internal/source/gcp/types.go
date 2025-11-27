@@ -5,6 +5,7 @@ package gcp
 
 import (
 	"context"
+	"sync"
 
 	asset "cloud.google.com/go/asset/apiv1"
 	"cloud.google.com/go/pubsub/v2"
@@ -46,5 +47,6 @@ type gcpPubSubInstance struct {
 type gcpAssetInstance struct {
 	config GCPAssetConfig
 
-	c *asset.Client
+	startMutex sync.Mutex
+	c          *asset.Client
 }
