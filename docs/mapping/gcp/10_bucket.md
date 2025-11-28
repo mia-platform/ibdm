@@ -26,22 +26,23 @@ Mapped fields
 	"type": "storage.googleapis.com/Bucket",
 	"syncable": true,
 	"apiVersion": "buckets.gcp.mia-platform.eu/v1alpha1",
-	"identifier": "{{resource.data.id}}",
-	"specs": {
-		"id": "{{resource.data.id}}",
-		"name": "{{resource.data.name}}",
-		"kind": "{{resource.data.kind}}",
-		"labels": "{{resource.data.labels}}",
-		"location": "{{resource.data.location}}",
-		"locationType": "{{resource.data.locationType}}",
-		"storageClass": "{{resource.data.storageClass}}",
-		"timeCreated": "{{resource.data.timeCreated}}",
-		"updated": "{{resource.data.updated}}",
-		"versioning": {
-			"enabled": "{{resource.data.versioning.enabled}}"
-		},
-		"hierarchicalNamespace": {
-			"enabled": "{{resource.data.hierarchicalNamespace.enabled}}"
+	"mappings": {
+		"identifier": "{{resource.data.id}}",
+		"specs": {
+			"name": "{{resource.data.name}}",
+			"kind": "{{resource.data.kind}}",
+			"labels": "{{resource.data.labels}}",
+			"location": "{{resource.data.location}}",
+			"locationType": "{{resource.data.locationType}}",
+			"storageClass": "{{resource.data.storageClass}}",
+			"timeCreated": "{{resource.data.timeCreated}}",
+			"updated": "{{resource.data.updated}}",
+			"versioning": {
+				"enabled": "{{resource.data.versioning | toJSON}}"
+			},
+			"hierarchicalNamespace": {
+				"enabled": "{{resource.data.hierarchicalNamespace | toJSON}}"
+			}
 		}
 	}
 }
