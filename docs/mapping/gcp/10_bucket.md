@@ -52,22 +52,29 @@ Mapped fields
 
 ```json
 {
-    "id": "custom-bucket-1470",
-    "name": "custom-bucket-1470",
-    "kind": "storage#bucket",
-    "labels": {
-        "custom": "1470"
-    },
-    "location": "US",
-    "locationType": "multi-region",
-    "storageClass": "STANDARD",
-    "timeCreated": "2025-10-10T10:38:12.324Z",
-    "updated": "2025-10-10T10:38:12.324Z",
-    "versioning": {
-			"enabled": false
-		},
-    "hierarchicalNamespace": {
-			"enabled": false
-		},
+	"type": "storage.googleapis.com/Bucket",
+	"syncable": true,
+	"apiVersion": "buckets.gcp.mia-platform.eu/v1alpha1",
+	"mappings": {
+		"identifier": "custom-bucket-1470",
+		"specs": {
+			"name": "custom-bucket-1470",
+			"kind": "storage#bucket",
+			"labels": {
+				"custom": "1470"
+			},
+			"location": "US",
+			"locationType": "multi-region",
+			"storageClass": "STANDARD",
+			"timeCreated": "2025-10-10T10:38:12.324Z",
+			"updated": "2025-10-10T10:38:12.324Z",
+			"versioning": {
+				"enabled": false
+			},
+			"hierarchicalNamespace": {
+				"enabled": false
+			}
+		}
+	}
 }
 ```
