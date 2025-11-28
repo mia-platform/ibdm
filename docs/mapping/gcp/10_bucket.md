@@ -9,22 +9,24 @@ Purpose
 
 Mapped fields
 
-- Id (resource ID)
-- Name (bucket name)
-- Labels
-- Location
-- LocationType
-- StorageClass
-- TimeCreated
-- Updated timestamps
-- Versioning
-- HierarchicalNamespace
+- id (PK): the ID of the bucket. For buckets, the id and name properties are the same
+- name: the name of the bucket
+- kind: the kind of resource being described. For buckets, this is always "storage#bucket"
+- labels: user-provided bucket labels, in key-value pairs
+- location: the location of the bucket. Object data for objects in the bucket resides in physical storage within this location
+- locationType: the type of location that the bucket resides in. Possible values include region, dual-region, and multi-region
+- storageClass: the bucket's default storage class, used whenever no storageClass is specified for a newly-created object. If storageClass is not specified when the bucket is created, it defaults to "STANDARD"
+- timeCreated: The creation time of the bucket in RFC 3339 format
+- updated: The time at which the bucket's metadata or IAM policy was last updated, in RFC 3339 format
+- versioning: wether the versioning is enabled for the bucket
+- hierarchicalNamespace: whether or not hierarchical namespace is enabled for this bucket
 
 ```json
 {
 	"type": "storage.googleapis.com/Bucket",
 	"syncable": true,
-	"apiVersion":  "buckets.gcp.mia-platform.eu/v1alpha1",
+	"apiVersion": "buckets.gcp.mia-platform.eu/v1alpha1",
+	"identifier": "{{resource.data.id}}",
 	"specs": {
 		"id": "{{resource.data.id}}",
 		"name": "{{resource.data.name}}",
@@ -35,8 +37,12 @@ Mapped fields
 		"storageClass": "{{resource.data.storageClass}}",
 		"timeCreated": "{{resource.data.timeCreated}}",
 		"updated": "{{resource.data.updated}}",
-		"versioning": "{{resource.data.versioning.enabled}}",
-		"hierarchicalNamespace": "{{resource.data.hierarchicalNamespace.enabled}}"
+		"versioning": {
+			"enabled": "{{resource.data.versioning.enabled}}"
+		},
+		"hierarchicalNamespace": {
+			"enabled": "{{resource.data.hierarchicalNamespace.enabled}}"
+		}
 	}
 }
 ```
@@ -56,7 +62,11 @@ Mapped fields
     "storageClass": "STANDARD",
     "timeCreated": "2025-10-10T10:38:12.324Z",
     "updated": "2025-10-10T10:38:12.324Z",
-    "versioning": false,
-    "hierarchicalNamespace": false,
+    "versioning": {
+			"enabled": false
+		},
+    "hierarchicalNamespace": {
+			"enabled": false
+		},
 }
 ```
