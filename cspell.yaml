@@ -3,13 +3,8 @@ language: en,en-GB,en-US
 useGitignore: true
 allowCompoundWords: true
 words:
-  - apiv
-  - assetpb
-  - caarlos
   - gsrv
   - ibdm
-  - pubsubpb
-  - structpb
   - tmpl
   - uuidv
 ignoreWords:
@@ -22,8 +17,13 @@ ignoreWords:
   - goos
   - hclog
   - stretchr
+  - apiv
+  - assetpb
+  - pubsubpb
+  - structpb
+  - caarlos
 files:
-  - "**/*.md"
-  - "**/*.go"
-  - "**/*.mk"
+  - '**/*.md'
+  - '**/*.go'
+  - '**/*.mk'
   - Makefile
