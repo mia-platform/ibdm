@@ -32,13 +32,13 @@ const (
 func checkPubSubEnvVariables(cfg GCPPubSubEnvironmentVariables) error {
 	errorsList := make([]error, 0)
 	if cfg.ProjectID == "" {
-		errorsList = append(errorsList, errors.New("GCP_PROJECT_ID environment variable is required"))
+		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_PUBSUB_PROJECT environment variable is required"))
 	}
 	if cfg.TopicName == "" {
-		errorsList = append(errorsList, errors.New("GCP_TOPIC_NAME environment variable is required"))
+		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_PUBSUB_TOPIC environment variable is required"))
 	}
 	if cfg.SubscriptionID == "" {
-		errorsList = append(errorsList, errors.New("GCP_SUBSCRIPTION_ID environment variable is required"))
+		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION environment variable is required"))
 	}
 	if len(errorsList) > 0 {
 		return errors.Join(errorsList...)
@@ -48,31 +48,31 @@ func checkPubSubEnvVariables(cfg GCPPubSubEnvironmentVariables) error {
 
 func checkAssetEnvVariables(cfg GCPAssetEnvironmentVariables) error {
 	if cfg.ProjectID == "" {
-		return errors.New("GCP_PROJECT_ID environment variable is required")
+		return errors.New("GOOGLE_CLOUD_ASSET_PROJECT environment variable is required")
 	}
 	return nil
 }
 
-func NewGCPInstance(ctx context.Context) (*GCPInstance, error) {
+func NewGCPSource(ctx context.Context) (*GCPSource, error) {
 	errorsList := make([]error, 0)
-	assetInstance, err := newGCPAssetInstance()
+	assetClient, err := newAssetClient()
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
-	pubSubInstance, err := newGCPPubSubInstance()
+	pubSubClient, err := newPubSubClient()
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
 	if len(errorsList) > 0 {
 		return nil, errors.Join(errorsList...)
 	}
-	return &GCPInstance{
-		a: assetInstance,
-		p: pubSubInstance,
+	return &GCPSource{
+		a: assetClient,
+		p: pubSubClient,
 	}, nil
 }
 
-func newGCPPubSubInstance() (*gcpPubSubInstance, error) {
+func newPubSubClient() (*pubSubClient, error) {
 	envVars, err := env.ParseAs[GCPPubSubEnvironmentVariables]()
 	if err != nil {
 		return nil, err
@@ -80,12 +80,12 @@ func newGCPPubSubInstance() (*gcpPubSubInstance, error) {
 	if err := checkPubSubEnvVariables(envVars); err != nil {
 		return nil, err
 	}
-	return &gcpPubSubInstance{
+	return &pubSubClient{
 		config: GCPPubSubConfig(envVars),
 	}, nil
 }
 
-func newGCPAssetInstance() (*gcpAssetInstance, error) {
+func newAssetClient() (*assetClient, error) {
 	envVars, err := env.ParseAs[GCPAssetEnvironmentVariables]()
 	if err != nil {
 		return nil, err
@@ -93,13 +93,13 @@ func newGCPAssetInstance() (*gcpAssetInstance, error) {
 	if err := checkAssetEnvVariables(envVars); err != nil {
 		return nil, err
 	}
-	return &gcpAssetInstance{
+	return &assetClient{
 		config:     GCPAssetConfig(envVars),
 		startMutex: sync.Mutex{},
 	}, nil
 }
 
-func (p *gcpPubSubInstance) initPubSubClient(ctx context.Context) error {
+func (p *pubSubClient) initPubSubClient(ctx context.Context) error {
 	if p.c != nil {
 		return nil
 	}
@@ -111,7 +111,7 @@ func (p *gcpPubSubInstance) initPubSubClient(ctx context.Context) error {
 	return nil
 }
 
-func (p *gcpPubSubInstance) initPubSubSubscriber(log logger.Logger) *pubsub.Subscriber {
+func (p *pubSubClient) initPubSubSubscriber(log logger.Logger) *pubsub.Subscriber {
 	log.Debug("starting to listen to Pub/Sub messages",
 		"projectId", p.config.ProjectID,
 		"topicName", p.config.TopicName,
@@ -120,7 +120,7 @@ func (p *gcpPubSubInstance) initPubSubSubscriber(log logger.Logger) *pubsub.Subs
 	return p.c.Subscriber(p.config.SubscriptionID)
 }
 
-func (a *gcpAssetInstance) initAssetClient(ctx context.Context) error {
+func (a *assetClient) initAssetClient(ctx context.Context) error {
 	if a.c != nil {
 		return nil
 	}
@@ -132,7 +132,7 @@ func (a *gcpAssetInstance) initAssetClient(ctx context.Context) error {
 	return nil
 }
 
-func (p *gcpPubSubInstance) closePubSubClient() error {
+func (p *pubSubClient) closePubSubClient() error {
 	if p.c != nil {
 		if err := p.c.Close(); err != nil {
 			return err
@@ -142,7 +142,7 @@ func (p *gcpPubSubInstance) closePubSubClient() error {
 	return nil
 }
 
-func (a *gcpAssetInstance) closeAssetClient() error {
+func (a *assetClient) closeAssetClient() error {
 	if a.c != nil {
 		if err := a.c.Close(); err != nil {
 			return err
@@ -152,7 +152,7 @@ func (a *gcpAssetInstance) closeAssetClient() error {
 	return nil
 }
 
-func (g *GCPInstance) Close(ctx context.Context) error {
+func (g *GCPSource) Close(ctx context.Context) error {
 	errorsList := make([]error, 0)
 	err := g.p.closePubSubClient()
 	if err != nil {
@@ -195,7 +195,7 @@ func eventAssetToMap(asset GCPEventAsset) map[string]any {
 	return out
 }
 
-func (a *gcpAssetInstance) getListAssetsRequest(typesToSync []string) *assetpb.ListAssetsRequest {
+func (a *assetClient) getListAssetsRequest(typesToSync []string) *assetpb.ListAssetsRequest {
 	return &assetpb.ListAssetsRequest{
 		Parent:      "projects/" + a.config.ProjectID,
 		AssetTypes:  typesToSync,
@@ -203,10 +203,10 @@ func (a *gcpAssetInstance) getListAssetsRequest(typesToSync []string) *assetpb.L
 	}
 }
 
-func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) error {
+func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !g.a.startMutex.TryLock() {
-		log.Error("sync process already running")
+		log.Debug("sync process already running")
 		return nil
 	}
 
@@ -241,7 +241,7 @@ func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string
 	return nil
 }
 
-func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.SourceData) error {
+func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.SourceData) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	err := g.p.initPubSubClient(ctx)
 	if err != nil {
@@ -257,7 +257,7 @@ func (g *GCPInstance) StartEventStream(ctx context.Context, typesToStream []stri
 	return g.p.gcpListener(ctx, log, typesToStream, results)
 }
 
-func (p *gcpPubSubInstance) gcpListener(ctx context.Context, log logger.Logger, typesToStream []string, results chan<- source.SourceData) error {
+func (p *pubSubClient) gcpListener(ctx context.Context, log logger.Logger, typesToStream []string, results chan<- source.SourceData) error {
 	subscriber := p.initPubSubSubscriber(log)
 	err := subscriber.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
 		event, err := gcpListenerHandler(msg.Data)

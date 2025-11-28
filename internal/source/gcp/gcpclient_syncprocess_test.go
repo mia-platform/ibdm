@@ -123,13 +123,13 @@ func newFakeAssetClient(t *testing.T, fakeAssets []*assetpb.Asset) (*asset.Clien
 	}
 }
 
-func setupGCPInstance(fakeClient *asset.Client) *GCPInstance {
-	return &GCPInstance{
-		a: &gcpAssetInstance{
+func setupGCPInstance(fakeClient *asset.Client) *GCPSource {
+	return &GCPSource{
+		a: &assetClient{
 			config: GCPAssetConfig{ProjectID: "test-project"},
 			c:      fakeClient,
 		},
-		p: &gcpPubSubInstance{},
+		p: &pubSubClient{},
 	}
 }
 

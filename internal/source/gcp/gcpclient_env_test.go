@@ -11,26 +11,27 @@ import (
 )
 
 func TestNewGCPInstance_Success(t *testing.T) {
-	t.Setenv("GCP_PROJECT_ID", "test-project")
-	t.Setenv("GCP_TOPIC_NAME", "topic-name")
-	t.Setenv("GCP_SUBSCRIPTION_ID", "sub-id")
+	t.Setenv("GOOGLE_CLOUD_PUBSUB_PROJECT", "test-project-pubsub")
+	t.Setenv("GOOGLE_CLOUD_PUBSUB_TOPIC", "topic-name")
+	t.Setenv("GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION", "sub-id")
+	t.Setenv("GOOGLE_CLOUD_ASSET_PROJECT", "test-project-asset")
 
-	inst, err := NewGCPInstance(t.Context())
+	inst, err := NewGCPSource(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, inst)
 
 	if inst.p != nil {
-		assert.Equal(t, "test-project", inst.p.config.ProjectID)
+		assert.Equal(t, "test-project-pubsub", inst.p.config.ProjectID)
 		assert.Equal(t, "topic-name", inst.p.config.TopicName)
 		assert.Equal(t, "sub-id", inst.p.config.SubscriptionID)
 	}
 	if inst.a != nil {
-		assert.Equal(t, "test-project", inst.a.config.ProjectID)
+		assert.Equal(t, "test-project-asset", inst.a.config.ProjectID)
 	}
 }
 
 func TestNewGCPInstance_MissingEnv(t *testing.T) {
-	inst, err := NewGCPInstance(t.Context())
+	inst, err := NewGCPSource(t.Context())
 	require.Error(t, err)
 	require.Nil(t, inst)
 }

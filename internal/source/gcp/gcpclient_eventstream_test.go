@@ -23,8 +23,8 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
-func newFakeGCPPubSubInstance() *gcpPubSubInstance {
-	return &gcpPubSubInstance{
+func newFakeGCPPubSubClient() *pubSubClient {
+	return &pubSubClient{
 		config: GCPPubSubConfig{
 			ProjectID:      "console-infrastructure-lab",
 			TopicName:      "mia-platform-resources-export",
@@ -39,11 +39,11 @@ func TestRealStartEventStream(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	pubSubInstance := newFakeGCPPubSubInstance()
+	pubSubClient := newFakeGCPPubSubClient()
 
-	gcpInstance := &GCPInstance{
-		a: &gcpAssetInstance{},
-		p: pubSubInstance,
+	gcpInstance := &GCPSource{
+		a: &assetClient{},
+		p: pubSubClient,
 	}
 
 	results := make(chan source.SourceData, 10)
@@ -110,15 +110,15 @@ func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string,
 	}
 }
 
-func setupInstancesForEventStreamTest(t *testing.T, config GCPPubSubConfig, client *pubsub.Client) *GCPInstance {
+func setupInstancesForEventStreamTest(t *testing.T, config GCPPubSubConfig, client *pubsub.Client) *GCPSource {
 	t.Helper()
-	pubSubInstance := &gcpPubSubInstance{
+	pubSubClient := &pubSubClient{
 		config: config,
 		c:      client,
 	}
-	gcpInstance := &GCPInstance{
-		a: &gcpAssetInstance{},
-		p: pubSubInstance,
+	gcpInstance := &GCPSource{
+		a: &assetClient{},
+		p: pubSubClient,
 	}
 	return gcpInstance
 }
