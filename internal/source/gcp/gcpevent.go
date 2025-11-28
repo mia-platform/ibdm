@@ -46,16 +46,11 @@ func (e GCPEvent) GetAssetType() string {
 }
 
 func (e GCPEvent) Operation() source.DataOperation {
-	switch {
-	case e.Deleted:
+	if e.Deleted {
 		return source.DataOperationDelete
-	case e.PriorAssetState == "DOES_NOT_EXIST":
-		return source.DataOperationUpsert
-	case e.PriorAssetState == "PRESENT":
-		return source.DataOperationUpsert
-	default:
-		return source.DataOperationUpsert
 	}
+
+	return source.DataOperationUpsert
 }
 
 func (e GCPEvent) IsTypeIn(types []string) bool {
