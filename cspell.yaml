@@ -8,6 +8,9 @@ words:
   - tmpl
   - uuidv
 ignoreWords:
+  - apiv
+  - assetpb
+  - caarlos
   - errln
   - goarch
   - goarm
@@ -16,12 +19,9 @@ ignoreWords:
   - gomod
   - goos
   - hclog
-  - stretchr
-  - apiv
-  - assetpb
   - pubsubpb
+  - stretchr
   - structpb
-  - caarlos
 files:
   - '**/*.md'
   - '**/*.go'
