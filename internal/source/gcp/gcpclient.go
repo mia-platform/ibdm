@@ -10,17 +10,15 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/caarlos0/env/v11"
-
-	"github.com/mia-platform/ibdm/internal/logger"
-	"github.com/mia-platform/ibdm/internal/source"
-
-	"google.golang.org/api/iterator"
-	"google.golang.org/protobuf/encoding/protojson"
-
 	asset "cloud.google.com/go/asset/apiv1"
 	"cloud.google.com/go/asset/apiv1/assetpb"
 	"cloud.google.com/go/pubsub/v2"
+	"github.com/caarlos0/env/v11"
+	"google.golang.org/api/iterator"
+	"google.golang.org/protobuf/encoding/protojson"
+
+	"github.com/mia-platform/ibdm/internal/logger"
+	"github.com/mia-platform/ibdm/internal/source"
 )
 
 const (
