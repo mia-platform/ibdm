@@ -54,5 +54,7 @@ func (e GCPEvent) Operation() source.DataOperation {
 }
 
 func (e GCPEvent) IsTypeIn(types []string) bool {
-	return slices.Contains(types, e.GetAssetType())
+	return slices.ContainsFunc(types, func(s string) bool {
+		return strings.EqualFold(s, e.GetAssetType())
+	})
 }
