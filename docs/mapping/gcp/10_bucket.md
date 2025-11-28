@@ -38,10 +38,10 @@ Mapped fields
 			"timeCreated": "{{resource.data.timeCreated}}",
 			"updated": "{{resource.data.updated}}",
 			"versioning": {
-				"enabled": "{{resource.data.versioning | toJSON}}"
+				"enabled": "{{ .resource.data.versioning | toJSON}}"
 			},
 			"hierarchicalNamespace": {
-				"enabled": "{{resource.data.hierarchicalNamespace | toJSON}}"
+				"enabled": "{{ .resource.data.hierarchicalNamespace | toJSON}}"
 			}
 		}
 	}
