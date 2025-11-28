@@ -205,7 +205,7 @@ func (a *gcpAssetInstance) getListAssetsRequest(typesToSync []string) *assetpb.L
 
 func (g *GCPInstance) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
-	if g.a.startMutex.TryLock() == false {
+	if !g.a.startMutex.TryLock() {
 		log.Error("sync process already running")
 		return nil
 	}
