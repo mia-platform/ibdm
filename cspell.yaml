@@ -23,7 +23,7 @@ ignoreWords:
   - stretchr
   - structpb
 files:
-  - '**/*.md'
   - '**/*.go'
+  - '**/*.md'
   - '**/*.mk'
   - Makefile
