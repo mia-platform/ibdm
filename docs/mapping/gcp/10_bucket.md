@@ -31,7 +31,7 @@ Mapped fields
 		"specs": {
 			"name": "{{resource.data.name}}",
 			"kind": "{{resource.data.kind}}",
-			"labels": "{{resource.data.labels}}",
+			"labels": "{{ .resource.data.labels | toJSON}}",
 			"location": "{{resource.data.location}}",
 			"locationType": "{{resource.data.locationType}}",
 			"storageClass": "{{resource.data.storageClass}}",
