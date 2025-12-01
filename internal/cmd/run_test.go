@@ -5,12 +5,14 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/pipeline"
 )
 
 func setupTestFileStructure(t *testing.T, baseDir string) {
@@ -133,4 +136,65 @@ func TestCompletion(t *testing.T) {
 			assert.Equal(t, test.expectedCompletion, args)
 		})
 	}
+}
+
+func TestOptionsRun(t *testing.T) {
+	t.Parallel()
+
+	sourceGetter = func(integrationName string) any {
+		switch integrationName {
+		case "fake":
+			return &fakeSource{
+				t: t,
+			}
+		case "unsupported":
+			return "unsupported source type"
+		}
+
+		return nil
+	}
+
+	testCases := map[string]struct {
+		options       *runOptions
+		expectedError error
+	}{
+		"run integration and terminate when source return": {
+			options: &runOptions{
+				integrationName: "fake",
+			},
+		},
+		"unsupported source type return error": {
+			options: &runOptions{
+				integrationName: "unsupported",
+			},
+			expectedError: errors.ErrUnsupported,
+		},
+	}
+
+	for testName, test := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			defer cancel()
+
+			err := test.options.execute(ctx)
+			if test.expectedError != nil {
+				assert.ErrorIs(t, err, test.expectedError)
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+var _ pipeline.EventSource = &fakeSource{}
+
+type fakeSource struct {
+	t *testing.T
+}
+
+func (f *fakeSource) StartEventStream(ctx context.Context, types []string, out chan<- pipeline.SourceData) error {
+	f.t.Helper()
+	return nil
 }
