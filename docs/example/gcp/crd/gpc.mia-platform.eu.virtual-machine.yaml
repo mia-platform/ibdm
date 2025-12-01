@@ -64,30 +64,6 @@ spec:
                   type: object
                   additionalProperties:
                     type: string
-                scheduling:
-                  description: Scheduling settings for the instance
-                  type: object
-                  properties:
-                    automaticRestart:
-                      type: boolean
-                    onHostMaintenance:
-                      type: string
-                    preemptible:
-                      type: boolean
-                    provisioningModel:
-                      type: string
-                  additionalProperties: true
-                shieldedInstanceConfig:
-                  description: Shielded VM settings
-                  type: object
-                  properties:
-                    enableIntegrityMonitoring:
-                      type: boolean
-                    enableSecureBoot:
-                      type: boolean
-                    enableVtpm:
-                      type: boolean
-                  additionalProperties: true
                 status:
                   description: Current status of the instance
                   type: string
