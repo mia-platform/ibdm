@@ -37,12 +37,8 @@ Mapped fields
 			"storageClass": "{{resource.data.storageClass}}",
 			"timeCreated": "{{resource.data.timeCreated}}",
 			"updated": "{{resource.data.updated}}",
-			"versioning": {
-				"enabled": "{{ .resource.data.versioning | toJSON}}"
-			},
-			"hierarchicalNamespace": {
-				"enabled": "{{ .resource.data.hierarchicalNamespace | toJSON}}"
-			}
+			"versioning": "{{ .resource.data.versioning | toJSON}}",
+			"hierarchicalNamespace": "{{ .resource.data.hierarchicalNamespace | toJSON}}"
 		}
 	}
 }
