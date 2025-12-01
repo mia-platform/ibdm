@@ -25,8 +25,6 @@ const (
 	loggerName = "ibdm:source:gcp"
 )
 
-// TODO: add mutex TryLock management for StartEventStream and StartSyncProcess to manage concurrency
-
 func checkPubSubEnvVariables(cfg GCPPubSubEnvironmentVariables) error {
 	errorsList := make([]error, 0)
 	if cfg.ProjectID == "" {
