@@ -30,6 +30,7 @@ func TestCheckPubSubConfig_Success(t *testing.T) {
 
 func TestCheckAssetConfig_Success(t *testing.T) {
 	t.Setenv("GOOGLE_CLOUD_ASSET_PROJECT", "test-project-asset")
+	t.Setenv("GOOGLE_CLOUD_ASSET_PARENT", "projects/test-project-asset")
 
 	src, err := NewGCPSource(t.Context())
 	require.NoError(t, err)
@@ -39,6 +40,19 @@ func TestCheckAssetConfig_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "test-project-asset", src.a.config.ProjectID)
+	assert.Equal(t, "projects/test-project-asset", src.a.config.Parent)
+}
+
+func TestCheckAssetConfig_Fail_WrongParent(t *testing.T) {
+	t.Setenv("GOOGLE_CLOUD_ASSET_PROJECT", "test-project-asset")
+	t.Setenv("GOOGLE_CLOUD_ASSET_PARENT", "organization/test-project-asset")
+
+	src, err := NewGCPSource(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, src)
+
+	err = checkAssetConfig(src.a.config)
+	require.Error(t, err)
 }
 
 func TestCheckPubSubConfig_MissingEnv(t *testing.T) {

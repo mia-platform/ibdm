@@ -21,6 +21,7 @@ type GCPPubSubConfig struct {
 
 type GCPAssetConfig struct {
 	ProjectID string `env:"GOOGLE_CLOUD_ASSET_PROJECT"`
+	Parent    string `env:"GOOGLE_CLOUD_ASSET_PARENT"`
 }
 
 type GCPSource struct {

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	asset "cloud.google.com/go/asset/apiv1"
 	"cloud.google.com/go/asset/apiv1/assetpb"
@@ -25,11 +26,12 @@ const (
 )
 
 var (
-	ErrMissingEnvVariable     = errors.New("missing environment variable")
-	ErrClosingGCPSourceClient = errors.New("error closing GCP source client")
-	ErrClientInitialization   = errors.New("error initializing GCP client")
-	ErrListAssetIterator      = errors.New("error iterating over ListAssets response")
-	ErrReceivePubSubMessages  = errors.New("error receiving Pub/Sub messages")
+	ErrClientInitialization    = errors.New("error initializing GCP client")
+	ErrClosingGCPSourceClient  = errors.New("error closing GCP source client")
+	ErrGCPSourceClientCreation = errors.New("error GCP source creation")
+	ErrListAssetIterator       = errors.New("error iterating over ListAssets response")
+	ErrMissingEnvVariable      = errors.New("missing environment variable")
+	ErrReceivePubSubMessages   = errors.New("error receiving Pub/Sub messages")
 )
 
 func checkPubSubConfig(cfg GCPPubSubConfig) error {
@@ -51,8 +53,19 @@ func checkPubSubConfig(cfg GCPPubSubConfig) error {
 }
 
 func checkAssetConfig(cfg GCPAssetConfig) error {
+	errorsList := make([]error, 0)
+	if cfg.Parent == "" {
+		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_ASSET_PARENT environment variable is required"))
+	}
+	if !strings.HasPrefix(cfg.Parent, "projects/") && !strings.HasPrefix(cfg.Parent, "folders/") && !strings.HasPrefix(cfg.Parent, "subscriptions/") {
+		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_ASSET_PARENT must start with 'projects/', 'folders/' or 'subscriptions/'"))
+	}
 	if cfg.ProjectID == "" {
-		return fmt.Errorf("%w: %w", ErrMissingEnvVariable, errors.New("GOOGLE_CLOUD_ASSET_PROJECT environment variable is required"))
+		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_ASSET_PROJECT environment variable is required"))
+	}
+	if len(errorsList) > 0 {
+		err := errors.Join(errorsList...)
+		return fmt.Errorf("%w: %s", ErrMissingEnvVariable, err.Error())
 	}
 	return nil
 }
@@ -68,7 +81,7 @@ func NewGCPSource(ctx context.Context) (*GCPSource, error) {
 		errorsList = append(errorsList, err)
 	}
 	if len(errorsList) > 0 {
-		return nil, errors.Join(errorsList...)
+		return nil, fmt.Errorf("%w: %s", ErrGCPSourceClientCreation, errors.Join(errorsList...).Error())
 	}
 	return &GCPSource{
 		a: assetClient,
