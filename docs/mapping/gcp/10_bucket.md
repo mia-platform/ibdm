@@ -1,10 +1,10 @@
 # GCP Bucket mapping
 
-This document describes the GCP Bucket mapping used to convert GCP inventory Pub/Sub events into a normalized asset event.
+This document describes the GCP Bucket mapping used to convert GCP Pub/Sub events into a normalized asset event.
 
 Purpose
 
-- Normalize GCP Storage Bucket events emitted by the inventory Pub/Sub source.
+- Normalize GCP Storage Bucket events emitted by the Pub/Sub source.
 - Prepare a compact asset object with a consistent shape for downstream processing or sinks.
 
 Mapped fields

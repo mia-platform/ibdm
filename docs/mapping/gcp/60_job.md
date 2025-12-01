@@ -1,10 +1,10 @@
 # GCP Job mapping
 
-This document describes the GCP Job mapping used to convert inventory Pub/Sub events into a normalized asset event.
+This document describes the GCP Job mapping used to convert Pub/Sub events into a normalized asset event.
 
 Purpose
 
-- Normalize Job resources (for example Cloud Run Jobs) emitted by the inventory Pub/Sub source.
+- Normalize Job resources (for example Cloud Run Jobs) emitted by the Pub/Sub source.
 - Prepare a compact asset object with a consistent shape for downstream processing or sinks.
 
 Mapped fields
