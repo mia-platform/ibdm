@@ -10,28 +10,51 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewGCPInstance_Success(t *testing.T) {
+func TestCheckPubSubConfig_Success(t *testing.T) {
 	t.Setenv("GOOGLE_CLOUD_PUBSUB_PROJECT", "test-project-pubsub")
 	t.Setenv("GOOGLE_CLOUD_PUBSUB_TOPIC", "topic-name")
 	t.Setenv("GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION", "sub-id")
 	t.Setenv("GOOGLE_CLOUD_ASSET_PROJECT", "test-project-asset")
 
-	inst, err := NewGCPSource(t.Context())
+	src, err := NewGCPSource(t.Context())
 	require.NoError(t, err)
-	require.NotNil(t, inst)
+	require.NotNil(t, src)
 
-	if inst.p != nil {
-		assert.Equal(t, "test-project-pubsub", inst.p.config.ProjectID)
-		assert.Equal(t, "topic-name", inst.p.config.TopicName)
-		assert.Equal(t, "sub-id", inst.p.config.SubscriptionID)
-	}
-	if inst.a != nil {
-		assert.Equal(t, "test-project-asset", inst.a.config.ProjectID)
-	}
+	err = checkPubSubConfig(src.p.config)
+	require.NoError(t, err)
+
+	assert.Equal(t, "test-project-pubsub", src.p.config.ProjectID)
+	assert.Equal(t, "topic-name", src.p.config.TopicName)
+	assert.Equal(t, "sub-id", src.p.config.SubscriptionID)
 }
 
-func TestNewGCPInstance_MissingEnv(t *testing.T) {
-	inst, err := NewGCPSource(t.Context())
+func TestCheckAssetConfig_Success(t *testing.T) {
+	t.Setenv("GOOGLE_CLOUD_ASSET_PROJECT", "test-project-asset")
+
+	src, err := NewGCPSource(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, src)
+
+	err = checkAssetConfig(src.a.config)
+	require.NoError(t, err)
+
+	assert.Equal(t, "test-project-asset", src.a.config.ProjectID)
+}
+
+func TestCheckPubSubConfig_MissingEnv(t *testing.T) {
+	src, err := NewGCPSource(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, src)
+
+	err = checkPubSubConfig(src.p.config)
 	require.Error(t, err)
-	require.Nil(t, inst)
+}
+
+func TestCheckAssetConfig_MissingEnv(t *testing.T) {
+	src, err := NewGCPSource(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, src)
+
+	err = checkAssetConfig(src.a.config)
+	require.Error(t, err)
 }

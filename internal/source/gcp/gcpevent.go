@@ -10,6 +10,8 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
+// TODO: remove and manage directly as map[string]any
+
 type GCPEventAsset struct {
 	Ancestors  []string       `json:"ancestors"`
 	AssetType  string         `json:"assetType"`

@@ -13,24 +13,14 @@ import (
 
 type ListenerFunc func(ctx context.Context, data []byte) error
 
-type GCPPubSubEnvironmentVariables struct {
+type GCPPubSubConfig struct {
 	ProjectID      string `env:"GOOGLE_CLOUD_PUBSUB_PROJECT"`
 	TopicName      string `env:"GOOGLE_CLOUD_PUBSUB_TOPIC"`
 	SubscriptionID string `env:"GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION"`
 }
 
-type GCPAssetEnvironmentVariables struct {
-	ProjectID string `env:"GOOGLE_CLOUD_ASSET_PROJECT"`
-}
-
-type GCPPubSubConfig struct {
-	ProjectID      string
-	TopicName      string
-	SubscriptionID string
-}
-
 type GCPAssetConfig struct {
-	ProjectID string
+	ProjectID string `env:"GOOGLE_CLOUD_ASSET_PROJECT"`
 }
 
 type GCPSource struct {
