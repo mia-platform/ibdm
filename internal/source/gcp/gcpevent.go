@@ -10,42 +10,32 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
-// TODO: remove and manage directly as map[string]any
-
-type GCPEventAsset struct {
-	Ancestors  []string       `json:"ancestors"`
-	AssetType  string         `json:"assetType"`
-	Name       string         `json:"name"`
-	Resource   map[string]any `json:"resource"`
-	UpdateTime string         `json:"updateTime"`
-}
-
 type GCPEventWindow struct {
 	StartTime string `json:"startTime"`
 }
 
 type GCPEvent struct {
-	Asset           GCPEventAsset  `json:"asset"`
-	PriorAsset      GCPEventAsset  `json:"priorAsset"`
+	Asset           map[string]any `json:"asset"`
+	PriorAsset      map[string]any `json:"priorAsset"`
 	PriorAssetState string         `json:"priorAssetState"`
 	Window          GCPEventWindow `json:"window"`
 	Deleted         bool           `json:"deleted"`
 }
 
-func (e GCPEvent) GetAsset() GCPEventAsset {
+func (e GCPEvent) GetAsset() map[string]any {
 	return e.Asset
 }
 
-func (e GCPEvent) GetPriorAsset() GCPEventAsset {
+func (e GCPEvent) GetPriorAsset() map[string]any {
 	return e.PriorAsset
 }
 
 func (e GCPEvent) GetName() string {
-	return e.Asset.Name
+	return e.Asset["name"].(string)
 }
 
 func (e GCPEvent) GetAssetType() string {
-	return e.Asset.AssetType
+	return e.Asset["assetType"].(string)
 }
 
 func (e GCPEvent) Operation() source.DataOperation {

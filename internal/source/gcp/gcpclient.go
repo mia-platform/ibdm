@@ -52,7 +52,7 @@ func checkPubSubConfig(cfg GCPPubSubConfig) error {
 
 func checkAssetConfig(cfg GCPAssetConfig) error {
 	if cfg.ProjectID == "" {
-		return fmt.Errorf("%w: %s", ErrMissingEnvVariable, errors.New("GOOGLE_CLOUD_ASSET_PROJECT environment variable is required"))
+		return fmt.Errorf("%w: %w", ErrMissingEnvVariable, errors.New("GOOGLE_CLOUD_ASSET_PROJECT environment variable is required"))
 	}
 	return nil
 }
@@ -77,22 +77,22 @@ func NewGCPSource(ctx context.Context) (*GCPSource, error) {
 }
 
 func newPubSubClient() (*pubSubClient, error) {
-	envVars, err := env.ParseAs[GCPPubSubConfig]()
+	pubSubConfig, err := env.ParseAs[GCPPubSubConfig]()
 	if err != nil {
 		return nil, err
 	}
 	return &pubSubClient{
-		config: GCPPubSubConfig(envVars),
+		config: pubSubConfig,
 	}, nil
 }
 
 func newAssetClient() (*assetClient, error) {
-	envVars, err := env.ParseAs[GCPAssetConfig]()
+	assetConfig, err := env.ParseAs[GCPAssetConfig]()
 	if err != nil {
 		return nil, err
 	}
 	return &assetClient{
-		config: GCPAssetConfig(envVars),
+		config: assetConfig,
 	}, nil
 }
 
@@ -194,18 +194,6 @@ func assetToMap(asset *assetpb.Asset) map[string]any {
 	return out
 }
 
-func eventAssetToMap(asset GCPEventAsset) map[string]any {
-	b, err := json.Marshal(asset)
-	if err != nil {
-		return nil
-	}
-	var out map[string]any
-	if err := json.Unmarshal(b, &out); err != nil {
-		return nil
-	}
-	return out
-}
-
 func (a *assetClient) getListAssetsRequest(typesToSync []string) *assetpb.ListAssetsRequest {
 	return &assetpb.ListAssetsRequest{
 		Parent:      "projects/" + a.config.ProjectID,
@@ -293,9 +281,9 @@ func (p *pubSubClient) gcpListener(ctx context.Context, log logger.Logger, types
 		}
 		var valuesMap map[string]any
 		if event.Operation() == source.DataOperationDelete {
-			valuesMap = eventAssetToMap(event.GetPriorAsset())
+			valuesMap = event.GetPriorAsset()
 		} else {
-			valuesMap = eventAssetToMap(event.GetAsset())
+			valuesMap = event.GetAsset()
 		}
 		if valuesMap == nil {
 			log.Error("failed to convert asset to map",
