@@ -48,39 +48,44 @@ Mapped fields
 
 ```json
 {
-  "apiVersion": "serving.knative.dev/v1",
-  "kind": "Service",
-  "name": "hello-2",
-  "uid": "8fe202c7-5658-4798-9f15-7f60b039f498",
-  "labels": {
-    "cloud.googleapis.com/location": "europe-west1"
-  },
-  "containerConcurrency": 80,
-  "containers": [
-    {
-      "name": "hello-1",
-      "image": "us-docker.pkg.dev/cloudrun/container/hello",
-      "ports": [
-        {
-          "containerPort": 8080,
-          "name": "http1"
-        }
-      ],
-      "resources": {
-        "limits": {
-          "cpu": "1000m",
-          "memory": "512Mi"
+  "type": "run.googleapis.com/Service",
+  "syncable": true,
+  "apiVersion": "services.gcp.mia-platform.eu/v1alpha1",
+  "identifier": "8fe202c7-5658-4798-9f15-7f60b039f498",
+  "mappings": {
+    "apiVersion": "serving.knative.dev/v1",
+    "kind": "Service",
+    "name": "hello-2",
+    "labels": {
+      "cloud.googleapis.com/location": "europe-west1"
+    },
+    "containerConcurrency": 80,
+    "containers": [
+      {
+        "name": "hello-1",
+        "image": "us-docker.pkg.dev/cloudrun/container/hello",
+        "ports": [
+          {
+            "containerPort": 8080,
+            "name": "http1"
+          }
+        ],
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "512Mi"
+          }
         }
       }
-    }
-  ],
-  "traffic": [
-    {
-      "latestRevision": true,
-      "percent": 100
-    }
-  ],
-  "updateTime": "2025-10-13T09:53:13.6174Z",
-  "location": "europe-west1",
+    ],
+    "traffic": [
+      {
+        "latestRevision": true,
+        "percent": 100
+      }
+    ],
+    "updateTime": "2025-10-13T09:53:13.6174Z",
+    "location": "europe-west1",
+  }
 }
 ```
