@@ -21,9 +21,6 @@ spec:
             spec:
               type: object
               properties:
-                id:
-                  description: The unique identifier for the instance
-                  type: string
                 name:
                   description: Instance name
                   type: string

@@ -21,9 +21,6 @@ spec:
             spec:
               type: object
               properties:
-                projectNumber:
-                  description: The number uniquely identifying the project
-                  type: string
                 name:
                   description: The resource name of the project (for example, `projects/{project_number}`)
                   type: string

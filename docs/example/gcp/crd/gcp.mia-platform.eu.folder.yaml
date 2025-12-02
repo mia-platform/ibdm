@@ -21,9 +21,6 @@ spec:
             spec:
               type: object
               properties:
-                name:
-                  description: The resource name of the folder, in the form `folders/{folder_id}`
-                  type: string
                 parent:
                   description: The parent's resource identifier (for example, `organizations/{org_id}` or `folders/{folder_id}`)
                   type: string

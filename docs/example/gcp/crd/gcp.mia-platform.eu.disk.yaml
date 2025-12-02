@@ -21,9 +21,6 @@ spec:
             spec:
               type: object
               properties:
-                id:
-                  description: Unique identifier for the disk resource
-                  type: string
                 name:
                   description: The user-assigned name of the disk
                   type: string

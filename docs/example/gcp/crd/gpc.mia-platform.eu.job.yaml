@@ -35,9 +35,6 @@ spec:
                   type: object
                   additionalProperties:
                     type: string
-                uid:
-                  description: Unique identifier for the Job resource
-                  type: string
                 taskCount:
                   description: Desired number of tasks the execution should run
                   type: integer

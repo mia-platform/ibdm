@@ -30,9 +30,6 @@ spec:
                 name:
                   description: The name of the Service
                   type: string
-                uid:
-                  description: Unique identifier for the Service
-                  type: string
                 labels:
                   description: Labels attached to the Service
                   type: object

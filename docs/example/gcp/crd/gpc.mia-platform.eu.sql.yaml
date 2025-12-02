@@ -47,9 +47,6 @@ spec:
                 kind:
                   description: Resource kind (for example, sql#instance)
                   type: string
-                name:
-                  description: Instance name
-                  type: string
                 region:
                   description: Region where the instance runs
                   type: string

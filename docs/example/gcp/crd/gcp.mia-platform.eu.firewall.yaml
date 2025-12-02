@@ -21,9 +21,6 @@ spec:
             spec:
               type: object
               properties:
-                id:
-                  description: The unique identifier for the firewall
-                  type: string
                 name:
                   description: The user-assigned name of the firewall
                   type: string

@@ -30,9 +30,6 @@ spec:
                 name:
                   description: The name of the revision
                   type: string
-                uid:
-                  description: Unique identifier for the revision
-                  type: string
                 labels:
                   description: Labels attached to the revision
                   type: object
