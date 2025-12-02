@@ -170,7 +170,7 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
 
-	results := make(chan source.SourceData, 1)
+	results := make(chan source.SourceData)
 
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
@@ -217,7 +217,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
 
-	results := make(chan source.SourceData, 1)
+	results := make(chan source.SourceData)
 
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
@@ -264,7 +264,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
 
-	results := make(chan source.SourceData, 1)
+	results := make(chan source.SourceData)
 
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
@@ -304,7 +304,7 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
 
-	results := make(chan source.SourceData, 1)
+	results := make(chan source.SourceData)
 
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
