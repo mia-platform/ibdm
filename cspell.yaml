@@ -8,6 +8,7 @@ words:
   - tmpl
   - uuidv
 ignoreWords:
+  - acks
   - apiv
   - assetpb
   - caarlos

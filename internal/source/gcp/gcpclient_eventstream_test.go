@@ -77,8 +77,9 @@ func setupInstancesForEventStreamTest(t *testing.T, config gcpPubSubConfig, clie
 	t.Helper()
 	pubSubClient := &pubSubClient{
 		config: config,
-		c:      client,
 	}
+	pubSubClient.c.Store(client)
+
 	gcpInstance := &GCPSource{
 		a: &assetClient{},
 		p: pubSubClient,
@@ -113,6 +114,7 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 	require.NoError(t, err)
 
 	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
+	defer cleanup()
 
 	srv.Publish(topicName, payload, nil)
 
@@ -140,7 +142,6 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 		require.Fail(t, "timeout waiting for event")
 	}
 
-	cleanup()
 	gcpInstance.Close(ctx)
 	<-closeChannel
 }
@@ -172,6 +173,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 	require.NoError(t, err)
 
 	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
+	defer cleanup()
 
 	srv.Publish(topicName, payload, nil)
 
@@ -199,7 +201,6 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 		require.Fail(t, "timeout waiting for event")
 	}
 
-	cleanup()
 	gcpInstance.Close(ctx)
 	<-closeChannel
 }
@@ -224,11 +225,10 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 	require.NoError(t, err)
 
 	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
+	defer cleanup()
 
-	srv.Publish(topicName, payload, nil)
-
+	msgID := srv.Publish(topicName, payload, nil)
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
-
 	results := make(chan source.SourceData)
 
 	closeChannel := make(chan struct{})
@@ -238,15 +238,21 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 			if assert.True(t, ok) {
 				assert.Equal(t, codes.Canceled, statusErr.Code())
 			}
-
-			closeChannel <- struct{}{}
 		}
+
+		closeChannel <- struct{}{}
 	}()
 
-	assert.Empty(t, results, 0)
-	cleanup()
+	for {
+		message := srv.Message(msgID)
+		if message.Acks > 0 {
+			break
+		}
+	}
+
 	gcpInstance.Close(ctx)
 	<-closeChannel
+	assert.Empty(t, results, 0)
 }
 
 func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
@@ -269,11 +275,10 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 	require.NoError(t, err)
 
 	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
+	defer cleanup()
 
-	srv.Publish(topicName, payload, nil)
-
+	msgID := srv.Publish(topicName, payload, nil)
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
-
 	results := make(chan source.SourceData)
 
 	closeChannel := make(chan struct{})
@@ -283,14 +288,19 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 			if assert.True(t, ok) {
 				assert.Equal(t, codes.Canceled, statusErr.Code())
 			}
-
-			closeChannel <- struct{}{}
 		}
+
+		closeChannel <- struct{}{}
 	}()
 
-	assert.Empty(t, results, 0)
-	gcpInstance.Close(ctx)
-	cleanup()
+	for {
+		message := srv.Message(msgID)
+		if message.Acks > 0 {
+			break
+		}
+	}
 
+	gcpInstance.Close(ctx)
 	<-closeChannel
+	assert.Empty(t, results, 0)
 }

@@ -85,13 +85,15 @@ func newFakeAssetClient(t *testing.T, fakeAssets []*assetpb.Asset) (*asset.Clien
 }
 
 func setupGCPInstance(fakeClient *asset.Client) *GCPSource {
-	return &GCPSource{
+	source := &GCPSource{
 		a: &assetClient{
 			config: gcpAssetConfig{Parent: "projects/test-project"},
-			c:      fakeClient,
 		},
 		p: &pubSubClient{},
 	}
+
+	source.a.c.Store(fakeClient)
+	return source
 }
 
 func (s *fakeAssetServiceServer) ListAssets(ctx context.Context, req *assetpb.ListAssetsRequest) (*assetpb.ListAssetsResponse, error) {

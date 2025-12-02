@@ -5,6 +5,7 @@ package gcp
 
 import (
 	"sync"
+	"sync/atomic"
 
 	asset "cloud.google.com/go/asset/apiv1"
 	"cloud.google.com/go/pubsub/v2"
@@ -27,12 +28,12 @@ type GCPSource struct {
 type pubSubClient struct {
 	config gcpPubSubConfig
 
-	c *pubsub.Client
+	c atomic.Pointer[pubsub.Client]
 }
 
 type assetClient struct {
 	config gcpAssetConfig
 
 	startMutex sync.Mutex
-	c          *asset.Client
+	c          atomic.Pointer[asset.Client]
 }

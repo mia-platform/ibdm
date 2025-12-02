@@ -104,64 +104,65 @@ func newAssetClient() (*assetClient, error) {
 	}, nil
 }
 
-func (p *pubSubClient) initPubSubClient(ctx context.Context) error {
-	if p.c != nil {
-		return nil
+func (p *pubSubClient) initPubSubClient(ctx context.Context) (*pubsub.Client, error) {
+	client := p.c.Load()
+	if client != nil {
+		return client, nil
 	}
+
 	if err := checkPubSubConfig(p.config); err != nil {
-		return err
+		return nil, err
 	}
+
 	client, err := pubsub.NewClient(ctx, p.config.ProjectID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	p.c = client
-	return nil
+
+	p.c.Store(client)
+	return client, nil
 }
 
-func (p *pubSubClient) initPubSubSubscriber(log logger.Logger) *pubsub.Subscriber {
-	log.Debug("starting to listen to Pub/Sub messages",
-		"projectId", p.config.ProjectID,
-		"subscriptionId", p.config.SubscriptionID,
-	)
-	return p.c.Subscriber(p.config.SubscriptionID)
-}
-
-func (a *assetClient) initAssetClient(ctx context.Context) error {
-	if a.c != nil {
-		return nil
+func (a *assetClient) initAssetClient(ctx context.Context) (*asset.Client, error) {
+	client := a.c.Load()
+	if client != nil {
+		return client, nil
 	}
+
 	if err := checkAssetConfig(a.config); err != nil {
-		return err
+		return nil, err
 	}
 	client, err := asset.NewClient(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	a.c = client
-	return nil
+
+	a.c.Store(client)
+	return client, nil
 }
 
 func (p *pubSubClient) closePubSubClient(log logger.Logger) error {
 	log.Debug("Initiating GCP pub/sub client shutdown")
-	if p.c != nil {
-		if err := p.c.Close(); err != nil {
+	client := p.c.Swap(nil)
+	if client != nil {
+		if err := client.Close(); err != nil {
 			return err
 		}
-		p.c = nil
 	}
+
 	log.Debug("Completed GCP pub/sub client shutdown")
 	return nil
 }
 
 func (a *assetClient) closeAssetClient(log logger.Logger) error {
 	log.Debug("Initiating GCP asset client shutdown")
-	if a.c != nil {
-		if err := a.c.Close(); err != nil {
+	client := a.c.Swap(nil)
+	if client != nil {
+		if err := client.Close(); err != nil {
 			return err
 		}
-		a.c = nil
 	}
+
 	log.Debug("Completed GCP asset client shutdown")
 	return nil
 }
@@ -218,7 +219,7 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 
 	defer g.a.startMutex.Unlock()
 
-	err := g.a.initAssetClient(ctx)
+	client, err := g.a.initAssetClient(ctx)
 	if err != nil {
 		err = fmt.Errorf("%w: %s", ErrClientInitialization, err.Error())
 		return err
@@ -231,7 +232,7 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 	}()
 
 	req := g.a.getListAssetsRequest(typesToSync)
-	it := g.a.c.ListAssets(ctx, req)
+	it := client.ListAssets(ctx, req)
 
 	for {
 		asset, err := it.Next()
@@ -254,7 +255,7 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 
 func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.SourceData) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
-	err := g.p.initPubSubClient(ctx)
+	client, err := g.p.initPubSubClient(ctx)
 	if err != nil {
 		return fmt.Errorf("%w: %s", ErrClientInitialization, err.Error())
 	}
@@ -266,11 +267,11 @@ func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string
 		}
 	}()
 
-	return g.p.gcpListener(ctx, log, typesToStream, results)
-}
-
-func (p *pubSubClient) gcpListener(ctx context.Context, log logger.Logger, typesToStream []string, results chan<- source.SourceData) error {
-	subscriber := p.initPubSubSubscriber(log)
+	log.Debug("starting to listen to Pub/Sub messages",
+		"projectId", g.p.config.ProjectID,
+		"subscriptionId", g.p.config.SubscriptionID,
+	)
+	subscriber := client.Subscriber(g.p.config.SubscriptionID)
 	return subscriber.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
 		event, err := gcpListenerHandler(msg.Data)
 		if err != nil {
