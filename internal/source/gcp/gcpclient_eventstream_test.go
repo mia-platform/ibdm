@@ -178,10 +178,9 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 		}
 	}()
 
-	payloadMapResource := setupPayloadMapForEventStreamTest(t, payload)
-
 	select {
 	case res := <-results:
+		payloadMapResource := setupPayloadMapForEventStreamTest(t, payload)
 		assert.NotNil(t, res.Values)
 		assert.Equal(t, payloadMapResource, res.Values)
 	case <-ctx.Done():
@@ -226,10 +225,9 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 		}
 	}()
 
-	payloadMapResource := setupPayloadMapForEventStreamTest(t, payload)
-
 	select {
 	case res := <-results:
+		payloadMapResource := setupPayloadMapForEventStreamTest(t, payload)
 		assert.NotNil(t, res.Values)
 		assert.Equal(t, payloadMapResource, res.Values)
 	case <-ctx.Done():
