@@ -26,17 +26,19 @@ Mapped fields
 	"type": "cloudresourcemanager.googleapis.com/Project",
   "syncable": true,
   "apiVersion": "projects.gcp.mia-platform.eu/v1alpha1",
-	"identifier": "{{resource.data.projectNumber}}",
   "mappings": {
-		"name": "{{resource.data.name}}",
-		"parent": "{{resource.data.parent}}",
-		"projectId": "{{resource.data.projectId}}",
-		"displayName": "{{resource.data.displayName}}",
-		"state": "{{resource.data.state}}",
-		"createTime": "{{resource.data.createTime}}",
-		"updateTime": "{{resource.data.updateTime}}",
-		"labels": "{{ .resource.data.labels | toJSON}}",
-		"tags": "{{ .resource.data.tags | toJSON}}"
+    "identifier": "{{resource.data.projectNumber}}",
+    "specs": {
+      "name": "{{resource.data.name}}",
+      "parent": "{{resource.data.parent}}",
+      "projectId": "{{resource.data.projectId}}",
+      "displayName": "{{resource.data.displayName}}",
+      "state": "{{resource.data.state}}",
+      "createTime": "{{resource.data.createTime}}",
+      "updateTime": "{{resource.data.updateTime}}",
+      "labels": "{{ .resource.data.labels | toJSON}}",
+      "tags": "{{ .resource.data.tags | toJSON}}"
+    }
 	}
 }
 ```
@@ -50,20 +52,23 @@ Mapped fields
   "apiVersion": "projects.gcp.mia-platform.eu/v1alpha1",
 	"identifier": "1234567890",
   "mappings": {
-		"name": "projects/20318464073",
-		"parent": "folders/918177713511",
-		"projectId": "console-infrastructure-lab",
-		"displayName": "Console Infrastructure Lab",
-		"state": "ACTIVE",
-		"createTime": "2023-01-15T09:30:00Z",
-		"updateTime": "2025-09-01T12:00:00Z",
-		"labels": {
-			"env": "staging",
-			"team": "platform"
-		},
-		"tags": {
-			"cost-center": "infra"
-		}
-	}
+   "identifier": "1234567890",
+    "specs": {
+      "name": "projects/20318464073",
+      "parent": "folders/918177713511",
+      "projectId": "console-infrastructure-lab",
+      "displayName": "Console Infrastructure Lab",
+      "state": "ACTIVE",
+      "createTime": "2023-01-15T09:30:00Z",
+      "updateTime": "2025-09-01T12:00:00Z",
+      "labels": {
+        "env": "staging",
+        "team": "platform"
+      },
+      "tags": {
+        "cost-center": "infra"
+      }
+    }
+  }
 }
 ```

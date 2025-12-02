@@ -25,15 +25,17 @@ Mapped fields
   "type": "run.googleapis.com/Revision",
   "syncable": true,
   "apiVersion": "revisions.gcp.mia-platform.eu/v1alpha1",
-	"identifier": "{{resource.data.uid}}",
   "mappings": {
-    "apiVersion": "{{resource.data.apiVersion}}",
-    "kind": "{{resource.data.kind}}",
-    "name": "{{resource.data.name}}",
-    "labels": "{{ .resource.data.labels | toJSON}}",
-    "containers": "{{ .resource.data.containers | toJSON}}",
-    "updateTime": "{{resource.data.updateTime}}",
-    "location": "{{location}}",
+    "identifier": "{{resource.data.uid}}",
+    "specs": {
+      "apiVersion": "{{resource.data.apiVersion}}",
+      "kind": "{{resource.data.kind}}",
+      "name": "{{resource.data.name}}",
+      "labels": "{{ .resource.data.labels | toJSON}}",
+      "containers": "{{ .resource.data.containers | toJSON}}",
+      "updateTime": "{{resource.data.updateTime}}",
+      "location": "{{location}}"
+    }
   }
 }
 ```
@@ -45,31 +47,33 @@ Mapped fields
   "type": "run.googleapis.com/Revision",
   "syncable": true,
   "apiVersion": "revisions.gcp.mia-platform.eu/v1alpha1",
-	"identifier": "36f4a1a1-b8e5-4eb9-9fad-3b4f177b9b11",
   "mappings": {
-    "apiVersion": "serving.knative.dev/v1",
-    "kind": "Revision",
-    "name": "worker-pool-00001-zpg",
-    "labels": {
-      "cloud.googleapis.com/location": "europe-west1",
-      "run.googleapis.com/workerPool": "worker-pool",
-      "run.googleapis.com/workerPoolUid": "ac58f5f0-97ec-4544-9e3f-dbbeace15b38"
-    },
-    "containers": [
-      {
-        "name": "worker-pool-1",
-        "image": "us-docker.pkg.dev/cloudrun/container/worker-pool@sha256:490a8dc720df727947618b108f293810c8fc2de2cb8fb6af519318bbc5f51892",
-        "resources": {
-          "limits": {
-            "cpu": "1",
-            "memory": "512Mi"
+    "identifier": "36f4a1a1-b8e5-4eb9-9fad-3b4f177b9b11",
+    "specs": {
+      "apiVersion": "serving.knative.dev/v1",
+      "kind": "Revision",
+      "name": "worker-pool-00001-zpg",
+      "labels": {
+        "cloud.googleapis.com/location": "europe-west1",
+        "run.googleapis.com/workerPool": "worker-pool",
+        "run.googleapis.com/workerPoolUid": "ac58f5f0-97ec-4544-9e3f-dbbeace15b38"
+      },
+      "containers": [
+        {
+          "name": "worker-pool-1",
+          "image": "us-docker.pkg.dev/cloudrun/container/worker-pool@sha256:490a8dc720df727947618b108f293810c8fc2de2cb8fb6af519318bbc5f51892",
+          "resources": {
+            "limits": {
+              "cpu": "1",
+              "memory": "512Mi"
+            }
           }
         }
-      }
-    ],
-    "updateTime": "2025-10-13T13:07:01.803762Z",
-    "location": "europe-west1",
-    "version": "v1"
+      ],
+      "updateTime": "2025-10-13T13:07:01.803762Z",
+      "location": "europe-west1",
+      "version": "v1"
+    }
   }
 }
 ```

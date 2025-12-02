@@ -30,7 +30,7 @@ Mapped fields
   "syncable": true,
   "apiVersion": "nodepools.gcp.mia-platform.eu/v1alpha1",
   "mappings": {
-    "identifier": "{{resource.data.name}}",
+    "identifier": "{{name}}",
     "specs": {
       "locations": "{ .resource.data.locations | toJSON}}",
       "config": "{{ .resource.data.config | toJSON}}",
@@ -85,7 +85,3 @@ Mapped fields
   }
 }
 ```
-
-## Note
-
-Couldn't find an actual primary key to this entity. The "name" field can probably be treated as unique even though is not an actual unique identifier, maybe more practical testing can give more insight on this point.

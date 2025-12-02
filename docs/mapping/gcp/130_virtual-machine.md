@@ -26,18 +26,20 @@ Mapped fields
   "type": "compute.googleapis.com/Instance",
   "syncable": true,
   "apiVersion": "virtualmachines.compute.gcp.mia-platform.eu/v1alpha1",
-  "identifier": "{{resource.data.id}}",
   "mappings": {
-    "name": "{{resource.data.name}}",
-    "description": "{{resource.data.description}}",
-    "cpuPlatform": "{{resource.data.cpuPlatform}}",
-    "deletionProtection": "{{resource.data.deletionProtection}}",
-    "disks": "{{ .resource.data.disks | toJSON}}",
-    "labels": "{{ .resource.data.labels | toJSON}}",
-    "status": "{{resource.data.status}}",
-    "tags": "{{ .resource.data.tags | toJSON}}",
-    "updateTime": "{{updateTime}}",
-    "location": "{{resource.location}}",
+    "identifier": "{{resource.data.id}}",
+    "specs": {
+      "name": "{{resource.data.name}}",
+      "description": "{{resource.data.description}}",
+      "cpuPlatform": "{{resource.data.cpuPlatform}}",
+      "deletionProtection": "{{resource.data.deletionProtection}}",
+      "disks": "{{ .resource.data.disks | toJSON}}",
+      "labels": "{{ .resource.data.labels | toJSON}}",
+      "status": "{{resource.data.status}}",
+      "tags": "{{ .resource.data.tags | toJSON}}",
+      "updateTime": "{{updateTime}}",
+      "location": "{{resource.location}}"
+    }
   }
 }
 ```
@@ -49,41 +51,35 @@ Mapped fields
   "type": "compute.googleapis.com/Instance",
   "syncable": true,
   "apiVersion": "virtualmachines.compute.gcp.mia-platform.eu/v1alpha1",
-  "identifier": "9002296853278048281",
   "mappings": {
-    "name": "instance-20251013-132607",
-    "description": "",
-    "cpuPlatform": "Unknown CPU Platform",
-    "deletionProtection": false,
-    "disks": [
-      {
-        "architecture": "X86_64",
-        "autoDelete": true,
-        "boot": true,
-        "deviceName": "instance-20251013-132607",
-        "diskSizeGb": "10",
-        "interface": "SCSI",
-        "mode": "READ_WRITE",
-        "type": "PERSISTENT"
-      }
-    ],
-    "labels": {
-      "goog-ops-agent-policy": "v2-x86-template-1-4-0"
-    },
-    "status": "STAGING",
-    "tags": {
-      "fingerprint": "42WmSpB8rSM="
-    },
-    "updateTime": "2025-10-13T13:30:35.594183Z",
-    "location": "europe-west1-d",
+    "identifier": "9002296853278048281",
+    "specs": {
+      "name": "instance-20251013-132607",
+      "description": "",
+      "cpuPlatform": "Unknown CPU Platform",
+      "deletionProtection": false,
+      "disks": [
+        {
+          "architecture": "X86_64",
+          "autoDelete": true,
+          "boot": true,
+          "deviceName": "instance-20251013-132607",
+          "diskSizeGb": "10",
+          "interface": "SCSI",
+          "mode": "READ_WRITE",
+          "type": "PERSISTENT"
+        }
+      ],
+      "labels": {
+        "goog-ops-agent-policy": "v2-x86-template-1-4-0"
+      },
+      "status": "STAGING",
+      "tags": {
+        "fingerprint": "42WmSpB8rSM="
+      },
+      "updateTime": "2025-10-13T13:30:35.594183Z",
+      "location": "europe-west1-d",
+    }
   }
 }
 ```
-
-## Related PubSub topic
-
-- compute.googleapis.com/Instance
-
-## Note
-
-The root level fields "location" and "version" in this case are taken from the assets of the GCP PubSub event message but still are related to the retrieved entity, we can choose to use or not use depending on how they actually performs in real scenarios with real data.
