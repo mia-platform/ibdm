@@ -35,9 +35,6 @@ spec:
                   type: object
                   additionalProperties:
                     type: string
-                taskCount:
-                  description: Desired number of tasks the execution should run
-                  type: integer
                 containers:
                   description: Container specifications for the Job
                   type: array

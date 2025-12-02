@@ -56,11 +56,3 @@ Mapped fields
 	}
 }
 ```
-
-## Note
-
-The "name" field seems to be treated as unique even though is not an actual unique identifier, like a more robust uid for example.
-
-## Technical note
-
-The fields and the examples of this entity have been realized through this documentation of the GKE REST API [Folder](https://cloud.google.com/resource-manager/reference/rest/v2/folders).

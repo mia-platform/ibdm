@@ -51,7 +51,7 @@ Mapped fields
       "addonsConfig": "{{ .resource.data.addonsConfig | toJSON}}",
       "nodePools": "{{ .resource.data.nodePools | toJSON}}",
       "locations": "{{ .resource.data.locations | toJSON}}",
-      "resourceLabels": "{{ .resource.data.resourceLabels | toJSON}}",
+      "resourceLabels": "{{ .resource.data.nodeConfig.resourceLabels | toJSON}}",
       "networkPolicy": "{{ .resource.data.networkPolicy | toJSON}}",
       "maintenancePolicy": "{{ .resource.data.maintenancePolicy | toJSON}}",
       "autoscaling": "{{ .resource.data.autoscaling | toJSON}}",
@@ -59,9 +59,9 @@ Mapped fields
       "databaseEncryption": "{{resource.data.databaseEncryption.state}}",
       "verticalPodAutoscaling": "{{resource.data.verticalPodAutoscaling.enabled}}",
       "shieldedNodes": "{{resource.data.shieldedNodes.enabled}}",
-      "currentMasterVersion": "1.33.4-gke.1350000",
-      "status": "RUNNING",
-      "location": "europe-west1",
+      "currentMasterVersion": "{{resource.data.currentMasterVersion}}",
+      "status": "{{resource.data.status}}",
+      "location": "{{resource.location}}",
       "autopilot": "{{resource.data.autopilot.enabled}}",
       "podAutoscaling": "{{resource.data.podAutoscaling.hpaProfile}}",
     }
@@ -132,27 +132,15 @@ Mapped fields
           "europe-west1"
         ]
       },
-      "defaultMaxPodsConstraint": {
-        "maxPodsPerNode": "110"
-      },
-      "databaseEncryption": {
-        "state": "ENCRYPTED"
-      },
-      "verticalPodAutoscaling": {
-        "enabled": true
-      },
-      "shieldedNodes": {
-        "enabled": true
-      },
+      "defaultMaxPodsConstraint": "110",
+      "databaseEncryption": "ENCRYPTED",
+      "verticalPodAutoscaling": true,
+      "shieldedNodes": true,
       "currentMasterVersion": "1.33.4-gke.1350000",
       "status": "RUNNING",
       "location": "europe-west1",
-      "autopilot": {
-        "enabled": true
-      },
-      "podAutoscaling": {
-        "hpaProfile": "PERFORMANCE"
-      }
+      "autopilot": true,
+      "podAutoscaling": "PERFORMANCE"
     }
   }
 }

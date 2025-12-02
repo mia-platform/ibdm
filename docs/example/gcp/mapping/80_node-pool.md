@@ -39,8 +39,8 @@ Mapped fields
       "maxPodsConstraint": "{{ .resource.data.maxPodsConstraint | toJSON}}",
       "status": "{{resource.data.status}}",
       "version": "{{resource.data.version}}",
-      "updateTime": "{{resource.data.updateTime}}",
-      "location": "{{resource.data.location}}"
+      "updateTime": "{{updateTime}}",
+      "location": "{{resource.location}}"
     }
   }
 }

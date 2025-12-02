@@ -34,13 +34,13 @@ Mapped fields
     "specs": {
       "apiVersion": "{{resource.data.apiVersion}}",
       "kind": "{{resource.data.kind}}",
-      "name": "{{resource.data.name}}",
-      "labels": "{{ .resource.data.labels | toJSON}}",
-      "containerConcurrency": "{{resource.data.containerConcurrency}}",
+      "name": "{{resource.data.metadata.name}}",
+      "labels": "{{ .resource.data.metadata.labels | toJSON}}",
+      "containerConcurrency": "{{resource.data.spec.template.spec.containerConcurrency}}",
       "containers": "{{ .resource.data.containers | toJSON}}",
-      "traffic": "{{ .resource.data.traffic | toJSON}}",
-      "updateTime": "{{resource.data.updateTime}}",
-      "location": "{{location}}"
+      "traffic": "{{ .resource.data.spec.traffic | toJSON}}",
+      "updateTime": "{{updateTime}}",
+      "location": "{{resource.location}}"
     }
   }
 }

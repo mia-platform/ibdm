@@ -28,16 +28,15 @@ Mapped fields
 	"mappings": {
 		"identifier": "{{resource.data.id}}",
 		"specs": {
-			"id": "{{resource.data.id}}",
 			"name": "{{resource.data.name}}",
 			"description": "{{resource.data.description}}",
 			"direction": "{{resource.data.direction}}",
 			"disabled": "{{resource.data.disabled}}",
 			"network": "{{resource.data.network}}",
 			"allowed": "{{ .resource.data.allowed | toJSON}}",
-			"targetTags": "{{resource.targetTags}}",
-			"updateTime": "{{updateTime}}",
-			"location": "{{location}}"
+			"targetTags": "{{ .resource.data.targetTags | toJSON}}",
+			"updateTime": "{{resource.updateTime}}",
+			"location": "{{resource.location}}"
 		}
 	}
 }
@@ -75,7 +74,3 @@ Mapped fields
 	}
 }
 ```
-
-## Note
-
-The root level fields "location" in this case is taken from the assets of the GCP PubSub event message but still is related to the retrieved entity, we can choose to use or not use depending on how it actually performs in real scenarios with real data.

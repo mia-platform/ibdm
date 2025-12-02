@@ -36,12 +36,11 @@ Mapped fields
       "apiVersion": "{{resource.data.apiVersion}}",
       "kind": "{{resource.data.kind}}",
       "name": "{{resource.data.name}}",
-      "labels": "{{ .resource.data.labels | toJSON}}",
-      "taskCount": "{{resource.data.taskCount}}",
+      "labels": "{{ .resource.data.metadata.labels | toJSON}}",
       "containers": "{{ .resource.data.containers | toJSON}}",
-      "maxRetries": "{{resource.data.maxRetries}}",
-      "timeoutSeconds": "{{resource.data.timeoutSeconds}}",
-      "discoveryName": "{{resource.data.discoveryName}}",
+      "maxRetries": "{{resource.data.spec.template.spec.template.spec.maxRetries}}",
+      "timeoutSeconds": "{{resource.data.spec.template.spec.template.spec.timeoutSeconds}}",
+      "discoveryName": "{{resource.discoveryName}}",
       "location": "{{resource.location}}"
     }
   }
@@ -65,7 +64,6 @@ Mapped fields
 				"team": "platform",
 				"env": "staging"
 			},
-			"taskCount": 1,
 			"containers": [
 				{
 					"name": "greeter",

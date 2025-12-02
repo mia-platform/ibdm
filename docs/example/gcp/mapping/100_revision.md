@@ -33,8 +33,8 @@ Mapped fields
       "name": "{{resource.data.name}}",
       "labels": "{{ .resource.data.labels | toJSON}}",
       "containers": "{{ .resource.data.containers | toJSON}}",
-      "updateTime": "{{resource.data.updateTime}}",
-      "location": "{{location}}"
+      "updateTime": "{{updateTime}}",
+      "location": "{{resource.location}}"
     }
   }
 }
@@ -71,8 +71,7 @@ Mapped fields
         }
       ],
       "updateTime": "2025-10-13T13:07:01.803762Z",
-      "location": "europe-west1",
-      "version": "v1"
+      "location": "europe-west1"
     }
   }
 }

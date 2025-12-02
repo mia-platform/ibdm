@@ -14,8 +14,8 @@ Mapped fields
 - description: a human-readable description of the network
 - mtu: the maximum transmission unit, in bytes
 - routingConfig.routingMode: the routing mode for the network (for example, REGIONAL or GLOBAL)
-- updateTime: RFC 3339 timestamp for the last update to the network resource
 - location: location context when applicable
+- updateTime: RFC 3339 timestamp for the last update to the network resource
 
 ```json
 {
@@ -51,8 +51,8 @@ Mapped fields
 		"routingConfig": {
 			"routingMode": "REGIONAL"
 		},
-		"updateTime": "2025-10-14T15:03:08.591868Z",
-		"location": "global"
+		"location": "global",
+		"updateTime": "2025-10-14T15:03:08.591868Z"
 	}
 }
 ```
