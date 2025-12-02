@@ -21,9 +21,6 @@ spec:
             spec:
               type: object
               properties:
-                id:
-                  description: Unique cluster identifier
-                  type: string
                 name:
                   description: Cluster name
                   type: string
@@ -97,43 +94,19 @@ spec:
                       items:
                         type: string
                   additionalProperties: true
-                networkConfig:
-                  description: Network/subnetwork selection
-                  type: object
-                  properties:
-                    network:
-                      type: string
-                    subnetwork:
-                      type: string
-                  additionalProperties: true
                 defaultMaxPodsConstraint:
                   description: Default max pods per node
-                  type: object
-                  properties:
-                    maxPodsPerNode:
-                      type: string
+                  type: string
                   additionalProperties: true
                 databaseEncryption:
                   description: State of cluster database encryption
-                  type: object
-                  properties:
-                    state:
-                      type: string
-                  additionalProperties: true
+                  type: string
                 verticalPodAutoscaling:
                   description: Vertical Pod Autoscaling enabled flag
-                  type: object
-                  properties:
-                    enabled:
-                      type: boolean
-                  additionalProperties: true
+                  type: boolean
                 shieldedNodes:
                   description: Shielded Nodes enabled flag
-                  type: object
-                  properties:
-                    enabled:
-                      type: boolean
-                  additionalProperties: true
+                  type: boolean
                 currentMasterVersion:
                   description: Control plane version
                   type: string
@@ -145,18 +118,10 @@ spec:
                   type: string
                 autopilot:
                   description: Autopilot mode settings
-                  type: object
-                  properties:
-                    enabled:
-                      type: boolean
-                  additionalProperties: true
+                  type: boolean
                 podAutoscaling:
                   description: HPA profile settings
-                  type: object
-                  properties:
-                    hpaProfile:
-                      type: string
-                  additionalProperties: true
+                  type: string
               additionalProperties: true
       served: true
       storage: true
