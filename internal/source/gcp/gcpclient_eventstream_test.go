@@ -18,53 +18,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
-func newFakeGCPPubSubClient() *pubSubClient {
-	return &pubSubClient{
-		config: GCPPubSubConfig{
-			ProjectID:      "console-infrastructure-lab",
-			TopicName:      "mia-platform-resources-export",
-			SubscriptionID: "mia-platform-resources-export-subscription",
-		},
-	}
-}
-
-func TestRealStartEventStream(t *testing.T) {
-	t.Skip("Skipping real start event stream test")
-	ctx := t.Context()
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	pubSubClient := newFakeGCPPubSubClient()
-
-	gcpInstance := &GCPSource{
-		a: &assetClient{},
-		p: pubSubClient,
-	}
-
-	results := make(chan source.SourceData, 10)
-
-	err := gcpInstance.StartEventStream(ctx, []string{"storage.googleapis.com/Bucket"}, results)
-	if err != nil {
-		t.Fatalf("StartEventStream returned error: %v", err)
-	}
-
-	close(results)
-	assert.Len(t, results, 1)
-	for result := range results {
-		fmt.Println("type", result.Type)
-		fmt.Println("type", result.Operation)
-		fmt.Println("type", result.Values)
-		assert.NotNil(t, result.Values)
-		if result.Type != "storage.googleapis.com/Bucket" {
-			t.Fatalf("unexpected result type: %s", result.Type)
-		}
-	}
-}
+const (
+	testTopicTemplate = "projects/%s/topics/topic-name"
+)
 
 func mustCreateTopic(t *testing.T, c *pubsub.Client, name string) *pubsub.Publisher {
 	t.Helper()
@@ -80,7 +43,7 @@ func mustCreateSubConfig(t *testing.T, c *pubsub.Client, pbs *pubsubpb.Subscript
 	return c.Subscriber(pbs.GetName())
 }
 
-func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string, subscriptionName string) (*pstest.Server, *pubsub.Client, func()) {
+func newFakePubSubClient(t *testing.T, config gcpPubSubConfig, topicName string, subscriptionName string) (*pstest.Server, *pubsub.Client, func()) {
 	t.Helper()
 	ctx := t.Context()
 	srv := pstest.NewServer()
@@ -110,7 +73,7 @@ func newFakePubSubClient(t *testing.T, config GCPPubSubConfig, topicName string,
 	}
 }
 
-func setupInstancesForEventStreamTest(t *testing.T, config GCPPubSubConfig, client *pubsub.Client) *GCPSource {
+func setupInstancesForEventStreamTest(t *testing.T, config gcpPubSubConfig, client *pubsub.Client) *GCPSource {
 	t.Helper()
 	pubSubClient := &pubSubClient{
 		config: config,
@@ -124,18 +87,20 @@ func setupInstancesForEventStreamTest(t *testing.T, config GCPPubSubConfig, clie
 }
 
 func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
 
 	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
 	bucketModifyPayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-modify.json"
 	typeToStream := []string{"storage.googleapis.com/Bucket"}
-	config := GCPPubSubConfig{
+	config := gcpPubSubConfig{
 		ProjectID:      "test-project",
-		TopicName:      "mia-platform-resources-export",
-		SubscriptionID: "mia-platform-resources-export-subscription",
+		SubscriptionID: "subscription-id",
 	}
 
-	topicName := fmt.Sprintf("projects/%s/topics/%s", config.ProjectID, config.TopicName)
+	topicName := fmt.Sprintf(testTopicTemplate, config.ProjectID)
 	subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", config.ProjectID, config.SubscriptionID)
 
 	payload, err := os.ReadFile(bucketModifyEventJSONPath)
@@ -155,9 +120,15 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 
 	results := make(chan source.SourceData)
 
+	closeChannel := make(chan struct{})
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
-			t.Logf("StartEventStream returned error: %v", err)
+			statusErr, ok := status.FromError(err)
+			if assert.True(t, ok) {
+				assert.Equal(t, codes.Canceled, statusErr.Code())
+			}
+
+			closeChannel <- struct{}{}
 		}
 	}()
 
@@ -166,29 +137,29 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 		assert.NotNil(t, res.Values)
 		assert.Equal(t, payloadMapResource, res.Values)
 	case <-ctx.Done():
-		t.Fatalf("timeout waiting for event")
+		require.Fail(t, "timeout waiting for event")
 	}
 
-	defer func() {
-		cleanup()
-		cancel()
-		gcpInstance.Close(ctx)
-	}()
+	cleanup()
+	gcpInstance.Close(ctx)
+	<-closeChannel
 }
 
 func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
 
 	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
 	bucketDeletePayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-delete.json"
 	typeToStream := []string{"storage.googleapis.com/Bucket"}
-	config := GCPPubSubConfig{
+	config := gcpPubSubConfig{
 		ProjectID:      "test-project",
-		TopicName:      "mia-platform-resources-export",
-		SubscriptionID: "mia-platform-resources-export-subscription",
+		SubscriptionID: "subscription-id",
 	}
 
-	topicName := fmt.Sprintf("projects/%s/topics/%s", config.ProjectID, config.TopicName)
+	topicName := fmt.Sprintf(testTopicTemplate, config.ProjectID)
 	subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", config.ProjectID, config.SubscriptionID)
 
 	payload, err := os.ReadFile(bucketDeleteEventJSONPath)
@@ -208,9 +179,15 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 
 	results := make(chan source.SourceData)
 
+	closeChannel := make(chan struct{})
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
-			t.Logf("StartEventStream returned error: %v", err)
+			statusErr, ok := status.FromError(err)
+			if assert.True(t, ok) {
+				assert.Equal(t, codes.Canceled, statusErr.Code())
+			}
+
+			closeChannel <- struct{}{}
 		}
 	}()
 
@@ -219,28 +196,28 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 		assert.NotNil(t, res.Values)
 		assert.Equal(t, payloadMapResource, res.Values)
 	case <-ctx.Done():
-		t.Fatalf("timeout waiting for event")
+		require.Fail(t, "timeout waiting for event")
 	}
 
-	defer func() {
-		cleanup()
-		cancel()
-		gcpInstance.Close(ctx)
-	}()
+	cleanup()
+	gcpInstance.Close(ctx)
+	<-closeChannel
 }
 
 func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
 
 	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
 	typeToStream := []string{"compute.googleapis.com/Network"}
-	config := GCPPubSubConfig{
+	config := gcpPubSubConfig{
 		ProjectID:      "test-project",
-		TopicName:      "mia-platform-resources-export",
-		SubscriptionID: "mia-platform-resources-export-subscription",
+		SubscriptionID: "subscription-id",
 	}
 
-	topicName := fmt.Sprintf("projects/%s/topics/%s", config.ProjectID, config.TopicName)
+	topicName := fmt.Sprintf(testTopicTemplate, config.ProjectID)
 	subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", config.ProjectID, config.SubscriptionID)
 
 	payload, err := os.ReadFile(bucketModifyEventJSONPath)
@@ -254,33 +231,38 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 
 	results := make(chan source.SourceData)
 
+	closeChannel := make(chan struct{})
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
-			t.Logf("StartEventStream returned error: %v", err)
+			statusErr, ok := status.FromError(err)
+			if assert.True(t, ok) {
+				assert.Equal(t, codes.Canceled, statusErr.Code())
+			}
+
+			closeChannel <- struct{}{}
 		}
 	}()
 
 	assert.Empty(t, results, 0)
-
-	defer func() {
-		cleanup()
-		cancel()
-		gcpInstance.Close(ctx)
-	}()
+	cleanup()
+	gcpInstance.Close(ctx)
+	<-closeChannel
 }
 
 func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
 
 	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
 	typeToStream := []string{"compute.googleapis.com/Network"}
-	config := GCPPubSubConfig{
+	config := gcpPubSubConfig{
 		ProjectID:      "test-project",
-		TopicName:      "mia-platform-resources-export",
-		SubscriptionID: "mia-platform-resources-export-subscription",
+		SubscriptionID: "subscription-id",
 	}
 
-	topicName := fmt.Sprintf("projects/%s/topics/%s", config.ProjectID, config.TopicName)
+	topicName := fmt.Sprintf(testTopicTemplate, config.ProjectID)
 	subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", config.ProjectID, config.SubscriptionID)
 
 	payload, err := os.ReadFile(bucketDeleteEventJSONPath)
@@ -294,17 +276,21 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 
 	results := make(chan source.SourceData)
 
+	closeChannel := make(chan struct{})
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
-			t.Logf("StartEventStream returned error: %v", err)
+			statusErr, ok := status.FromError(err)
+			if assert.True(t, ok) {
+				assert.Equal(t, codes.Canceled, statusErr.Code())
+			}
+
+			closeChannel <- struct{}{}
 		}
 	}()
 
 	assert.Empty(t, results, 0)
+	gcpInstance.Close(ctx)
+	cleanup()
 
-	defer func() {
-		cleanup()
-		cancel()
-		gcpInstance.Close(ctx)
-	}()
+	<-closeChannel
 }

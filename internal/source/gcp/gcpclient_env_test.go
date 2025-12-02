@@ -10,65 +10,116 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCheckPubSubConfig_Success(t *testing.T) {
-	t.Setenv("GOOGLE_CLOUD_PUBSUB_PROJECT", "test-project-pubsub")
-	t.Setenv("GOOGLE_CLOUD_PUBSUB_TOPIC", "topic-name")
-	t.Setenv("GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION", "sub-id")
-	t.Setenv("GOOGLE_CLOUD_ASSET_PROJECT", "test-project-asset")
+func TestCheckPubSubConfig(t *testing.T) {
+	testCases := map[string]struct {
+		setEnv               func(t *testing.T)
+		expectedPubSubConfig gcpPubSubConfig
+		expectedErr          error
+	}{
+		"all env set": {
+			setEnv: func(t *testing.T) {
+				t.Helper()
+				t.Setenv("GOOGLE_CLOUD_PUBSUB_PROJECT", "project-id")
+				t.Setenv("GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION", "subscription-id")
+			},
+			expectedPubSubConfig: gcpPubSubConfig{
+				ProjectID:      "project-id",
+				SubscriptionID: "subscription-id",
+			},
+		},
+		"missing one variable": {
+			setEnv: func(t *testing.T) {
+				t.Helper()
+				t.Setenv("GOOGLE_CLOUD_PUBSUB_PROJECT", "project-id")
+			},
+			expectedErr: ErrMissingEnvVariable,
+		},
+		"missing all variables": {
+			expectedErr: ErrMissingEnvVariable,
+		},
+	}
 
-	src, err := NewGCPSource(t.Context())
-	require.NoError(t, err)
-	require.NotNil(t, src)
+	for testName, test := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			if test.setEnv != nil {
+				test.setEnv(t)
+			}
 
-	err = checkPubSubConfig(src.p.config)
-	require.NoError(t, err)
-
-	assert.Equal(t, "test-project-pubsub", src.p.config.ProjectID)
-	assert.Equal(t, "topic-name", src.p.config.TopicName)
-	assert.Equal(t, "sub-id", src.p.config.SubscriptionID)
+			source, err := NewGCPSource(t.Context())
+			require.NoError(t, err)
+			err = checkPubSubConfig(source.p.config)
+			if test.expectedErr != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, test.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedPubSubConfig, source.p.config)
+		})
+	}
 }
 
-func TestCheckAssetConfig_Success(t *testing.T) {
-	t.Setenv("GOOGLE_CLOUD_ASSET_PROJECT", "test-project-asset")
-	t.Setenv("GOOGLE_CLOUD_ASSET_PARENT", "projects/test-project-asset")
+func TestCheckAssetConfig(t *testing.T) {
+	testCases := map[string]struct {
+		setEnv              func(t *testing.T)
+		expectedAssetConfig gcpAssetConfig
+		expectedErr         error
+	}{
+		"all env set": {
+			setEnv: func(t *testing.T) {
+				t.Helper()
+				t.Setenv("GOOGLE_CLOUD_SYNC_PARENT", "projects/project-id")
+			},
+			expectedAssetConfig: gcpAssetConfig{
+				Parent: "projects/project-id",
+			},
+		},
+		"all env set with organization parent": {
+			setEnv: func(t *testing.T) {
+				t.Helper()
+				t.Setenv("GOOGLE_CLOUD_SYNC_PARENT", "organizations/12345")
+			},
+			expectedAssetConfig: gcpAssetConfig{
+				Parent: "organizations/12345",
+			},
+		},
+		"all env set with folder parent": {
+			setEnv: func(t *testing.T) {
+				t.Helper()
+				t.Setenv("GOOGLE_CLOUD_SYNC_PARENT", "folders/12345")
+			},
+			expectedAssetConfig: gcpAssetConfig{
+				Parent: "folders/12345",
+			},
+		},
+		"wrong value for parent env": {
+			setEnv: func(t *testing.T) {
+				t.Helper()
+				t.Setenv("GOOGLE_CLOUD_SYNC_PARENT", "invalid-parent-format")
+			},
+			expectedErr: ErrInvalidEnvVariable,
+		},
+		"missing all variables": {
+			expectedErr: ErrMissingEnvVariable,
+		},
+	}
 
-	src, err := NewGCPSource(t.Context())
-	require.NoError(t, err)
-	require.NotNil(t, src)
+	for testName, test := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			if test.setEnv != nil {
+				test.setEnv(t)
+			}
 
-	err = checkAssetConfig(src.a.config)
-	require.NoError(t, err)
-
-	assert.Equal(t, "test-project-asset", src.a.config.ProjectID)
-	assert.Equal(t, "projects/test-project-asset", src.a.config.Parent)
-}
-
-func TestCheckAssetConfig_Fail_WrongParent(t *testing.T) {
-	t.Setenv("GOOGLE_CLOUD_ASSET_PROJECT", "test-project-asset")
-	t.Setenv("GOOGLE_CLOUD_ASSET_PARENT", "organization/test-project-asset")
-
-	src, err := NewGCPSource(t.Context())
-	require.NoError(t, err)
-	require.NotNil(t, src)
-
-	err = checkAssetConfig(src.a.config)
-	require.Error(t, err)
-}
-
-func TestCheckPubSubConfig_MissingEnv(t *testing.T) {
-	src, err := NewGCPSource(t.Context())
-	require.NoError(t, err)
-	require.NotNil(t, src)
-
-	err = checkPubSubConfig(src.p.config)
-	require.Error(t, err)
-}
-
-func TestCheckAssetConfig_MissingEnv(t *testing.T) {
-	src, err := NewGCPSource(t.Context())
-	require.NoError(t, err)
-	require.NotNil(t, src)
-
-	err = checkAssetConfig(src.a.config)
-	require.Error(t, err)
+			source, err := NewGCPSource(t.Context())
+			require.NoError(t, err)
+			err = checkAssetConfig(source.a.config)
+			if test.expectedErr != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, test.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedAssetConfig, source.a.config)
+		})
+	}
 }

@@ -4,24 +4,19 @@
 package gcp
 
 import (
-	"context"
 	"sync"
 
 	asset "cloud.google.com/go/asset/apiv1"
 	"cloud.google.com/go/pubsub/v2"
 )
 
-type ListenerFunc func(ctx context.Context, data []byte) error
-
-type GCPPubSubConfig struct {
+type gcpPubSubConfig struct {
 	ProjectID      string `env:"GOOGLE_CLOUD_PUBSUB_PROJECT"`
-	TopicName      string `env:"GOOGLE_CLOUD_PUBSUB_TOPIC"`
 	SubscriptionID string `env:"GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION"`
 }
 
-type GCPAssetConfig struct {
-	ProjectID string `env:"GOOGLE_CLOUD_ASSET_PROJECT"`
-	Parent    string `env:"GOOGLE_CLOUD_ASSET_PARENT"`
+type gcpAssetConfig struct {
+	Parent string `env:"GOOGLE_CLOUD_SYNC_PARENT"`
 }
 
 type GCPSource struct {
@@ -30,13 +25,13 @@ type GCPSource struct {
 }
 
 type pubSubClient struct {
-	config GCPPubSubConfig
+	config gcpPubSubConfig
 
 	c *pubsub.Client
 }
 
 type assetClient struct {
-	config GCPAssetConfig
+	config gcpAssetConfig
 
 	startMutex sync.Mutex
 	c          *asset.Client

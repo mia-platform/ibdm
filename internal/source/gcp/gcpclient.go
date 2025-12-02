@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	asset "cloud.google.com/go/asset/apiv1"
@@ -26,46 +27,40 @@ const (
 )
 
 var (
+	ErrMissingEnvVariable = errors.New("missing environment variable")
+	ErrInvalidEnvVariable = errors.New("invalid environment value")
+
 	ErrClientInitialization    = errors.New("error initializing GCP client")
 	ErrClosingGCPSourceClient  = errors.New("error closing GCP source client")
 	ErrGCPSourceClientCreation = errors.New("error GCP source creation")
 	ErrListAssetIterator       = errors.New("error iterating over ListAssets response")
-	ErrMissingEnvVariable      = errors.New("missing environment variable")
-	ErrReceivePubSubMessages   = errors.New("error receiving Pub/Sub messages")
+
+	syncParentRegex = regexp.MustCompile(`^(projects|organizations|folders)\/.*`)
 )
 
-func checkPubSubConfig(cfg GCPPubSubConfig) error {
-	errorsList := make([]error, 0)
+func checkPubSubConfig(cfg gcpPubSubConfig) error {
+	missingEnvs := make([]string, 0)
 	if cfg.ProjectID == "" {
-		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_PUBSUB_PROJECT environment variable is required"))
-	}
-	if cfg.TopicName == "" {
-		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_PUBSUB_TOPIC environment variable is required"))
+		missingEnvs = append(missingEnvs, "GOOGLE_CLOUD_PUBSUB_PROJECT")
 	}
 	if cfg.SubscriptionID == "" {
-		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION environment variable is required"))
+		missingEnvs = append(missingEnvs, "GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION")
 	}
-	if len(errorsList) > 0 {
-		err := errors.Join(errorsList...)
-		return fmt.Errorf("%w: %s", ErrMissingEnvVariable, err.Error())
+
+	if len(missingEnvs) > 0 {
+		return fmt.Errorf("%w: %s", ErrMissingEnvVariable, strings.Join(missingEnvs, ", "))
 	}
+
 	return nil
 }
 
-func checkAssetConfig(cfg GCPAssetConfig) error {
-	errorsList := make([]error, 0)
+func checkAssetConfig(cfg gcpAssetConfig) error {
 	if cfg.Parent == "" {
-		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_ASSET_PARENT environment variable is required"))
+		return fmt.Errorf("%w: %s", ErrMissingEnvVariable, "GOOGLE_CLOUD_SYNC_PARENT")
 	}
-	if !strings.HasPrefix(cfg.Parent, "projects/") && !strings.HasPrefix(cfg.Parent, "folders/") && !strings.HasPrefix(cfg.Parent, "subscriptions/") {
-		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_ASSET_PARENT must start with 'projects/', 'folders/' or 'subscriptions/'"))
-	}
-	if cfg.ProjectID == "" {
-		errorsList = append(errorsList, errors.New("GOOGLE_CLOUD_ASSET_PROJECT environment variable is required"))
-	}
-	if len(errorsList) > 0 {
-		err := errors.Join(errorsList...)
-		return fmt.Errorf("%w: %s", ErrMissingEnvVariable, err.Error())
+
+	if !syncParentRegex.MatchString(cfg.Parent) {
+		return fmt.Errorf("%w: %s", ErrInvalidEnvVariable, "GOOGLE_CLOUD_SYNC_PARENT must be one of 'organizations/[organization-number]', 'projects/[project-id]', 'projects/my-project-id', 'projects/[project-number]' or 'folders/[folder-number]'")
 	}
 	return nil
 }
@@ -90,7 +85,7 @@ func NewGCPSource(ctx context.Context) (*GCPSource, error) {
 }
 
 func newPubSubClient() (*pubSubClient, error) {
-	pubSubConfig, err := env.ParseAs[GCPPubSubConfig]()
+	pubSubConfig, err := env.ParseAs[gcpPubSubConfig]()
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +95,7 @@ func newPubSubClient() (*pubSubClient, error) {
 }
 
 func newAssetClient() (*assetClient, error) {
-	assetConfig, err := env.ParseAs[GCPAssetConfig]()
+	assetConfig, err := env.ParseAs[gcpAssetConfig]()
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +122,6 @@ func (p *pubSubClient) initPubSubClient(ctx context.Context) error {
 func (p *pubSubClient) initPubSubSubscriber(log logger.Logger) *pubsub.Subscriber {
 	log.Debug("starting to listen to Pub/Sub messages",
 		"projectId", p.config.ProjectID,
-		"topicName", p.config.TopicName,
 		"subscriptionId", p.config.SubscriptionID,
 	)
 	return p.c.Subscriber(p.config.SubscriptionID)
@@ -209,7 +203,7 @@ func assetToMap(asset *assetpb.Asset) map[string]any {
 
 func (a *assetClient) getListAssetsRequest(typesToSync []string) *assetpb.ListAssetsRequest {
 	return &assetpb.ListAssetsRequest{
-		Parent:      "projects/" + a.config.ProjectID,
+		Parent:      a.config.Parent,
 		AssetTypes:  typesToSync,
 		ContentType: assetpb.ContentType_RESOURCE,
 	}
@@ -237,7 +231,6 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 	}()
 
 	req := g.a.getListAssetsRequest(typesToSync)
-
 	it := g.a.c.ListAssets(ctx, req)
 
 	for {
@@ -249,6 +242,7 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 				return fmt.Errorf("%w: %s", ErrListAssetIterator, err.Error())
 			}
 		}
+
 		results <- source.SourceData{
 			Type:      asset.GetAssetType(),
 			Operation: source.DataOperationUpsert,
@@ -264,6 +258,7 @@ func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string
 	if err != nil {
 		return fmt.Errorf("%w: %s", ErrClientInitialization, err.Error())
 	}
+
 	defer func() {
 		if err = g.p.closePubSubClient(log); err != nil {
 			err = fmt.Errorf("%w: %s", ErrClosingGCPSourceClient, err.Error())
@@ -276,7 +271,7 @@ func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string
 
 func (p *pubSubClient) gcpListener(ctx context.Context, log logger.Logger, typesToStream []string, results chan<- source.SourceData) error {
 	subscriber := p.initPubSubSubscriber(log)
-	err := subscriber.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
+	return subscriber.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
 		event, err := gcpListenerHandler(msg.Data)
 		if err != nil {
 			// TODO: manage to create the subscription if does not exist
@@ -284,6 +279,7 @@ func (p *pubSubClient) gcpListener(ctx context.Context, log logger.Logger, types
 			msg.Nack()
 			return
 		}
+
 		if !event.IsTypeIn(typesToStream) {
 			log.Debug("skipping event of unrequested type",
 				"messageId", msg.ID,
@@ -292,12 +288,14 @@ func (p *pubSubClient) gcpListener(ctx context.Context, log logger.Logger, types
 			msg.Ack()
 			return
 		}
+
 		var valuesMap map[string]any
 		if event.Operation() == source.DataOperationDelete {
 			valuesMap = event.GetPriorAsset()
 		} else {
 			valuesMap = event.GetAsset()
 		}
+
 		if valuesMap == nil {
 			log.Error("failed to convert asset to map",
 				"messageId", msg.ID,
@@ -306,6 +304,7 @@ func (p *pubSubClient) gcpListener(ctx context.Context, log logger.Logger, types
 			msg.Nack()
 			return
 		}
+
 		results <- source.SourceData{
 			Type:      event.GetAssetType(),
 			Operation: event.Operation(),
@@ -313,10 +312,6 @@ func (p *pubSubClient) gcpListener(ctx context.Context, log logger.Logger, types
 		}
 		msg.Ack()
 	})
-	if err != nil {
-		return fmt.Errorf("%w: %s", ErrReceivePubSubMessages, err.Error())
-	}
-	return nil
 }
 
 func gcpListenerHandler(data []byte) (*GCPEvent, error) {
@@ -324,5 +319,6 @@ func gcpListenerHandler(data []byte) (*GCPEvent, error) {
 	if err := json.Unmarshal(data, &event); err != nil {
 		return nil, err
 	}
+
 	return event, nil
 }
