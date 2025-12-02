@@ -123,34 +123,11 @@ func setupInstancesForEventStreamTest(t *testing.T, config GCPPubSubConfig, clie
 	return gcpInstance
 }
 
-func setupPayloadMapForEventStreamTest(t *testing.T, payload []byte) map[string]any {
-	t.Helper()
-	var payloadEvent GCPEvent
-	err := json.Unmarshal(payload, &payloadEvent)
-	require.NoError(t, err)
-
-	var payloadMap map[string]any
-	err = json.Unmarshal(payload, &payloadMap)
-	require.NoError(t, err)
-
-	var resourceName string
-
-	if payloadEvent.Operation() == source.DataOperationDelete {
-		resourceName = "priorAsset"
-	} else {
-		resourceName = "asset"
-	}
-
-	payloadMapResource, ok := payloadMap[resourceName].(map[string]any)
-	require.True(t, ok)
-
-	return payloadMapResource
-}
-
 func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 
-	bucketModifyEventJSONPath := "testdata/event/gcp-bucket-modify.json"
+	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
+	bucketModifyPayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-modify.json"
 	typeToStream := []string{"storage.googleapis.com/Bucket"}
 	config := GCPPubSubConfig{
 		ProjectID:      "test-project",
@@ -162,6 +139,12 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 	subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", config.ProjectID, config.SubscriptionID)
 
 	payload, err := os.ReadFile(bucketModifyEventJSONPath)
+	require.NoError(t, err)
+
+	payloadMap, err := os.ReadFile(bucketModifyPayloadJSONPath)
+	require.NoError(t, err)
+	var payloadMapResource map[string]any
+	err = json.Unmarshal(payloadMap, &payloadMapResource)
 	require.NoError(t, err)
 
 	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
@@ -180,7 +163,6 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 
 	select {
 	case res := <-results:
-		payloadMapResource := setupPayloadMapForEventStreamTest(t, payload)
 		assert.NotNil(t, res.Values)
 		assert.Equal(t, payloadMapResource, res.Values)
 	case <-ctx.Done():
@@ -197,7 +179,8 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 
-	bucketDeleteEventJSONPath := "testdata/event/gcp-bucket-delete.json"
+	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
+	bucketDeletePayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-delete.json"
 	typeToStream := []string{"storage.googleapis.com/Bucket"}
 	config := GCPPubSubConfig{
 		ProjectID:      "test-project",
@@ -209,6 +192,12 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 	subscriptionName := fmt.Sprintf("projects/%s/subscriptions/%s", config.ProjectID, config.SubscriptionID)
 
 	payload, err := os.ReadFile(bucketDeleteEventJSONPath)
+	require.NoError(t, err)
+
+	payloadMap, err := os.ReadFile(bucketDeletePayloadJSONPath)
+	require.NoError(t, err)
+	var payloadMapResource map[string]any
+	err = json.Unmarshal(payloadMap, &payloadMapResource)
 	require.NoError(t, err)
 
 	srv, client, cleanup := newFakePubSubClient(t, config, topicName, subscriptionName)
@@ -227,7 +216,6 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 
 	select {
 	case res := <-results:
-		payloadMapResource := setupPayloadMapForEventStreamTest(t, payload)
 		assert.NotNil(t, res.Values)
 		assert.Equal(t, payloadMapResource, res.Values)
 	case <-ctx.Done():
@@ -244,7 +232,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 
-	bucketModifyEventJSONPath := "testdata/event/gcp-bucket-modify.json"
+	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
 	typeToStream := []string{"compute.googleapis.com/Network"}
 	config := GCPPubSubConfig{
 		ProjectID:      "test-project",
@@ -284,7 +272,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 
-	bucketDeleteEventJSONPath := "testdata/event/gcp-bucket-delete.json"
+	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
 	typeToStream := []string{"compute.googleapis.com/Network"}
 	config := GCPPubSubConfig{
 		ProjectID:      "test-project",
