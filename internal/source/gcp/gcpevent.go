@@ -10,15 +10,10 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
-type GCPEventWindow struct {
-	StartTime string `json:"startTime"`
-}
-
 type GCPEvent struct {
 	Asset           map[string]any `json:"asset"`
 	PriorAsset      map[string]any `json:"priorAsset"`
 	PriorAssetState string         `json:"priorAssetState"`
-	Window          GCPEventWindow `json:"window"`
 	Deleted         bool           `json:"deleted"`
 }
 
