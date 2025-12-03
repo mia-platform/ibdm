@@ -29,11 +29,7 @@ const (
 var (
 	ErrMissingEnvVariable = errors.New("missing environment variable")
 	ErrInvalidEnvVariable = errors.New("invalid environment value")
-
-	ErrClientInitialization    = errors.New("error initializing GCP client")
-	ErrClosingGCPSourceClient  = errors.New("error closing GCP source client")
-	ErrGCPSourceClientCreation = errors.New("error GCP source creation")
-	ErrListAssetIterator       = errors.New("error iterating over ListAssets response")
+	ErrGCPSource          = errors.New("gcp source")
 
 	syncParentRegex = regexp.MustCompile(`^(projects|organizations|folders)\/.*`)
 )
@@ -76,8 +72,9 @@ func NewGCPSource(ctx context.Context) (*GCPSource, error) {
 		errorsList = append(errorsList, err)
 	}
 	if len(errorsList) > 0 {
-		return nil, fmt.Errorf("%w: %s", ErrGCPSourceClientCreation, errors.Join(errorsList...).Error())
+		return nil, handleError(errors.Join(errorsList...))
 	}
+
 	return &GCPSource{
 		a: assetClient,
 		p: pubSubClient,
@@ -145,7 +142,7 @@ func (p *pubSubClient) closePubSubClient(log logger.Logger) error {
 	log.Debug("Initiating GCP pub/sub client shutdown")
 	client := p.c.Swap(nil)
 	if client != nil {
-		if err := client.Close(); err != nil {
+		if err := handleError(client.Close()); err != nil {
 			return err
 		}
 	}
@@ -180,8 +177,7 @@ func (g *GCPSource) Close(ctx context.Context) error {
 		errorsList = append(errorsList, err)
 	}
 	if len(errorsList) > 0 {
-		err := errors.Join(errorsList...)
-		return fmt.Errorf("%w: %s", ErrClosingGCPSourceClient, err.Error())
+		return handleError(errors.Join(errorsList...))
 	}
 	log.Debug("Completed GCP source clients shutdown")
 	return nil
@@ -220,13 +216,12 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 	defer g.a.startMutex.Unlock()
 
 	client, err := g.a.initAssetClient(ctx)
-	if err != nil {
-		err = fmt.Errorf("%w: %s", ErrClientInitialization, err.Error())
+	if err := handleError(err); err != nil {
 		return err
 	}
+
 	defer func() {
-		if err := g.a.closeAssetClient(log); err != nil {
-			err = fmt.Errorf("%w: %s", ErrClosingGCPSourceClient, err.Error())
+		if err := handleError(g.a.closeAssetClient(log)); err != nil {
 			log.Error("error", err)
 		}
 	}()
@@ -240,7 +235,7 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 			if errors.Is(err, iterator.Done) {
 				break
 			} else {
-				return fmt.Errorf("%w: %s", ErrListAssetIterator, err.Error())
+				return handleError(err)
 			}
 		}
 
@@ -256,13 +251,12 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	client, err := g.p.initPubSubClient(ctx)
-	if err != nil {
-		return fmt.Errorf("%w: %s", ErrClientInitialization, err.Error())
+	if err := handleError(err); err != nil {
+		return err
 	}
 
 	defer func() {
-		if err = g.p.closePubSubClient(log); err != nil {
-			err = fmt.Errorf("%w: %s", ErrClosingGCPSourceClient, err.Error())
+		if err := handleError(g.p.closePubSubClient(log)); err != nil {
 			log.Error("error", err)
 		}
 	}()
@@ -276,7 +270,7 @@ func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string
 		event, err := gcpListenerHandler(msg.Data)
 		if err != nil {
 			// TODO: manage to create the subscription if does not exist
-			log.Error("failed to handle Pub/Sub message", "messageId", msg.ID)
+			log.Error("failed to handle Pub/Sub message", "messageId", msg.ID, "error", err)
 			msg.Nack()
 			return
 		}
@@ -322,4 +316,16 @@ func gcpListenerHandler(data []byte) (*GCPEvent, error) {
 	}
 
 	return event, nil
+}
+
+func handleError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if u := errors.Unwrap(err); u != nil && !errors.Is(u, ErrMissingEnvVariable) {
+		err = u
+	}
+
+	return fmt.Errorf("%w: %w", ErrGCPSource, err)
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/pipeline"
+	"github.com/mia-platform/ibdm/internal/source/gcp"
 )
 
 const (
@@ -55,7 +57,7 @@ func (f *runFlags) toOptions(args []string) (*runOptions, error) {
 	}
 
 	return &runOptions{
-		integrationName: integrationName,
+		integrationName: strings.ToLower(integrationName),
 		mappingPaths:    mappingPaths,
 		destination:     nil, // TODO: create a real destination based on flags
 	}, nil
@@ -103,10 +105,7 @@ func (o *runOptions) validate() error {
 		return errNoArguments
 	}
 
-	validIntegrations := map[string]bool{
-		"gcp": true,
-	}
-	if !validIntegrations[o.integrationName] {
+	if _, ok := availableSources[o.integrationName]; !ok {
 		return fmt.Errorf("%w: %s", errInvalidIntegration, o.integrationName)
 	}
 
@@ -125,7 +124,12 @@ func (o *runOptions) execute(ctx context.Context) error {
 		return err
 	}
 
-	pipeline := pipeline.New(sourceGetter(o.integrationName), mappers, o.destination)
+	source, err := sourceGetter(ctx, o.integrationName)
+	if err != nil {
+		return err
+	}
+
+	pipeline := pipeline.New(source, mappers, o.destination)
 	return pipeline.Start(ctx)
 }
 
@@ -172,6 +176,10 @@ func loadMappingConfigs(paths []string) ([]*config.MappingConfig, error) {
 }
 
 // sourceFromIntegrationName return a pipeline source based on the provided integrationName.
-func sourceFromIntegrationName(integrationName string) any {
-	return nil
+func sourceFromIntegrationName(ctx context.Context, integrationName string) (any, error) {
+	if integrationName == "gcp" {
+		return gcp.NewGCPSource(ctx)
+	}
+
+	return nil, nil
 }

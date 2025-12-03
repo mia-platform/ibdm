@@ -124,6 +124,15 @@ func TestCompletion(t *testing.T) {
 		"some args, no completions": {
 			args: []string{"gcp"},
 		},
+		"no args, partial string, return filtered commands": {
+			args:               []string{},
+			toComplete:         "g",
+			expectedCompletion: []string{"gcp\tGoogle Cloud Platform integration"},
+		},
+		"no args, partial wrong string, return no command": {
+			args:       []string{},
+			toComplete: "x",
+		},
 	}
 
 	for testName, test := range testCases {
@@ -141,15 +150,15 @@ func TestCompletion(t *testing.T) {
 func TestOptionsRun(t *testing.T) {
 	t.Parallel()
 
-	sourceGetter = func(integrationName string) any {
+	sourceGetter = func(_ context.Context, integrationName string) (any, error) {
 		switch integrationName {
 		case "fake":
-			return fake.NewFakeEventSourceWithError(t, nil)
+			return fake.NewFakeEventSourceWithError(t, nil), nil
 		case "unsupported":
-			return "unsupported source type"
+			return "unsupported source type", nil
 		}
 
-		return nil
+		return nil, assert.AnError
 	}
 
 	testCases := map[string]struct {
@@ -166,6 +175,12 @@ func TestOptionsRun(t *testing.T) {
 				integrationName: "unsupported",
 			},
 			expectedError: errors.ErrUnsupported,
+		},
+		"error getting source return the error": {
+			options: &runOptions{
+				integrationName: "unknown",
+			},
+			expectedError: assert.AnError,
 		},
 	}
 

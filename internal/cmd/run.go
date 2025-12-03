@@ -4,14 +4,19 @@
 package cmd
 
 import (
+	"fmt"
+	"maps"
+	"slices"
+	"strings"
+
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 )
 
 const (
-	runCmdUsage = "run INTEGRATION"
-	runCmdShort = "start a specific integration by name"
-	runCmdLong  = `Start a specific integration by name.
+	runCmdUsageTemplate = "run [%s]"
+	runCmdShort         = "start a specific integration by name"
+	runCmdLong          = `Start a specific integration by name.
 	Every integration can expose a webhook or start a polling mechanism to receive
 	data events and have its own configuration options, please refer to the
 	documentation for more details.
@@ -27,8 +32,9 @@ const (
 // RunCmd return the "run" cli command for starting an integration.
 func RunCmd() *cobra.Command {
 	flags := &runFlags{}
+	allSources := slices.Sorted(maps.Keys(availableSources))
 	cmd := &cobra.Command{
-		Use:     runCmdUsage,
+		Use:     fmt.Sprintf(runCmdUsageTemplate, strings.Join(allSources, "|")),
 		Short:   heredoc.Doc(runCmdShort),
 		Long:    heredoc.Doc(runCmdLong),
 		Example: heredoc.Doc(runCmdExample),
@@ -60,11 +66,13 @@ func RunCmd() *cobra.Command {
 }
 
 // validArgsFunc provides shell completion for the "run" command.
-func validArgsFunc(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+func validArgsFunc(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	var comps []string
 	if len(args) == 0 {
-		comps = []cobra.Completion{
-			cobra.CompletionWithDesc("gcp", "Google Cloud Platform integration"),
+		for name, description := range availableSources {
+			if strings.HasPrefix(name, toComplete) {
+				comps = append(comps, cobra.CompletionWithDesc(name, description))
+			}
 		}
 	}
 

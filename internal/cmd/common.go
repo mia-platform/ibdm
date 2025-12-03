@@ -12,6 +12,12 @@ import (
 var (
 	errNoArguments        = errors.New("no integration name provided")
 	errInvalidIntegration = errors.New("invalid integration name provided")
+
+	// availableSources holds the list of available integration sources and their description
+	// for command completion and help messages.
+	availableSources = map[string]string{
+		"gcp": "Google Cloud Platform integration",
+	}
 )
 
 // handleError will do custom print error handling based on the type of error received.
