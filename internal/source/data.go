@@ -3,7 +3,7 @@
 
 package source
 
-//go:generate ${TOOLS_BIN}/stringer -type=DataOperation -trimprefix Data
+//go:generate ${TOOLS_BIN}/stringer -type=DataOperation -trimprefix DataOperation
 type DataOperation int
 
 const (
