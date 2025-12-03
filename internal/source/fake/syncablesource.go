@@ -38,6 +38,10 @@ func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ []string, r
 	f.t.Helper()
 	defer close(f.stopChannel)
 
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	for _, data := range f.syncData {
 		select {
 		case <-ctx.Done():

@@ -89,3 +89,25 @@ func TestFakeEventSourceCancelledContext(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Empty(t, receiveDataChan)
 }
+
+func TestFakeHangingEventSource(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(t.Context())
+
+	receiveDataChan := make(chan source.Data)
+	defer close(receiveDataChan)
+
+	syncChan := make(chan struct{})
+	defer close(syncChan)
+
+	go func() {
+		hangingSource := NewHangingEventSource(t)
+		err := hangingSource.StartEventStream(ctx, nil, receiveDataChan)
+		assert.ErrorIs(t, err, context.Canceled)
+		syncChan <- struct{}{}
+	}()
+
+	cancel()
+	<-syncChan
+	assert.Empty(t, receiveDataChan)
+}

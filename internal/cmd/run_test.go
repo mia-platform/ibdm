@@ -20,7 +20,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
-	"github.com/mia-platform/ibdm/internal/source"
+	"github.com/mia-platform/ibdm/internal/source/fake"
 )
 
 func setupTestFileStructure(t *testing.T, baseDir string) {
@@ -144,9 +144,7 @@ func TestOptionsRun(t *testing.T) {
 	sourceGetter = func(integrationName string) any {
 		switch integrationName {
 		case "fake":
-			return &fakeSource{
-				t: t,
-			}
+			return fake.NewFakeEventSourceWithError(t, nil)
 		case "unsupported":
 			return "unsupported source type"
 		}
@@ -186,15 +184,4 @@ func TestOptionsRun(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
-}
-
-var _ source.EventSource = &fakeSource{}
-
-type fakeSource struct {
-	t *testing.T
-}
-
-func (f *fakeSource) StartEventStream(ctx context.Context, types []string, out chan<- source.Data) error {
-	f.t.Helper()
-	return nil
 }

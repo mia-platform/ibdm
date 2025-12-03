@@ -6,7 +6,6 @@ package pipeline
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/source"
+	"github.com/mia-platform/ibdm/internal/source/fake"
 )
 
 func TestPipeline(t *testing.T) {
@@ -75,26 +75,28 @@ func TestPipeline(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		source           any
+		source           func(chan<- struct{}) any
 		expectedData     []mapper.MappedData
 		expectedDeletion []string
 		expectedErr      error
 	}{
 		"unsupported source error": {
-			source:      "not a valid source",
+			source: func(c chan<- struct{}) any {
+				c <- struct{}{}
+				return "not a valid source"
+			},
 			expectedErr: errors.ErrUnsupported,
 		},
 		"source return an error": {
-			source: &fakeSource{
-				t:           t,
-				returnError: true,
+			source: func(c chan<- struct{}) any {
+				c <- struct{}{}
+				return fake.NewFakeEventSourceWithError(t, assert.AnError)
 			},
 			expectedErr: assert.AnError,
 		},
 		"valid pipeline return mapped data": {
-			source: &fakeSource{
-				t:      t,
-				events: []source.Data{type1, brokenType, unknownType, type2},
+			source: func(c chan<- struct{}) any {
+				return fake.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
 			},
 			expectedData: []mapper.MappedData{
 				{
@@ -113,17 +115,31 @@ func TestPipeline(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			destination := &fakeDestination{}
-			pipeline := New(tc.source, testMappers, destination)
+			syncChan := make(chan struct{}, 1)
+			defer close(syncChan)
 
-			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			testSource := tc.source(syncChan)
+			pipeline := New(testSource, testMappers, destination)
+
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
 
-			err := pipeline.Start(ctx)
-			if tc.expectedErr != nil {
-				assert.ErrorIs(t, err, tc.expectedErr)
-				return
-			}
-			assert.NoError(t, err)
+			go func() {
+				err := pipeline.Start(ctx)
+				if tc.expectedErr != nil {
+					assert.ErrorIs(t, err, tc.expectedErr)
+					syncChan <- struct{}{}
+					return
+				}
+
+				assert.NoError(t, err)
+				syncChan <- struct{}{}
+			}()
+
+			<-syncChan
+			pipeline.Stop(ctx, 1*time.Second)
+
+			<-syncChan
 			assert.Equal(t, tc.expectedData, destination.receivedData)
 			assert.Equal(t, tc.expectedDeletion, destination.deletedData)
 		})
@@ -135,8 +151,8 @@ func TestPipelineCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	destination := &fakeDestination{}
-	pipeline := New(&hangingFakeSource{t: t}, map[string]mapper.Mapper{}, destination)
-	go cancel()
+	pipeline := New(fake.NewFakeEventSource(t, nil, make(chan<- struct{})), map[string]mapper.Mapper{}, destination)
+	cancel()
 
 	err := pipeline.Start(ctx)
 
@@ -152,7 +168,7 @@ func TestClosableSource(t *testing.T) {
 
 	syncChan := make(chan struct{})
 	destination := &fakeDestination{}
-	pipeline := New(&fakeClosableSource{t: t, started: syncChan}, map[string]mapper.Mapper{}, destination)
+	pipeline := New(fake.NewFakeEventSource(t, []source.Data{}, syncChan), map[string]mapper.Mapper{}, destination)
 
 	defer close(syncChan)
 	go func() {
@@ -173,7 +189,7 @@ func TestNotClosableSourceStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	destination := &fakeDestination{}
-	pipeline := New(&hangingFakeSource{t: t}, map[string]mapper.Mapper{}, destination)
+	pipeline := New(fake.NewHangingEventSource(t), map[string]mapper.Mapper{}, destination)
 
 	go func() {
 		err := pipeline.Start(ctx)
@@ -202,65 +218,5 @@ func (f *fakeDestination) SendData(ctx context.Context, data mapper.MappedData) 
 
 func (f *fakeDestination) DeleteData(ctx context.Context, id string) error {
 	f.deletedData = append(f.deletedData, id)
-	return nil
-}
-
-var _ source.EventSource = &fakeSource{}
-
-type fakeSource struct {
-	t           *testing.T
-	returnError bool
-	events      []source.Data
-}
-
-func (f *fakeSource) StartEventStream(ctx context.Context, types []string, out chan<- source.Data) error {
-	f.t.Helper()
-	if f.returnError {
-		return fmt.Errorf("error for testing: %w", assert.AnError)
-	}
-
-	for _, event := range f.events {
-		out <- event
-	}
-
-	return nil
-}
-
-var _ source.EventSource = &hangingFakeSource{}
-
-type hangingFakeSource struct {
-	t *testing.T
-}
-
-func (h *hangingFakeSource) StartEventStream(ctx context.Context, types []string, out chan<- source.Data) error {
-	h.t.Helper()
-	<-ctx.Done()
-	return ctx.Err()
-}
-
-var _ source.EventSource = &fakeClosableSource{}
-var _ source.ClosableSource = &fakeClosableSource{}
-
-type fakeClosableSource struct {
-	cancel  context.CancelFunc
-	started chan<- struct{}
-	t       *testing.T
-}
-
-func (f *fakeClosableSource) StartEventStream(ctx context.Context, types []string, out chan<- source.Data) error {
-	f.t.Helper()
-	ctx, cancel := context.WithCancel(ctx)
-	f.cancel = cancel
-
-	f.started <- struct{}{}
-	<-ctx.Done()
-	return nil
-}
-
-func (f *fakeClosableSource) Close(_ context.Context, _ time.Duration) error {
-	f.t.Helper()
-	if f.cancel != nil {
-		f.cancel()
-	}
 	return nil
 }

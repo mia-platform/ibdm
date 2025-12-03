@@ -41,6 +41,10 @@ func (f *fakeEventSource) StartEventStream(ctx context.Context, _ []string, resu
 	f.t.Helper()
 	defer close(f.stopChannel)
 
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	for _, data := range f.eventsData {
 		select {
 		case <-ctx.Done():
@@ -80,4 +84,22 @@ func NewFakeEventSourceWithError(t *testing.T, err error) source.EventSource {
 func (f *errorEventSource) StartEventStream(_ context.Context, _ []string, _ chan<- source.Data) error {
 	f.t.Helper()
 	return f.err
+}
+
+type hangingEventSource struct {
+	t *testing.T
+}
+
+func NewHangingEventSource(t *testing.T) source.EventSource {
+	t.Helper()
+
+	return &hangingEventSource{
+		t: t,
+	}
+}
+
+func (h *hangingEventSource) StartEventStream(ctx context.Context, _ []string, _ chan<- source.Data) error {
+	h.t.Helper()
+	<-ctx.Done()
+	return ctx.Err()
 }
