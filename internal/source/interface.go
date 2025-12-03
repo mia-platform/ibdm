@@ -14,7 +14,7 @@ type SyncableSource interface {
 	// It receives a channel through which it can send the synched data or it can return an error
 	// if the synchronization process fails. typesToSync is a list of data types that need to be
 	// synchronized.
-	StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- SourceData) (err error)
+	StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- Data) (err error)
 }
 
 // EventSource defines the interface for a data source that uses event-driven mechanisms to handle
@@ -24,7 +24,7 @@ type EventSource interface {
 	// It receives a channel through which it can send the incoming data or it can return an error
 	// if the event stream fails. typesToStream is the list of data types that is expected to be
 	// returned.
-	StartEventStream(ctx context.Context, typesToStream []string, results chan<- SourceData) (err error)
+	StartEventStream(ctx context.Context, typesToStream []string, results chan<- Data) (err error)
 }
 
 // ClosableSource defines the interface for a data source that can be gracefully closed. It will

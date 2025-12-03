@@ -120,7 +120,7 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
 
-	results := make(chan source.SourceData)
+	results := make(chan source.Data)
 
 	closeChannel := make(chan struct{})
 	go func() {
@@ -179,7 +179,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
 
-	results := make(chan source.SourceData)
+	results := make(chan source.Data)
 
 	closeChannel := make(chan struct{})
 	go func() {
@@ -229,7 +229,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 
 	msgID := srv.Publish(topicName, payload, nil)
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
-	results := make(chan source.SourceData)
+	results := make(chan source.Data)
 
 	closeChannel := make(chan struct{})
 	go func() {
@@ -279,7 +279,7 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 
 	msgID := srv.Publish(topicName, payload, nil)
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
-	results := make(chan source.SourceData)
+	results := make(chan source.Data)
 
 	closeChannel := make(chan struct{})
 	go func() {

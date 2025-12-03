@@ -210,7 +210,7 @@ func (a *assetClient) getListAssetsRequest(typesToSync []string) *assetpb.ListAs
 	}
 }
 
-func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.SourceData) error {
+func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !g.a.startMutex.TryLock() {
 		log.Debug("sync process already running")
@@ -244,7 +244,7 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 			}
 		}
 
-		results <- source.SourceData{
+		results <- source.Data{
 			Type:      asset.GetAssetType(),
 			Operation: source.DataOperationUpsert,
 			Values:    assetToMap(asset),
@@ -253,7 +253,7 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 	return nil
 }
 
-func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.SourceData) error {
+func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	client, err := g.p.initPubSubClient(ctx)
 	if err != nil {
@@ -306,7 +306,7 @@ func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string
 			return
 		}
 
-		results <- source.SourceData{
+		results <- source.Data{
 			Type:      event.GetAssetType(),
 			Operation: event.Operation(),
 			Values:    valuesMap,

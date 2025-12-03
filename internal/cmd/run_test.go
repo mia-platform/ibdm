@@ -20,7 +20,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
-	"github.com/mia-platform/ibdm/internal/pipeline"
+	"github.com/mia-platform/ibdm/internal/source"
 )
 
 func setupTestFileStructure(t *testing.T, baseDir string) {
@@ -188,13 +188,13 @@ func TestOptionsRun(t *testing.T) {
 	}
 }
 
-var _ pipeline.EventSource = &fakeSource{}
+var _ source.EventSource = &fakeSource{}
 
 type fakeSource struct {
 	t *testing.T
 }
 
-func (f *fakeSource) StartEventStream(ctx context.Context, types []string, out chan<- pipeline.SourceData) error {
+func (f *fakeSource) StartEventStream(ctx context.Context, types []string, out chan<- source.Data) error {
 	f.t.Helper()
 	return nil
 }

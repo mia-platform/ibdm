@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/source"
 )
 
 func TestPipeline(t *testing.T) {
@@ -37,9 +38,9 @@ func TestPipeline(t *testing.T) {
 		}(),
 	}
 
-	type1 := SourceData{
+	type1 := source.Data{
 		Type:      "type1",
-		Operation: DataOperationUpsert,
+		Operation: source.DataOperationUpsert,
 		Values: map[string]any{
 			"id":     "item1",
 			"field1": "value1",
@@ -47,17 +48,17 @@ func TestPipeline(t *testing.T) {
 		},
 	}
 
-	type2 := SourceData{
+	type2 := source.Data{
 		Type:      "type2",
-		Operation: DataOperationDelete,
+		Operation: source.DataOperationDelete,
 		Values: map[string]any{
 			"identifier": "item2",
 			"attributeA": "valueA",
 		},
 	}
-	brokenType := SourceData{
+	brokenType := source.Data{
 		Type:      "type1",
-		Operation: DataOperationUpsert,
+		Operation: source.DataOperationUpsert,
 		Values: map[string]any{
 			"id":     "item3",
 			"field1": "value3",
@@ -65,9 +66,9 @@ func TestPipeline(t *testing.T) {
 		},
 	}
 
-	unknownType := SourceData{
+	unknownType := source.Data{
 		Type:      "unknownType",
-		Operation: DataOperationUpsert,
+		Operation: source.DataOperationUpsert,
 		Values: map[string]any{
 			"someField": "someValue",
 		},
@@ -93,7 +94,7 @@ func TestPipeline(t *testing.T) {
 		"valid pipeline return mapped data": {
 			source: &fakeSource{
 				t:      t,
-				events: []SourceData{type1, brokenType, unknownType, type2},
+				events: []source.Data{type1, brokenType, unknownType, type2},
 			},
 			expectedData: []mapper.MappedData{
 				{
@@ -204,15 +205,15 @@ func (f *fakeDestination) DeleteData(ctx context.Context, id string) error {
 	return nil
 }
 
-var _ EventSource = &fakeSource{}
+var _ source.EventSource = &fakeSource{}
 
 type fakeSource struct {
 	t           *testing.T
 	returnError bool
-	events      []SourceData
+	events      []source.Data
 }
 
-func (f *fakeSource) StartEventStream(ctx context.Context, types []string, out chan<- SourceData) error {
+func (f *fakeSource) StartEventStream(ctx context.Context, types []string, out chan<- source.Data) error {
 	f.t.Helper()
 	if f.returnError {
 		return fmt.Errorf("error for testing: %w", assert.AnError)
@@ -225,20 +226,20 @@ func (f *fakeSource) StartEventStream(ctx context.Context, types []string, out c
 	return nil
 }
 
-var _ EventSource = &hangingFakeSource{}
+var _ source.EventSource = &hangingFakeSource{}
 
 type hangingFakeSource struct {
 	t *testing.T
 }
 
-func (h *hangingFakeSource) StartEventStream(ctx context.Context, types []string, out chan<- SourceData) error {
+func (h *hangingFakeSource) StartEventStream(ctx context.Context, types []string, out chan<- source.Data) error {
 	h.t.Helper()
 	<-ctx.Done()
 	return ctx.Err()
 }
 
-var _ EventSource = &fakeClosableSource{}
-var _ ClosableSource = &fakeClosableSource{}
+var _ source.EventSource = &fakeClosableSource{}
+var _ source.ClosableSource = &fakeClosableSource{}
 
 type fakeClosableSource struct {
 	cancel  context.CancelFunc
@@ -246,7 +247,7 @@ type fakeClosableSource struct {
 	t       *testing.T
 }
 
-func (f *fakeClosableSource) StartEventStream(ctx context.Context, types []string, out chan<- SourceData) error {
+func (f *fakeClosableSource) StartEventStream(ctx context.Context, types []string, out chan<- source.Data) error {
 	f.t.Helper()
 	ctx, cancel := context.WithCancel(ctx)
 	f.cancel = cancel

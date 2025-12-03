@@ -11,6 +11,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/source"
 )
 
 const (
@@ -34,7 +35,7 @@ func New(source any, mappers map[string]mapper.Mapper, destination DataDestinati
 func (p *Pipeline) Start(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	streamSource, ok := p.source.(EventSource)
+	streamSource, ok := p.source.(source.EventSource)
 	if !ok {
 		return &unsupportedSourceError{
 			Message: "source does not support streaming data",
@@ -42,7 +43,7 @@ func (p *Pipeline) Start(ctx context.Context) error {
 	}
 
 	log.Trace("starting data pipeline")
-	channel := make(chan SourceData)
+	channel := make(chan source.Data)
 
 	// use channel to signal when the mapping stream has exhausted all the queue messages
 	mappingDone := make(chan struct{})
@@ -63,7 +64,7 @@ func (p *Pipeline) Start(ctx context.Context) error {
 
 func (p *Pipeline) Stop(ctx context.Context, timeout time.Duration) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
-	closableSource, ok := p.source.(ClosableSource)
+	closableSource, ok := p.source.(source.ClosableSource)
 	if !ok {
 		log.Debug("source does not implement ClosableSource, skipping close")
 		return nil
@@ -73,7 +74,7 @@ func (p *Pipeline) Stop(ctx context.Context, timeout time.Duration) error {
 	return closableSource.Close(ctx, timeout)
 }
 
-func (p *Pipeline) mappingData(ctx context.Context, channel <-chan SourceData) {
+func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	for {
 		select {
@@ -98,12 +99,12 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan SourceData) {
 
 			log.Debug("sending data", "type", data.Type, "operation", data.Operation)
 			switch data.Operation {
-			case DataOperationUpsert:
+			case source.DataOperationUpsert:
 				if err := p.destination.SendData(ctx, output); err != nil {
 					log.Error("error sending data to destination", "type", data.Type, "error", err)
 					continue
 				}
-			case DataOperationDelete:
+			case source.DataOperationDelete:
 				if err := p.destination.DeleteData(ctx, output.Identifier); err != nil {
 					log.Error("error deleting data from destination", "type", data.Type, "error", err)
 					continue

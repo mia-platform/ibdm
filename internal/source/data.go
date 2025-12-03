@@ -13,8 +13,8 @@ const (
 	DataOperationDelete
 )
 
-// SourceData encapsulate the values and metadata for a data returned by a data source.
-type SourceData struct {
+// Data encapsulate the values and metadata for a data returned by a data source.
+type Data struct {
 	// Type represents the type of the data returned by the data source. (e.g., "repository", "issue", etc.)
 	Type string
 	// Operation indicates the operation to be performed on the data (upsert or delete).

@@ -131,7 +131,7 @@ func TestStartSyncProcessClient_Success(t *testing.T) {
 
 	gcpInstance := setupGCPInstance(fakeClient)
 
-	results := make(chan source.SourceData, 10)
+	results := make(chan source.Data, 10)
 
 	err := gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestStartSyncProcessClient_NoAssets(t *testing.T) {
 
 	gcpInstance := setupGCPInstance(fakeClient)
 
-	results := make(chan source.SourceData, 10)
+	results := make(chan source.Data, 10)
 
 	err := gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
 	require.NoError(t, err)
@@ -203,7 +203,7 @@ func TestStartSyncProcessClient_Success_LoadJson_Bucket(t *testing.T) {
 
 	gcpInstance := setupGCPInstance(fakeClient)
 
-	results := make(chan source.SourceData, 10)
+	results := make(chan source.Data, 10)
 
 	err = gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
 	require.NoError(t, err)
@@ -235,7 +235,7 @@ func TestStartSyncProcessClient_Success_LoadJson_Network(t *testing.T) {
 
 	gcpInstance := setupGCPInstance(fakeClient)
 
-	results := make(chan source.SourceData, 10)
+	results := make(chan source.Data, 10)
 
 	err = gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
 	require.NoError(t, err)
@@ -267,7 +267,7 @@ func TestStartSyncProcessClient_NoAssets_LoadJson_Bucket(t *testing.T) {
 
 	gcpInstance := setupGCPInstance(fakeClient)
 
-	results := make(chan source.SourceData, 10)
+	results := make(chan source.Data, 10)
 
 	err = gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
 	require.NoError(t, err)
@@ -292,7 +292,7 @@ func TestStartSyncProcessClient_NoAssets_LoadJson_Network(t *testing.T) {
 
 	gcpInstance := setupGCPInstance(fakeClient)
 
-	results := make(chan source.SourceData, 10)
+	results := make(chan source.Data, 10)
 
 	err = gcpInstance.StartSyncProcess(t.Context(), typesToSync, results)
 	require.NoError(t, err)
