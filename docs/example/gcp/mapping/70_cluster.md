@@ -20,7 +20,7 @@ Mapped fields
 - nodePools: list of node pools with their name, locations, and version
 - locations: list of cluster locations or zones
 - resourceLabels: resource labels for the cluster to use to annotate any related Google Compute Engine resources
-- networkPolicy: wether network policy is enabled
+- networkPolicy: whether network policy is enabled
 - maintenancePolicy: maintenance windows configuration
 - autoscaling: autoprovisioning and resource limits settings
 - networkConfig: network/subnetwork selection

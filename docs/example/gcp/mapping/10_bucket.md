@@ -15,10 +15,11 @@ Mapped fields
 - labels: user-provided bucket labels, in key-value pairs
 - location: the location of the bucket. Object data for objects in the bucket resides in physical storage within this location
 - locationType: the type of location that the bucket resides in. Possible values include region, dual-region, and multi-region
-- storageClass: the bucket's default storage class, used whenever no storageClass is specified for a newly-created object. If storageClass is not specified when the bucket is created, it defaults to "STANDARD"
+- storageClass: the bucket's default storage class, used whenever no storageClass is specified for a newly-created object.
+	If storageClass is not specified when the bucket is created, it defaults to "STANDARD"
 - timeCreated: The creation time of the bucket in RFC 3339 format
 - updated: The time at which the bucket's metadata or IAM policy was last updated, in RFC 3339 format
-- versioning: wether the versioning is enabled for the bucket
+- versioning: whether the versioning is enabled for the bucket
 - hierarchicalNamespace: whether or not hierarchical namespace is enabled for this bucket
 
 ```json
