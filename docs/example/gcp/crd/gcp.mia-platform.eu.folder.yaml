@@ -1,0 +1,44 @@
+---
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: folders.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: Folder
+    plural: folders
+    singular: folder
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parent:
+                  description: The parent's resource identifier (for example, `organizations/{org_id}` or `folders/{folder_id}`)
+                  type: string
+                displayName:
+                  description: A user-visible name for the folder
+                  type: string
+                lifecycleState:
+                  description: The current lifecycle state of the folder
+                  type: string
+                createTime:
+                  description: RFC 3339 timestamp for when the folder was created
+                  type: string
+                  format: date-time
+                tags:
+                  description: Key/value pairs of user-defined tags associated with the folder
+                  type: object
+                  additionalProperties:
+                    type: string
+              additionalProperties: true
+      served: true
+      storage: true

@@ -1,0 +1,73 @@
+---
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: buckets.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: Bucket
+    plural: buckets
+    singular: bucket
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                name:
+                  description: The name of the bucket.
+                  type: string
+                kind:
+                  description: The kind of resource. For buckets this is always 'storage#bucket'.
+                  type: string
+                  const: storage#bucket
+                labels:
+                  description: User-provided bucket labels in key-value pairs.
+                  type: object
+                  additionalProperties:
+                    type: string
+                location:
+                  description: Location of the bucket (region, dual-region or multi-region).
+                  type: string
+                locationType:
+                  description: Type of location the bucket resides in (possible options can be region, dual-region, multi-region).
+                  type: string
+                storageClass:
+                  description: The bucket's default storage class (possible options can be STANDARD, NEARLINE, COLDLINE, ARCHIVE).
+                  type: string
+                timeCreated:
+                  description: Creation time of the bucket in RFC 3339 format.
+                  type: string
+                  format: date-time
+                updated:
+                  description: Time when the bucket metadata or IAM policy was last updated (RFC 3339).
+                  type: string
+                  format: date-time
+                versioning:
+                  description: Versioning configuration for the bucket.
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                  required:
+                    - enabled
+                  additionalProperties: true
+                hierarchicalNamespace:
+                  description: Whether hierarchical namespace is enabled for the bucket.
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                  required:
+                    - enabled
+                  additionalProperties: true
+                additionalProperties: true
+      served: true
+      storage: true

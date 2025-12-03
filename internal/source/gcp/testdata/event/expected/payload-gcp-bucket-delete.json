@@ -1,0 +1,76 @@
+{
+	"ancestors": [
+		"projects/20318464073",
+		"folders/918177713511",
+		"organizations/566099688680"
+	],
+	"assetType": "storage.googleapis.com/Bucket",
+	"name": "//storage.googleapis.com/bucket-test-ibdm-2",
+	"resource": {
+		"data": {
+			"acl": [],
+			"autoclass": {},
+			"billing": {},
+			"cors": [],
+			"customPlacementConfig": {},
+			"defaultObjectAcl": [],
+			"encryption": {
+				"customerManagedEncryptionEnforcementConfig": {},
+				"customerSuppliedEncryptionEnforcementConfig": {},
+				"googleManagedEncryptionEnforcementConfig": {}
+			},
+			"etag": "CBA=",
+			"hierarchicalNamespace": {
+				"enabled": false
+			},
+			"iamConfiguration": {
+				"bucketPolicyOnly": {
+					"enabled": true,
+					"lockedTime": "2026-02-23T07:20:40.473Z"
+				},
+				"publicAccessPrevention": "enforced",
+				"uniformBucketLevelAccess": {
+					"enabled": true,
+					"lockedTime": "2026-02-23T07:20:40.473Z"
+				}
+			},
+			"id": "bucket-test-ibdm-2",
+			"ipFilter": {
+				"publicNetworkSource": {},
+				"vpcNetworkSources": []
+			},
+			"kind": "storage#bucket",
+			"labels": {
+				"key-1": "value-2"
+			},
+			"lifecycle": {
+				"rule": []
+			},
+			"location": "US",
+			"locationType": "multi-region",
+			"logging": {},
+			"metageneration": 16,
+			"name": "bucket-test-ibdm-2",
+			"objectRetention": {},
+			"owner": {},
+			"projectNumber": 20318464073,
+			"retentionPolicy": {},
+			"selfLink": "https://www.googleapis.com/storage/v1/b/bucket-test-ibdm-2",
+			"softDeletePolicy": {
+				"effectiveTime": "2025-11-25T07:20:40.000Z",
+				"retentionDurationSeconds": 604800
+			},
+			"storageClass": "STANDARD",
+			"timeCreated": "2025-11-25T07:20:40.473Z",
+			"updated": "2025-11-26T10:53:17.775Z",
+			"versioning": {},
+			"website": {}
+		},
+		"discoveryDocumentUri": "https://www.googleapis.com/discovery/v1/apis/storage/v1/rest",
+		"discoveryName": "Bucket",
+		"location": "us",
+		"parent": "//cloudresourcemanager.googleapis.com/projects/20318464073",
+		"version": "v1"
+	},
+	"updateTime": "2025-11-26T10:53:17.775678Z"
+}

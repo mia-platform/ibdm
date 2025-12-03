@@ -1,0 +1,75 @@
+---
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: jobs.run.gcp.mia-platform.eu
+spec:
+  group: run.gcp.mia-platform.eu
+  names:
+    kind: Job
+    plural: jobs
+    singular: job
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                apiVersion:
+                  description: API version of the resource (for example, "run.googleapis.com/v1")
+                  type: string
+                kind:
+                  description: The resource kind (for example, "Job")
+                  type: string
+                name:
+                  description: The name of the Job resource
+                  type: string
+                labels:
+                  description: Key/value labels attached to the Job
+                  type: object
+                  additionalProperties:
+                    type: string
+                containers:
+                  description: Container specifications for the Job
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      image:
+                        type: string
+                      resources:
+                        type: object
+                        properties:
+                          limits:
+                            type: object
+                            properties:
+                              cpu:
+                                type: string
+                              memory:
+                                type: string
+                            additionalProperties: true
+                        additionalProperties: true
+                    additionalProperties: true
+                maxRetries:
+                  description: Maximum number of retries for failed executions
+                  type: integer
+                timeoutSeconds:
+                  description: Maximum execution time in seconds before task termination
+                  type: integer
+                discoveryName:
+                  description: Internal discovery name (if present)
+                  type: string
+                location:
+                  description: Location/region for the Job resource
+                  type: string
+              additionalProperties: true
+      served: true
+      storage: true

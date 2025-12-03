@@ -1,27 +1,30 @@
 version: "0.2"
-language: "en,en-GB,en-US"
-
+language: en,en-GB,en-US
 useGitignore: true
 allowCompoundWords: true
-
 words:
-- ibdm
-- tmpl
-- uuidv
-
+  - gsrv
+  - ibdm
+  - tmpl
+  - uuidv
 ignoreWords:
-- errln
-- goarch
-- goarm
-- gobin
-- golangci
-- gomod
-- goos
-- hclog
-- stretchr
-
+  - acks
+  - apiv
+  - assetpb
+  - caarlos
+  - errln
+  - goarch
+  - goarm
+  - gobin
+  - golangci
+  - gomod
+  - goos
+  - hclog
+  - pubsubpb
+  - stretchr
+  - structpb
 files:
-- '**/*.md'
-- '**/*.go'
-- '**/*.mk'
-- 'Makefile'
+  - '**/*.go'
+  - '**/*.md'
+  - '**/*.mk'
+  - Makefile

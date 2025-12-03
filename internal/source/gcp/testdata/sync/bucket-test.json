@@ -1,0 +1,91 @@
+{
+	"update_time": {
+		"seconds": 1755678480,
+		"nanos": 483358000
+	},
+	"name": "//storage.googleapis.com/my-custom-bucket",
+	"asset_type": "storage.googleapis.com/Bucket",
+	"resource": {
+		"version": "v1",
+		"discovery_document_uri": "https://www.googleapis.com/discovery/v1/apis/storage/v1/rest",
+		"discovery_name": "Bucket",
+		"parent": "//cloudresourcemanager.googleapis.com/projects/20318464073",
+		"data": {
+			"acl": [],
+			"autoclass": {},
+			"billing": {},
+			"cors": [],
+			"customPlacementConfig": {},
+			"defaultObjectAcl": [],
+			"encryption": {
+				"customerManagedEncryptionEnforcementConfig": {},
+				"customerSuppliedEncryptionEnforcementConfig": {},
+				"googleManagedEncryptionEnforcementConfig": {}
+			},
+			"etag": "CAc=",
+			"hierarchicalNamespace": {},
+			"iamConfiguration": {
+				"bucketPolicyOnly": {
+					"enabled": false
+				},
+				"publicAccessPrevention": "inherited",
+				"uniformBucketLevelAccess": {
+					"enabled": false
+				}
+			},
+			"id": "my-custom-bucket",
+			"ipFilter": {
+				"publicNetworkSource": {},
+				"vpcNetworkSources": []
+			},
+			"kind": "storage#bucket",
+			"labels": {
+				"goog-terraform-provisioned": "true"
+			},
+			"lifecycle": {
+				"rule": [
+					{
+						"action": {
+							"type": "Delete"
+						},
+						"condition": {
+							"age": 5,
+							"matchesPrefix": [],
+							"matchesStorageClass": [],
+							"matchesSuffix": []
+						}
+					}
+				]
+			},
+			"location": "EUROPE-WEST12",
+			"locationType": "region",
+			"logging": {},
+			"metageneration": 7,
+			"name": "my-custom-bucket",
+			"objectRetention": {},
+			"owner": {},
+			"projectNumber": 20318464073,
+			"retentionPolicy": {},
+			"satisfiesPZS": true,
+			"selfLink": "https://www.googleapis.com/storage/v1/b/my-custom-bucket",
+			"softDeletePolicy": {
+				"effectiveTime": "2025-06-24T08:01:17.000Z",
+				"retentionDurationSeconds": 604800
+			},
+			"storageClass": "STANDARD",
+			"timeCreated": "2025-06-24T08:01:17.858Z",
+			"updated": "2025-07-23T12:26:17.405Z",
+			"versioning": {
+				"enabled": false
+			},
+			"website": {}
+		},
+		"location": "europe-west12"
+	},
+	"AccessContextPolicy": null,
+	"ancestors": [
+		"projects/20318464073",
+		"folders/918177713511",
+		"organizations/566099688680"
+	]
+}
