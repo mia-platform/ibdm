@@ -1,6 +1,7 @@
 # Custom gitignore rules
 
 bin/
+local/
 coverage.txt
 
 # End of Custom gitignore rules
