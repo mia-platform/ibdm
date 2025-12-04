@@ -16,6 +16,7 @@ import (
 	"cloud.google.com/go/pubsub/v2"
 	"github.com/caarlos0/env/v11"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/mia-platform/ibdm/internal/logger"
@@ -261,12 +262,13 @@ func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string
 		}
 	}()
 
-	log.Debug("starting to listen to Pub/Sub messages",
+	log.Debug("starting pubsub subscriber",
 		"projectId", g.p.config.ProjectID,
 		"subscriptionId", g.p.config.SubscriptionID,
 	)
+
 	subscriber := client.Subscriber(g.p.config.SubscriptionID)
-	return subscriber.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
+	err = subscriber.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
 		event, err := gcpListenerHandler(msg.Data)
 		if err != nil {
 			// TODO: manage to create the subscription if does not exist
@@ -307,6 +309,8 @@ func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string
 		}
 		msg.Ack()
 	})
+
+	return handleError(err)
 }
 
 func gcpListenerHandler(data []byte) (*GCPEvent, error) {
@@ -325,6 +329,10 @@ func handleError(err error) error {
 
 	if u := errors.Unwrap(err); u != nil && !errors.Is(u, ErrMissingEnvVariable) {
 		err = u
+	}
+
+	if statusErr, ok := status.FromError(err); ok {
+		err = errors.New(statusErr.Message())
 	}
 
 	return fmt.Errorf("%w: %w", ErrGCPSource, err)
