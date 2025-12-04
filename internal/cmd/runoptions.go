@@ -15,6 +15,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/destination"
+	"github.com/mia-platform/ibdm/internal/destination/writer"
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
@@ -24,6 +25,10 @@ const (
 	mappingPathFlagName  = "mapping-file"
 	mappingPathFlagShort = "f"
 	mappingPathFlagUsage = "Path to a file or directory containing custom mapping rules. Can be specified multiple times."
+
+	localOutputFlagName  = "local-output"
+	localOutputFlagUsage = "If set, writes the output to stdout instead of sending it to the remote"
+	defaultLocalOutput   = false
 )
 
 // sourceGetter is a function that returns a pipeline source based on the provided integration name.
@@ -33,6 +38,7 @@ var sourceGetter = sourceFromIntegrationName
 // runFlags holds the flags for the "run" command.
 type runFlags struct {
 	mappingPaths []string
+	localOutput  bool
 }
 
 // addFlags adds the cli flags to the cobra command.
@@ -43,10 +49,12 @@ func (f *runFlags) addFlags(cmd *cobra.Command) {
 		mappingPathFlagShort,
 		nil,
 		mappingPathFlagUsage)
+
+	cmd.Flags().BoolVar(&f.localOutput, localOutputFlagName, defaultLocalOutput, localOutputFlagUsage)
 }
 
 // toOptions converts the run flags to runOptions enriching it with the passed arguments.
-func (f *runFlags) toOptions(args []string) (*runOptions, error) {
+func (f *runFlags) toOptions(cmd *cobra.Command, args []string) (*runOptions, error) {
 	integrationName := ""
 	if len(args) > 0 {
 		integrationName = args[0]
@@ -57,10 +65,18 @@ func (f *runFlags) toOptions(args []string) (*runOptions, error) {
 		return nil, err
 	}
 
+	var destination destination.Sender
+	if f.localOutput {
+		destination = writer.NewDestination(cmd.OutOrStdout())
+	} else {
+		// TODO: implement remote destination
+		destination = nil
+	}
+
 	return &runOptions{
 		integrationName: strings.ToLower(integrationName),
 		mappingPaths:    mappingPaths,
-		destination:     nil, // TODO: create a real destination based on flags
+		destination:     destination,
 	}, nil
 }
 

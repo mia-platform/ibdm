@@ -44,7 +44,7 @@ func RunCmd() *cobra.Command {
 
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts, err := flags.toOptions(args)
+			opts, err := flags.toOptions(cmd, args)
 			if err != nil {
 				return handleError(cmd, err)
 			}
