@@ -9,6 +9,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/source"
@@ -21,10 +22,10 @@ const (
 type Pipeline struct {
 	source      any
 	mappers     map[string]mapper.Mapper
-	destination DataDestination
+	destination destination.Sender
 }
 
-func New(source any, mappers map[string]mapper.Mapper, destination DataDestination) *Pipeline {
+func New(source any, mappers map[string]mapper.Mapper, destination destination.Sender) *Pipeline {
 	return &Pipeline{
 		source:      source,
 		mappers:     mappers,
@@ -100,7 +101,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 			log.Debug("sending data", "type", data.Type, "operation", data.Operation)
 			switch data.Operation {
 			case source.DataOperationUpsert:
-				if err := p.destination.SendData(ctx, output); err != nil {
+				if err := p.destination.SendData(ctx, output.Identifier, output.Spec); err != nil {
 					log.Error("error sending data to destination", "type", data.Type, "error", err)
 					continue
 				}

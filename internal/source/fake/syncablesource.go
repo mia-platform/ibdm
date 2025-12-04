@@ -19,23 +19,23 @@ type FakeSyncableSource interface {
 var _ FakeSyncableSource = &fakeSyncableSource{}
 
 type fakeSyncableSource struct {
-	t           *testing.T
+	tb          testing.TB
 	syncData    []source.Data
 	stopChannel chan struct{}
 }
 
-func NewFakeSyncableSource(t *testing.T, syncData []source.Data) FakeSyncableSource {
-	t.Helper()
+func NewFakeSyncableSource(tb testing.TB, syncData []source.Data) FakeSyncableSource {
+	tb.Helper()
 
 	return &fakeSyncableSource{
-		t:           t,
+		tb:          tb,
 		syncData:    syncData,
 		stopChannel: make(chan struct{}, 1),
 	}
 }
 
 func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ []string, results chan<- source.Data) error {
-	f.t.Helper()
+	f.tb.Helper()
 	defer close(f.stopChannel)
 
 	if ctx.Err() != nil {
@@ -57,7 +57,7 @@ func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ []string, r
 }
 
 func (f *fakeSyncableSource) Close(_ context.Context, _ time.Duration) error {
-	f.t.Helper()
+	f.tb.Helper()
 	f.stopChannel <- struct{}{}
 	return nil
 }

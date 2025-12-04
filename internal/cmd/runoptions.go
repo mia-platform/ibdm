@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mia-platform/ibdm/internal/config"
+	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
@@ -94,7 +95,7 @@ func collectPaths(paths []string) ([]string, error) {
 type runOptions struct {
 	integrationName string
 	mappingPaths    []string
-	destination     pipeline.DataDestination
+	destination     destination.Sender
 
 	lock sync.Mutex
 }

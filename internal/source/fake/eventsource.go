@@ -19,18 +19,18 @@ type FakeEventSource interface {
 var _ FakeEventSource = &fakeEventSource{}
 
 type fakeEventSource struct {
-	t *testing.T
+	tb testing.TB
 
 	eventsData     []source.Data
 	streamFinished chan<- struct{}
 	stopChannel    chan struct{}
 }
 
-func NewFakeEventSource(t *testing.T, eventsData []source.Data, streamFinished chan<- struct{}) FakeEventSource {
-	t.Helper()
+func NewFakeEventSource(tb testing.TB, eventsData []source.Data, streamFinished chan<- struct{}) FakeEventSource {
+	tb.Helper()
 
 	return &fakeEventSource{
-		t:              t,
+		tb:             tb,
 		eventsData:     eventsData,
 		streamFinished: streamFinished,
 		stopChannel:    make(chan struct{}, 1),
@@ -38,7 +38,7 @@ func NewFakeEventSource(t *testing.T, eventsData []source.Data, streamFinished c
 }
 
 func (f *fakeEventSource) StartEventStream(ctx context.Context, _ []string, results chan<- source.Data) error {
-	f.t.Helper()
+	f.tb.Helper()
 	defer close(f.stopChannel)
 
 	if ctx.Err() != nil {
@@ -60,7 +60,7 @@ func (f *fakeEventSource) StartEventStream(ctx context.Context, _ []string, resu
 }
 
 func (f *fakeEventSource) Close(_ context.Context, _ time.Duration) error {
-	f.t.Helper()
+	f.tb.Helper()
 	f.stopChannel <- struct{}{}
 	return nil
 }
@@ -68,38 +68,38 @@ func (f *fakeEventSource) Close(_ context.Context, _ time.Duration) error {
 var _ source.EventSource = &errorEventSource{}
 
 type errorEventSource struct {
-	t   *testing.T
+	tb  testing.TB
 	err error
 }
 
-func NewFakeEventSourceWithError(t *testing.T, err error) source.EventSource {
-	t.Helper()
+func NewFakeEventSourceWithError(tb testing.TB, err error) source.EventSource {
+	tb.Helper()
 
 	return &errorEventSource{
-		t:   t,
+		tb:  tb,
 		err: err,
 	}
 }
 
 func (f *errorEventSource) StartEventStream(_ context.Context, _ []string, _ chan<- source.Data) error {
-	f.t.Helper()
+	f.tb.Helper()
 	return f.err
 }
 
 type hangingEventSource struct {
-	t *testing.T
+	tb testing.TB
 }
 
-func NewHangingEventSource(t *testing.T) source.EventSource {
-	t.Helper()
+func NewHangingEventSource(tb testing.TB) source.EventSource {
+	tb.Helper()
 
 	return &hangingEventSource{
-		t: t,
+		tb: tb,
 	}
 }
 
 func (h *hangingEventSource) StartEventStream(ctx context.Context, _ []string, _ chan<- source.Data) error {
-	h.t.Helper()
+	h.tb.Helper()
 	<-ctx.Done()
 	return ctx.Err()
 }

@@ -12,9 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	fakedestination "github.com/mia-platform/ibdm/internal/destination/fake"
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/source"
-	"github.com/mia-platform/ibdm/internal/source/fake"
+	fakesource "github.com/mia-platform/ibdm/internal/source/fake"
 )
 
 func TestPipeline(t *testing.T) {
@@ -76,7 +77,7 @@ func TestPipeline(t *testing.T) {
 
 	testCases := map[string]struct {
 		source           func(chan<- struct{}) any
-		expectedData     []mapper.MappedData
+		expectedData     []fakedestination.SentDataRecord
 		expectedDeletion []string
 		expectedErr      error
 	}{
@@ -90,15 +91,15 @@ func TestPipeline(t *testing.T) {
 		"source return an error": {
 			source: func(c chan<- struct{}) any {
 				c <- struct{}{}
-				return fake.NewFakeEventSourceWithError(t, assert.AnError)
+				return fakesource.NewFakeEventSourceWithError(t, assert.AnError)
 			},
 			expectedErr: assert.AnError,
 		},
 		"valid pipeline return mapped data": {
 			source: func(c chan<- struct{}) any {
-				return fake.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
+				return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
 			},
-			expectedData: []mapper.MappedData{
+			expectedData: []fakedestination.SentDataRecord{
 				{
 					Identifier: "item1",
 					Spec: map[string]any{
@@ -114,7 +115,7 @@ func TestPipeline(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			destination := &fakeDestination{}
+			destination := fakedestination.NewFakeDestination(t)
 			syncChan := make(chan struct{}, 1)
 			defer close(syncChan)
 
@@ -140,8 +141,8 @@ func TestPipeline(t *testing.T) {
 			pipeline.Stop(ctx, 1*time.Second)
 
 			<-syncChan
-			assert.Equal(t, tc.expectedData, destination.receivedData)
-			assert.Equal(t, tc.expectedDeletion, destination.deletedData)
+			assert.Equal(t, tc.expectedData, destination.SentData)
+			assert.Equal(t, tc.expectedDeletion, destination.DeletedData)
 		})
 	}
 }
@@ -150,15 +151,15 @@ func TestPipelineCancellation(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 
-	destination := &fakeDestination{}
-	pipeline := New(fake.NewFakeEventSource(t, nil, make(chan<- struct{})), map[string]mapper.Mapper{}, destination)
+	destination := fakedestination.NewFakeDestination(t)
+	pipeline := New(fakesource.NewFakeEventSource(t, nil, make(chan<- struct{})), map[string]mapper.Mapper{}, destination)
 	cancel()
 
 	err := pipeline.Start(ctx)
 
 	assert.ErrorIs(t, err, context.Canceled)
-	assert.Empty(t, destination.receivedData)
-	assert.Empty(t, destination.deletedData)
+	assert.Empty(t, destination.SentData)
+	assert.Empty(t, destination.DeletedData)
 }
 
 func TestClosableSource(t *testing.T) {
@@ -167,8 +168,8 @@ func TestClosableSource(t *testing.T) {
 	defer cancel()
 
 	syncChan := make(chan struct{})
-	destination := &fakeDestination{}
-	pipeline := New(fake.NewFakeEventSource(t, []source.Data{}, syncChan), map[string]mapper.Mapper{}, destination)
+	destination := fakedestination.NewFakeDestination(t)
+	pipeline := New(fakesource.NewFakeEventSource(t, []source.Data{}, syncChan), map[string]mapper.Mapper{}, destination)
 
 	defer close(syncChan)
 	go func() {
@@ -180,16 +181,16 @@ func TestClosableSource(t *testing.T) {
 	err := pipeline.Stop(ctx, 2*time.Second)
 	assert.NoError(t, err)
 
-	assert.Empty(t, destination.receivedData)
-	assert.Empty(t, destination.deletedData)
+	assert.Empty(t, destination.SentData)
+	assert.Empty(t, destination.DeletedData)
 }
 
 func TestNotClosableSourceStop(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 
-	destination := &fakeDestination{}
-	pipeline := New(fake.NewHangingEventSource(t), map[string]mapper.Mapper{}, destination)
+	destination := fakedestination.NewFakeDestination(t)
+	pipeline := New(fakesource.NewHangingEventSource(t), map[string]mapper.Mapper{}, destination)
 
 	go func() {
 		err := pipeline.Start(ctx)
@@ -200,23 +201,6 @@ func TestNotClosableSourceStop(t *testing.T) {
 	assert.NoError(t, err)
 	cancel()
 
-	assert.Empty(t, destination.receivedData)
-	assert.Empty(t, destination.deletedData)
-}
-
-var _ DataDestination = &fakeDestination{}
-
-type fakeDestination struct {
-	receivedData []mapper.MappedData
-	deletedData  []string
-}
-
-func (f *fakeDestination) SendData(ctx context.Context, data mapper.MappedData) error {
-	f.receivedData = append(f.receivedData, data)
-	return nil
-}
-
-func (f *fakeDestination) DeleteData(ctx context.Context, id string) error {
-	f.deletedData = append(f.deletedData, id)
-	return nil
+	assert.Empty(t, destination.SentData)
+	assert.Empty(t, destination.DeletedData)
 }
