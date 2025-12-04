@@ -89,6 +89,12 @@ func rootCmd() *cobra.Command {
 		},
 	}
 
+	cmd.SetFlagErrorFunc(func(c *cobra.Command, err error) error {
+		c.PrintErrln(err)
+		_ = c.Usage()
+		return err
+	})
+
 	flag.addFlags(cmd)
 	cmd.AddCommand(
 		internalcmd.RunCmd(),
