@@ -33,10 +33,10 @@ func (d *writerDestination) SendData(_ context.Context, identifier string, spec 
 
 	builder.WriteString("Send data:\n")
 	builder.WriteString("\tIdentifier: " + identifier + "\n")
-	builder.WriteString("\tSpec:\n\t\t")
+	builder.WriteString("\tSpec: ")
 
 	encoder := json.NewEncoder(builder)
-	encoder.SetIndent("\t\t", "\t")
+	encoder.SetIndent("\t", "\t")
 	_ = encoder.Encode(spec)
 	builder.WriteString("\n")
 

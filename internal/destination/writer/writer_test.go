@@ -26,15 +26,14 @@ func TestNewWriterDestination(t *testing.T) {
 
 	expectedOutput := `Send data:
 	Identifier: id-1
-	Spec:
-		{
-			"array": [
-				"a",
-				"b",
-				"c"
-			],
-			"key": "value"
-		}
+	Spec: {
+		"array": [
+			"a",
+			"b",
+			"c"
+		],
+		"key": "value"
+	}
 
 Delete data:
 	Identifier: id-1
