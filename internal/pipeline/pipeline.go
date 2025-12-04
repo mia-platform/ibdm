@@ -98,7 +98,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 				continue
 			}
 
-			log.Debug("sending data", "type", data.Type, "operation", data.Operation)
+			log.Trace("sending data", "type", data.Type, "operation", data.Operation.String())
 			switch data.Operation {
 			case source.DataOperationUpsert:
 				if err := p.destination.SendData(ctx, output.Identifier, output.Spec); err != nil {
@@ -112,7 +112,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 				}
 			}
 
-			log.Debug("data sent", "type", data.Type, "operation", data.Operation)
+			log.Trace("data sent", "type", data.Type, "operation", data.Operation.String())
 		}
 	}
 }
