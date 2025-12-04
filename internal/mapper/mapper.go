@@ -104,6 +104,7 @@ func templateFunctions() template.FuncMap {
 		"trim":       functions.TrimSpace,
 		"trimPrefix": functions.TrimPrefix,
 		"trimSuffix": functions.TrimSuffix,
+		"replace":    functions.Replace,
 		"upper":      functions.ToUpper,
 		"lower":      functions.ToLower,
 		"truncate":   functions.Truncate,

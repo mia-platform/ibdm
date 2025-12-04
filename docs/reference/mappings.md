@@ -16,6 +16,7 @@ these other ones:
 	- [trim](#trim)
 	- [trimPrefix](#trimprefix)
 	- [trimSuffix](#trimsuffix)
+	- [replace](#replace)
 	- [upper](#upper)
 	- [lower](#lower)
 	- [truncate](#truncate)
@@ -57,6 +58,14 @@ The `trimSuffix` function will remove the given substring from the end of the in
 
 As an example, `{{ .aKey | trimSuffix "world" }}` with a `aKey` containing `hello world` will return
 `hello `.<!-- markdownlint-disable-line MD038 -->
+
+### `replace`
+
+The `replace` function will replace all non-overlapping instances of the first parameter replaced
+by the second one.
+
+As an example, `{{ .aKey | replace "_" "-" }}` with a `aKey` containing `hello_world` will return
+`hello-world`.
 
 ### `upper`
 

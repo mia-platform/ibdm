@@ -99,6 +99,15 @@ func TestStringsFunctions(t *testing.T) {
 		assert.Equal(t, expected, TrimSuffix(suffix, input))
 	})
 
+	t.Run("replace function", func(t *testing.T) {
+		t.Parallel()
+		input := "Hello, World! World!"
+		toChange := "World"
+		toBe := "Universe"
+		expected := "Hello, Universe! Universe!"
+		assert.Equal(t, expected, Replace(toChange, toBe, input))
+	})
+
 	t.Run("toUpper function", func(t *testing.T) {
 		t.Parallel()
 		input := "hello, world!"

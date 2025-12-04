@@ -23,6 +23,11 @@ func TrimSuffix(suffix, s string) string {
 	return strings.TrimSuffix(s, suffix)
 }
 
+// Replace replaces all occurrences of toChange with toBe in the input string.
+func Replace(toChange, toBe, s string) string {
+	return strings.ReplaceAll(s, toChange, toBe)
+}
+
 // ToUpper converts the input string to upper case.
 func ToUpper(s string) string {
 	return strings.ToUpper(s)
