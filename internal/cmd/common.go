@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -13,10 +14,15 @@ var (
 	errNoArguments        = errors.New("no integration name provided")
 	errInvalidIntegration = errors.New("invalid integration name provided")
 
-	// availableSources holds the list of available integration sources and their description
+	// availableEventSources holds the list of available integration sources and their description
 	// for command completion and help messages.
-	availableSources = map[string]string{
+	availableEventSources = map[string]string{
 		"gcp": "Google Cloud Platform integration",
+	}
+	// availableSyncSources holds the list of available synchronization sources and their description
+	// for command completion and help messages.
+	availableSyncSources = map[string]string{
+		"gcp": "Google Cloud Platform synchronization",
 	}
 )
 
@@ -45,4 +51,19 @@ func unwrappedError(err error) error {
 	}
 
 	return err
+}
+
+func validArgsFunc(sources map[string]string) cobra.CompletionFunc {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		var comps []string
+		if len(args) == 0 {
+			for name, description := range sources {
+				if strings.HasPrefix(name, toComplete) {
+					comps = append(comps, cobra.CompletionWithDesc(name, description))
+				}
+			}
+		}
+
+		return comps, cobra.ShellCompDirectiveNoFileComp
+	}
 }

@@ -63,7 +63,7 @@ Mapped fields
       "status": "{{resource.data.status}}",
       "location": "{{resource.location}}",
       "autopilot": "{{resource.data.autopilot.enabled}}",
-      "podAutoscaling": "{{resource.data.podAutoscaling.hpaProfile}}",
+      "podAutoscaling": "{{resource.data.podAutoscaling.hpaProfile}}"
     }
   }
 }

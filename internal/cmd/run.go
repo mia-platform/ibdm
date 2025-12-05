@@ -32,7 +32,7 @@ const (
 // RunCmd return the "run" cli command for starting an integration.
 func RunCmd() *cobra.Command {
 	flags := &runFlags{}
-	allSources := slices.Sorted(maps.Keys(availableSources))
+	allSources := slices.Sorted(maps.Keys(availableEventSources))
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf(runCmdUsageTemplate, strings.Join(allSources, "|")),
 		Short:   heredoc.Doc(runCmdShort),
@@ -42,7 +42,7 @@ func RunCmd() *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 
-		ValidArgsFunction: validArgsFunc,
+		ValidArgsFunction: validArgsFunc(availableEventSources),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts, err := flags.toOptions(cmd, args)
 			if err != nil {
@@ -63,18 +63,4 @@ func RunCmd() *cobra.Command {
 
 	flags.addFlags(cmd)
 	return cmd
-}
-
-// validArgsFunc provides shell completion for the "run" command.
-func validArgsFunc(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	var comps []string
-	if len(args) == 0 {
-		for name, description := range availableSources {
-			if strings.HasPrefix(name, toComplete) {
-				comps = append(comps, cobra.CompletionWithDesc(name, description))
-			}
-		}
-	}
-
-	return comps, cobra.ShellCompDirectiveNoFileComp
 }

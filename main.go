@@ -98,6 +98,7 @@ func rootCmd() *cobra.Command {
 	flag.addFlags(cmd)
 	cmd.AddCommand(
 		internalcmd.RunCmd(),
+		internalcmd.SyncCmd(),
 		versionCmd(),
 	)
 

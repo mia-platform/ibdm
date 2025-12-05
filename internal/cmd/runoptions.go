@@ -122,7 +122,7 @@ func (o *runOptions) validate() error {
 		return errNoArguments
 	}
 
-	if _, ok := availableSources[o.integrationName]; !ok {
+	if _, ok := availableEventSources[o.integrationName]; !ok {
 		return fmt.Errorf("%w: %s", errInvalidIntegration, o.integrationName)
 	}
 

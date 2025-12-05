@@ -16,7 +16,8 @@ Mapped fields
 - disabled: whether the firewall is disabled
 - network: the network this firewall applies to
 - allowed: protocol and ports that are allowed by this firewall
-- targetTags: list of instance tags the firewall rules applies to. If specified, the rule applies only to instances in the VPC network that have one of those tags, otherwise to all instances
+- targetTags: list of instance tags the firewall rules applies to. If specified, the rule applies only to instances in
+	the VPC network that have one of those tags, otherwise to all instances
 - updateTime: RFC 3339 timestamp for the last update to the firewall
 - location: location context when applicable
 

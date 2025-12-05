@@ -57,7 +57,7 @@ func checkAssetConfig(cfg gcpAssetConfig) error {
 	}
 
 	if !syncParentRegex.MatchString(cfg.Parent) {
-		return fmt.Errorf("%w: %s", ErrInvalidEnvVariable, "GOOGLE_CLOUD_SYNC_PARENT must be one of 'organizations/[organization-number]', 'projects/[project-id]', 'projects/my-project-id', 'projects/[project-number]' or 'folders/[folder-number]'")
+		return fmt.Errorf("%w: %s", ErrInvalidEnvVariable, "GOOGLE_CLOUD_SYNC_PARENT must be one of 'organizations/[organization-number]', 'projects/[project-id]', 'projects/[project-number]', or 'folders/[folder-number]'")
 	}
 	return nil
 }
@@ -327,7 +327,10 @@ func handleError(err error) error {
 		return nil
 	}
 
-	if u := errors.Unwrap(err); u != nil && !errors.Is(u, ErrMissingEnvVariable) {
+	switch u := errors.Unwrap(err); u != nil {
+	case errors.Is(u, ErrMissingEnvVariable):
+	case errors.Is(u, ErrInvalidEnvVariable):
+	default:
 		err = u
 	}
 

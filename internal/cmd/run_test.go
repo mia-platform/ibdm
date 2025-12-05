@@ -111,7 +111,6 @@ func TestExitWithErrorOutput(t *testing.T) {
 
 func TestCompletion(t *testing.T) {
 	t.Parallel()
-
 	testCases := map[string]struct {
 		args               []string
 		toComplete         string
@@ -140,7 +139,7 @@ func TestCompletion(t *testing.T) {
 			t.Parallel()
 
 			cmd := RunCmd()
-			args, directive := validArgsFunc(cmd, test.args, test.toComplete)
+			args, directive := validArgsFunc(availableEventSources)(cmd, test.args, test.toComplete)
 			assert.Equal(t, cobra.ShellCompDirectiveNoFileComp, directive)
 			assert.Equal(t, test.expectedCompletion, args)
 		})
@@ -153,7 +152,7 @@ func TestOptionsRun(t *testing.T) {
 	sourceGetter = func(_ context.Context, integrationName string) (any, error) {
 		switch integrationName {
 		case "fake":
-			return fake.NewFakeEventSourceWithError(t, nil), nil
+			return fake.NewFakeSourceWithError(t, nil), nil
 		case "unsupported":
 			return "unsupported source type", nil
 		}

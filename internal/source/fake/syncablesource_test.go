@@ -15,6 +15,39 @@ import (
 
 func TestFakeSyncableSource(t *testing.T) {
 	t.Parallel()
+
+	testTimeout := 1 * time.Second
+	testData := []source.Data{
+		{Type: "1", Operation: source.DataOperationUpsert, Values: map[string]any{"key": "value"}},
+		{Type: "2", Operation: source.DataOperationDelete, Values: map[string]any{"key": "value"}},
+		{Type: "3", Operation: source.DataOperationUpsert, Values: map[string]any{"key": "value"}},
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), testTimeout)
+	defer cancel()
+
+	receiveDataChan := make(chan source.Data)
+	fakeSource := NewFakeSyncableSource(t, testData)
+	go func() {
+		err := fakeSource.StartSyncProcess(ctx, nil, receiveDataChan)
+		assert.NoError(t, err)
+		close(receiveDataChan)
+	}()
+
+	receivedData := make([]source.Data, 0, len(testData))
+	for {
+		data, ok := <-receiveDataChan
+		if !ok {
+			break
+		}
+		receivedData = append(receivedData, data)
+	}
+
+	assert.Equal(t, testData, receivedData)
+}
+
+func TestCloseFakeSyncableSource(t *testing.T) {
+	t.Parallel()
 	testTimeout := 1 * time.Second
 	testData := []source.Data{
 		{Type: "1", Operation: source.DataOperationUpsert, Values: map[string]any{"key": "value"}},
@@ -30,8 +63,8 @@ func TestFakeSyncableSource(t *testing.T) {
 	fakeSource := NewFakeSyncableSource(t, testData)
 	go func() {
 		err := fakeSource.StartSyncProcess(ctx, nil, receiveDataChan)
-		close(receiveDataChan)
 		assert.NoError(t, err)
+		close(receiveDataChan)
 	}()
 
 	receivedData := make([]source.Data, 0)

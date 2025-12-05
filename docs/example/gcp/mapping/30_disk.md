@@ -67,4 +67,6 @@ Mapped fields
 
 ## Note
 
-The root level fields "location" and "version" in this case are taken from the assets of the GCP PubSub event message, but still are related to the retrieved entity, we can choose to use or not use depending on how they actually performs in real scenarios with real data.
+The root level fields "location" and "version" in this case are taken from the assets of the GCP PubSub event message,
+but still are related to the retrieved entity, we can choose to use or not use depending on how they actually performs
+in real scenarios with real data.

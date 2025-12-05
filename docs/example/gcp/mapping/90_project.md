@@ -23,7 +23,7 @@ Mapped fields
 
 ```json
 {
-	"type": "cloudresourcemanager.googleapis.com/Project",
+  "type": "cloudresourcemanager.googleapis.com/Project",
   "syncable": true,
   "apiVersion": "projects.gcp.mia-platform.eu/v1alpha1",
   "mappings": {
@@ -39,7 +39,7 @@ Mapped fields
       "labels": "{{ .resource.data.labels | toJSON}}",
       "tags": "{{ .resource.data.tags | toJSON}}"
     }
-	}
+  }
 }
 ```
 

@@ -125,7 +125,7 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
 			assert.ErrorIs(t, err, ErrGCPSource)
 			assert.ErrorContains(t, err, "the client connection is closing")
-			closeChannel <- struct{}{}
+			close(closeChannel)
 		}
 	}()
 
@@ -181,7 +181,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
 			assert.ErrorIs(t, err, ErrGCPSource)
 			assert.ErrorContains(t, err, "the client connection is closing")
-			closeChannel <- struct{}{}
+			close(closeChannel)
 		}
 	}()
 
@@ -230,7 +230,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 			assert.ErrorContains(t, err, "the client connection is closing")
 		}
 
-		closeChannel <- struct{}{}
+		close(closeChannel)
 	}()
 
 	for {
@@ -278,7 +278,7 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 			assert.ErrorContains(t, err, "the client connection is closing")
 		}
 
-		closeChannel <- struct{}{}
+		close(closeChannel)
 	}()
 
 	for {

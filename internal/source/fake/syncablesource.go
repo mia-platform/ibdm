@@ -36,7 +36,6 @@ func NewFakeSyncableSource(tb testing.TB, syncData []source.Data) FakeSyncableSo
 
 func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ []string, results chan<- source.Data) error {
 	f.tb.Helper()
-	defer close(f.stopChannel)
 
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -58,6 +57,6 @@ func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ []string, r
 
 func (f *fakeSyncableSource) Close(_ context.Context, _ time.Duration) error {
 	f.tb.Helper()
-	f.stopChannel <- struct{}{}
+	close(f.stopChannel)
 	return nil
 }

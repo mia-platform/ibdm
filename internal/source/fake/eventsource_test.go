@@ -56,7 +56,7 @@ loop:
 	assert.Equal(t, receivedData, testData)
 }
 
-func TestFakeEventSourceWithError(t *testing.T) {
+func TestFakeSourceWithError(t *testing.T) {
 	t.Parallel()
 	testTimout := 1 * time.Second
 	testError := assert.AnError
@@ -64,12 +64,12 @@ func TestFakeEventSourceWithError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), testTimout)
 	defer cancel()
 
-	errorSource := NewFakeEventSourceWithError(t, testError)
+	errorSource := NewFakeSourceWithError(t, testError)
 	receiveDataChan := make(chan source.Data)
 	defer close(receiveDataChan)
 
-	err := errorSource.StartEventStream(ctx, nil, receiveDataChan)
-	assert.Equal(t, testError, err)
+	assert.Equal(t, testError, errorSource.StartEventStream(ctx, nil, receiveDataChan))
+	assert.Equal(t, testError, errorSource.StartSyncProcess(ctx, nil, receiveDataChan))
 }
 
 func TestFakeEventSourceCancelledContext(t *testing.T) {
@@ -90,7 +90,26 @@ func TestFakeEventSourceCancelledContext(t *testing.T) {
 	assert.Empty(t, receiveDataChan)
 }
 
-func TestFakeHangingEventSource(t *testing.T) {
+func TestFakeEventSourceHangingUntilCancel(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	receiveDataChan := make(chan source.Data)
+	defer close(receiveDataChan)
+
+	syncTestChan := make(chan struct{})
+	go func() {
+		fakeSource := NewFakeEventSource(t, nil, syncTestChan)
+		assert.ErrorIs(t, fakeSource.StartEventStream(ctx, nil, receiveDataChan), context.Canceled)
+		close(syncTestChan)
+	}()
+
+	<-syncTestChan
+	cancel()
+	<-syncTestChan
+}
+
+func TestUnclosableFakeEventSource(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 
@@ -98,13 +117,11 @@ func TestFakeHangingEventSource(t *testing.T) {
 	defer close(receiveDataChan)
 
 	syncChan := make(chan struct{})
-	defer close(syncChan)
-
 	go func() {
-		hangingSource := NewHangingEventSource(t)
+		hangingSource := NewFakeUnclosableEventSource(t, []source.Data{}, syncChan)
 		err := hangingSource.StartEventStream(ctx, nil, receiveDataChan)
 		assert.ErrorIs(t, err, context.Canceled)
-		syncChan <- struct{}{}
+		close(syncChan)
 	}()
 
 	cancel()

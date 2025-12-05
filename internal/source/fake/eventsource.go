@@ -16,9 +16,9 @@ type FakeEventSource interface {
 	source.ClosableSource
 }
 
-var _ FakeEventSource = &fakeEventSource{}
+var _ source.EventSource = &unclosableEventSource{}
 
-type fakeEventSource struct {
+type unclosableEventSource struct {
 	tb testing.TB
 
 	eventsData     []source.Data
@@ -26,20 +26,37 @@ type fakeEventSource struct {
 	stopChannel    chan struct{}
 }
 
+var _ FakeEventSource = &fakeEventSource{}
+
+type fakeEventSource struct {
+	*unclosableEventSource
+}
+
 func NewFakeEventSource(tb testing.TB, eventsData []source.Data, streamFinished chan<- struct{}) FakeEventSource {
 	tb.Helper()
 
 	return &fakeEventSource{
-		tb:             tb,
-		eventsData:     eventsData,
-		streamFinished: streamFinished,
-		stopChannel:    make(chan struct{}, 1),
+		unclosableEventSource: &unclosableEventSource{
+			tb:             tb,
+			eventsData:     eventsData,
+			streamFinished: streamFinished,
+			stopChannel:    make(chan struct{}, 1),
+		},
 	}
 }
 
-func (f *fakeEventSource) StartEventStream(ctx context.Context, _ []string, results chan<- source.Data) error {
+func NewFakeUnclosableEventSource(tb testing.TB, eventsData []source.Data, streamFinished chan<- struct{}) source.EventSource {
+	tb.Helper()
+
+	return &unclosableEventSource{
+		tb:             tb,
+		eventsData:     eventsData,
+		streamFinished: streamFinished,
+	}
+}
+
+func (f *unclosableEventSource) StartEventStream(ctx context.Context, _ []string, results chan<- source.Data) error {
 	f.tb.Helper()
-	defer close(f.stopChannel)
 
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -55,24 +72,35 @@ func (f *fakeEventSource) StartEventStream(ctx context.Context, _ []string, resu
 	}
 
 	f.streamFinished <- struct{}{}
-	<-f.stopChannel
-	return nil
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-f.stopChannel:
+			return nil
+		}
+	}
 }
 
 func (f *fakeEventSource) Close(_ context.Context, _ time.Duration) error {
 	f.tb.Helper()
-	f.stopChannel <- struct{}{}
+	close(f.stopChannel)
 	return nil
 }
 
-var _ source.EventSource = &errorEventSource{}
+type ErrorEventSource interface {
+	source.EventSource
+	source.SyncableSource
+}
+
+var _ ErrorEventSource = &errorEventSource{}
 
 type errorEventSource struct {
 	tb  testing.TB
 	err error
 }
 
-func NewFakeEventSourceWithError(tb testing.TB, err error) source.EventSource {
+func NewFakeSourceWithError(tb testing.TB, err error) ErrorEventSource {
 	tb.Helper()
 
 	return &errorEventSource{
@@ -86,20 +114,7 @@ func (f *errorEventSource) StartEventStream(_ context.Context, _ []string, _ cha
 	return f.err
 }
 
-type hangingEventSource struct {
-	tb testing.TB
-}
-
-func NewHangingEventSource(tb testing.TB) source.EventSource {
-	tb.Helper()
-
-	return &hangingEventSource{
-		tb: tb,
-	}
-}
-
-func (h *hangingEventSource) StartEventStream(ctx context.Context, _ []string, _ chan<- source.Data) error {
-	h.tb.Helper()
-	<-ctx.Done()
-	return ctx.Err()
+func (f *errorEventSource) StartSyncProcess(_ context.Context, _ []string, _ chan<- source.Data) error {
+	f.tb.Helper()
+	return f.err
 }

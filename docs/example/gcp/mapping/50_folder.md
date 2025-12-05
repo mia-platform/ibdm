@@ -22,13 +22,13 @@ Mapped fields
 	"syncable": true,
 	"apiVersion": "folders.gcp.mia-platform.eu/v1alpha1",
 	"mappings": {
-		"identifier": "{resource.data.name}}",
+		"identifier": "{{resource.data.name}}",
 		"specs": {
 			"parent": "{{resource.data.parent}}",
 			"displayName": "{{resource.data.displayName}}",
 			"lifecycleState": "{{resource.data.lifecycleState}}",
 			"createTime": "{{resource.data.createTime}}",
-			"tags": "{{ .resource.data.tags | toJSON}}"
+			"tags": "{{ .resource.data.tags | toJSON }}"
 		}
 	}
 }
