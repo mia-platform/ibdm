@@ -140,7 +140,7 @@ func (a *assetClient) initAssetClient(ctx context.Context) (*asset.Client, error
 }
 
 func (p *pubSubClient) closePubSubClient(log logger.Logger) error {
-	log.Debug("Initiating GCP pub/sub client shutdown")
+	log.Debug("closing GCP pub/sub client")
 	client := p.c.Swap(nil)
 	if client != nil {
 		if err := handleError(client.Close()); err != nil {
@@ -148,12 +148,12 @@ func (p *pubSubClient) closePubSubClient(log logger.Logger) error {
 		}
 	}
 
-	log.Debug("Completed GCP pub/sub client shutdown")
+	log.Debug("closed GCP pub/sub client")
 	return nil
 }
 
 func (a *assetClient) closeAssetClient(log logger.Logger) error {
-	log.Debug("Initiating GCP asset client shutdown")
+	log.Debug("closing GCP asset client")
 	client := a.c.Swap(nil)
 	if client != nil {
 		if err := client.Close(); err != nil {
@@ -161,13 +161,13 @@ func (a *assetClient) closeAssetClient(log logger.Logger) error {
 		}
 	}
 
-	log.Debug("Completed GCP asset client shutdown")
+	log.Debug("closed GCP asset client")
 	return nil
 }
 
 func (g *GCPSource) Close(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
-	log.Debug("Initiating GCP source clients shutdown")
+	log.Debug("closing GCP source clients")
 	errorsList := make([]error, 0)
 	err := g.p.closePubSubClient(log)
 	if err != nil {
@@ -180,7 +180,7 @@ func (g *GCPSource) Close(ctx context.Context) error {
 	if len(errorsList) > 0 {
 		return handleError(errors.Join(errorsList...))
 	}
-	log.Debug("Completed GCP source clients shutdown")
+	log.Debug("closed GCP source clients")
 	return nil
 }
 
