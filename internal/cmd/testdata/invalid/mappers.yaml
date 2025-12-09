@@ -1,10 +1,14 @@
 type: valid
+apiVersion: v1
+kind: resource
 mappings:
   identifier: "{{ .id }}"
   spec:
     field1: "{{ .field1 }}"
 ---
 type: mapper-type
+apiVersion: v1
+kind: resource
 mappings:
   identifier: "{{ .id }}"
   spec:

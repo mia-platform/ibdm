@@ -24,8 +24,10 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "one.yaml"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
-					Type:     "yaml",
-					Syncable: true,
+					Type:       "yaml",
+					APIVersion: "group/v1",
+					Kind:       "configs",
+					Syncable:   true,
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
 						Spec: map[string]string{
@@ -40,8 +42,10 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "one.json"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
-					Type:     "json",
-					Syncable: true,
+					Type:       "json",
+					APIVersion: "group/v1",
+					Kind:       "configs",
+					Syncable:   true,
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
 						Spec: map[string]string{
@@ -56,8 +60,10 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "multiple.yaml"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
-					Type:     "first",
-					Syncable: true,
+					Type:       "first",
+					APIVersion: "group/v1",
+					Kind:       "configs",
+					Syncable:   true,
 					Mappings: Mappings{
 						Identifier: "{{ .spec.id }}",
 						Spec: map[string]string{
@@ -67,8 +73,10 @@ func TestNewMappingsFromPath(t *testing.T) {
 					},
 				},
 				{
-					Type:     "second",
-					Syncable: true,
+					Type:       "second",
+					APIVersion: "group/v1",
+					Kind:       "configs",
+					Syncable:   true,
 					Mappings: Mappings{
 						Identifier: "{{ .metadata.name }}",
 						Spec: map[string]string{
@@ -77,8 +85,10 @@ func TestNewMappingsFromPath(t *testing.T) {
 					},
 				},
 				{
-					Type:     "third",
-					Syncable: false,
+					Type:       "third",
+					APIVersion: "group/v1",
+					Kind:       "configs",
+					Syncable:   false,
 					Mappings: Mappings{
 						Identifier: "{{ .spec.code }}",
 						Spec: map[string]string{
@@ -88,6 +98,10 @@ func TestNewMappingsFromPath(t *testing.T) {
 					},
 				},
 			},
+		},
+		"missing data return error": {
+			path:          filepath.Join("testdata", "missingdata.yaml"),
+			expectedError: ErrParsing,
 		},
 		"missing file return error": {
 			path:          filepath.Join(tempDir, "missing"),

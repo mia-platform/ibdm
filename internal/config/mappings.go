@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -20,6 +21,7 @@ var (
 type MappingConfig struct {
 	Type       string   `json:"type" yaml:"type"`
 	APIVersion string   `json:"apiVersion" yaml:"apiVersion"`
+	Kind       string   `json:"kind" yaml:"kind"`
 	Syncable   bool     `json:"syncable" yaml:"syncable"`
 	Mappings   Mappings `json:"mappings" yaml:"mappings"`
 }
@@ -63,6 +65,21 @@ func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 		// skip empty configs
 		if config == nil {
 			continue
+		}
+
+		missingFields := []string{}
+		if config.Type == "" {
+			missingFields = append(missingFields, "type")
+		}
+		if config.APIVersion == "" {
+			missingFields = append(missingFields, "apiVersion")
+		}
+		if config.Kind == "" {
+			missingFields = append(missingFields, "kind")
+		}
+
+		if len(missingFields) > 0 {
+			return nil, fmt.Errorf("%w %q: missing required fields: %v", ErrParsing, path, strings.Join(missingFields, ", "))
 		}
 
 		configs = append(configs, config)

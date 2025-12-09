@@ -1,5 +1,7 @@
 {
 	"type": "json",
+	"apiVersion": "group/v1",
+	"kind": "configs",
 	"syncable": true,
 	"mappings": {
 		"identifier": "{{ .name }}",

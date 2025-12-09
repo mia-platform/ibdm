@@ -1,4 +1,6 @@
 type: yaml
+apiVersion: group/v1
+kind: configs
 syncable: true
 mappings:
   identifier: "{{ .name }}"

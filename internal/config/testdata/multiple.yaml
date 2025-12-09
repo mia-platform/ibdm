@@ -1,4 +1,6 @@
 type: first
+apiVersion: group/v1
+kind: configs
 syncable: true
 mappings:
   identifier: "{{ .spec.id }}"
@@ -7,6 +9,8 @@ mappings:
     fieldB: "{{ .spec.fieldB }}"
 ---
 type: second
+apiVersion: group/v1
+kind: configs
 syncable: true
 mappings:
   identifier: "{{ .metadata.name }}"
@@ -16,6 +20,8 @@ mappings:
 ---
 ---
 type: third
+apiVersion: group/v1
+kind: configs
 syncable: false
 mappings:
   identifier: "{{ .spec.code }}"
