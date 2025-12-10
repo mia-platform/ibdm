@@ -25,8 +25,14 @@ these other ones:
 	- [decode64](#decode64)
 - Objects Functions:
 	- [toJSON](#tojson)
-	- [pluck](#pluck)
+	- [pick](#pick)
 	- [get](#get)
+- List Functions:
+	- [list](#list)
+	- [append](#append)
+	- [prepend](#prepend)
+	- [first](#first)
+	- [last](#last)
 - Time Functions:
 	- [now](#now)
 - Crypto Functions:
@@ -119,21 +125,56 @@ if you have to put objects or arrays inside one of your key in the mapper.
 As an example, `{{ .aKey | toJSON }}` with a `aKey` containing an array of 5 number will return
 `[ 1, 2, 3, 4, 5 ]`.
 
-### `pluck`
+### `pick`
 
-The `pluck` function extracts the values associated with the specified key from a slice of objects
-and returns them as a new slice. Any object without the key will be skipped.
+The `pick` function return a new object containing only the specified keys.
 
-As an example, `{{ pluck "key" .objects | toJSON }}` with a `aKey` containing
-`[{"key":"value1"},{"key":"value2"},{"anotherKey":"value3"}]` will return `["value1", "value2"]`.
+As an example, `{{ pick .objects "key" .objects | toJSON }}` with a `objects` containing
+`{"key":"value1","anotherKey":"value2"}]` will return `{"key":"value1"}`.
 
 ### `get`
 
 The `get` function will return the chosen key from the object and the default value if the key is
 not present in the target object.
 
-As an example, `{{ get "key" .object "defaultValue" }}` with a `aKey` containing
+As an example, `{{ get "key" .object "defaultValue" }}` with a `objects` containing
 `{"key":"value1"}` will return `value1`.
+
+### `list`
+
+The `list` function will create a new array with the element passed to it.
+
+As an example, `{{ list 1 2 3 4 }}` will return `[1, 2, 3, 4]`.
+
+### `append`
+
+The `append` function will add elements to the end of an existing array.
+
+As an example, `{{ append .list 3, 4, 5 }}` with `list` containing `[1, 2]` will return
+`[1, 2, 3, 4, 5]`
+
+### `prepend`
+
+The `prepend` function will add elements to the beginning of an existing array.
+
+As an example, `{{ prepend .list 3, 4, 5 }}` with `list` containing `[1, 2]` will return
+`[3, 4, 5, 1, 2]`
+
+### `first`
+
+The `first` function will return the first element of a passed list, or the first character of a
+string. If the list or string is empty it will return nil and if is used on any other type will
+return an error.
+
+As an example, `{{ .object | first }}` with `objects` containing `[1,2,3]` will return `1`.
+
+### `last`
+
+The `last` function will return the last element of a passed list, or the last character of a
+string. If the list or string is empty it will return nil and if is used on any other type will
+return an error.
+
+As an example, `{{ .object | last }}` with `objects` containing `[1,2,3]` will return `3`.
 
 ### `now`
 

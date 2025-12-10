@@ -184,26 +184,25 @@ func TestMapper(t *testing.T) {
 		"create string array from object array": {
 			mapper: func() Mapper {
 				m, err := New("{{ .name }}", map[string]string{
-					"key": `{{ pluck "key" .objects | toJSON }}`,
+					"key": `{{ pick .objects "key" "thirdKey" | toJSON }}`,
 				})
 				require.NoError(t, err)
 				return m
 			}(),
 			input: map[string]any{
 				"name": "example",
-				"objects": []map[string]any{
-					{"key": "value1"},
-					{"key": "value2"},
-					{"key": "value3"},
+				"objects": map[string]any{
+					"key":      "value1",
+					"otherKey": "value2",
+					"thirdKey": "value3",
 				},
 			},
 			expected: MappedData{
 				Identifier: "example",
 				Spec: map[string]any{
-					"key": []interface{}{
-						"value1",
-						"value2",
-						"value3",
+					"key": map[string]any{
+						"key":      "value1",
+						"thirdKey": "value3",
 					},
 				},
 			},

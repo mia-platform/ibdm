@@ -114,8 +114,15 @@ func templateFunctions() template.FuncMap {
 
 		// object functions
 		"toJSON": functions.ToJSON,
-		"pluck":  functions.Pluck,
+		"pick":   functions.Pick,
 		"get":    functions.Get,
+
+		// list functions
+		"list":    functions.List,
+		"append":  functions.Append,
+		"prepend": functions.Prepend,
+		"first":   functions.First,
+		"last":    functions.Last,
 
 		// time functions
 		"now": functions.Now,
