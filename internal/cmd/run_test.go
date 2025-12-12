@@ -42,7 +42,7 @@ func setupTestFileStructure(t *testing.T, baseDir string) {
 	}
 }
 
-func TestExitWithErrorOutput(t *testing.T) {
+func TestRunCmdErrorOutput(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()

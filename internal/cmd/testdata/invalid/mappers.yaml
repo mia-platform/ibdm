@@ -1,6 +1,6 @@
 type: valid
 apiVersion: v1
-kind: resource
+resource: resource
 mappings:
   identifier: "{{ .id }}"
   spec:
@@ -8,7 +8,7 @@ mappings:
 ---
 type: mapper-type
 apiVersion: v1
-kind: resource
+resource: resource
 mappings:
   identifier: "{{ .id }}"
   spec:
