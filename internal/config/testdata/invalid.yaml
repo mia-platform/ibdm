@@ -1,0 +1,4 @@
+apiVersion: "group/v1"
+resource: "configs"
+type: invalid
+syncable: "syncable"

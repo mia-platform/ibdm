@@ -2,7 +2,7 @@ module github.com/mia-platform/ibdm
 
 go 1.25
 
-toolchain go1.25.4
+toolchain go1.25.5
 
 require (
 	cloud.google.com/go/asset v1.22.0
@@ -11,11 +11,11 @@ require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-hclog v1.6.3
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/api v0.257.0
 	google.golang.org/grpc v1.77.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 )
 

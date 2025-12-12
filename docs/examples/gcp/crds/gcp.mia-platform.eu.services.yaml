@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: services.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: Service
+    plural: services
+    singular: service
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              apiVersion:
+                description: API version of the resource
+                type: string
+              kind:
+                description: The resource kind
+                type: string
+              name:
+                description: The name of the Service
+                type: string
+              traffic:
+                description: Traffic routing configuration for the Service
+                type: array
+                items:
+                  type: object
+                  properties:
+                    latestRevision:
+                      type: boolean
+                    percent:
+                      type: integer
+                    revisionName:
+                      type: string
+              url:
+                description: URL of the Service
+                type: string
+              serviceAccountName:
+                description: The email of the IAM service account associated with the Service
+                type: string
+              latestCreatedRevisionName:
+                description: Name of the latest created revision
+                type: string
+              latestReadyRevisionName:
+                description: Name of the latest ready revision
+                type: string
+              location:
+                description: Region where the service is deployed
+                type: string
+    served: true
+    storage: true

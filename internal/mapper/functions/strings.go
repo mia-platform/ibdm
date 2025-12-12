@@ -5,8 +5,14 @@ package functions
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strings"
 )
+
+// Quote adds double quotes around the input strings.
+func Quote(s any) string {
+	return fmt.Sprintf("%q", castToString(s))
+}
 
 // TrimSpace removes all leading and trailing white space from the input string.
 func TrimSpace(s string) string {
@@ -21,6 +27,11 @@ func TrimPrefix(prefix, s string) string {
 // TrimSuffix removes the provided suffix from the input string.
 func TrimSuffix(suffix, s string) string {
 	return strings.TrimSuffix(s, suffix)
+}
+
+// Replace replaces all occurrences of toChange with toBe in the input string.
+func Replace(toChange, toBe, s string) string {
+	return strings.ReplaceAll(s, toChange, toBe)
 }
 
 // ToUpper converts the input string to upper case.
@@ -70,4 +81,15 @@ func DecodeBase64(input string) (string, error) {
 	}
 
 	return string(decoded), nil
+}
+
+func castToString(obj any) string {
+	switch v := obj.(type) {
+	case string:
+		return v
+	case fmt.Stringer:
+		return v.String()
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

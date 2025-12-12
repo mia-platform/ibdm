@@ -1,0 +1,13 @@
+{
+	"apiVersion": "group/v1",
+	"resource": "configs",
+	"type": "json",
+	"syncable": true,
+	"mappings": {
+		"identifier": "{{ .name }}",
+		"spec": {
+			"key": "{{ .value }}",
+			"otherKey": "{{ .otherValue | functionName }}"
+		}
+	}
+}

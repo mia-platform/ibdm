@@ -1,0 +1,9 @@
+type: yaml
+apiVersion: group/v1
+resource: configs
+syncable: true
+mappings:
+  identifier: "{{ .name }}"
+  spec:
+    key: "{{ .value }}"
+    otherKey: "{{ .otherValue | functionName }}"

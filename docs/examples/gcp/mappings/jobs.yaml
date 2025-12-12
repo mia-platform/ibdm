@@ -1,0 +1,19 @@
+apiVersion: gcp.mia-platform.eu/v1alpha1
+resource: jobs
+type: run.googleapis.com/Job
+syncable: true
+mappings:
+  identifier: |-
+    {{ $components := trimPrefix "//run.googleapis.com/" .name | split "/" -}}
+    {{- printf "%s-%s" (index $components 1) (index $components 5) }}
+  spec:
+    apiVersion: "{{ .resource.data.apiVersion }}"
+    kind: "{{ .resource.data.kind }}"
+    name: "{{ .resource.data.metadata.name }}"
+    image: "{{ get \"image\" (index .resource.data.spec.template.spec.template.spec.containers 0) \"\" | quote }}"
+    latestExecution: "{{ get \"latestCreatedExecution\" .resource.data.status (object) | toJSON }}"
+    maxRetries: "{{ .resource.data.spec.template.spec.template.spec.maxRetries }}"
+    parallelism: "{{ get \"parallelism\" .resource.data.spec.template.spec 0 }}"
+    serviceAccountName: "{{ .resource.data.spec.template.spec.template.spec.serviceAccountName }}"
+    timeoutSeconds: "{{ .resource.data.spec.template.spec.template.spec.timeoutSeconds }}"
+    location: "{{ .resource.location }}"

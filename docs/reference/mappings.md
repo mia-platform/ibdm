@@ -13,9 +13,11 @@ In addition to the [default functions] available to all Go Text Templates we giv
 these other ones:
 
 - Strings Functions:
+	- [quote](#quote)
 	- [trim](#trim)
 	- [trimPrefix](#trimprefix)
 	- [trimSuffix](#trimsuffix)
+	- [replace](#replace)
 	- [upper](#upper)
 	- [lower](#lower)
 	- [truncate](#truncate)
@@ -23,9 +25,17 @@ these other ones:
 	- [encode64](#encode64)
 	- [decode64](#decode64)
 - Objects Functions:
+	- [object](#object)
 	- [toJSON](#tojson)
-	- [pluck](#pluck)
+	- [pick](#pick)
 	- [get](#get)
+	- [set](#set)
+- List Functions:
+	- [list](#list)
+	- [append](#append)
+	- [prepend](#prepend)
+	- [first](#first)
+	- [last](#last)
 - Time Functions:
 	- [now](#now)
 - Crypto Functions:
@@ -35,6 +45,14 @@ these other ones:
 	- [uuidv4](#uuidv4)
 	- [uuidv6](#uuidv6)
 	- [uuidv7](#uuidv7)
+
+### `quote`
+
+The `quote` function will embed the data passed to it with the double quote characters.
+
+As an example, `{{ .aKey | quote }}` with a `aKey` containing `some data` will return `"some data"`.  
+This can be used to always have a string if some kind of data return the empty string, or to cast
+other types to a string.
 
 ### `trim`
 
@@ -57,6 +75,14 @@ The `trimSuffix` function will remove the given substring from the end of the in
 
 As an example, `{{ .aKey | trimSuffix "world" }}` with a `aKey` containing `hello world` will return
 `hello `.<!-- markdownlint-disable-line MD038 -->
+
+### `replace`
+
+The `replace` function will replace all non-overlapping instances of the first parameter replaced
+by the second one.
+
+As an example, `{{ .aKey | replace "_" "-" }}` with a `aKey` containing `hello_world` will return
+`hello-world`.
 
 ### `upper`
 
@@ -92,15 +118,22 @@ list `[hello, world]`.
 
 The `encode64` function can be used to generate a base64 encoding of the input string.
 
-As an example. `{{ .aKey | encode64 }}` with a `aKey` containing `hello world!` will return
+As an example, `{{ .aKey | encode64 }}` with a `aKey` containing `hello world!` will return
 `aGVsbG8gd29ybGQh`.
 
 ### `decode64`
 
 The `decode64` function can be used to decode a string containing a base64 value.
 
-As an example. `{{ .aKey | decode64 }}` with a `aKey` containing `aGVsbG8gd29ybGQh` will return
+As an example, `{{ .aKey | decode64 }}` with a `aKey` containing `aGVsbG8gd29ybGQh` will return
 `hello world!`.
+
+### `object`
+
+The `object` function can be used to create a new object with keys and values.
+
+As an example, `{{ object "key" .aKey | toJSON }}` with a `aKey` containing `hello world!` will
+return a `{"key":"hello world!"}`
 
 ### `toJSON`
 
@@ -110,21 +143,65 @@ if you have to put objects or arrays inside one of your key in the mapper.
 As an example, `{{ .aKey | toJSON }}` with a `aKey` containing an array of 5 number will return
 `[ 1, 2, 3, 4, 5 ]`.
 
-### `pluck`
+### `pick`
 
-The `pluck` function extracts the values associated with the specified key from a slice of objects
-and returns them as a new slice. Any object without the key will be skipped.
+The `pick` function return a new object containing only the specified keys.
 
-As an example, `{{ pluck "key" .objects | toJSON }}` with a `aKey` containing
-`[{"key":"value1"},{"key":"value2"},{"anotherKey":"value3"}]` will return `["value1", "value2"]`.
+As an example, `{{ pick .objects "key" .objects | toJSON }}` with a `objects` containing
+`{"key":"value1","anotherKey":"value2"}]` will return `{"key":"value1"}`.
 
 ### `get`
 
 The `get` function will return the chosen key from the object and the default value if the key is
 not present in the target object.
 
-As an example, `{{ get "key" .object "defaultValue" }}` with a `aKey` containing
+As an example, `{{ get "key" .object "defaultValue" }}` with a `object` containing
 `{"key":"value1"}` will return `value1`.
+
+### `set`
+
+The `set` function will add or change the chosen key to the object with the given value and will
+return the new object resulting from the addition.
+
+As an example, `{{ set "otherKey" .aKey .object | toJSON }}` with a `object` containing
+`{"key":"value1"}` and `aKey` containing `new value` will return
+`{"key":"value1","otherKey";"new value"}`.
+
+### `list`
+
+The `list` function will create a new array with the element passed to it.
+
+As an example, `{{ list 1 2 3 4 }}` will return `[1, 2, 3, 4]`.
+
+### `append`
+
+The `append` function will add elements to the end of an existing array.
+
+As an example, `{{ append .list 3, 4, 5 }}` with `list` containing `[1, 2]` will return
+`[1, 2, 3, 4, 5]`
+
+### `prepend`
+
+The `prepend` function will add elements to the beginning of an existing array.
+
+As an example, `{{ prepend .list 3, 4, 5 }}` with `list` containing `[1, 2]` will return
+`[3, 4, 5, 1, 2]`
+
+### `first`
+
+The `first` function will return the first element of a passed list, or the first character of a
+string. If the list or string is empty it will return nil and if is used on any other type will
+return an error.
+
+As an example, `{{ .object | first }}` with `objects` containing `[1,2,3]` will return `1`.
+
+### `last`
+
+The `last` function will return the last element of a passed list, or the last character of a
+string. If the list or string is empty it will return nil and if is used on any other type will
+return an error.
+
+As an example, `{{ .object | last }}` with `objects` containing `[1,2,3]` will return `3`.
 
 ### `now`
 

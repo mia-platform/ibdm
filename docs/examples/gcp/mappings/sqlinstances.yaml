@@ -1,0 +1,47 @@
+apiVersion: gcp.mia-platform.eu/v1alpha1
+resource: sqlinstances
+type: sqladmin.googleapis.com/Instance
+syncable: true
+mappings:
+  identifier: |-
+    {{ $components := trimPrefix "//cloudsql.googleapis.com/" .name | split "/" -}}
+    {{- printf "%s-%s" (index $components 1) (index $components 3) }}
+  spec:
+    name: "{{ .resource.data.name }}"
+    region: "{{ .resource.data.region }}"
+    zone: "{{ .resource.data.gceZone }}"
+    dataDiskSizeGb: "{{ .resource.data.settings.dataDiskSizeGb }}"
+    dataDiskType: "{{ trimPrefix \"PD_\" .resource.data.settings.dataDiskType | lower }}"
+    storageAutoResize: "{{ .resource.data.settings.storageAutoResize }}"
+    storageAutoResizeLimit: "{{ .resource.data.settings.storageAutoResizeLimit }}"
+    installedVersion: "{{ .resource.data.databaseInstalledVersion }}"
+    ipAddresses: "{{ get \"ipAddresses\" .resource.data (list) | toJSON }}"
+    availabilityType: "{{ .resource.data.settings.availabilityType | lower }}"
+    serviceAccount: "{{ .resource.data.serviceAccountEmailAddress }}"
+    deletionProtectionEnabled: "{{ .resource.data.settings.deletionProtectionEnabled }}"
+    state: "{{ .resource.data.state | lower }}"
+    connection: |-
+      {{ $connection := object -}}
+      {{ $ipConfiguration := .resource.data.settings.ipConfiguration -}}
+      {{- $connection = set "requireSSL" $ipConfiguration.requireSsl $connection -}}
+      {{- $connection = set "sslMode" $ipConfiguration.sslMode $connection -}}
+      {{- $connection = set "serverCAMode" $ipConfiguration.serverCaMode $connection -}}
+      {{- $connection = set "serverCertificateRotationMode" $ipConfiguration.serverCertificateRotationMode $connection -}}
+      {{- $connection = set "ipv4Enabled" $ipConfiguration.ipv4Enabled $connection -}}
+      {{- if get "authorizedNetworks" $ipConfiguration (list) -}}
+        {{- $authNet := list -}}
+        {{- range $ipConfiguration.authorizedNetworks -}}
+          {{- $obj := pick . "name" "value" -}}
+          {{- $authNet = append $authNet $obj -}}
+        {{- end -}}
+        {{- $connection = set "authorizedNetworks" $authNet $connection -}}
+      {{- end -}}
+      {{- if get "dnsName" .resource.data "" -}}
+        {{- $connection = set "dns" .resource.data.dnsName $connection -}}
+        {{- $connection = set "dnsNames" .resource.data.dnsNames $connection -}}
+      {{- else -}}
+        {{- $connection = set "ipAddresses" .resource.data.ipAddresses $connection -}}
+      {{- end -}}
+
+      {{- $connection | toJSON }}
+    labels: "{{ get \"userLabels\" .resource.data.settings (object) | toJSON }}"

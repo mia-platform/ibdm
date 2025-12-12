@@ -1,0 +1,45 @@
+apiVersion: gcp.mia-platform.eu/v1alpha1
+resource: virtualmachines
+type: compute.googleapis.com/Instance
+syncable: true
+mappings:
+  identifier: |-
+    {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+    {{- printf "%s-%s" (index $components 1) (index $components 5) }}
+  spec:
+    name: "{{ .resource.data.name }}"
+    description: "{{ .resource.data.description | quote }}"
+    cpuPlatform: "{{ .resource.data.cpuPlatform }}"
+    location: "{{ .resource.location | lower }}"
+    status: "{{ .resource.data.status | lower }}"
+    deletionProtection: "{{ .resource.data.deletionProtection }}"
+    integrityMonitoringEnabled: "{{ .resource.data.shieldedInstanceConfig.enableIntegrityMonitoring }}"
+    secureBootEnabled: "{{ .resource.data.shieldedInstanceConfig.enableSecureBoot }}"
+    vtpmEnabled: "{{ .resource.data.shieldedInstanceConfig.enableVtpm }}"
+    confidentialInstanceConfigEnabled: "{{ .resource.data.confidentialInstanceConfig.enableConfidentialCompute }}"
+    lastStart: "{{ .resource.data.lastStartTimestamp }}"
+    machineType: |-
+      {{ $machineType := trimPrefix "https://www.googleapis.com/" .resource.data.machineType -}}
+      {{- split "/" $machineType | last }}
+    disks: |-
+      {{ $list := list }}
+      {{- range .resource.data.disks -}}
+        {{- $obj := pick . "autoDelete" "boot" "deviceName" "diskSizeGb" "mode" "type" -}}
+        {{- $list = append $list $obj -}}
+      {{- end -}}
+      {{- $list | toJSON }}
+    instanceIPs: |-
+      {{ $list := list -}}
+      {{- range .resource.data.networkInterfaces -}}
+        {{- $list = append $list .networkIP -}}
+      {{- end -}}
+      {{- $list | toJSON }}
+    network: |-
+      {{ $list := list }}
+      {{- range .resource.data.networkInterfaces -}}
+        {{- $obj := pick . "name" "network" "networkIP" "subnetwork" -}}
+        {{- $list = append $list $obj -}}
+      {{- end -}}
+      {{- $list | toJSON }}
+    tags: "{{ get \"items\" .resource.data.tags (list) | toJSON }}"
+    labels: "{{ .resource.data.labels | toJSON }}"

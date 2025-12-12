@@ -1,0 +1,32 @@
+apiVersion: group/v1
+resource: configs
+type: first
+syncable: true
+mappings:
+  identifier: "{{ .spec.id }}"
+  spec:
+    fieldA: "{{ .spec.fieldA }}"
+    fieldB: "{{ .spec.fieldB }}"
+---
+apiVersion: group/v1
+resource: configs
+type: second
+syncable: true
+mappings:
+  identifier: "{{ .metadata.name }}"
+  spec:
+    attributeX: "{{ .spec.attributeX }}"
+...
+---
+---
+apiVersion: group/v1
+resource: configs
+type: third
+syncable: false
+mappings:
+  identifier: "{{ .spec.code }}"
+  spec:
+    detail1: "{{ .spec.detail1 }}"
+    detail2: "{{ .spec.detail2 }}"
+---
+---

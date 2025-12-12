@@ -1,0 +1,16 @@
+apiVersion: gcp.mia-platform.eu/v1alpha1
+resource: projects
+type: cloudresourcemanager.googleapis.com/Project
+syncable: true
+mappings:
+  identifier: |-
+    {{ $name := .name -}}
+    {{- $name = trimPrefix "//cloudresourcemanager.googleapis.com/" $name -}}
+    {{- replace "/" "-" $name }}
+  spec:
+    projectId: "{{ .resource.data.projectId }}"
+    name: "{{ .resource.data.name }}"
+    parent: "{{ printf \"%s/%s\" .resource.data.parent.type .resource.data.parent.id }}"
+    state: "{{ .resource.data.lifecycleState | lower }}"
+    createTime: "{{ .resource.data.createTime }}"
+    labels: "{{ .resource.data.labels | toJSON }}"

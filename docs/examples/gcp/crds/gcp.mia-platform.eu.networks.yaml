@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: networks.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: Network
+    plural: networks
+    singular: network
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The name of the network
+                type: string
+              description:
+                description: Human-readable description of the network
+                type: string
+              mtu:
+                description: Maximum transmission unit in bytes
+                type: integer
+              routingMode:
+                description: Routing mode for the network, possible values are 'regional', or 'global'
+                type: string
+              location:
+                description: Location of the network. It will always be 'global' for GCP networks.
+                type: string
+            autoCreateSubnetworks:
+              description: Whether the subnets of the network are created automatically by GCP.
+              type: boolean
+            subnetworks:
+              description: List of subnetworks associated with the network.
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    description: Name of the subnetwork.
+                    type: string
+                  region:
+                    description: Region of the subnetwork.
+                    type: string
+    served: true
+    storage: true

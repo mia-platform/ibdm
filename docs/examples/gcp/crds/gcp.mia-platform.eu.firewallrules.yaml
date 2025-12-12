@@ -1,0 +1,180 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: firewallrules.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: FirewallRule
+    plural: firewallrules
+    singular: firewallrule
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The user-assigned name for the firewall rule
+                type: string
+              description:
+                description: Human-readable description of the firewall rule
+                type: string
+              disabled:
+                description: Whether the firewall rule is disabled
+                type: boolean
+              network:
+                description: The network self link this firewall rule applies to
+                type: string
+              priority:
+                description: Priority of the firewall rule
+                type: integer
+              logEnabled:
+                description: Whether logging is enabled for this firewall rule
+                type: boolean
+              ingress:
+                description: If the rule is an ingress, this property will contains the firewall rule ingress configuration
+                type: object
+                properties:
+                  allowed:
+                    description: List of allowed protocols and ports
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        IPProtocol:
+                          description: The IP protocol of this allowed rule
+                          type: string
+                        ports:
+                          description: List of ports or port ranges
+                          type: array
+                          items:
+                            type: string
+                  denied:
+                    description: List of denied protocols and ports
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        IPProtocol:
+                          description: The IP protocol of this denied rule
+                          type: string
+                        ports:
+                          description: List of ports or port ranges
+                          type: array
+                          items:
+                            type: string
+                  sourceRanges:
+                    description: List of source IP address ranges
+                    type: array
+                    items:
+                      type: string
+                  sourceTags:
+                    description: List of source tags
+                    type: array
+                    items:
+                      type: string
+                  sourceServiceAccounts:
+                    description: List of source service accounts
+                    type: array
+                    items:
+                      type: string
+                  targetRanges:
+                    description: List of target IP address ranges
+                    type: array
+                    items:
+                      type: string
+                  targetTags:
+                    description: List of target tags
+                    type: array
+                    items:
+                      type: string
+                  targetServiceAccounts:
+                    description: List of target service accounts
+                    type: array
+                    items:
+                      type: string
+                  destinationRanges:
+                    description: List of destination IP address ranges
+                    type: array
+                    items:
+                      type: string
+              egress:
+                description: If the rule is an egress, this property will contains the firewall rule egress configuration
+                type: object
+                properties:
+                  allowed:
+                    description: List of allowed protocols and ports
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        IPProtocol:
+                          description: The IP protocol of this allowed rule
+                          type: string
+                        ports:
+                          description: List of ports or port ranges
+                          type: array
+                          items:
+                            type: string
+                  denied:
+                    description: List of denied protocols and ports
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        IPProtocol:
+                          description: The IP protocol of this denied rule
+                          type: string
+                        ports:
+                          description: List of ports or port ranges
+                          type: array
+                          items:
+                            type: string
+                  sourceRanges:
+                    description: List of source IP address ranges
+                    type: array
+                    items:
+                      type: string
+                  sourceTags:
+                    description: List of source tags
+                    type: array
+                    items:
+                      type: string
+                  sourceServiceAccounts:
+                    description: List of source service accounts
+                    type: array
+                    items:
+                      type: string
+                  targetRanges:
+                    description: List of target IP address ranges
+                    type: array
+                    items:
+                      type: string
+                  targetTags:
+                    description: List of target tags
+                    type: array
+                    items:
+                      type: string
+                  targetServiceAccounts:
+                    description: List of target service accounts
+                    type: array
+                    items:
+                      type: string
+                  destinationRanges:
+                    description: List of destination IP address ranges
+                    type: array
+                    items:
+                      type: string
+              location:
+                description: Location of the firewall rule. It will be always 'global'
+                type: string
+    served: true
+    storage: true

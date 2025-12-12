@@ -18,9 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 
 	"github.com/mia-platform/ibdm/internal/source"
 )
@@ -120,17 +118,14 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
 
-	results := make(chan source.SourceData)
+	results := make(chan source.Data)
 
 	closeChannel := make(chan struct{})
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
-			statusErr, ok := status.FromError(err)
-			if assert.True(t, ok) {
-				assert.Equal(t, codes.Canceled, statusErr.Code())
-			}
-
-			closeChannel <- struct{}{}
+			assert.ErrorIs(t, err, ErrGCPSource)
+			assert.ErrorContains(t, err, "the client connection is closing")
+			close(closeChannel)
 		}
 	}()
 
@@ -179,17 +174,14 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
 
-	results := make(chan source.SourceData)
+	results := make(chan source.Data)
 
 	closeChannel := make(chan struct{})
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
-			statusErr, ok := status.FromError(err)
-			if assert.True(t, ok) {
-				assert.Equal(t, codes.Canceled, statusErr.Code())
-			}
-
-			closeChannel <- struct{}{}
+			assert.ErrorIs(t, err, ErrGCPSource)
+			assert.ErrorContains(t, err, "the client connection is closing")
+			close(closeChannel)
 		}
 	}()
 
@@ -229,18 +221,16 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 
 	msgID := srv.Publish(topicName, payload, nil)
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
-	results := make(chan source.SourceData)
+	results := make(chan source.Data)
 
 	closeChannel := make(chan struct{})
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
-			statusErr, ok := status.FromError(err)
-			if assert.True(t, ok) {
-				assert.Equal(t, codes.Canceled, statusErr.Code())
-			}
+			assert.ErrorIs(t, err, ErrGCPSource)
+			assert.ErrorContains(t, err, "the client connection is closing")
 		}
 
-		closeChannel <- struct{}{}
+		close(closeChannel)
 	}()
 
 	for {
@@ -279,18 +269,16 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 
 	msgID := srv.Publish(topicName, payload, nil)
 	gcpInstance := setupInstancesForEventStreamTest(t, config, client)
-	results := make(chan source.SourceData)
+	results := make(chan source.Data)
 
 	closeChannel := make(chan struct{})
 	go func() {
 		if err := gcpInstance.StartEventStream(ctx, typeToStream, results); err != nil {
-			statusErr, ok := status.FromError(err)
-			if assert.True(t, ok) {
-				assert.Equal(t, codes.Canceled, statusErr.Code())
-			}
+			assert.ErrorIs(t, err, ErrGCPSource)
+			assert.ErrorContains(t, err, "the client connection is closing")
 		}
 
-		closeChannel <- struct{}{}
+		close(closeChannel)
 	}()
 
 	for {

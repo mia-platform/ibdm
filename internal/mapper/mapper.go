@@ -101,9 +101,11 @@ func (m *internalMapper) ApplyTemplates(data map[string]any) (MappedData, error)
 func templateFunctions() template.FuncMap {
 	return template.FuncMap{
 		// string functions
+		"quote":      functions.Quote,
 		"trim":       functions.TrimSpace,
 		"trimPrefix": functions.TrimPrefix,
 		"trimSuffix": functions.TrimSuffix,
+		"replace":    functions.Replace,
 		"upper":      functions.ToUpper,
 		"lower":      functions.ToLower,
 		"truncate":   functions.Truncate,
@@ -112,9 +114,18 @@ func templateFunctions() template.FuncMap {
 		"decode64":   functions.DecodeBase64,
 
 		// object functions
+		"object": functions.Object,
 		"toJSON": functions.ToJSON,
-		"pluck":  functions.Pluck,
+		"pick":   functions.Pick,
 		"get":    functions.Get,
+		"set":    functions.Set,
+
+		// list functions
+		"list":    functions.List,
+		"append":  functions.Append,
+		"prepend": functions.Prepend,
+		"first":   functions.First,
+		"last":    functions.Last,
 
 		// time functions
 		"now": functions.Now,

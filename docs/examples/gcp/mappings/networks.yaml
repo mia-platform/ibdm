@@ -1,0 +1,24 @@
+apiVersion: gcp.mia-platform.eu/v1alpha1
+resource: networks
+type: compute.googleapis.com/Network
+syncable: true
+mappings:
+  identifier: |-
+    {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+    {{- printf "%s-%s" (index $components 1) (index $components 4) }}
+  spec:
+    name: "{{ .resource.data.name }}"
+    description: "{{ .resource.data.description | quote }}"
+    id: "{{ .resource.data.id }}"
+    mtu: "{{ .resource.data.mtu }}"
+    routingMode: "{{ .resource.data.routingConfig.routingMode | lower }}"
+    location: "{{ .resource.location }}"
+    autoCreateSubnetworks: "{{ .resource.data.autoCreateSubnetworks }}"
+    subnetworks: |-
+      {{ $list := list }}
+      {{- range get "subnetworks" .resource.data (list) -}}
+        {{- $components := split "/" (trimPrefix "https://www.googleapis.com/" .) -}}
+        {{- $network := object "region" (index $components 5) "name" (index $components 7) -}}
+        {{- $list = append $list $network -}}
+      {{- end -}}
+      {{- $list | toJSON }}

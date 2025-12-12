@@ -1,0 +1,62 @@
+// Copyright Mia srl
+// SPDX-License-Identifier: AGPL-3.0-only or Commercial
+
+package fake
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/mia-platform/ibdm/internal/source"
+)
+
+type FakeSyncableSource interface {
+	source.SyncableSource
+	source.ClosableSource
+}
+
+var _ FakeSyncableSource = &fakeSyncableSource{}
+
+type fakeSyncableSource struct {
+	tb          testing.TB
+	syncData    []source.Data
+	stopChannel chan struct{}
+}
+
+func NewFakeSyncableSource(tb testing.TB, syncData []source.Data) FakeSyncableSource {
+	tb.Helper()
+
+	return &fakeSyncableSource{
+		tb:          tb,
+		syncData:    syncData,
+		stopChannel: make(chan struct{}, 1),
+	}
+}
+
+func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ []string, results chan<- source.Data) error {
+	f.tb.Helper()
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	for _, data := range f.syncData {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-f.stopChannel:
+			return nil
+		default:
+			results <- data
+		}
+	}
+
+	return nil
+}
+
+func (f *fakeSyncableSource) Close(_ context.Context, _ time.Duration) error {
+	f.tb.Helper()
+	close(f.stopChannel)
+	return nil
+}

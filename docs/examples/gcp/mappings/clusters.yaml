@@ -1,0 +1,21 @@
+apiVersion: gcp.mia-platform.eu/v1alpha1
+resource: clusters
+type: container.googleapis.com/Cluster
+syncable: true
+mappings:
+  identifier: |-
+    {{ $components := trimPrefix "//container.googleapis.com/" .name | split "/" -}}
+    {{- printf "%s-%s-%s" (index $components 1) (index $components 3) (index $components 5) }}
+  spec:
+    name: "{{ .resource.data.name }}"
+    description: "{{ get \"description\" .resource.data \"\" | quote }}"
+    autopilot: "{{ get \"enabled\" .resource.data.autopilot false }}"
+    apiServerVersion: "{{ .resource.data.currentMasterVersion }}"
+    network: "{{ .resource.data.networkConfig.network }}"
+    subnetwork: "{{ .resource.data.networkConfig.subnetwork }}"
+    podsIpv4Cidr: "{{ .resource.data.clusterIpv4Cidr }}"
+    servicesIpv4Cidr: "{{ .resource.data.servicesIpv4Cidr }}"
+    clusterEndpoints: "{{ .resource.data.controlPlaneEndpointsConfig | toJSON }}"
+    status: "{{ .resource.data.status | lower }}"
+    location: "{{ .resource.location }}"
+    labels: "{{ get \"resourceLabels\" .resource.data (object) | toJSON }}"

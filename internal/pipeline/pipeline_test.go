@@ -1,0 +1,299 @@
+// Copyright Mia srl
+// SPDX-License-Identifier: AGPL-3.0-only or Commercial
+
+package pipeline
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	fakedestination "github.com/mia-platform/ibdm/internal/destination/fake"
+	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/source"
+	fakesource "github.com/mia-platform/ibdm/internal/source/fake"
+)
+
+var (
+	type1 = source.Data{
+		Type:      "type1",
+		Operation: source.DataOperationUpsert,
+		Values: map[string]any{
+			"id":     "item1",
+			"field1": "value1",
+			"field2": "value2",
+		},
+	}
+
+	type2 = source.Data{
+		Type:      "type2",
+		Operation: source.DataOperationDelete,
+		Values: map[string]any{
+			"identifier": "item2",
+			"attributeA": "valueA",
+		},
+	}
+	brokenType = source.Data{
+		Type:      "type1",
+		Operation: source.DataOperationUpsert,
+		Values: map[string]any{
+			"id":     "item3",
+			"field1": "value3",
+			// missing field2
+		},
+	}
+
+	unknownType = source.Data{
+		Type:      "unknownType",
+		Operation: source.DataOperationUpsert,
+		Values: map[string]any{
+			"someField": "someValue",
+		},
+	}
+)
+
+func testMappers(tb testing.TB) map[string]mapper.Mapper {
+	tb.Helper()
+
+	return map[string]mapper.Mapper{
+		"type1": func() mapper.Mapper {
+			mapper, err := mapper.New("{{ .id }}", map[string]string{
+				"field1": "{{ .field1 }}",
+				"field2": "{{ .field2 }}",
+			})
+			require.NoError(tb, err)
+			return mapper
+		}(),
+		"type2": func() mapper.Mapper {
+			mapper, err := mapper.New("{{ .identifier }}", map[string]string{
+				"attributeA": "{{ .attributeA }}",
+			})
+			require.NoError(tb, err)
+			return mapper
+		}(),
+	}
+}
+
+func TestStreamPipeline(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		source           func(chan<- struct{}) any
+		expectedData     []fakedestination.SentDataRecord
+		expectedDeletion []string
+		expectedErr      error
+	}{
+		"unsupported source error": {
+			source: func(c chan<- struct{}) any {
+				c <- struct{}{}
+				return "not a valid source"
+			},
+			expectedErr: errors.ErrUnsupported,
+		},
+		"source return an error": {
+			source: func(c chan<- struct{}) any {
+				c <- struct{}{}
+				return fakesource.NewFakeSourceWithError(t, assert.AnError)
+			},
+			expectedErr: assert.AnError,
+		},
+		"valid pipeline return mapped data": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
+			},
+			expectedData: []fakedestination.SentDataRecord{
+				{
+					Identifier: "item1",
+					Spec: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+				},
+			},
+			expectedDeletion: []string{"item2"},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			destination := fakedestination.NewFakeDestination(t)
+			syncChan := make(chan struct{}, 1)
+			defer close(syncChan)
+
+			testSource := test.source(syncChan)
+			pipeline := New(testSource, testMappers(t), destination)
+
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			defer cancel()
+
+			go func() {
+				err := pipeline.Start(ctx)
+				if test.expectedErr != nil {
+					assert.ErrorIs(t, err, test.expectedErr)
+					syncChan <- struct{}{}
+					return
+				}
+
+				assert.NoError(t, err)
+				syncChan <- struct{}{}
+			}()
+
+			<-syncChan
+			pipeline.Stop(ctx, 1*time.Second)
+
+			<-syncChan
+			assert.Equal(t, test.expectedData, destination.SentData)
+			assert.Equal(t, test.expectedDeletion, destination.DeletedData)
+		})
+	}
+}
+
+func TestStreamPipelineCancellation(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(t.Context())
+
+	destination := fakedestination.NewFakeDestination(t)
+	pipeline := New(fakesource.NewFakeEventSource(t, nil, make(chan<- struct{})), map[string]mapper.Mapper{}, destination)
+	cancel()
+
+	err := pipeline.Start(ctx)
+
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.Empty(t, destination.SentData)
+	assert.Empty(t, destination.DeletedData)
+}
+
+func TestStreamClosableSource(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	syncChan := make(chan struct{})
+
+	destination := fakedestination.NewFakeDestination(t)
+	pipeline := New(fakesource.NewFakeEventSource(t, []source.Data{}, syncChan), map[string]mapper.Mapper{}, destination)
+	go func() {
+		err := pipeline.Start(ctx)
+		assert.NoError(t, err)
+		close(syncChan)
+	}()
+
+	<-syncChan
+	err := pipeline.Stop(ctx, 2*time.Second)
+	assert.NoError(t, err)
+
+	<-syncChan
+	assert.Empty(t, destination.SentData)
+	assert.Empty(t, destination.DeletedData)
+}
+
+func TestNotClosableSourceStop(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(t.Context())
+
+	destination := fakedestination.NewFakeDestination(t)
+
+	syncChan := make(chan struct{})
+	pipeline := New(fakesource.NewFakeUnclosableEventSource(t, nil, syncChan), map[string]mapper.Mapper{}, destination)
+	go func() {
+		err := pipeline.Start(ctx)
+		assert.ErrorIs(t, err, context.Canceled)
+		close(syncChan)
+	}()
+
+	err := pipeline.Stop(ctx, 2*time.Second)
+	assert.NoError(t, err)
+	cancel()
+
+	<-syncChan
+	assert.Empty(t, destination.SentData)
+	assert.Empty(t, destination.DeletedData)
+}
+
+func TestSyncPipeline(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		source           any
+		expectedData     []fakedestination.SentDataRecord
+		expectedDeletion []string
+		expectedErr      error
+	}{
+		"unsupported source error": {
+			source:      "not a valid source",
+			expectedErr: errors.ErrUnsupported,
+		},
+		"source return an error": {
+			source:      fakesource.NewFakeSourceWithError(t, assert.AnError),
+			expectedErr: assert.AnError,
+		},
+		"valid pipeline return mapped data": {
+			source: fakesource.NewFakeSyncableSource(t, []source.Data{type1, brokenType, unknownType, type2}),
+			expectedData: []fakedestination.SentDataRecord{
+				{
+					Identifier: "item1",
+					Spec: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+				},
+			},
+			expectedDeletion: []string{"item2"},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			destination := fakedestination.NewFakeDestination(t)
+			pipeline := New(test.source, testMappers(t), destination)
+
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			defer cancel()
+
+			err := pipeline.Sync(ctx)
+			if test.expectedErr != nil {
+				assert.ErrorIs(t, err, test.expectedErr)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectedData, destination.SentData)
+			assert.Equal(t, test.expectedDeletion, destination.DeletedData)
+		})
+	}
+}
+
+func TestSyncPipelineCancellation(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(t.Context())
+
+	destination := fakedestination.NewFakeDestination(t)
+	pipeline := New(fakesource.NewFakeSyncableSource(t, nil), map[string]mapper.Mapper{}, destination)
+	cancel()
+
+	err := pipeline.Sync(ctx)
+
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.Empty(t, destination.SentData)
+	assert.Empty(t, destination.DeletedData)
+}
+
+func TestSyncClosableSource(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	destination := fakedestination.NewFakeDestination(t)
+	pipeline := New(fakesource.NewFakeSyncableSource(t, []source.Data{}), map[string]mapper.Mapper{}, destination)
+	assert.NoError(t, pipeline.Stop(ctx, 2*time.Second))
+	assert.NoError(t, pipeline.Sync(ctx))
+
+	assert.Empty(t, destination.SentData)
+	assert.Empty(t, destination.DeletedData)
+}

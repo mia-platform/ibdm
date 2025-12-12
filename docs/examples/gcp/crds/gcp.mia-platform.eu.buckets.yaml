@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: buckets.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: Bucket
+    plural: buckets
+    singular: bucket
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The name of the bucket.
+                type: string
+              location:
+                description: Location of the bucket (region, dual-region or multi-region).
+                type: string
+              locationType:
+                description: Type of location the bucket resides in (possible options can be 'region', 'dual-region', 'multi-region').
+                type: string
+              storageClass:
+                description: The bucket's default storage class (possible options can be 'standard', 'nearline', 'coldline', or 'archive').
+                type: string
+              autoclassEnabled:
+                description: Whether Autoclass is enabled for the bucket or not.
+                type: boolean
+              versioningEnabled:
+                description: Indicate if the versioning configuration for the bucket is turned on.
+                type: boolean
+              hierarchicalNamespaceEnabled:
+                description: Whether hierarchical namespace is enabled for the bucket or not.
+                type: boolean
+              publicAccess:
+                description: The public access configuration for the bucket. Possible values are 'inherited', 'enforced' and 'unspecified'.
+                type: string
+              retentionPeriod:
+                description: The period of time, in seconds, that objects in the bucket cannot be deleted or modified.
+                type: integer
+              created:
+                description: The creation time of the bucket (RFC 3339).
+                type: string
+                format: date-time
+              lastUpdate:
+                description: Time when the bucket metadata or IAM policy was last updated (RFC 3339).
+                type: string
+                format: date-time
+              labels:
+                description: User-provided labels in key-value pairs.
+                type: object
+                additionalProperties:
+                  type: string
+    served: true
+    storage: true

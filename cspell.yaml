@@ -23,6 +23,7 @@ ignoreWords:
   - pubsubpb
   - stretchr
   - structpb
+  - vtpm
 files:
   - '**/*.go'
   - '**/*.md'

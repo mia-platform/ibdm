@@ -4,6 +4,7 @@
 package functions
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -32,8 +33,136 @@ func TestCryptoFunctions(t *testing.T) {
 	})
 }
 
+func TestListFunctions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("list", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, []any{1, "two", 3.0, true}, List(1, "two", 3.0, true))
+		var expectedEmpty []any
+		assert.Equal(t, expectedEmpty, List())
+	})
+
+	t.Run("append function", func(t *testing.T) {
+		t.Parallel()
+
+		original := []any{1, 2, 3}
+		appended, err := Append(original, 4, 5)
+		require.NoError(t, err)
+		assert.Equal(t, []any{1, 2, 3, 4, 5}, appended)
+	})
+
+	t.Run("append function with unsupported type", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := Append(123, 4, 5)
+		require.Error(t, err)
+	})
+
+	t.Run("prepend function", func(t *testing.T) {
+		t.Parallel()
+
+		original := []any{3, 4, 5}
+		prepended, err := Prepend(original, 1, 2)
+		require.NoError(t, err)
+		assert.Equal(t, []any{1, 2, 3, 4, 5}, prepended)
+	})
+
+	t.Run("prepend function with unsupported type", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := Prepend(123, 4, 5)
+		require.Error(t, err)
+	})
+
+	t.Run("first function", func(t *testing.T) {
+		t.Parallel()
+
+		list := []any{1, 2, 3, 4, 5}
+		first, err := First(list)
+		require.NoError(t, err)
+		assert.Equal(t, 1, first)
+
+		emptyList := []any{}
+		firstEmpty, err := First(emptyList)
+		require.NoError(t, err)
+		assert.Nil(t, firstEmpty)
+	})
+
+	t.Run("first function with string", func(t *testing.T) {
+		t.Parallel()
+
+		str := "hello"
+		first, err := First(str)
+		require.NoError(t, err)
+		assert.Equal(t, "h", first)
+
+		emptyString := ""
+		firstEmpty, err := First(emptyString)
+		require.NoError(t, err)
+		assert.Nil(t, firstEmpty)
+	})
+
+	t.Run("fist function with unsupported type", func(t *testing.T) {
+		t.Parallel()
+
+		value, err := First(123)
+		require.Error(t, err)
+		require.Nil(t, value)
+	})
+
+	t.Run("last function", func(t *testing.T) {
+		t.Parallel()
+
+		list := []any{1, 2, 3, 4, 5}
+		last, err := Last(list)
+		require.NoError(t, err)
+		assert.Equal(t, 5, last)
+
+		emptyList := []any{}
+		lastEmpty, err := Last(emptyList)
+		require.NoError(t, err)
+		assert.Nil(t, lastEmpty)
+	})
+
+	t.Run("last function with string", func(t *testing.T) {
+		t.Parallel()
+
+		str := "hello"
+		last, err := Last(str)
+		require.NoError(t, err)
+		assert.Equal(t, "o", last)
+
+		emptyString := ""
+		lastEmpty, err := Last(emptyString)
+		require.NoError(t, err)
+		assert.Nil(t, lastEmpty)
+	})
+
+	t.Run("last function with unsupported type", func(t *testing.T) {
+		t.Parallel()
+
+		value, err := Last(123)
+		require.Error(t, err)
+		require.Nil(t, value)
+	})
+}
+
 func TestObjectsFunctions(t *testing.T) {
 	t.Parallel()
+
+	t.Run("object function", func(t *testing.T) {
+		t.Parallel()
+
+		expected := map[string]any{
+			"name":    "Alice",
+			"age":     30,
+			"country": "Wonderland",
+			"score":   nil,
+		}
+		assert.Equal(t, expected, Object("name", "Alice", "age", 30, "country", "Wonderland", "score"))
+	})
 
 	t.Run("toJSON function", func(t *testing.T) {
 		t.Parallel()
@@ -46,16 +175,18 @@ func TestObjectsFunctions(t *testing.T) {
 		assert.Equal(t, expected, ToJSON(input))
 	})
 
-	t.Run("pluck function", func(t *testing.T) {
+	t.Run("pick function", func(t *testing.T) {
 		t.Parallel()
 
-		objects := []map[string]any{
-			{"id": 1, "value": "Alice"},
-			{"id": 2, "value": 1},
-			{"id": 3, "value": "Charlie"},
+		object := map[string]any{
+			"name":    "Alice",
+			"age":     30,
+			"country": "Wonderland",
 		}
-		expected := []any{"Alice", 1, "Charlie"}
-		assert.Equal(t, expected, Pluck("value", objects))
+
+		expected := map[string]any{"name": "Alice", "country": "Wonderland"}
+		assert.Equal(t, expected, Pick(object, "name", "country"))
+		assert.Equal(t, make(map[string]any), Pick(object, "nonexistent", "nonexistent2"))
 	})
 
 	t.Run("get function", func(t *testing.T) {
@@ -71,10 +202,40 @@ func TestObjectsFunctions(t *testing.T) {
 		assert.Equal(t, expectedAge, Get("age", object, nil))
 		assert.Equal(t, true, Get("missing", object, true))
 	})
+
+	t.Run("set function", func(t *testing.T) {
+		t.Parallel()
+
+		object := map[string]any{
+			"name": "Alice",
+			"age":  30,
+		}
+		updatedObject := Set("country", "Wonderland", object)
+		expected := map[string]any{
+			"name":    "Alice",
+			"age":     30,
+			"country": "Wonderland",
+		}
+		assert.Equal(t, expected, updatedObject)
+	})
 }
 
 func TestStringsFunctions(t *testing.T) {
 	t.Parallel()
+
+	t.Run("quote function", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, `"Hello, \"World\"!"`, Quote(`Hello, "World"!`))
+		assert.Equal(t, `"123"`, Quote(123))
+		assert.Equal(t, `"true"`, Quote(true))
+		assert.Equal(t, `"3.14"`, Quote(3.14))
+		assert.Equal(t, `"<nil>"`, Quote(nil))
+		obj := map[string]any{"key": "value"}
+		assert.Equal(t, `"map[key:value]"`, Quote(obj))
+		buffer := new(bytes.Buffer)
+		buffer.WriteString("byte slice")
+		assert.Equal(t, `"byte slice"`, Quote(buffer))
+	})
 
 	t.Run("trim function", func(t *testing.T) {
 		t.Parallel()
@@ -97,6 +258,15 @@ func TestStringsFunctions(t *testing.T) {
 		suffix := " World!"
 		expected := "Hello,"
 		assert.Equal(t, expected, TrimSuffix(suffix, input))
+	})
+
+	t.Run("replace function", func(t *testing.T) {
+		t.Parallel()
+		input := "Hello, World! World!"
+		toChange := "World"
+		toBe := "Universe"
+		expected := "Hello, Universe! Universe!"
+		assert.Equal(t, expected, Replace(toChange, toBe, input))
 	})
 
 	t.Run("toUpper function", func(t *testing.T) {
