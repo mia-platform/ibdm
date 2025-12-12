@@ -1,0 +1,18 @@
+apiVersion: gcp.mia-platform.eu/v1alpha1
+resource: services
+type: run.googleapis.com/Service
+syncable: true
+mappings:
+  identifier: |-
+    {{ $components := trimPrefix "//run.googleapis.com/" .name | split "/" -}}
+    {{- printf "%s-%s" (index $components 1) (index $components 5) }}
+  spec:
+    apiVersion: "{{ .resource.data.apiVersion }}"
+    kind: "{{ .resource.data.kind }}"
+    name: "{{ .resource.data.metadata.name }}"
+    url : "{{ get \"url\" .resource.data.status \"\" | quote }}"
+    traffic: "{{ .resource.data.status.traffic | toJSON }}"
+    serviceAccountName: "{{ .resource.data.spec.template.spec.serviceAccountName }}"
+    latestCreatedRevisionName: "{{ .resource.data.status.latestCreatedRevisionName }}"
+    latestReadyRevisionName: "{{ .resource.data.status.latestReadyRevisionName }}"
+    location: "{{ .resource.location }}"

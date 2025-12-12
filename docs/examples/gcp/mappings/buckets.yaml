@@ -1,0 +1,22 @@
+apiVersion: gcp.mia-platform.eu/v1alpha1
+resource: buckets
+type: storage.googleapis.com/Bucket
+syncable: true
+mappings:
+  identifier: |-
+    {{ $name := .name -}}
+    {{- $name = trimPrefix "//storage.googleapis.com/" $name -}}
+    {{- replace "_" "-" $name }}
+  spec:
+    name: "{{ .resource.data.name }}"
+    location: "{{ .resource.data.location | lower }}"
+    locationType: "{{ .resource.data.locationType | lower }}"
+    storageClass: "{{ .resource.data.storageClass | lower }}"
+    autoclassEnabled: "{{ get \"enabled\" .resource.data.autoclass false }}"
+    versioningEnabled: "{{ get \"enabled\"  .resource.data.versioning false }}"
+    hierarchicalNamespaceEnabled: "{{ get \"enabled\" .resource.data.hierarchicalNamespace false }}"
+    publicAccess: "{{ .resource.data.iamConfiguration.publicAccessPrevention | lower }}"
+    retentionPeriod: "{{ get \"retentionPeriod\" .resource.data.retentionPolicy 0 }}"
+    created: "{{ .resource.data.timeCreated }}"
+    lastUpdate: "{{ .resource.data.updated }}"
+    labels: "{{ .resource.data.labels | toJSON }}"

@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: jobs.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: Job
+    plural: jobs
+    singular: job
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              apiVersion:
+                description: API version of the resource
+                type: string
+              kind:
+                description: The resource kind
+                type: string
+              name:
+                description: The name of the Job resource
+                type: string
+              image:
+                description: The main container image used for the Job
+                type: string
+              latestExectuion:
+                description: Details of the latest execution of the Job
+                type: object
+                properties:
+                  name:
+                    description: The name of the executed job
+                    type: string
+                  creationTimeStamp:
+                    description: Start time of the execution
+                    type: string
+                  completionTimestamp:
+                    description: End time of the execution
+                    type: string
+                  completionStatus:
+                    description: Status of the execution
+                    type: string
+              maxRetries:
+                description: Maximum number of retries for failed executions
+                type: integer
+              parallelism:
+                description: Number of parallel executions allowed. If set to 0, there is no limit
+                type: integer
+              serviceAccountName:
+                description: The service account email to run the Job
+                type: string
+              timeoutSeconds:
+                description: Maximum execution time in seconds before task termination
+                type: integer
+              location:
+                description: Location/region for the Job resource
+                type: string
+    served: true
+    storage: true

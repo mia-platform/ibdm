@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: projects.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: Project
+    plural: projects
+    singular: project
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              projectId:
+                description: The project ID used to identify the project in GCP
+                type: string
+              name:
+                description: The user visible name for the project.
+                type: string
+              parent:
+                description: The parent resource identifier (for example, 'folders/{folder_id}' or 'organizations/{org_id}')
+                type: string
+              state:
+                description: Current lifecycle state of the project. Possible values are 'state_unspecified', 'active', or 'delete_requested'.
+                type: string
+              createTime:
+                description: RFC 3339 timestamp for when the project was created
+                type: string
+                format: date-time
+              labels:
+                description: User-provided labels in key-value pairs.
+                type: object
+                additionalProperties:
+                  type: string
+    served: true
+    storage: true

@@ -1,0 +1,28 @@
+apiVersion: gcp.mia-platform.eu/v1alpha1
+resource: firewallrules
+type: compute.googleapis.com/Firewall
+syncable: true
+mappings:
+  identifier: |-
+    {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+    {{- printf "%s-%s" (index $components 1) (index $components 4) }}
+  spec:
+    name: "{{ .resource.data.name }}"
+    description: "{{ .resource.data.description | quote }}"
+    disabled: "{{ .resource.data.disabled }}"
+    network: "{{ .resource.data.network }}"
+    priority: "{{ .resource.data.priority }}"
+    logEnabled: "{{ .resource.data.logConfig.enable }}"
+    ingress: |-
+      {{ $rules := object -}}
+      {{- if eq .resource.data.direction "INGRESS" -}}
+        {{ $rules = pick .resource.data "allowed" "denied" "sourceRanges" "sourceTags" "sourceServiceAccounts" "targetRanges" "targetTags" "targetServiceAccounts" "destinationRanges" -}}
+      {{- end -}}
+      {{- $rules | toJSON }}
+    egress: |-
+      {{ $rules := object -}}
+      {{- if eq .resource.data.direction "EGRESS" -}}
+        {{ $rules = pick .resource.data "allowed" "denied" "sourceRanges" "sourceTags" "sourceServiceAccounts" "targetRanges" "targetTags" "targetServiceAccounts" "destinationRanges" -}}
+      {{- end -}}
+      {{- $rules | toJSON }}
+    location: "{{ .resource.location }}"

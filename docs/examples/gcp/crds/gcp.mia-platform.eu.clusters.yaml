@@ -1,0 +1,108 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: clusters.gcp.mia-platform.eu
+spec:
+  group: gcp.mia-platform.eu
+  names:
+    kind: Cluster
+    plural: clusters
+    singular: cluster
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The cluster name
+                type: string
+              description:
+                description: Human-readable description of the cluster
+                type: string
+              autopilot:
+                description: Whether the cluster is an Autopilot one
+                type: boolean
+              apiServerVersion:
+                description: The current kubernetes version of the cluster API server
+                type: string
+              network:
+                description: Network resource the cluster uses
+                type: string
+              subnetwork:
+                description: Subnetwork resource the cluster uses
+                type: string
+              podsIpv4Cidr:
+                description: The IP address range for the pods in this cluster
+                type: string
+              servicesIpv4Cidr:
+                description: The IP address range for the services in this cluster
+                type: string
+              clusterEndpoints:
+                description:
+                type: object
+                properties:
+                  dnsEndpointConfig:
+                    description: configuration for the DNS endpoint of the api server
+                    type: object
+                    properties:
+                      allowExternalTraffic:
+                        type: boolean
+                      enableK8sCertsViaDns:
+                        type: boolean
+                      enableK8sTokensViaDns:
+                        type: boolean
+                      endpoint:
+                        type: string
+                  ipEndpointsConfig:
+                    description: configuration for the IP endpoint of the api server
+                    type: object
+                    properties:
+                      authorizedNetworksConfig:
+                        type: object
+                        properties:
+                          cidrBlocks:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                cidrBlock:
+                                  type: string
+                                displayName:
+                                  type: string
+                          enabled:
+                            type: boolean
+                          gcpPublicCidrsAccessEnabled:
+                            type: boolean
+                          privateEndpointEnforcementEnabled:
+                            type: boolean
+                      enablePublicEndpoint:
+                        type: boolean
+                      enabled:
+                        type: boolean
+                      globalAccess:
+                        type: boolean
+                      privateEndpoint:
+                        type: string
+                      publicEndpoint:
+                        type: string
+              status:
+                description: Cluster status (possible options can be PROVISIONING, RUNNING, etc.)
+                type: string
+              location:
+                description: Primary location for the cluster
+                type: string
+              labels:
+                description: User-provided labels in key-value pairs.
+                type: object
+                additionalProperties:
+                  type: string
+    served: true
+    storage: true
