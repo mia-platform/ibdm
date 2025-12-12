@@ -4,6 +4,7 @@
 package functions
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -151,6 +152,18 @@ func TestListFunctions(t *testing.T) {
 func TestObjectsFunctions(t *testing.T) {
 	t.Parallel()
 
+	t.Run("object function", func(t *testing.T) {
+		t.Parallel()
+
+		expected := map[string]any{
+			"name":    "Alice",
+			"age":     30,
+			"country": "Wonderland",
+			"score":   nil,
+		}
+		assert.Equal(t, expected, Object("name", "Alice", "age", 30, "country", "Wonderland", "score"))
+	})
+
 	t.Run("toJSON function", func(t *testing.T) {
 		t.Parallel()
 
@@ -189,10 +202,40 @@ func TestObjectsFunctions(t *testing.T) {
 		assert.Equal(t, expectedAge, Get("age", object, nil))
 		assert.Equal(t, true, Get("missing", object, true))
 	})
+
+	t.Run("set function", func(t *testing.T) {
+		t.Parallel()
+
+		object := map[string]any{
+			"name": "Alice",
+			"age":  30,
+		}
+		updatedObject := Set("country", "Wonderland", object)
+		expected := map[string]any{
+			"name":    "Alice",
+			"age":     30,
+			"country": "Wonderland",
+		}
+		assert.Equal(t, expected, updatedObject)
+	})
 }
 
 func TestStringsFunctions(t *testing.T) {
 	t.Parallel()
+
+	t.Run("quote function", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, `"Hello, \"World\"!"`, Quote(`Hello, "World"!`))
+		assert.Equal(t, `"123"`, Quote(123))
+		assert.Equal(t, `"true"`, Quote(true))
+		assert.Equal(t, `"3.14"`, Quote(3.14))
+		assert.Equal(t, `"<nil>"`, Quote(nil))
+		obj := map[string]any{"key": "value"}
+		assert.Equal(t, `"map[key:value]"`, Quote(obj))
+		buffer := new(bytes.Buffer)
+		buffer.WriteString("byte slice")
+		assert.Equal(t, `"byte slice"`, Quote(buffer))
+	})
 
 	t.Run("trim function", func(t *testing.T) {
 		t.Parallel()

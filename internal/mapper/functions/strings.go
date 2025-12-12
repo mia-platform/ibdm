@@ -5,8 +5,14 @@ package functions
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strings"
 )
+
+// Quote adds double quotes around the input strings.
+func Quote(s any) string {
+	return fmt.Sprintf("%q", castToString(s))
+}
 
 // TrimSpace removes all leading and trailing white space from the input string.
 func TrimSpace(s string) string {
@@ -75,4 +81,15 @@ func DecodeBase64(input string) (string, error) {
 	}
 
 	return string(decoded), nil
+}
+
+func castToString(obj any) string {
+	switch v := obj.(type) {
+	case string:
+		return v
+	case fmt.Stringer:
+		return v.String()
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

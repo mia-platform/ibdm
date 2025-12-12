@@ -13,6 +13,7 @@ In addition to the [default functions] available to all Go Text Templates we giv
 these other ones:
 
 - Strings Functions:
+	- [quote](#quote)
 	- [trim](#trim)
 	- [trimPrefix](#trimprefix)
 	- [trimSuffix](#trimsuffix)
@@ -24,9 +25,11 @@ these other ones:
 	- [encode64](#encode64)
 	- [decode64](#decode64)
 - Objects Functions:
+	- [object](#object)
 	- [toJSON](#tojson)
 	- [pick](#pick)
 	- [get](#get)
+	- [set](#set)
 - List Functions:
 	- [list](#list)
 	- [append](#append)
@@ -42,6 +45,14 @@ these other ones:
 	- [uuidv4](#uuidv4)
 	- [uuidv6](#uuidv6)
 	- [uuidv7](#uuidv7)
+
+### `quote`
+
+The `quote` function will embed the data passed to it with the double quote characters.
+
+As an example, `{{ .aKey | quote }}` with a `aKey` containing `some data` will return `"some data"`.  
+This can be used to always have a string if some kind of data return the empty string, or to cast
+other types to a string.
 
 ### `trim`
 
@@ -107,15 +118,22 @@ list `[hello, world]`.
 
 The `encode64` function can be used to generate a base64 encoding of the input string.
 
-As an example. `{{ .aKey | encode64 }}` with a `aKey` containing `hello world!` will return
+As an example, `{{ .aKey | encode64 }}` with a `aKey` containing `hello world!` will return
 `aGVsbG8gd29ybGQh`.
 
 ### `decode64`
 
 The `decode64` function can be used to decode a string containing a base64 value.
 
-As an example. `{{ .aKey | decode64 }}` with a `aKey` containing `aGVsbG8gd29ybGQh` will return
+As an example, `{{ .aKey | decode64 }}` with a `aKey` containing `aGVsbG8gd29ybGQh` will return
 `hello world!`.
+
+### `object`
+
+The `object` function can be used to create a new object with keys and values.
+
+As an example, `{{ object "key" .aKey | toJSON }}` with a `aKey` containing `hello world!` will
+return a `{"key":"hello world!"}`
 
 ### `toJSON`
 
@@ -137,8 +155,17 @@ As an example, `{{ pick .objects "key" .objects | toJSON }}` with a `objects` co
 The `get` function will return the chosen key from the object and the default value if the key is
 not present in the target object.
 
-As an example, `{{ get "key" .object "defaultValue" }}` with a `objects` containing
+As an example, `{{ get "key" .object "defaultValue" }}` with a `object` containing
 `{"key":"value1"}` will return `value1`.
+
+### `set`
+
+The `set` function will add or change the chosen key to the object with the given value and will
+return the new object resulting from the addition.
+
+As an example, `{{ set "otherKey" .aKey .object | toJSON }}` with a `object` containing
+`{"key":"value1"}` and `aKey` containing `new value` will return
+`{"key":"value1","otherKey";"new value"}`.
 
 ### `list`
 
