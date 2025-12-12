@@ -50,6 +50,7 @@ The following *types* are allowed:
 1. `ci:` a commit that improves the pipelines or the integration mechanisms.
 1. `style:` a commit that changes the code or documentation format and/or style without modifying
 	the implementation.
+1. `build`: a commit that changes files used for building artifacts or for local development
 1. `chore:` a catch-all type for any other commits. Generally used for commits that do not add or improve
 		functionalities to code or documentation.
 
