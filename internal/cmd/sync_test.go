@@ -88,7 +88,9 @@ func TestSyncCmdErrorOutput(t *testing.T) {
 }
 
 func TestOptionsSync(t *testing.T) {
-	t.Parallel()
+	t.Cleanup(func() {
+		sourceGetter = sourceFromIntegrationName
+	})
 
 	sourceGetter = func(_ context.Context, integrationName string) (any, error) {
 		switch integrationName {
@@ -126,8 +128,6 @@ func TestOptionsSync(t *testing.T) {
 
 	for testName, test := range testCases {
 		t.Run(testName, func(t *testing.T) {
-			t.Parallel()
-
 			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
 
