@@ -26,7 +26,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 				{
 					Type:       "yaml",
 					APIVersion: "group/v1",
-					Kind:       "configs",
+					Resource:   "configs",
 					Syncable:   true,
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
@@ -44,7 +44,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 				{
 					Type:       "json",
 					APIVersion: "group/v1",
-					Kind:       "configs",
+					Resource:   "configs",
 					Syncable:   true,
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
@@ -62,7 +62,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 				{
 					Type:       "first",
 					APIVersion: "group/v1",
-					Kind:       "configs",
+					Resource:   "configs",
 					Syncable:   true,
 					Mappings: Mappings{
 						Identifier: "{{ .spec.id }}",
@@ -75,7 +75,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 				{
 					Type:       "second",
 					APIVersion: "group/v1",
-					Kind:       "configs",
+					Resource:   "configs",
 					Syncable:   true,
 					Mappings: Mappings{
 						Identifier: "{{ .metadata.name }}",
@@ -87,7 +87,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 				{
 					Type:       "third",
 					APIVersion: "group/v1",
-					Kind:       "configs",
+					Resource:   "configs",
 					Syncable:   false,
 					Mappings: Mappings{
 						Identifier: "{{ .spec.code }}",

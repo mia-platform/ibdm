@@ -1,4 +1,4 @@
-type: invalid
 apiVersion: "group/v1"
-kind:       "configs"
+resource: "configs"
+type: invalid
 syncable: "syncable"

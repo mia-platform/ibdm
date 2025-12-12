@@ -21,7 +21,7 @@ var (
 type MappingConfig struct {
 	Type       string   `json:"type" yaml:"type"`
 	APIVersion string   `json:"apiVersion" yaml:"apiVersion"`
-	Kind       string   `json:"kind" yaml:"kind"`
+	Resource   string   `json:"resource" yaml:"resource"`
 	Syncable   bool     `json:"syncable" yaml:"syncable"`
 	Mappings   Mappings `json:"mappings" yaml:"mappings"`
 }
@@ -74,7 +74,7 @@ func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 		if config.APIVersion == "" {
 			missingFields = append(missingFields, "apiVersion")
 		}
-		if config.Kind == "" {
+		if config.Resource == "" {
 			missingFields = append(missingFields, "kind")
 		}
 
