@@ -62,7 +62,7 @@ func checkAssetConfig(cfg gcpAssetConfig) error {
 	return nil
 }
 
-func NewGCPSource(ctx context.Context) (*GCPSource, error) {
+func NewSource() (*GCPSource, error) {
 	errorsList := make([]error, 0)
 	assetClient, err := newAssetClient()
 	if err != nil {

@@ -92,7 +92,7 @@ func TestOptionsSync(t *testing.T) {
 		sourceGetter = sourceFromIntegrationName
 	})
 
-	sourceGetter = func(_ context.Context, integrationName string) (any, error) {
+	sourceGetter = func(integrationName string) (any, error) {
 		switch integrationName {
 		case "fake":
 			return fake.NewFakeSourceWithError(t, nil), nil

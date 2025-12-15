@@ -45,7 +45,7 @@ func TestCheckPubSubConfig(t *testing.T) {
 				test.setEnv(t)
 			}
 
-			source, err := NewGCPSource(t.Context())
+			source, err := NewSource()
 			require.NoError(t, err)
 			err = checkPubSubConfig(source.p.config)
 			if test.expectedErr != nil {
@@ -110,7 +110,7 @@ func TestCheckAssetConfig(t *testing.T) {
 				test.setEnv(t)
 			}
 
-			source, err := NewGCPSource(t.Context())
+			source, err := NewSource()
 			require.NoError(t, err)
 			err = checkAssetConfig(source.a.config)
 			if test.expectedErr != nil {

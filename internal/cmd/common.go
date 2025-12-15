@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -150,9 +149,9 @@ func loadMappingConfigs(paths []string) ([]*config.MappingConfig, error) {
 }
 
 // sourceFromIntegrationName return a pipeline source based on the provided integrationName.
-func sourceFromIntegrationName(ctx context.Context, integrationName string) (any, error) {
+func sourceFromIntegrationName(integrationName string) (any, error) {
 	if integrationName == "gcp" {
-		return gcp.NewGCPSource(ctx)
+		return gcp.NewSource()
 	}
 
 	return nil, nil

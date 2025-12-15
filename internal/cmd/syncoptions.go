@@ -94,7 +94,7 @@ func (o *syncOptions) execute(ctx context.Context) error {
 		return err
 	}
 
-	source, err := sourceGetter(ctx, o.integrationName)
+	source, err := sourceGetter(o.integrationName)
 	if err != nil {
 		return err
 	}

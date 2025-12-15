@@ -95,7 +95,7 @@ func TestSourceFromName(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			source, err := sourceFromIntegrationName(t.Context(), test.integrationName)
+			source, err := sourceFromIntegrationName(test.integrationName)
 			assert.NoError(t, err)
 			if test.expectedSourceType == nil {
 				assert.Nil(t, source)
