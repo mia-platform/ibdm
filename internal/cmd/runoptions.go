@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mia-platform/ibdm/internal/destination"
+	"github.com/mia-platform/ibdm/internal/destination/catalog"
 	"github.com/mia-platform/ibdm/internal/destination/writer"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 )
@@ -60,8 +61,11 @@ func (f *runFlags) toOptions(cmd *cobra.Command, args []string) (*runOptions, er
 	if f.localOutput {
 		destination = writer.NewDestination(cmd.OutOrStdout())
 	} else {
-		// TODO: implement remote destination
-		destination = nil
+		var err error
+		destination, err = catalog.NewDestination()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &runOptions{

@@ -14,6 +14,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 )
 
@@ -109,13 +110,13 @@ func collectPaths(paths []string) ([]string, error) {
 // loadMappers loads the mapping configurations from the provided paths and
 // returns a map of typed mappers. If syncOnly is true, only mappings
 // of syncable types are loaded.
-func loadMappers(paths []string, syncOnly bool) (map[string]mapper.Mapper, error) {
+func loadMappers(paths []string, syncOnly bool) (map[string]pipeline.DataMapper, error) {
 	mappings, err := loadMappingConfigs(paths)
 	if err != nil {
 		return nil, err
 	}
 
-	typedMappers := make(map[string]mapper.Mapper)
+	typedMappers := make(map[string]pipeline.DataMapper)
 	for _, mapping := range mappings {
 		if syncOnly && !mapping.Syncable {
 			continue
@@ -127,7 +128,11 @@ func loadMappers(paths []string, syncOnly bool) (map[string]mapper.Mapper, error
 			return nil, err
 		}
 
-		typedMappers[mapping.Type] = mapper
+		typedMappers[mapping.Type] = pipeline.DataMapper{
+			APIVersion: mapping.APIVersion,
+			Resource:   mapping.Resource,
+			Mapper:     mapper,
+		}
 	}
 
 	return typedMappers, nil

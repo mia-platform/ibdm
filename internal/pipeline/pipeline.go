@@ -23,17 +23,23 @@ const (
 // which takes a context and a channel to send source.Data, returning an error if any.
 type dataPipeline = func(ctx context.Context, channel chan<- source.Data) error
 
+type DataMapper struct {
+	APIVersion string
+	Resource   string
+	Mapper     mapper.Mapper
+}
+
 // Pipeline represents a data processing pipeline that reads data from a source,
 // applies mappers to transform the data, and sends the processed data to a destination.
 type Pipeline struct {
 	source      any
-	mappers     map[string]mapper.Mapper
+	mappers     map[string]DataMapper
 	mapperTypes []string
 	destination destination.Sender
 }
 
 // New creates a new Pipeline instance with the provided source, mappers, and destination.
-func New(source any, mappers map[string]mapper.Mapper, destination destination.Sender) *Pipeline {
+func New(source any, mappers map[string]DataMapper, destination destination.Sender) *Pipeline {
 	return &Pipeline{
 		source:      source,
 		mappers:     mappers,
@@ -130,27 +136,33 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 			if !ok {
 				return
 			}
-			mapper := p.mappers[data.Type]
-			if mapper == nil {
+			mapper, found := p.mappers[data.Type]
+			if !found {
 				log.Debug("data type not mapped, skipping", "type", data.Type)
 				continue
 			}
 
-			output, err := mapper.ApplyTemplates(data.Values)
+			output, err := mapper.Mapper.ApplyTemplates(data.Values)
 			if err != nil {
 				log.Error("error applying mapper templates", "type", data.Type, "error", err)
 				continue
 			}
 
 			log.Trace("sending data", "type", data.Type, "operation", data.Operation.String())
+			dataToSend := &destination.Data{
+				APIVersion: mapper.APIVersion,
+				Resource:   mapper.Resource,
+				Name:       output.Identifier,
+			}
 			switch data.Operation {
 			case source.DataOperationUpsert:
-				if err := p.destination.SendData(ctx, output.Identifier, output.Spec); err != nil {
+				dataToSend.Data = output.Spec
+				if err := p.destination.SendData(ctx, dataToSend); err != nil {
 					log.Error("error sending data to destination", "type", data.Type, "error", err)
 					continue
 				}
 			case source.DataOperationDelete:
-				if err := p.destination.DeleteData(ctx, output.Identifier); err != nil {
+				if err := p.destination.DeleteData(ctx, dataToSend); err != nil {
 					log.Error("error deleting data from destination", "type", data.Type, "error", err)
 					continue
 				}

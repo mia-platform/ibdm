@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/mia-platform/ibdm/internal/destination"
 )
 
 func TestNewWriterDestination(t *testing.T) {
@@ -15,14 +17,19 @@ func TestNewWriterDestination(t *testing.T) {
 
 	buffer := new(bytes.Buffer)
 
-	destination := NewDestination(buffer)
+	testDestination := NewDestination(buffer)
 
-	destination.SendData(t.Context(), "id-1", map[string]any{
-		"key":   "value",
-		"array": []string{"a", "b", "c"},
+	testDestination.SendData(t.Context(), &destination.Data{
+		Name: "id-1",
+		Data: map[string]any{
+			"key":   "value",
+			"array": []string{"a", "b", "c"},
+		},
 	})
 
-	destination.DeleteData(t.Context(), "id-1")
+	testDestination.DeleteData(t.Context(), &destination.Data{
+		Name: "id-1",
+	})
 
 	expectedOutput := `Send data:
 	Identifier: id-1

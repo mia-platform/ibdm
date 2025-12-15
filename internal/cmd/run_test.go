@@ -32,32 +32,33 @@ func TestRunCmdErrorOutput(t *testing.T) {
 		expectedUsage        bool
 		expectedErrorMessage string
 	}{
-		"empty args, no error but usage output": {
+		"empty cmd, no error but usage output": {
+			args:          []string{"--" + localOutputFlagName},
 			expectedUsage: true,
 		},
 		"unknown command, error returned and usage output": {
-			args:                 []string{"unknown"},
+			args:                 []string{"unknown", "--" + localOutputFlagName},
 			expectedError:        errInvalidIntegration,
 			expectedErrorMessage: fmt.Sprintf("%s: unknown\n", errInvalidIntegration),
 			expectedUsage:        true,
 		},
 		"missing mapping path, error returned no usage output": {
-			args:                 []string{"gcp", "--" + mappingPathFlagName, filepath.Join(tmpDir, "missing")},
+			args:                 []string{"gcp", "--" + mappingPathFlagName, filepath.Join(tmpDir, "missing"), "--" + localOutputFlagName},
 			expectedError:        syscall.ENOENT,
 			expectedErrorMessage: fmt.Sprintf("mapping file %q: %s\n", filepath.Join(tmpDir, "missing"), syscall.ENOENT),
 		},
 		"error reading folder, error returned no usage output": {
-			args:                 []string{"gcp", "--" + mappingPathFlagName, filepath.Join(tmpDir, "secret")},
+			args:                 []string{"gcp", "--" + mappingPathFlagName, filepath.Join(tmpDir, "secret"), "--" + localOutputFlagName},
 			expectedError:        syscall.EACCES,
 			expectedErrorMessage: fmt.Sprintf("mapping file %q: %s\n", filepath.Join(tmpDir, "secret"), syscall.EACCES),
 		},
 		"invalid mapping file, error returned no usage output": {
-			args:                 []string{"gcp", "--" + mappingPathFlagName, filepath.Join(tmpDir, "valid")},
+			args:                 []string{"gcp", "--" + mappingPathFlagName, filepath.Join(tmpDir, "valid"), "--" + localOutputFlagName},
 			expectedError:        config.ErrParsing,
 			expectedErrorMessage: fmt.Sprintf("%s %q: %s\n", config.ErrParsing, filepath.Join(tmpDir, "valid", "invalid.yaml"), "yaml: found character that cannot start any token"),
 		},
 		"invalid templates, error returned no usage output": {
-			args:                 []string{"gcp", "--" + mappingPathFlagName, filepath.Join("testdata", "invalid")},
+			args:                 []string{"gcp", "--" + mappingPathFlagName, filepath.Join("testdata", "invalid"), "--" + localOutputFlagName},
 			expectedError:        mapper.NewParsingError(errors.New("template: spec:2: function \"invalidFunc\" not defined")),
 			expectedErrorMessage: mapper.NewParsingError(errors.New("template: spec:2: function \"invalidFunc\" not defined")).Error() + "\n",
 		},

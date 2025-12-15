@@ -28,16 +28,16 @@ func NewDestination(w io.Writer) destination.Sender {
 	}
 }
 
-func (d *writerDestination) SendData(_ context.Context, identifier string, spec map[string]any) error {
+func (d *writerDestination) SendData(_ context.Context, data *destination.Data) error {
 	builder := new(strings.Builder)
 
 	builder.WriteString("Send data:\n")
-	builder.WriteString("\tIdentifier: " + identifier + "\n")
+	builder.WriteString("\tIdentifier: " + data.Name + "\n")
 	builder.WriteString("\tSpec: ")
 
 	encoder := json.NewEncoder(builder)
 	encoder.SetIndent("\t", "\t")
-	_ = encoder.Encode(spec)
+	_ = encoder.Encode(data.Data)
 	builder.WriteString("\n")
 
 	d.lock.Lock()
@@ -46,10 +46,10 @@ func (d *writerDestination) SendData(_ context.Context, identifier string, spec 
 	return nil
 }
 
-func (d *writerDestination) DeleteData(_ context.Context, identifier string) error {
+func (d *writerDestination) DeleteData(_ context.Context, data *destination.Data) error {
 	builder := new(strings.Builder)
 	builder.WriteString("Delete data:\n")
-	builder.WriteString("\tIdentifier: " + identifier + "\n")
+	builder.WriteString("\tIdentifier: " + data.Name + "\n")
 	builder.WriteString("\n")
 
 	d.lock.Lock()

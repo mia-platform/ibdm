@@ -14,25 +14,27 @@ import (
 	"github.com/spf13/cobra"
 
 	internalcmd "github.com/mia-platform/ibdm/internal/cmd"
+	"github.com/mia-platform/ibdm/internal/info"
 	"github.com/mia-platform/ibdm/internal/logger"
 )
 
 var (
 	// Version is dynamically set by the ci or overridden by the Makefile.
-	Version = "DEV"
+	Version = info.Version
 	// BuildDate is dynamically set at build time by the cli or overridden in the Makefile.
-	BuildDate = "" // YYYY-MM-DD
+	BuildDate = info.BuildDate
+
+	appName      = info.AppName
+	versionShort = "Display the " + appName + " version"
 )
 
 const (
-	appName  = "ibdm"
 	appShort = "ibdm is the CLI tool to create a Mia-Platform Catalog connector"
 
 	logLevelFlagName      = "log-level"
 	logLevelShortFlagName = "v"
 
 	versionCmdName = "version"
-	versionShort   = "Display the " + appName + " version"
 )
 
 var (
