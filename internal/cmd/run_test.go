@@ -8,39 +8,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/source/fake"
 )
-
-func setupTestFileStructure(t *testing.T, baseDir string) {
-	t.Helper()
-
-	if err := os.MkdirAll(filepath.Join(baseDir, "valid", "subdir"), os.ModePerm); err != nil {
-		require.NoError(t, err)
-	}
-
-	if err := os.WriteFile(filepath.Join(baseDir, "valid", "invalid.yaml"), []byte("\tinvalid yaml file"), os.ModePerm); err != nil {
-		require.NoError(t, err)
-	}
-
-	if err := os.Mkdir(filepath.Join(baseDir, "secret"), os.ModePerm); err != nil {
-		require.NoError(t, err)
-	}
-	if err := os.Chmod(filepath.Join(baseDir, "secret"), 0o0000); err != nil {
-		require.NoError(t, err)
-	}
-}
 
 func TestRunCmdErrorOutput(t *testing.T) {
 	t.Parallel()
@@ -105,43 +83,6 @@ func TestRunCmdErrorOutput(t *testing.T) {
 			if test.expectedUsage {
 				assert.Equal(t, "usage string", outBuffer.String())
 			}
-		})
-	}
-}
-
-func TestCompletion(t *testing.T) {
-	t.Parallel()
-	testCases := map[string]struct {
-		args               []string
-		toComplete         string
-		expectedCompletion []string
-	}{
-		"no args, complete root commands": {
-			args:               []string{},
-			expectedCompletion: []string{"gcp\tGoogle Cloud Platform integration"},
-		},
-		"some args, no completions": {
-			args: []string{"gcp"},
-		},
-		"no args, partial string, return filtered commands": {
-			args:               []string{},
-			toComplete:         "g",
-			expectedCompletion: []string{"gcp\tGoogle Cloud Platform integration"},
-		},
-		"no args, partial wrong string, return no command": {
-			args:       []string{},
-			toComplete: "x",
-		},
-	}
-
-	for testName, test := range testCases {
-		t.Run(testName, func(t *testing.T) {
-			t.Parallel()
-
-			cmd := RunCmd()
-			args, directive := validArgsFunc(availableEventSources)(cmd, test.args, test.toComplete)
-			assert.Equal(t, cobra.ShellCompDirectiveNoFileComp, directive)
-			assert.Equal(t, test.expectedCompletion, args)
 		})
 	}
 }

@@ -4,10 +4,18 @@
 package cmd
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"io/fs"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/mia-platform/ibdm/internal/config"
+	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/source/gcp"
 )
 
 var (
@@ -24,6 +32,10 @@ var (
 	availableSyncSources = map[string]string{
 		"gcp": "Google Cloud Platform synchronization",
 	}
+
+	// sourceGetter is a function that returns a pipeline source based on the provided integration name.
+	// It can be overridden for testing purposes.
+	sourceGetter = sourceFromIntegrationName
 )
 
 // handleError will do custom print error handling based on the type of error received.
@@ -66,4 +78,82 @@ func validArgsFunc(sources map[string]string) cobra.CompletionFunc {
 
 		return comps, cobra.ShellCompDirectiveNoFileComp
 	}
+}
+
+func collectPaths(paths []string) ([]string, error) {
+	collected := make([]string, 0)
+	for _, p := range paths {
+		cleanedPath := filepath.Clean(p)
+		err := filepath.Walk(cleanedPath, func(walkedPath string, info fs.FileInfo, err error) error {
+			if err != nil {
+				return fmt.Errorf("mapping file %q: %w", walkedPath, unwrappedError(err))
+			}
+
+			switch {
+			case !info.IsDir(): // it's a file add to the collection
+				collected = append(collected, walkedPath)
+			case info.IsDir() && cleanedPath != walkedPath: // skip directories if is not the root path
+				return filepath.SkipDir
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return collected, nil
+}
+
+// loadMappers loads the mapping configurations from the provided paths and
+// returns a map of typed mappers. If syncOnly is true, only mappings
+// of syncable types are loaded.
+func loadMappers(paths []string, syncOnly bool) (map[string]mapper.Mapper, error) {
+	mappings, err := loadMappingConfigs(paths)
+	if err != nil {
+		return nil, err
+	}
+
+	typedMappers := make(map[string]mapper.Mapper)
+	for _, mapping := range mappings {
+		if syncOnly && !mapping.Syncable {
+			continue
+		}
+
+		mappings := mapping.Mappings
+		mapper, err := mapper.New(mappings.Identifier, mappings.Spec)
+		if err != nil {
+			return nil, err
+		}
+
+		typedMappers[mapping.Type] = mapper
+	}
+
+	return typedMappers, nil
+}
+
+// loadMappingConfigs loads all mapping configurations from the provided paths.
+func loadMappingConfigs(paths []string) ([]*config.MappingConfig, error) {
+	mappings := make([]*config.MappingConfig, 0)
+	for _, path := range paths {
+		fileMappings, err := config.NewMappingConfigsFromPath(path)
+		if err != nil {
+			return nil, err
+		}
+
+		mappings = append(mappings, fileMappings...)
+	}
+
+	return mappings, nil
+}
+
+// sourceFromIntegrationName return a pipeline source based on the provided integrationName.
+func sourceFromIntegrationName(ctx context.Context, integrationName string) (any, error) {
+	if integrationName == "gcp" {
+		return gcp.NewGCPSource(ctx)
+	}
+
+	return nil, nil
 }
