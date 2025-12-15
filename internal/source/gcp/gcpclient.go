@@ -177,10 +177,12 @@ func (g *GCPSource) Close(ctx context.Context) error {
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}
+
 	if len(errorsList) > 0 {
 		return handleError(errors.Join(errorsList...))
 	}
-	log.Debug("closed GCP source clients")
+
+	log.Trace("closed GCP source clients")
 	return nil
 }
 
