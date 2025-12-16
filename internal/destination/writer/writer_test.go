@@ -20,7 +20,9 @@ func TestNewWriterDestination(t *testing.T) {
 	testDestination := NewDestination(buffer)
 
 	testDestination.SendData(t.Context(), &destination.Data{
-		Name: "id-1",
+		APIVersion: "v1",
+		Resource:   "resources",
+		Name:       "id-1",
 		Data: map[string]any{
 			"key":   "value",
 			"array": []string{"a", "b", "c"},
@@ -28,11 +30,15 @@ func TestNewWriterDestination(t *testing.T) {
 	})
 
 	testDestination.DeleteData(t.Context(), &destination.Data{
-		Name: "id-1",
+		APIVersion: "v1",
+		Resource:   "resources",
+		Name:       "id-1",
 	})
 
 	expectedOutput := `Send data:
-	Identifier: id-1
+	APIVersion: v1
+	Resource: resources
+	Resource Name: id-1
 	Spec: {
 		"array": [
 			"a",
@@ -43,7 +49,9 @@ func TestNewWriterDestination(t *testing.T) {
 	}
 
 Delete data:
-	Identifier: id-1
+	APIVersion: v1
+	Resource: resources
+	Resource Name: id-1
 
 `
 

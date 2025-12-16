@@ -32,7 +32,9 @@ func (d *writerDestination) SendData(_ context.Context, data *destination.Data) 
 	builder := new(strings.Builder)
 
 	builder.WriteString("Send data:\n")
-	builder.WriteString("\tIdentifier: " + data.Name + "\n")
+	builder.WriteString("\tAPIVersion: " + data.APIVersion + "\n")
+	builder.WriteString("\tResource: " + data.Resource + "\n")
+	builder.WriteString("\tResource Name: " + data.Name + "\n")
 	builder.WriteString("\tSpec: ")
 
 	encoder := json.NewEncoder(builder)
@@ -49,7 +51,9 @@ func (d *writerDestination) SendData(_ context.Context, data *destination.Data) 
 func (d *writerDestination) DeleteData(_ context.Context, data *destination.Data) error {
 	builder := new(strings.Builder)
 	builder.WriteString("Delete data:\n")
-	builder.WriteString("\tIdentifier: " + data.Name + "\n")
+	builder.WriteString("\tAPIVersion: " + data.APIVersion + "\n")
+	builder.WriteString("\tResource: " + data.Resource + "\n")
+	builder.WriteString("\tResource Name: " + data.Name + "\n")
 	builder.WriteString("\n")
 
 	d.lock.Lock()
