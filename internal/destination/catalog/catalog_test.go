@@ -24,20 +24,22 @@ import (
 func TestInitialization(t *testing.T) {
 	t.Run("without envs", func(t *testing.T) {
 		dest, err := NewDestination()
-		require.ErrorIs(t, err, env.VarIsNotSetError{Key: "MIA_CATALOG_ENDPOINT"})
-		require.Nil(t, dest)
+		assert.ErrorIs(t, err, env.VarIsNotSetError{Key: "MIA_CATALOG_ENDPOINT"})
+		assert.Nil(t, dest)
 	})
 
 	t.Run("with required env", func(t *testing.T) {
 		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
 		dest, err := NewDestination()
 		require.NoError(t, err)
-
 		catalogDestination, ok := dest.(*catalogDestination)
 		require.True(t, ok)
 
 		assert.Equal(t, "http://localhost:8080/custom-catalog", catalogDestination.CatalogEndpoint)
 		assert.Empty(t, catalogDestination.Token)
+		assert.Empty(t, catalogDestination.ClientID)
+		assert.Empty(t, catalogDestination.ClientSecret)
+		assert.Equal(t, "http://localhost:8080/oauth/token", catalogDestination.AuthEndpoint)
 	})
 
 	t.Run("with all envs", func(t *testing.T) {
@@ -45,12 +47,87 @@ func TestInitialization(t *testing.T) {
 		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
 		dest, err := NewDestination()
 		require.NoError(t, err)
-
 		catalogDestination, ok := dest.(*catalogDestination)
 		require.True(t, ok)
 
 		assert.Equal(t, "http://localhost:8080/custom-catalog", catalogDestination.CatalogEndpoint)
 		assert.Equal(t, "test-token2", catalogDestination.Token)
+		assert.Empty(t, catalogDestination.ClientID)
+		assert.Empty(t, catalogDestination.ClientSecret)
+		assert.Equal(t, "http://localhost:8080/oauth/token", catalogDestination.AuthEndpoint)
+	})
+
+	t.Run("without explicit auth endpoint", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
+		t.Setenv("MIA_CATALOG_CLIENT_SECRET", "client-secret")
+		dest, err := NewDestination()
+		assert.NoError(t, err)
+		catalogDestination, ok := dest.(*catalogDestination)
+		require.True(t, ok)
+
+		assert.Equal(t, "http://localhost:8080/custom-catalog", catalogDestination.CatalogEndpoint)
+		assert.Empty(t, catalogDestination.Token)
+		assert.Equal(t, "client-id", catalogDestination.ClientID)
+		assert.Equal(t, "client-secret", catalogDestination.ClientSecret)
+		assert.Equal(t, "http://localhost:8080/oauth/token", catalogDestination.AuthEndpoint)
+	})
+
+	t.Run("with explicit auth endpoint", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
+		t.Setenv("MIA_CATALOG_CLIENT_SECRET", "client-secret")
+		t.Setenv("MIA_CATALOG_AUTH_ENDPOINT", "http://localhost:8081/custom/auth")
+		dest, err := NewDestination()
+		assert.NoError(t, err)
+		catalogDestination, ok := dest.(*catalogDestination)
+		require.True(t, ok)
+
+		assert.Equal(t, "http://localhost:8080/custom-catalog", catalogDestination.CatalogEndpoint)
+		assert.Empty(t, catalogDestination.Token)
+		assert.Equal(t, "client-id", catalogDestination.ClientID)
+		assert.Equal(t, "client-secret", catalogDestination.ClientSecret)
+		assert.Equal(t, "http://localhost:8081/custom/auth", catalogDestination.AuthEndpoint)
+	})
+
+	t.Run("with invalid endpoint URL", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://%41:8080/") // invalid URL
+		dest, err := NewDestination()
+		assert.ErrorIs(t, err, url.EscapeError("%41"))
+		assert.Nil(t, dest)
+	})
+
+	t.Run("with both env for fixed token and client credentials", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_TOKEN", "test-token")
+		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
+		dest, err := NewDestination()
+		assert.ErrorIs(t, err, errMultipleAuthMethods)
+		assert.Nil(t, dest)
+	})
+
+	t.Run("missing secret with client id", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
+		dest, err := NewDestination()
+		assert.ErrorIs(t, err, errMissingClientSecret)
+		assert.Nil(t, dest)
+	})
+
+	t.Run("missing secret with client id", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_CLIENT_SECRET", "client-secret")
+		dest, err := NewDestination()
+		assert.ErrorIs(t, err, errMissingClientID)
+		assert.Nil(t, dest)
+	})
+
+	t.Run("invalid auth endpoint", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_AUTH_ENDPOINT", "http://%41:8080/") // invalid URL
+		dest, err := NewDestination()
+		assert.ErrorIs(t, err, url.EscapeError("%41"))
+		assert.Nil(t, dest)
 	})
 }
 
@@ -273,13 +350,47 @@ func TestContextCancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestInvalidURL(t *testing.T) {
+func TestClientCredentialFlow(t *testing.T) {
 	t.Parallel()
 
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.RequestURI == "/oauth/token" {
+			err := r.ParseForm()
+			assert.NoError(t, err)
+			assert.Equal(t, "client_credentials", r.FormValue("grant_type"))
+			assert.Equal(t, "Basic dGVzdC1jbGllbnQtaWQ6dGVzdC1jbGllbnQtc2VjcmV0", r.Header.Get("Authorization"))
+
+			w.Header().Set("Content-Type", "application/json")
+			encoder := json.NewEncoder(w)
+			err = encoder.Encode(map[string]any{
+				"access_token": "generated-token",
+				"token_type":   "Bearer",
+				"expires_in":   3600,
+			})
+			assert.NoError(t, err)
+			return
+		}
+
+		if r.Method == http.MethodPost && r.RequestURI == "/" {
+			assert.Equal(t, "Bearer generated-token", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer testServer.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
 	dest := &catalogDestination{
-		CatalogEndpoint: "http://%41:8080/", // invalid URL
+		CatalogEndpoint: testServer.URL + "/",
+		ClientID:        "test-client-id",
+		ClientSecret:    "test-client-secret",
+		AuthEndpoint:    testServer.URL + "/oauth/token",
 	}
 
-	err := dest.SendData(t.Context(), &destination.Data{})
-	assert.ErrorIs(t, err, url.EscapeError("%41"))
+	err := dest.SendData(ctx, &destination.Data{})
+	assert.NoError(t, err)
 }

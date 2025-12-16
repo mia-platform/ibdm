@@ -8,12 +8,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
+	"sync/atomic"
 
 	"github.com/caarlos0/env/v11"
 
 	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/info"
+)
+
+var (
+	errMultipleAuthMethods = errors.New("MIA_CATALOG_TOKEN cannot be used with MIA_CATALOG_CLIENT_ID or MIA_CATALOG_CLIENT_SECRET")
+	errMissingClientID     = errors.New("MIA_CATALOG_CLIENT_ID is required when MIA_CATALOG_CLIENT_SECRET is set")
+	errMissingClientSecret = errors.New("MIA_CATALOG_CLIENT_SECRET is required when MIA_CATALOG_CLIENT_ID is set")
 )
 
 var _ destination.Sender = &catalogDestination{}
@@ -44,6 +53,11 @@ func (e *CatalogError) Is(target error) bool {
 type catalogDestination struct {
 	CatalogEndpoint string `env:"MIA_CATALOG_ENDPOINT,required"`
 	Token           string `env:"MIA_CATALOG_TOKEN"`
+	ClientID        string `env:"MIA_CATALOG_CLIENT_ID"`
+	ClientSecret    string `env:"MIA_CATALOG_CLIENT_SECRET"`
+	AuthEndpoint    string `env:"MIA_CATALOG_AUTH_ENDPOINT"`
+
+	client atomic.Pointer[http.Client]
 }
 
 // NewDestination returns a new destination.Sender configured to connect to the
@@ -52,6 +66,30 @@ func NewDestination() (destination.Sender, error) {
 	destination := new(catalogDestination)
 	if err := env.Parse(destination); err != nil {
 		return nil, handleError(err)
+	}
+
+	endpointURL, err := url.Parse(destination.CatalogEndpoint)
+	if err != nil {
+		return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_ENDPOINT: %w", err))
+	}
+
+	switch {
+	case len(destination.Token) > 0 && (len(destination.ClientID) > 0 || len(destination.ClientSecret) > 0):
+		return nil, handleError(errMultipleAuthMethods)
+	case len(destination.ClientID) > 0 && len(destination.ClientSecret) == 0:
+		return nil, handleError(errMissingClientSecret)
+	case len(destination.ClientSecret) > 0 && len(destination.ClientID) == 0:
+		return nil, handleError(errMissingClientID)
+	}
+
+	if len(destination.AuthEndpoint) == 0 {
+		endpointURL.Path = "/oauth/token"
+		destination.AuthEndpoint = endpointURL.String()
+	} else {
+		_, err := url.Parse(destination.AuthEndpoint)
+		if err != nil {
+			return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_AUTH_ENDPOINT: %w", err))
+		}
 	}
 
 	return destination, nil
@@ -81,18 +119,24 @@ func (d *catalogDestination) handleRequest(ctx context.Context, method string, d
 	}
 
 	request.Header.Set("User-Agent", userAgentString())
-	request.Header.Set("Authorization", "Bearer "+d.Token)
+	request.Header.Set("Accept", "application/json")
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := http.DefaultClient.Do(request)
+	//nolint:contextcheck // need a new context because it will be used in token requests
+	resp, err := d.getClient(context.Background()).Do(request)
 	if err != nil {
 		return handleError(err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
+	switch resp.StatusCode {
+	case http.StatusForbidden, http.StatusUnauthorized:
+		return handleError(errors.New("invalid token or insufficient permissions"))
+	case http.StatusNoContent:
+		return nil
+	default:
 		decoder := json.NewDecoder(resp.Body)
 		var respBody map[string]any
 		if err := decoder.Decode(&respBody); err == nil {
@@ -103,8 +147,6 @@ func (d *catalogDestination) handleRequest(ctx context.Context, method string, d
 
 		return handleError(errors.New("unexpected error"))
 	}
-
-	return nil
 }
 
 // userAgentString returns the User-Agent string to be used in HTTP requests.
@@ -112,6 +154,7 @@ func userAgentString() string {
 	return info.AppName + "/" + info.Version
 }
 
+// handleError processes the given error and wraps it in a CatalogError.
 func handleError(err error) error {
 	var parseErr env.AggregateError
 	if errors.As(err, &parseErr) {
@@ -125,4 +168,16 @@ func handleError(err error) error {
 	return &CatalogError{
 		err: err,
 	}
+}
+
+func (d *catalogDestination) getClient(ctx context.Context) *http.Client {
+	client := d.client.Load()
+	if client != nil {
+		return client
+	}
+
+	client = &http.Client{}
+	client.Transport = NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret)
+	d.client.Store(client)
+	return client
 }
