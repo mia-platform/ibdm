@@ -13,7 +13,7 @@ import (
 func TestCheckPubSubConfig(t *testing.T) {
 	testCases := map[string]struct {
 		setEnv               func(t *testing.T)
-		expectedPubSubConfig gcpPubSubConfig
+		expectedPubSubConfig pubSubConfig
 		expectedErr          error
 	}{
 		"all env set": {
@@ -22,7 +22,7 @@ func TestCheckPubSubConfig(t *testing.T) {
 				t.Setenv("GOOGLE_CLOUD_PUBSUB_PROJECT", "project-id")
 				t.Setenv("GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION", "subscription-id")
 			},
-			expectedPubSubConfig: gcpPubSubConfig{
+			expectedPubSubConfig: pubSubConfig{
 				ProjectID:      "project-id",
 				SubscriptionID: "subscription-id",
 			},
@@ -62,7 +62,7 @@ func TestCheckPubSubConfig(t *testing.T) {
 func TestCheckAssetConfig(t *testing.T) {
 	testCases := map[string]struct {
 		setEnv              func(t *testing.T)
-		expectedAssetConfig gcpAssetConfig
+		expectedAssetConfig assetConfig
 		expectedErr         error
 	}{
 		"all env set": {
@@ -70,7 +70,7 @@ func TestCheckAssetConfig(t *testing.T) {
 				t.Helper()
 				t.Setenv("GOOGLE_CLOUD_SYNC_PARENT", "projects/project-id")
 			},
-			expectedAssetConfig: gcpAssetConfig{
+			expectedAssetConfig: assetConfig{
 				Parent: "projects/project-id",
 			},
 		},
@@ -79,7 +79,7 @@ func TestCheckAssetConfig(t *testing.T) {
 				t.Helper()
 				t.Setenv("GOOGLE_CLOUD_SYNC_PARENT", "organizations/12345")
 			},
-			expectedAssetConfig: gcpAssetConfig{
+			expectedAssetConfig: assetConfig{
 				Parent: "organizations/12345",
 			},
 		},
@@ -88,7 +88,7 @@ func TestCheckAssetConfig(t *testing.T) {
 				t.Helper()
 				t.Setenv("GOOGLE_CLOUD_SYNC_PARENT", "folders/12345")
 			},
-			expectedAssetConfig: gcpAssetConfig{
+			expectedAssetConfig: assetConfig{
 				Parent: "folders/12345",
 			},
 		},

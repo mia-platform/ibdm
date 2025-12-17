@@ -11,33 +11,33 @@ import (
 	"cloud.google.com/go/pubsub/v2"
 )
 
-// gcpPubSubConfig holds the environment-driven Pub/Sub settings.
-type gcpPubSubConfig struct {
+// pubSubConfig holds the environment-driven Pub/Sub settings.
+type pubSubConfig struct {
 	ProjectID      string `env:"GOOGLE_CLOUD_PUBSUB_PROJECT"`
 	SubscriptionID string `env:"GOOGLE_CLOUD_PUBSUB_SUBSCRIPTION"`
 }
 
-// gcpAssetConfig holds the environment-driven Cloud Asset settings.
-type gcpAssetConfig struct {
+// assetConfig holds the environment-driven Cloud Asset settings.
+type assetConfig struct {
 	Parent string `env:"GOOGLE_CLOUD_SYNC_PARENT"`
 }
 
-// GCPSource wires Cloud Asset and Pub/Sub clients to satisfy source interfaces.
-type GCPSource struct {
+// Source wires Cloud Asset and Pub/Sub clients to satisfy source interfaces.
+type Source struct {
 	p *pubSubClient
 	a *assetClient
 }
 
 // pubSubClient lazily initializes a Pub/Sub client.
 type pubSubClient struct {
-	config gcpPubSubConfig
+	config pubSubConfig
 
 	c atomic.Pointer[pubsub.Client]
 }
 
 // assetClient lazily initializes a Cloud Asset client.
 type assetClient struct {
-	config gcpAssetConfig
+	config assetConfig
 
 	startMutex sync.Mutex
 	c          atomic.Pointer[asset.Client]

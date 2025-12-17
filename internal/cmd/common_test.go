@@ -54,7 +54,7 @@ func TestCompletion(t *testing.T) {
 
 			args, directive := validArgsFunc(availableEventSources)(nil, test.args, test.toComplete)
 			assert.Equal(t, cobra.ShellCompDirectiveNoFileComp, directive)
-			assert.Equal(t, test.expectedCompletion, args)
+			assert.ElementsMatch(t, test.expectedCompletion, args)
 		})
 	}
 }
@@ -68,7 +68,7 @@ func TestSourceFromName(t *testing.T) {
 	}{
 		"gcp integration": {
 			integrationName:    "gcp",
-			expectedSourceType: (*gcp.GCPSource)(nil),
+			expectedSourceType: (*gcp.Source)(nil),
 		},
 		"invalid integration": {
 			integrationName: "invalid",

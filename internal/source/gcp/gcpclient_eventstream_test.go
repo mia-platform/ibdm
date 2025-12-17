@@ -41,7 +41,7 @@ func mustCreateSubConfig(t *testing.T, c *pubsub.Client, pbs *pubsubpb.Subscript
 	return c.Subscriber(pbs.GetName())
 }
 
-func newFakePubSubClient(t *testing.T, config gcpPubSubConfig, topicName string, subscriptionName string) (*pstest.Server, *pubsub.Client, func()) {
+func newFakePubSubClient(t *testing.T, config pubSubConfig, topicName string, subscriptionName string) (*pstest.Server, *pubsub.Client, func()) {
 	t.Helper()
 	ctx := t.Context()
 	srv := pstest.NewServer()
@@ -71,14 +71,14 @@ func newFakePubSubClient(t *testing.T, config gcpPubSubConfig, topicName string,
 	}
 }
 
-func setupInstancesForEventStreamTest(t *testing.T, config gcpPubSubConfig, client *pubsub.Client) *GCPSource {
+func setupInstancesForEventStreamTest(t *testing.T, config pubSubConfig, client *pubsub.Client) *Source {
 	t.Helper()
 	pubSubClient := &pubSubClient{
 		config: config,
 	}
 	pubSubClient.c.Store(client)
 
-	gcpInstance := &GCPSource{
+	gcpInstance := &Source{
 		a: &assetClient{},
 		p: pubSubClient,
 	}
@@ -94,7 +94,7 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
 	bucketModifyPayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-modify.json"
 	typeToStream := []string{"storage.googleapis.com/Bucket"}
-	config := gcpPubSubConfig{
+	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
 	}
@@ -150,7 +150,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
 	bucketDeletePayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-delete.json"
 	typeToStream := []string{"storage.googleapis.com/Bucket"}
-	config := gcpPubSubConfig{
+	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
 	}
@@ -205,7 +205,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 
 	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
 	typeToStream := []string{"compute.googleapis.com/Network"}
-	config := gcpPubSubConfig{
+	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
 	}
@@ -253,7 +253,7 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 
 	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
 	typeToStream := []string{"compute.googleapis.com/Network"}
-	config := gcpPubSubConfig{
+	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
 	}
