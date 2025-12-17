@@ -167,6 +167,13 @@ func TestSendData(t *testing.T) {
 			},
 			expectedError: &CatalogError{err: errors.New("error message")},
 		},
+		"unauthorized send": {
+			endpoint: "/unauthorized-endpoint",
+			data: &destination.Data{
+				APIVersion: "v1",
+			},
+			expectedError: &CatalogError{err: errors.New("invalid token or insufficient permissions")},
+		},
 		"invalid error response": {
 			endpoint: "/invalid-error-response",
 			data: &destination.Data{
@@ -205,6 +212,8 @@ func TestSendData(t *testing.T) {
 					return
 				case "/invalid-error-response":
 					http.NotFound(w, r)
+				case "/unauthorized-endpoint":
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
 				default:
 					errCode := http.StatusInternalServerError
 					w.WriteHeader(errCode)
