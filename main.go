@@ -58,6 +58,9 @@ type rootFlags struct {
 func (f *rootFlags) addFlags(cmd *cobra.Command) {
 	flags := cmd.PersistentFlags()
 	flags.StringVarP(&f.logLevel, logLevelFlagName, logLevelShortFlagName, logLevelDefaultValue, heredoc.Doc(logLevelFlagUsage))
+	// ignore error, as the only possible error is that the function is called on a non-existent flag
+	// or is already registered, which is not the case here
+	_ = cmd.RegisterFlagCompletionFunc(logLevelFlagName, cobra.FixedCompletions(allLoggerLevels, cobra.ShellCompDirectiveNoFileComp))
 }
 
 func main() {
