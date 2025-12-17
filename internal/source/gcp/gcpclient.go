@@ -28,13 +28,17 @@ const (
 )
 
 var (
+	// ErrMissingEnvVariable reports missing mandatory environment variables.
 	ErrMissingEnvVariable = errors.New("missing environment variable")
+	// ErrInvalidEnvVariable reports malformed environment variable values.
 	ErrInvalidEnvVariable = errors.New("invalid environment value")
-	ErrGCPSource          = errors.New("gcp source")
+	// ErrGCPSource wraps errors emitted by the GCP source implementation.
+	ErrGCPSource = errors.New("gcp source")
 
 	syncParentRegex = regexp.MustCompile(`^(projects|organizations|folders)\/.*`)
 )
 
+// checkPubSubConfig validates the required configuration for Pub/Sub clients.
 func checkPubSubConfig(cfg gcpPubSubConfig) error {
 	missingEnvs := make([]string, 0)
 	if cfg.ProjectID == "" {
@@ -51,6 +55,7 @@ func checkPubSubConfig(cfg gcpPubSubConfig) error {
 	return nil
 }
 
+// checkAssetConfig validates the required configuration for Cloud Asset clients.
 func checkAssetConfig(cfg gcpAssetConfig) error {
 	if cfg.Parent == "" {
 		return fmt.Errorf("%w: %s", ErrMissingEnvVariable, "GOOGLE_CLOUD_SYNC_PARENT")
@@ -62,6 +67,7 @@ func checkAssetConfig(cfg gcpAssetConfig) error {
 	return nil
 }
 
+// NewSource returns a ready-to-use GCPSource backed by Cloud Asset and Pub/Sub clients.
 func NewSource() (*GCPSource, error) {
 	errorsList := make([]error, 0)
 	assetClient, err := newAssetClient()
@@ -82,6 +88,7 @@ func NewSource() (*GCPSource, error) {
 	}, nil
 }
 
+// newPubSubClient parses environment variables and builds a pubSubClient.
 func newPubSubClient() (*pubSubClient, error) {
 	pubSubConfig, err := env.ParseAs[gcpPubSubConfig]()
 	if err != nil {
@@ -92,6 +99,7 @@ func newPubSubClient() (*pubSubClient, error) {
 	}, nil
 }
 
+// newAssetClient parses environment variables and builds an assetClient.
 func newAssetClient() (*assetClient, error) {
 	assetConfig, err := env.ParseAs[gcpAssetConfig]()
 	if err != nil {
@@ -102,6 +110,7 @@ func newAssetClient() (*assetClient, error) {
 	}, nil
 }
 
+// initPubSubClient initializes the Pub/Sub client once and reuses it afterwards.
 func (p *pubSubClient) initPubSubClient(ctx context.Context) (*pubsub.Client, error) {
 	client := p.c.Load()
 	if client != nil {
@@ -121,6 +130,7 @@ func (p *pubSubClient) initPubSubClient(ctx context.Context) (*pubsub.Client, er
 	return client, nil
 }
 
+// initAssetClient initializes the Cloud Asset client once and reuses it afterwards.
 func (a *assetClient) initAssetClient(ctx context.Context) (*asset.Client, error) {
 	client := a.c.Load()
 	if client != nil {
@@ -139,6 +149,7 @@ func (a *assetClient) initAssetClient(ctx context.Context) (*asset.Client, error
 	return client, nil
 }
 
+// closePubSubClient closes the Pub/Sub client when it was previously initialized.
 func (p *pubSubClient) closePubSubClient(log logger.Logger) error {
 	log.Debug("closing GCP pub/sub client")
 	client := p.c.Swap(nil)
@@ -152,6 +163,7 @@ func (p *pubSubClient) closePubSubClient(log logger.Logger) error {
 	return nil
 }
 
+// closeAssetClient closes the Cloud Asset client when it was previously initialized.
 func (a *assetClient) closeAssetClient(log logger.Logger) error {
 	log.Debug("closing GCP asset client")
 	client := a.c.Swap(nil)
@@ -165,6 +177,7 @@ func (a *assetClient) closeAssetClient(log logger.Logger) error {
 	return nil
 }
 
+// Close shuts down the underlying GCP clients.
 func (g *GCPSource) Close(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	log.Debug("closing GCP source clients")
@@ -186,6 +199,7 @@ func (g *GCPSource) Close(ctx context.Context) error {
 	return nil
 }
 
+// assetToMap converts a Cloud Asset message to a generic map.
 func assetToMap(asset *assetpb.Asset) map[string]any {
 	if asset == nil {
 		return nil
@@ -201,6 +215,7 @@ func assetToMap(asset *assetpb.Asset) map[string]any {
 	return out
 }
 
+// getListAssetsRequest builds a ListAssets request for the configured parent.
 func (a *assetClient) getListAssetsRequest(typesToSync []string) *assetpb.ListAssetsRequest {
 	return &assetpb.ListAssetsRequest{
 		Parent:      a.config.Parent,
@@ -209,6 +224,7 @@ func (a *assetClient) getListAssetsRequest(typesToSync []string) *assetpb.ListAs
 	}
 }
 
+// StartSyncProcess iterates Cloud Asset listings and emits upsert events.
 func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !g.a.startMutex.TryLock() {
@@ -251,6 +267,7 @@ func (g *GCPSource) StartSyncProcess(ctx context.Context, typesToSync []string, 
 	return nil
 }
 
+// StartEventStream subscribes to Pub/Sub updates and forwards them as source.Data.
 func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	client, err := g.p.initPubSubClient(ctx)
@@ -273,7 +290,7 @@ func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string
 	err = subscriber.Receive(ctx, func(_ context.Context, msg *pubsub.Message) {
 		event, err := gcpListenerHandler(msg.Data)
 		if err != nil {
-			// TODO: manage to create the subscription if does not exist
+			// TODO: create the subscription if it does not exist.
 			log.Error("failed to handle Pub/Sub message", "messageId", msg.ID, "error", err)
 			msg.Nack()
 			return
@@ -315,6 +332,7 @@ func (g *GCPSource) StartEventStream(ctx context.Context, typesToStream []string
 	return handleError(err)
 }
 
+// gcpListenerHandler decodes Pub/Sub payloads into GCPEvent instances.
 func gcpListenerHandler(data []byte) (*GCPEvent, error) {
 	var event *GCPEvent
 	if err := json.Unmarshal(data, &event); err != nil {
@@ -324,6 +342,7 @@ func gcpListenerHandler(data []byte) (*GCPEvent, error) {
 	return event, nil
 }
 
+// handleError unwraps known errors and wraps them with ErrGCPSource.
 func handleError(err error) error {
 	if err == nil {
 		return nil

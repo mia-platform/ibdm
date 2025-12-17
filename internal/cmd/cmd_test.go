@@ -89,7 +89,7 @@ func TestCmds(t *testing.T) {
 			test.cmd.SetOut(outBuffer)
 			test.cmd.SetErr(errBuffer)
 			test.cmd.SetUsageTemplate("usage string")
-			test.cmd.SetArgs(append(test.args, "--"+localOutputFlagName)) // force local output to avoid external dependencies
+			test.cmd.SetArgs(append(test.args, "--"+localOutputFlagName)) // forces local output to avoid external dependencies
 
 			err := test.cmd.ExecuteContext(t.Context())
 			if test.expectedError != nil {

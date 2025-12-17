@@ -7,19 +7,18 @@ package source
 type DataOperation int
 
 const (
-	// DataOperationUpsert represents an upsert (insert or update) operation for the data source.
+	// DataOperationUpsert represents an upsert (insert or update) operation.
 	DataOperationUpsert DataOperation = iota
-	// DataOperationDelete represents a deletion operation for the data source.
+	// DataOperationDelete represents a delete operation.
 	DataOperationDelete
 )
 
-// Data encapsulate the values and metadata for a data returned by a data source.
+// Data groups the type, operation, and values emitted by a source.
 type Data struct {
-	// Type represents the type of the data returned by the data source. (e.g., "repository", "issue", etc.)
+	// Type describes the kind of entity (e.g., "repository", "issue").
 	Type string
-	// Operation indicates the operation to be performed on the data (upsert or delete).
+	// Operation indicates whether the entity must be upserted or deleted.
 	Operation DataOperation
-	// Values contains the actual data values as a map of key-value pairs. In case of Delete operation,
-	// it must contains at least the keys and values necessary to create the unique identifier of the data.
+	// Values holds the raw payload. For delete operations, it must contain enough data to reconstruct the identifier.
 	Values map[string]any
 }

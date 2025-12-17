@@ -9,45 +9,44 @@ import (
 	"strings"
 )
 
-// Quote adds double quotes around the input strings.
+// Quote wraps the string representation of the input value in double quotes.
 func Quote(s any) string {
 	return fmt.Sprintf("%q", castToString(s))
 }
 
-// TrimSpace removes all leading and trailing white space from the input string.
+// TrimSpace removes all leading and trailing whitespace from the input string.
 func TrimSpace(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// TrimPrefix removes the provided prefix from the input string.
+// TrimPrefix removes prefix from s when present.
 func TrimPrefix(prefix, s string) string {
 	return strings.TrimPrefix(s, prefix)
 }
 
-// TrimSuffix removes the provided suffix from the input string.
+// TrimSuffix removes suffix from s when present.
 func TrimSuffix(suffix, s string) string {
 	return strings.TrimSuffix(s, suffix)
 }
 
-// Replace replaces all occurrences of toChange with toBe in the input string.
+// Replace substitutes every occurrence of toChange with toBe in s.
 func Replace(toChange, toBe, s string) string {
 	return strings.ReplaceAll(s, toChange, toBe)
 }
 
-// ToUpper converts the input string to upper case.
+// ToUpper converts the input string to uppercase.
 func ToUpper(s string) string {
 	return strings.ToUpper(s)
 }
 
-// ToLower converts the input string to lower case.
+// ToLower converts the input string to lowercase.
 func ToLower(s string) string {
 	return strings.ToLower(s)
 }
 
-// Truncate truncates the input string to the specified length. If length is
-// negative, it truncates from the end of the string. If length is positive,
-// it truncates from the beginning of the string. If length is outside the
-// bounds of the string, it returns the original string.
+// Truncate keeps a portion of s based on length.
+// A positive length returns the prefix, a negative length preserves the suffix,
+// and values outside the string bounds leave s unchanged.
 func Truncate(length int, s string) string {
 	// length is negative, truncate from the end
 	if length < 0 && len(s)+length > 0 {
@@ -63,17 +62,17 @@ func Truncate(length int, s string) string {
 	return s
 }
 
-// Split splits the input string by the provided separator and returns a slice of substrings.
+// Split splits the input string by the given separator and returns the resulting substrings.
 func Split(sep, s string) []string {
 	return strings.Split(s, sep)
 }
 
-// EncodeBase64 encodes the input string to a Base64 encoded string.
+// EncodeBase64 encodes the input string to its Base64 representation.
 func EncodeBase64(input string) string {
 	return base64.StdEncoding.EncodeToString([]byte(input))
 }
 
-// DecodeBase64 decodes a Base64 encoded string back to its original form.
+// DecodeBase64 decodes a Base64-encoded string and returns the original value.
 func DecodeBase64(input string) (string, error) {
 	decoded, err := base64.StdEncoding.DecodeString(input)
 	if err != nil {
@@ -83,6 +82,7 @@ func DecodeBase64(input string) (string, error) {
 	return string(decoded), nil
 }
 
+// castToString converts obj to its string representation.
 func castToString(obj any) string {
 	switch v := obj.(type) {
 	case string:

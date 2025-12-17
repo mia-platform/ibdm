@@ -31,13 +31,13 @@ func TestLogger(t *testing.T) {
 	logger.Error("new log line for ERROR level")
 	logger.Debug("silenced log line for TRACE level")
 
-	logger.SetLevel(999) // invalid level, should default to INFO
+	logger.SetLevel(999) // invalid level; should default to INFO
 	logger.Info("new log line for INFO level after invalid level set")
 	namedLogger.Debug("silenced log line for DEBUG level after invalid level set")
 
 	lines := strings.Split(buffer.String(), "\n")
 	t.Logf("%v", lines)
-	assert.Len(t, lines, 7) // 6 log lines + 1 empty line
+	assert.Len(t, lines, 7) // 6 log lines plus 1 trailing empty line
 }
 
 func TestLevelStrings(t *testing.T) {

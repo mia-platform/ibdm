@@ -12,8 +12,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/pipeline"
 )
 
-// options implement the logic for building and starting a new data pipeline for sync or event
-// stream processes.
+// options configures pipelines for event streams and sync runs.
 type options struct {
 	integrationName string
 	mappingPaths    []string
@@ -23,7 +22,7 @@ type options struct {
 	lock sync.Mutex
 }
 
-// validate check the options parameters and returns an error if something is wrong.
+// validate checks the configured values and reports invalid setups.
 func (o *options) validate() error {
 	if o.integrationName == "" {
 		return errNoArguments
@@ -36,7 +35,7 @@ func (o *options) validate() error {
 	return nil
 }
 
-// executeEventStream starts a data pipeline event stream based on the run options.
+// executeEventStream starts the event stream pipeline configured by the options.
 func (o *options) executeEventStream(ctx context.Context) error {
 	if !o.lock.TryLock() {
 		return nil
@@ -51,7 +50,7 @@ func (o *options) executeEventStream(ctx context.Context) error {
 	return pipeline.Start(ctx)
 }
 
-// executeSync starts a data pipeline sync process based on the run options.
+// executeSync launches the sync pipeline configured by the options.
 func (o *options) executeSync(ctx context.Context) error {
 	if !o.lock.TryLock() {
 		return nil
@@ -66,7 +65,7 @@ func (o *options) executeSync(ctx context.Context) error {
 	return pipeline.Sync(ctx)
 }
 
-// pipeline builds a new data pipeline based on the run options.
+// pipeline assembles a pipeline from the configured source, mappers, and destination.
 func (o *options) pipeline() (*pipeline.Pipeline, error) {
 	mappers, err := loadMappers(o.mappingPaths, false)
 	if err != nil {

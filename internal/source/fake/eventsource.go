@@ -11,6 +11,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
+// FakeEventSource combines event streaming and closing behaviour.
 type FakeEventSource interface {
 	source.EventSource
 	source.ClosableSource
@@ -18,6 +19,7 @@ type FakeEventSource interface {
 
 var _ source.EventSource = &unclosableEventSource{}
 
+// unclosableEventSource simulates an EventSource without close support.
 type unclosableEventSource struct {
 	tb testing.TB
 
@@ -28,10 +30,12 @@ type unclosableEventSource struct {
 
 var _ FakeEventSource = &fakeEventSource{}
 
+// fakeEventSource wraps an unclosableEventSource with a Close implementation.
 type fakeEventSource struct {
 	*unclosableEventSource
 }
 
+// NewFakeEventSource returns a closable fake event source.
 func NewFakeEventSource(tb testing.TB, eventsData []source.Data, streamFinished chan<- struct{}) FakeEventSource {
 	tb.Helper()
 
@@ -45,6 +49,7 @@ func NewFakeEventSource(tb testing.TB, eventsData []source.Data, streamFinished 
 	}
 }
 
+// NewFakeUnclosableEventSource returns an EventSource without close capabilities.
 func NewFakeUnclosableEventSource(tb testing.TB, eventsData []source.Data, streamFinished chan<- struct{}) source.EventSource {
 	tb.Helper()
 
@@ -55,6 +60,7 @@ func NewFakeUnclosableEventSource(tb testing.TB, eventsData []source.Data, strea
 	}
 }
 
+// StartEventStream pushes queued events and blocks until Close is invoked or the context ends.
 func (f *unclosableEventSource) StartEventStream(ctx context.Context, _ []string, results chan<- source.Data) error {
 	f.tb.Helper()
 
@@ -82,12 +88,14 @@ func (f *unclosableEventSource) StartEventStream(ctx context.Context, _ []string
 	}
 }
 
+// Close signals the stream to exit.
 func (f *fakeEventSource) Close(_ context.Context, _ time.Duration) error {
 	f.tb.Helper()
 	close(f.stopChannel)
 	return nil
 }
 
+// ErrorEventSource combines event and sync flows while always returning an error.
 type ErrorEventSource interface {
 	source.EventSource
 	source.SyncableSource
@@ -95,11 +103,13 @@ type ErrorEventSource interface {
 
 var _ ErrorEventSource = &errorEventSource{}
 
+// errorEventSource returns a configured error for every call.
 type errorEventSource struct {
 	tb  testing.TB
 	err error
 }
 
+// NewFakeSourceWithError builds a source that always returns err.
 func NewFakeSourceWithError(tb testing.TB, err error) ErrorEventSource {
 	tb.Helper()
 
@@ -109,11 +119,13 @@ func NewFakeSourceWithError(tb testing.TB, err error) ErrorEventSource {
 	}
 }
 
+// StartEventStream satisfies the EventSource interface returning the configured error.
 func (f *errorEventSource) StartEventStream(_ context.Context, _ []string, _ chan<- source.Data) error {
 	f.tb.Helper()
 	return f.err
 }
 
+// StartSyncProcess satisfies the SyncableSource interface returning the configured error.
 func (f *errorEventSource) StartSyncProcess(_ context.Context, _ []string, _ chan<- source.Data) error {
 	f.tb.Helper()
 	return f.err

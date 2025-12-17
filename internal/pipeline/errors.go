@@ -5,6 +5,7 @@ package pipeline
 
 import "errors"
 
+// unsupportedSourceError signals that the configured source does not implement the required capability.
 type unsupportedSourceError struct {
 	Message string
 }

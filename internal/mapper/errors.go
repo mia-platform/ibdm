@@ -3,18 +3,20 @@
 
 package mapper
 
-// Ensure ParsingError implements the error interface.
+// Ensure ParsingError satisfies error.
 var _ error = &ParsingError{}
 
 var (
 	errTemplateParsing = "mapper template parsing error"
 )
 
+// ParsingError wraps failures that happen while compiling mapper templates.
 type ParsingError struct {
 	msg string
 	err error
 }
 
+// NewParsingError builds a ParsingError from the underlying parsing error chain.
 func NewParsingError(err error) *ParsingError {
 	msg := errTemplateParsing
 	if err != nil {

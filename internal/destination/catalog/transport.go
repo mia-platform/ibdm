@@ -11,6 +11,7 @@ import (
 	"golang.org/x/oauth2/clientcredentials"
 )
 
+// NewTransport creates an HTTP transport configured with either a static token or a client-credentials flow.
 func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret string) http.RoundTripper {
 	var source oauth2.TokenSource
 	switch {

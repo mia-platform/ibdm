@@ -12,6 +12,7 @@ import (
 
 var _ destination.Sender = &FakeDestination{}
 
+// FakeDestination captures destination traffic for assertions in tests.
 type FakeDestination struct {
 	tb testing.TB
 
@@ -19,17 +20,20 @@ type FakeDestination struct {
 	DeletedData []*destination.Data
 }
 
+// NewFakeDestination constructs a FakeDestination bound to tb.
 func NewFakeDestination(tb testing.TB) *FakeDestination {
 	tb.Helper()
 	return &FakeDestination{tb: tb}
 }
 
+// SendData records the sent payload without performing external I/O.
 func (f *FakeDestination) SendData(ctx context.Context, data *destination.Data) error {
 	f.tb.Helper()
 	f.SentData = append(f.SentData, data)
 	return nil
 }
 
+// DeleteData records the deleted payload without performing external I/O.
 func (f *FakeDestination) DeleteData(ctx context.Context, data *destination.Data) error {
 	f.tb.Helper()
 	f.DeletedData = append(f.DeletedData, data)

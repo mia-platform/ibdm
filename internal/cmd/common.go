@@ -22,21 +22,19 @@ var (
 	errNoArguments        = errors.New("no integration name provided")
 	errInvalidIntegration = errors.New("invalid integration name provided")
 
-	// availableEventSources holds the list of available integration sources and their description
-	// for command completion and help messages.
+	// availableEventSources covers event-stream integration sources used for completion and help text.
 	availableEventSources = map[string]string{
 		"gcp": "Google Cloud Platform integration",
 	}
-	// availableSyncSources holds the list of available synchronization sources and their description
-	// for command completion and help messages.
+	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{
 		"gcp": "Google Cloud Platform synchronization",
 	}
 )
 
-// handleError will do custom print error handling based on the type of error received.
-// it will return nil if the command must return 0 exit code, otherwise it will return
-// the original error.
+// handleError formats known errors for the CLI and decides whether to propagate them.
+// It returns nil when the command should exit successfully; otherwise it returns the
+// original error.
 func handleError(cmd *cobra.Command, err error) error {
 	switch {
 	case errors.Is(err, errNoArguments):
@@ -52,7 +50,7 @@ func handleError(cmd *cobra.Command, err error) error {
 	}
 }
 
-// validArgsFunc returns a cobra.CompletionFunc that provides command completions from the given sources map.
+// validArgsFunc produces a completion function backed by the provided source map.
 func validArgsFunc(sources map[string]string) cobra.CompletionFunc {
 	return func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var comps []string
@@ -68,7 +66,7 @@ func validArgsFunc(sources map[string]string) cobra.CompletionFunc {
 	}
 }
 
-// sourceFromIntegrationName return a pipeline source based on the provided integrationName.
+// sourceFromIntegrationName returns the pipeline source matching integrationName.
 func sourceFromIntegrationName(integrationName string) (any, error) {
 	if integrationName == "gcp" {
 		return gcp.NewSource()
@@ -77,7 +75,7 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 	return nil, nil
 }
 
-// unwrappedError returns the unwrapped error if available, otherwise it returns the original error.
+// unwrappedError unwraps err once and falls back to the original error when needed.
 func unwrappedError(err error) error {
 	if unwrapped := errors.Unwrap(err); unwrapped != nil {
 		return unwrapped
@@ -86,8 +84,8 @@ func unwrappedError(err error) error {
 	return err
 }
 
-// collectPaths return a list of all file paths found in the provided paths.
-// If a path is a directory, it will recursively collect all file paths within it (one level deep).
+// collectPaths discovers every file under the provided paths.
+// Directories are walked one level deep to gather their files.
 func collectPaths(paths []string) ([]string, error) {
 	collected := make([]string, 0)
 	for _, p := range paths {
@@ -98,9 +96,9 @@ func collectPaths(paths []string) ([]string, error) {
 			}
 
 			switch {
-			case !info.IsDir(): // it's a file add to the collection
+			case !info.IsDir(): // file found, add it to the collection
 				collected = append(collected, walkedPath)
-			case info.IsDir() && cleanedPath != walkedPath: // skip directories if is not the root path
+			case info.IsDir() && cleanedPath != walkedPath: // skip nested directories beyond the root path
 				return filepath.SkipDir
 			}
 
@@ -115,9 +113,8 @@ func collectPaths(paths []string) ([]string, error) {
 	return collected, nil
 }
 
-// loadMappers loads the mapping configurations from the provided paths and
-// returns a map of typed mappers. If syncOnly is true, only mappings
-// of syncable types are loaded.
+// loadMappers loads mapping files and builds typed mappers. When syncOnly is true,
+// it skips definitions that are not marked as syncable.
 func loadMappers(paths []string, syncOnly bool) (map[string]pipeline.DataMapper, error) {
 	mappings, err := loadMappingConfigs(paths)
 	if err != nil {
@@ -146,7 +143,7 @@ func loadMappers(paths []string, syncOnly bool) (map[string]pipeline.DataMapper,
 	return typedMappers, nil
 }
 
-// loadMappingConfigs loads all mapping configurations from the provided paths.
+// loadMappingConfigs reads every mapping configuration from the provided paths.
 func loadMappingConfigs(paths []string) ([]*config.MappingConfig, error) {
 	mappings := make([]*config.MappingConfig, 0)
 	for _, path := range paths {

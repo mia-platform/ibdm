@@ -1,8 +1,6 @@
 // Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
-// Package source provides interfaces and utilities to implement data sources for idbm.
-// The main purpose of this package is to define a common contract for different types of data sources
-// that can be used to handle initialization, synchronization, and other operations in a consistent
-// and standard manner.
+// Package source defines the contracts and helpers used to implement ibdm data sources.
+// Sources expose event streams, sync processes, and optional shutdown semantics through shared interfaces.
 package source

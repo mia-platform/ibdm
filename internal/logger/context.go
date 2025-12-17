@@ -7,12 +7,12 @@ import (
 	"context"
 )
 
-// WithContext returns a new context with the provided logger.
+// WithContext returns ctx carrying logger.
 func WithContext(ctx context.Context, logger Logger) context.Context {
 	return context.WithValue(ctx, contextKey, logger)
 }
 
-// FromContext retrieves the logger from the context. If no logger is found, a new null logger is returned.
+// FromContext extracts the logger stored in ctx, falling back to the null logger.
 func FromContext(ctx context.Context) Logger {
 	if ctx != nil {
 		if logger, ok := ctx.Value(contextKey).(Logger); ok {
@@ -26,5 +26,5 @@ func FromContext(ctx context.Context) Logger {
 // Unexported new type so that our context key never collides with another.
 type contextKeyType struct{}
 
-// contextKey is the key used for the context to store the logger.
+// contextKey stores the logger in the context.
 var contextKey = contextKeyType{}

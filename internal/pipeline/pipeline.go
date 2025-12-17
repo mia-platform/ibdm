@@ -19,18 +19,17 @@ const (
 	loggerName = "ibdm:pipeline"
 )
 
-// dataPipeline defines a function type that represents a data processing function
-// which takes a context and a channel to send source.Data, returning an error if any.
+// dataPipeline represents a function that pushes source data onto a channel.
 type dataPipeline = func(ctx context.Context, channel chan<- source.Data) error
 
+// DataMapper couples a mapper with the metadata needed to build destination payloads.
 type DataMapper struct {
 	APIVersion string
 	Resource   string
 	Mapper     mapper.Mapper
 }
 
-// Pipeline represents a data processing pipeline that reads data from a source,
-// applies mappers to transform the data, and sends the processed data to a destination.
+// Pipeline orchestrates the flow from a source through mappers into a destination.
 type Pipeline struct {
 	source      any
 	mappers     map[string]DataMapper
@@ -38,7 +37,7 @@ type Pipeline struct {
 	destination destination.Sender
 }
 
-// New creates a new Pipeline instance with the provided source, mappers, and destination.
+// New wires together the given source, mappers, and destination into a Pipeline.
 func New(source any, mappers map[string]DataMapper, destination destination.Sender) *Pipeline {
 	return &Pipeline{
 		source:      source,
@@ -48,7 +47,7 @@ func New(source any, mappers map[string]DataMapper, destination destination.Send
 	}
 }
 
-// Start initiates the data processing pipeline by starting the event stream from the source.
+// Start begins streaming data from a source.EventSource.
 func (p *Pipeline) Start(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
@@ -68,7 +67,7 @@ func (p *Pipeline) Start(ctx context.Context) error {
 	return err
 }
 
-// Sync performs a one-time synchronization of data from the source to the destination.
+// Sync performs a one-off synchronization using a source.SyncableSource.
 func (p *Pipeline) Sync(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
@@ -87,14 +86,12 @@ func (p *Pipeline) Sync(ctx context.Context) error {
 	return err
 }
 
-// runDataPipeline orchestrates the data processing by starting the mapping process
-// and executing the provided dataPipeline function.
-// It ensures that the mapping process completes before returning.
+// runDataPipeline runs dataPipeline and waits for the mapper goroutine to drain the channel.
 func (p *Pipeline) runDataPipeline(ctx context.Context, dataPipeline dataPipeline) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	channel := make(chan source.Data)
 
-	// use channel to signal when the mapping stream has exhausted all the queue messages
+	// mappingDone closes when the mapping goroutine finishes consuming the channel.
 	mappingDone := make(chan struct{})
 	go func() {
 		log.Trace("starting data mapping process")
@@ -110,7 +107,7 @@ func (p *Pipeline) runDataPipeline(ctx context.Context, dataPipeline dataPipelin
 	return err
 }
 
-// Stop attempts to gracefully stop the source if it implements the ClosableSource interface.
+// Stop attempts a graceful shutdown when the source implements source.ClosableSource.
 func (p *Pipeline) Stop(ctx context.Context, timeout time.Duration) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	closableSource, ok := p.source.(source.ClosableSource)
@@ -123,8 +120,7 @@ func (p *Pipeline) Stop(ctx context.Context, timeout time.Duration) error {
 	return closableSource.Close(ctx, timeout)
 }
 
-// mappingData reads data from the provided channel, applies the appropriate mapper based on the
-// data type, and sends the processed data to the destination.
+// mappingData consumes channel entries, runs the matching mapper, and forwards results.
 func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	for {

@@ -8,30 +8,22 @@ import (
 	"time"
 )
 
-// SyncableSource defines the interface for a data source that supports synchronization operations.
+// SyncableSource exposes a pull-based synchronization flow.
 type SyncableSource interface {
-	// StartSyncProcess will be called to initiate a synchronization process for the data source.
-	// It receives a channel through which it can send the synched data or it can return an error
-	// if the synchronization process fails. typesToSync is a list of data types that need to be
-	// synchronized.
+	// StartSyncProcess kicks off a sync run, pushing data into results or returning an error.
+	// typesToSync lists the data types to fetch.
 	StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- Data) (err error)
 }
 
-// EventSource defines the interface for a data source that uses event-driven mechanisms to handle
-// data updates.
+// EventSource streams data updates as they arrive.
 type EventSource interface {
-	// StartEventStream will be called to initiate an event stream for the data source.
-	// It receives a channel through which it can send the incoming data or it can return an error
-	// if the event stream fails. typesToStream is the list of data types that is expected to be
-	// returned.
+	// StartEventStream begins streaming updates, writing to results or returning an error.
+	// typesToStream lists the expected data types.
 	StartEventStream(ctx context.Context, typesToStream []string, results chan<- Data) (err error)
 }
 
-// ClosableSource defines the interface for a data source that can be gracefully closed. It will
-// be called when the source is being shut down to allow it to release any held resources. It receives
-// a context and a timeout duration to ensure the close operation does not hang indefinitely.
-// The close method can be called both during normal shutdown or for restarting the source.
+// ClosableSource supports graceful shutdown.
 type ClosableSource interface {
-	// Close will be called to gracefully shut down the data source, releasing any resources it holds.
+	// Close releases resources, respecting the provided timeout.
 	Close(ctx context.Context, timeout time.Duration) (err error)
 }

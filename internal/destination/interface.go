@@ -8,14 +8,13 @@ import (
 	"encoding/json"
 )
 
-// Sender defines the contract that any data destination must implement to handle sending
-// and deleting operations.
+// Sender delivers resource mutations to a destination, supporting upsert and delete flows.
 type Sender interface {
 	SendData(ctx context.Context, data *Data) error
 	DeleteData(ctx context.Context, data *Data) error
 }
 
-// Data represents the data to be sent to or deleted from a destination.
+// Data bundles the resource metadata and payload shipped to a destination.
 type Data struct {
 	APIVersion string         `json:"apiVersion"`
 	Resource   string         `json:"resource"`
@@ -23,10 +22,10 @@ type Data struct {
 	Data       map[string]any `json:"data,omitempty"`
 }
 
-// internalData is an alias to avoid infinite recursion in MarshalJSON.
+// internalData breaks the recursion when customizing JSON marshaling.
 type internalData Data
 
-// MarshalJSON implements json.Marshaler.
+// MarshalJSON labels the payload with the operation derived from the data content.
 func (d Data) MarshalJSON() ([]byte, error) {
 	operation := "upsert"
 	if d.Data == nil {

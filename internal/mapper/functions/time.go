@@ -7,7 +7,7 @@ import "time"
 
 var nowFn = time.Now
 
-// Now returns the current time in UTC in RFC3339 format.
+// Now returns the current UTC time formatted as RFC3339.
 func Now() string {
 	return nowFn().UTC().Format(time.RFC3339)
 }

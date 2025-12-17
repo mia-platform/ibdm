@@ -9,13 +9,13 @@ import (
 	"encoding/hex"
 )
 
-// Sha256Sum returns the SHA-256 hash of the input string in hexadecimal format.
+// Sha256Sum returns the SHA-256 digest of input encoded in hexadecimal.
 func Sha256Sum(input string) string {
 	hash := sha256.Sum256([]byte(input))
 	return hex.EncodeToString(hash[:])
 }
 
-// Sha512Sum returns the SHA-512 hash of the input string in hexadecimal format.
+// Sha512Sum returns the SHA-512 digest of input encoded in hexadecimal.
 func Sha512Sum(input string) string {
 	hash := sha512.Sum512([]byte(input))
 	return hex.EncodeToString(hash[:])

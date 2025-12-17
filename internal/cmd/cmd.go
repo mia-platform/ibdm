@@ -41,7 +41,7 @@ const (
 	ibdm sync gcp --mapping-path mapping.yaml`
 )
 
-// RunCmd return the "run" cli command for starting an integration.
+// RunCmd returns the Cobra command that starts an event-stream integration.
 func RunCmd() *cobra.Command {
 	flags := &flags{}
 	allSources := slices.Sorted(maps.Keys(availableEventSources))
@@ -77,6 +77,7 @@ func RunCmd() *cobra.Command {
 	return cmd
 }
 
+// SyncCmd returns the Cobra command that starts a sync integration.
 func SyncCmd() *cobra.Command {
 	flags := &flags{}
 

@@ -12,13 +12,16 @@ import (
 )
 
 var (
-	// nullLogger is a logger that discards all log messages.
+	// nullLogger discards every log entry.
 	nullLogger = &instance{log: hclog.NewNullLogger()}
 )
 
+// Level enumerates the supported logging thresholds.
+//
 //go:generate ${TOOLS_BIN}/stringer -type=Level
 type Level int
 
+// LevelFromString parses a textual level and returns the matching Level value.
 func LevelFromString(level string) Level {
 	switch strings.ToUpper(level) {
 	case "TRACE":
@@ -36,6 +39,7 @@ func LevelFromString(level string) Level {
 	}
 }
 
+// convertedLevel maps the Level value to the corresponding hclog.Level.
 func (l Level) convertedLevel() hclog.Level {
 	switch l {
 	case TRACE:
@@ -61,39 +65,39 @@ const (
 	TRACE
 )
 
-// Logger describes the interface that must be implemented by all loggers
+// Logger defines the logging surface exposed by this package.
 type Logger interface {
-	// WithName returns a new Logger instance with the specified name.
+	// WithName returns a logger namespaced with the provided component name.
 	WithName(name string) Logger
 
 	// SetLevel updates the logger level.
 	SetLevel(level Level)
 
-	// Trace emit a message and key/value pairs at the TRACE level.
+	// Trace emits a message and key/value pairs at the TRACE level.
 	Trace(msg string, args ...interface{})
 
-	// Debug emit a message and key/value pairs at the DEBUG level.
+	// Debug emits a message and key/value pairs at the DEBUG level.
 	Debug(msg string, args ...interface{})
 
-	// Info emit a message and key/value pairs at the INFO level.
+	// Info emits a message and key/value pairs at the INFO level.
 	Info(msg string, args ...interface{})
 
-	// Warn emit a message and key/value pairs at the WARN level.
+	// Warn emits a message and key/value pairs at the WARN level.
 	Warn(msg string, args ...interface{})
 
-	// Error emit a message and key/value pairs at the ERROR level.
+	// Error emits a message and key/value pairs at the ERROR level.
 	Error(msg string, args ...interface{})
 }
 
-// Make sure that intLogger is a Logger.
+// Make sure that instance satisfies Logger.
 var _ Logger = &instance{}
 
-// instance is a Logger implementation.
+// instance wraps an hclog.Logger implementation.
 type instance struct {
 	log hclog.Logger
 }
 
-// NewLogger creates a new logger instance.
+// NewLogger creates a JSON logger writing to writer with INFO as the default level.
 func NewLogger(writer io.Writer) Logger {
 	return &instance{
 		log: hclog.New(&hclog.LoggerOptions{

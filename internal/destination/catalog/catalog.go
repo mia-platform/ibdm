@@ -27,6 +27,7 @@ var (
 
 var _ destination.Sender = &catalogDestination{}
 
+// CatalogError wraps lower-level errors produced by the Catalog destination.
 type CatalogError struct {
 	err error
 }
@@ -48,8 +49,7 @@ func (e *CatalogError) Is(target error) bool {
 	return e.err.Error() == cre.err.Error()
 }
 
-// catalogDestination implements destination.Sender for sending and deleting data
-// in the Mia-Platform Catalog.
+// catalogDestination implements destination.Sender against the Mia-Platform Catalog API.
 type catalogDestination struct {
 	CatalogEndpoint string `env:"MIA_CATALOG_ENDPOINT,required"`
 	Token           string `env:"MIA_CATALOG_TOKEN"`
@@ -60,8 +60,7 @@ type catalogDestination struct {
 	client atomic.Pointer[http.Client]
 }
 
-// NewDestination returns a new destination.Sender configured to connect to the
-// Mia-Platform Catalog. Its configuration is read from environment variables.
+// NewDestination loads configuration from environment variables and returns a Catalog-backed destination.Sender.
 func NewDestination() (destination.Sender, error) {
 	destination := new(catalogDestination)
 	if err := env.Parse(destination); err != nil {
@@ -105,8 +104,7 @@ func (d *catalogDestination) DeleteData(ctx context.Context, data *destination.D
 	return d.handleRequest(ctx, http.MethodDelete, data)
 }
 
-// handleRequest sends an HTTP request to the Catalog API with the given method and data.
-// It will marshal the data into JSON and set the appropriate headers.
+// handleRequest issues an HTTP call to the Catalog API using the provided method and payload.
 func (d *catalogDestination) handleRequest(ctx context.Context, method string, data *destination.Data) error {
 	body, err := json.Marshal(data)
 	if err != nil {
@@ -149,12 +147,12 @@ func (d *catalogDestination) handleRequest(ctx context.Context, method string, d
 	}
 }
 
-// userAgentString returns the User-Agent string to be used in HTTP requests.
+// userAgentString builds the User-Agent header consumed by the Catalog API.
 func userAgentString() string {
 	return info.AppName + "/" + info.Version
 }
 
-// handleError processes the given error and wraps it in a CatalogError.
+// handleError normalizes errors emitted by the Catalog destination.
 func handleError(err error) error {
 	var parseErr env.AggregateError
 	if errors.As(err, &parseErr) {

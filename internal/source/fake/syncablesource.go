@@ -11,6 +11,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
+// FakeSyncableSource exposes sync and close behaviour for tests.
 type FakeSyncableSource interface {
 	source.SyncableSource
 	source.ClosableSource
@@ -18,12 +19,14 @@ type FakeSyncableSource interface {
 
 var _ FakeSyncableSource = &fakeSyncableSource{}
 
+// fakeSyncableSource buffers sync results and supports cancellation.
 type fakeSyncableSource struct {
 	tb          testing.TB
 	syncData    []source.Data
 	stopChannel chan struct{}
 }
 
+// NewFakeSyncableSource returns a FakeSyncableSource producing syncData.
 func NewFakeSyncableSource(tb testing.TB, syncData []source.Data) FakeSyncableSource {
 	tb.Helper()
 
@@ -34,6 +37,7 @@ func NewFakeSyncableSource(tb testing.TB, syncData []source.Data) FakeSyncableSo
 	}
 }
 
+// StartSyncProcess emits syncData until completion, cancellation, or close.
 func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ []string, results chan<- source.Data) error {
 	f.tb.Helper()
 
@@ -55,6 +59,7 @@ func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ []string, r
 	return nil
 }
 
+// Close signals the sync loop to stop.
 func (f *fakeSyncableSource) Close(_ context.Context, _ time.Duration) error {
 	f.tb.Helper()
 	close(f.stopChannel)

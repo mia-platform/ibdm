@@ -23,13 +23,13 @@ const (
 	defaultLocalOutput   = false
 )
 
-// flags encapsulate the cli flags for the "run" and "sync" commands.
+// flags collects the CLI options shared by the run and sync commands.
 type flags struct {
 	mappingPaths []string
 	localOutput  bool
 }
 
-// addFlags adds the cli flags to cmd.
+// addFlags registers the CLI flags on cmd.
 func (f *flags) addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringArrayVarP(
 		&f.mappingPaths,
@@ -41,7 +41,7 @@ func (f *flags) addFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&f.localOutput, localOutputFlagName, defaultLocalOutput, localOutputFlagUsage)
 }
 
-// toOptions converts the run flags to options enriching it with the passed arguments.
+// toOptions builds an options instance from the parsed flags and CLI arguments.
 func (f *flags) toOptions(cmd *cobra.Command, args []string) (*options, error) {
 	integrationName := ""
 	if len(args) > 0 {

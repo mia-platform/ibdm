@@ -22,12 +22,14 @@ type writerDestination struct {
 	lock sync.Mutex
 }
 
+// NewDestination returns a destination that prints payloads to w.
 func NewDestination(w io.Writer) destination.Sender {
 	return &writerDestination{
 		writer: w,
 	}
 }
 
+// SendData renders the upsert payload as formatted JSON and writes it to the destination writer.
 func (d *writerDestination) SendData(_ context.Context, data *destination.Data) error {
 	builder := new(strings.Builder)
 
@@ -48,6 +50,7 @@ func (d *writerDestination) SendData(_ context.Context, data *destination.Data) 
 	return nil
 }
 
+// DeleteData renders the delete payload and writes it to the destination writer.
 func (d *writerDestination) DeleteData(_ context.Context, data *destination.Data) error {
 	builder := new(strings.Builder)
 	builder.WriteString("Delete data:\n")

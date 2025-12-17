@@ -16,9 +16,9 @@ import (
 	"github.com/mia-platform/ibdm/internal/mapper/functions"
 )
 
-// Mapper will define how to map input data to an output structure defined by its Templates.
-// Identifier is a special fields used to uniquely identify an entity and is required.
-// All the string values will be used as go string templates to generate its value from the input data.
+// Mapper renders input data into templated output structures.
+// Implementations must provide an identifier template that yields a unique key per entity.
+// Template strings are evaluated using Go's text/template engine.
 type Mapper interface {
 	// ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
 	ApplyTemplates(input map[string]any) (output MappedData, err error)
@@ -36,19 +36,19 @@ var (
 
 var _ Mapper = &internalMapper{}
 
-// internalMapper is the default implementation of the Mapper interface.
+// internalMapper is the default Mapper implementation backed by text/template.
 type internalMapper struct {
 	idTemplate   *template.Template
 	specTemplate *template.Template
 }
 
-// MappedData contains the result of applying a Mapper to some input data.
+// MappedData wraps the identifier and rendered spec produced by a Mapper.
 type MappedData struct {
 	Identifier string
 	Spec       map[string]any
 }
 
-// New creates a new Mapper with the given identifier template and a specTemplates map.
+// New constructs a Mapper using the provided identifier template and spec templates.
 func New(identifierTemplate string, specTemplates map[string]string) (Mapper, error) {
 	var parsingErrs error
 	tmpl := template.New("main").Option("missingkey=error").Funcs(templateFunctions())
@@ -96,8 +96,7 @@ func (m *internalMapper) ApplyTemplates(data map[string]any) (MappedData, error)
 	}, nil
 }
 
-// templateFunctions returns the custom functions available for the user templates in addition
-// to the default ones provided by the text/template package.
+// templateFunctions exposes the custom helpers added to every mapping template.
 func templateFunctions() template.FuncMap {
 	return template.FuncMap{
 		// string functions
@@ -141,8 +140,7 @@ func templateFunctions() template.FuncMap {
 	}
 }
 
-// executeIdentifierTemplate executes a text/template named "identifier" with the given data.
-// Return the result as a string.
+// executeIdentifierTemplate renders the identifier template with data and validates the result.
 func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (string, error) {
 	outputStrBuilder := new(strings.Builder)
 	err := tmpl.ExecuteTemplate(outputStrBuilder, "identifier", data)
@@ -158,6 +156,7 @@ func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (st
 	return generatedID, err
 }
 
+// executeTemplatesMap renders the spec template and converts it into a map.
 func executeTemplatesMap(templates *template.Template, data map[string]any) (map[string]any, error) {
 	output := make(map[string]any)
 	outputBuilder := new(bytes.Buffer)

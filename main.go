@@ -19,9 +19,9 @@ import (
 )
 
 var (
-	// Version is set at build time by CI or can be overridden via the Makefile.
+	// Version is injected at build time via the Makefile.
 	Version = info.Version
-	// BuildDate is set at build time by the CLI or can be overridden via the Makefile.
+	// BuildDate is injected at build time via the Makefile.
 	BuildDate = info.BuildDate
 
 	appName      = info.AppName
@@ -49,12 +49,12 @@ var (
 	logLevelFlagUsage    = "set the logging level (possible values: " + strings.Join(allLoggerLevels, ", ") + ")"
 )
 
-// rootFlags defines global flags shared by the root command and all subcommands.
+// rootFlags holds the persistent flags shared across the command tree.
 type rootFlags struct {
 	logLevel string
 }
 
-// addFlags registers global CLI flags on the provided Cobra command.
+// addFlags registers the persistent CLI flags on cmd.
 func (f *rootFlags) addFlags(cmd *cobra.Command) {
 	flags := cmd.PersistentFlags()
 	flags.StringVarP(&f.logLevel, logLevelFlagName, logLevelShortFlagName, logLevelDefaultValue, heredoc.Doc(logLevelFlagUsage))
@@ -73,7 +73,7 @@ func main() {
 	os.Exit(exitCode)
 }
 
-// rootCmd returns the root Cobra command configured with global flags and subcommands.
+// rootCmd constructs the root Cobra command with shared configuration.
 func rootCmd() *cobra.Command {
 	flag := &rootFlags{}
 
@@ -107,7 +107,7 @@ func rootCmd() *cobra.Command {
 	return cmd
 }
 
-// versionCmd returns the Cobra command that prints version information.
+// versionCmd constructs the Cobra command that prints version information.
 func versionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   versionCmdName,
@@ -129,7 +129,7 @@ func versionCmd() *cobra.Command {
 	}
 }
 
-// versionString formats the version information for display.
+// versionString formats the version metadata for display.
 func versionString(version, buildDate, runtimeVersion string) string {
 	outputString := version
 	if buildDate != "" {

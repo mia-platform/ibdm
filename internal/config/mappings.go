@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	// ErrParsing reports failures that occur while decoding mapping files.
 	ErrParsing = errors.New("error parsing")
 )
 
@@ -32,9 +33,8 @@ type Mappings struct {
 	Spec       map[string]string `json:"spec" yaml:"spec"`
 }
 
-// NewMappingConfigsFromPath parse the file or directory at the given path and returns the mapping
-// configurations that were found.
-// Return an error if something in reading the files or in the parsing process fails.
+// NewMappingConfigsFromPath parses the file or directory at path and returns any mapping
+// configurations it contains. It reports failures encountered while reading or decoding the data.
 func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -42,27 +42,27 @@ func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 	}
 	defer file.Close()
 
-	// create a new yaml decoder for the file
+	// Create a YAML decoder for the file.
 	decoder := yaml.NewDecoder(file)
 	decoder.KnownFields(true)
 
 	configs := make([]*MappingConfig, 0)
 
-	// continue to parse until we reach the end of the file
+	// Continue parsing until the end of the file.
 	for {
 		config := new(MappingConfig)
 		err := decoder.Decode(&config)
 		if err != nil {
-			// end of file reached, stop parsing
+			// End of file reached, stop parsing.
 			if errors.Is(err, io.EOF) {
 				break
 			}
 
-			// other error occurred during parsing, stop and return it
+			// A different parsing error occurred; return it.
 			return nil, fmt.Errorf("%w %q: %w", ErrParsing, path, err)
 		}
 
-		// skip empty configs
+		// Skip empty configs.
 		if config == nil {
 			continue
 		}

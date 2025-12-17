@@ -8,11 +8,12 @@ import (
 	"reflect"
 )
 
-// List creates a list from the provided elements.
+// List returns the provided elements as a slice of any.
 func List(elements ...any) []any {
 	return elements
 }
 
+// Append appends elements to list when list is a slice or array.
 func Append(list any, elements ...any) ([]any, error) {
 	listType := reflect.TypeOf(list).Kind()
 	switch listType {
@@ -29,6 +30,7 @@ func Append(list any, elements ...any) ([]any, error) {
 	}
 }
 
+// Prepend inserts elements at the beginning of list when list is a slice or array.
 func Prepend(list any, elements ...any) ([]any, error) {
 	listType := reflect.TypeOf(list).Kind()
 	switch listType {
@@ -45,8 +47,8 @@ func Prepend(list any, elements ...any) ([]any, error) {
 	}
 }
 
-// First returns the first element of the provided list. If the list is empty, it returns nil.
-// If the provided argument is not a list, it returns an error.
+// First returns the first element of list or nil when list is empty.
+// It supports slices, arrays, and strings.
 func First(list any) (any, error) {
 	listType := reflect.TypeOf(list).Kind()
 	switch listType {
@@ -67,8 +69,8 @@ func First(list any) (any, error) {
 	}
 }
 
-// Last returns the last element of the provided list. If the list is empty, it returns nil.
-// If the provided argument is not a list, it returns an error.
+// Last returns the final element of list or nil when list is empty.
+// It supports slices, arrays, and strings.
 func Last(list any) (any, error) {
 	listType := reflect.TypeOf(list).Kind()
 	switch listType {

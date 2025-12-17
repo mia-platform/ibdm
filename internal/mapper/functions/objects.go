@@ -5,6 +5,7 @@ package functions
 
 import "encoding/json"
 
+// Object builds a map from alternating key and value arguments.
 func Object(keyAndValues ...any) map[string]any {
 	obj := make(map[string]any)
 	parametersLength := len(keyAndValues)
@@ -31,7 +32,7 @@ func ToJSON(v any) string {
 	return string(data)
 }
 
-// Pick creates a new map containing only the specified keys from the original map if they exist.
+// Pick creates a map containing only the specified keys found in object.
 func Pick(object map[string]any, keys ...string) map[string]any {
 	result := make(map[string]any, len(keys))
 	for _, key := range keys {
@@ -43,8 +44,7 @@ func Pick(object map[string]any, keys ...string) map[string]any {
 	return result
 }
 
-// Get retrieves the value associated with the specified key from the map. If the key does not exist,
-// it returns the provided default value.
+// Get returns object[key] or defaultValue when the key is missing.
 func Get(key string, object map[string]any, defaultValue any) any {
 	if val, exists := object[key]; exists {
 		return val
@@ -53,7 +53,7 @@ func Get(key string, object map[string]any, defaultValue any) any {
 	return defaultValue
 }
 
-// Set assigns the specified value to the given key in the map and returns the updated map.
+// Set stores value at key in object and returns object.
 func Set(key string, value any, object map[string]any) map[string]any {
 	object[key] = value
 	return object
