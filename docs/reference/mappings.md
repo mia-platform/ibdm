@@ -1,18 +1,17 @@
 # Mappings
 
-Mappings are essentially Go Text Templates that can return JSON compatible types.  
-Their syntax **MUST** be a valid [Go Text Template] and you can see the available syntax
-in the official documentation.
+Mappings are Go text templates that can emit JSON-compatible values. Every mapping must use valid
+[Go Text Template] syntax.
+Refer to the official documentation for language rules and control structures.
 
-The only limitation that is imposed is that the template used for the `identifier` will be always
-casted as a string.
+The only enforced limitation is that any template used as an `identifier` is always cast to a string.
 
 ## Additional Functions
 
-In addition to the [default functions] available to all Go Text Templates we give you access to
-these other ones:
+Alongside the [default functions] available in Go templates, the mapper runtime exposes these
+helper groups:
 
-- Strings Functions:
+- Strings:
 	- [quote](#quote)
 	- [trim](#trim)
 	- [trimPrefix](#trimprefix)
@@ -24,228 +23,213 @@ these other ones:
 	- [split](#split)
 	- [encode64](#encode64)
 	- [decode64](#decode64)
-- Objects Functions:
+- Objects:
 	- [object](#object)
 	- [toJSON](#tojson)
 	- [pick](#pick)
 	- [get](#get)
 	- [set](#set)
-- List Functions:
+- Lists:
 	- [list](#list)
 	- [append](#append)
 	- [prepend](#prepend)
 	- [first](#first)
 	- [last](#last)
-- Time Functions:
+- Time:
 	- [now](#now)
-- Crypto Functions:
+- Crypto:
 	- [sha256sum](#sha256sum)
 	- [sha512sum](#sha512sum)
-- UUID Functions:
+- UUID:
 	- [uuidv4](#uuidv4)
 	- [uuidv6](#uuidv6)
 	- [uuidv7](#uuidv7)
 
 ### `quote`
 
-The `quote` function will embed the data passed to it with the double quote characters.
+`quote` wraps the provided value in double quotes.
 
-As an example, `{{ .aKey | quote }}` with a `aKey` containing `some data` will return `"some data"`.  
-This can be used to always have a string if some kind of data return the empty string, or to cast
-other types to a string.
+Example: `{{ .aKey | quote }}` with `.aKey` equal to `some data` produces `"some data"`.
+Use it to guarantee string output even when the original value may be empty or of another type.
 
 ### `trim`
 
-The `trim` function will remove all leading and trailing white space (as defined by Unicode) removed.
+`trim` removes leading and trailing Unicode whitespace.
 
 <!-- markdownlint-disable-next-line MD038 -->
-As an example, `{{ .aKey | trim }}` with a `aKey` containing ` a complex string   ` will return
+Example: `{{ .aKey | trim }}` with `.aKey` equal to the string ` a complex string   ` produces
 `a complex string`.
 
 ### `trimPrefix`
 
-The `trimPrefix` function will remove the given substring from the beginning of the input.
+`trimPrefix` removes the provided substring from the beginning of the input string.
 
-As an example, `{{ .aKey | trimPrefix "hello" }}` with a `aKey` containing `hello world` will return
-` world`.<!-- markdownlint-disable-line MD038 -->
+Example: `{{ .aKey | trimPrefix "prefix_" }}` with `.aKey` equal to `prefix_value` produces `value`.
 
 ### `trimSuffix`
 
-The `trimSuffix` function will remove the given substring from the end of the input.
+`trimSuffix` removes the provided substring from the end of the input string.
 
-As an example, `{{ .aKey | trimSuffix "world" }}` with a `aKey` containing `hello world` will return
-`hello `.<!-- markdownlint-disable-line MD038 -->
+Example: `{{ .aKey | trimSuffix ".txt" }}` with `.aKey` equal to `report.txt` produces `report`.
 
 ### `replace`
 
-The `replace` function will replace all non-overlapping instances of the first parameter replaced
-by the second one.
+`replace` substitutes every non-overlapping occurrence of the first argument with the second argument.
 
-As an example, `{{ .aKey | replace "_" "-" }}` with a `aKey` containing `hello_world` will return
-`hello-world`.
+Example: `{{ .aKey | replace "_" "-" }}` with `.aKey` equal to `hello_world` produces `hello-world`.
 
 ### `upper`
 
-The `upper` function will change all Unicode letters mapped to their upper case.
+`upper` converts all Unicode letters in the input to upper case.
 
-As an example, `{{ .aKey | upper }}` with a `aKey` containing `hello world!` will return `HELLO WORLD!`.
+Example: `{{ .aKey | upper }}` with `.aKey` equal to `hello world!` produces `HELLO WORLD!`.
 
 ### `lower`
 
-The `lower` function will change all Unicode letters mapped to their lower case.
+`lower` converts all Unicode letters in the input to lower case.
 
-As an example, `{{ .aKey | lower }}` with a `aKey` containing `HELLO WORLD!` will return `hello world!`.
+Example: `{{ .aKey | lower }}` with `.aKey` equal to `HELLO WORLD!` produces `hello world!`.
 
 ### `truncate`
 
-The `truncate` function can be used to truncate from the start or the end an input string. If you
-use a positive index it will be truncated from the beginning and with a negative one it will be
-truncated from the end. If the absolute valued of the index is greater then the length of the
-input string the original string will be returned.
+`truncate` shortens the input string from the start or the end.
+A positive index removes characters from the beginning, while a negative index removes characters
+from the end. When the absolute value of the index is greater than the string length, the
+original value is returned.
 
-As an example, `{{ .aKey | truncate 5 }}` with a `aKey` containing `Hello World!` will return
-`World!`.  
-With a negative index `{{ .aKey | truncate -7 }}` will return `Hello`.
+Examples:
+
+- `{{ .aKey | truncate 5 }}` with `.aKey` equal to `Hello World!` produces `World!`.
+- `{{ .aKey | truncate -7 }}` with the same input produces `Hello`.
 
 ### `split`
 
-The `split` function can be used to separate an input string using the given character as separator.
+`split` separates a string on the provided separator and returns the resulting list.
 
-As an example, `{{ .aKey | split "/" }}` with a `aKey` containing `hello/world` will return the
-list `[hello, world]`.
+Example: `{{ .aKey | split "/" }}` with `.aKey` equal to `hello/world` produces `["hello", "world"]`.
 
 ### `encode64`
 
-The `encode64` function can be used to generate a base64 encoding of the input string.
+`encode64` returns the base64 encoding of the input string.
 
-As an example, `{{ .aKey | encode64 }}` with a `aKey` containing `hello world!` will return
-`aGVsbG8gd29ybGQh`.
+Example: `{{ .aKey | encode64 }}` with `.aKey` equal to `hello world!` produces `aGVsbG8gd29ybGQh`.
 
 ### `decode64`
 
-The `decode64` function can be used to decode a string containing a base64 value.
+`decode64` decodes a base64-encoded string.
 
-As an example, `{{ .aKey | decode64 }}` with a `aKey` containing `aGVsbG8gd29ybGQh` will return
-`hello world!`.
+Example: `{{ .aKey | decode64 }}` with `.aKey` equal to `aGVsbG8gd29ybGQh` produces `hello world!`.
 
 ### `object`
 
-The `object` function can be used to create a new object with keys and values.
+`object` builds a map from alternating key and value arguments.
 
-As an example, `{{ object "key" .aKey | toJSON }}` with a `aKey` containing `hello world!` will
-return a `{"key":"hello world!"}`
+Example: `{{ object "key" .aKey | toJSON }}` with `.aKey` equal to `hello world!` produces
+`{"key":"hello world!"}`.
 
 ### `toJSON`
 
-The `toJSON` function is used to transform complex data in JSON compatible form. This is needed
-if you have to put objects or arrays inside one of your key in the mapper.
+`toJSON` converts complex data to a JSON string.
+Use it when you need to embed objects or arrays inside another value.
 
-As an example, `{{ .aKey | toJSON }}` with a `aKey` containing an array of 5 number will return
-`[ 1, 2, 3, 4, 5 ]`.
+Example: `{{ .aKey | toJSON }}` with `.aKey` equal to the array `[1 2 3 4 5]` produces `[1,2,3,4,5]`.
 
 ### `pick`
 
-The `pick` function return a new object containing only the specified keys.
+`pick` returns a new object that contains only the requested keys.
 
-As an example, `{{ pick .objects "key" .objects | toJSON }}` with a `objects` containing
-`{"key":"value1","anotherKey":"value2"}]` will return `{"key":"value1"}`.
+Example: `{{ pick .object "key" | toJSON }}` with `.object` equal to
+`{"key":"value1","other":"value2"}` produces `{"key":"value1"}`.
 
 ### `get`
 
-The `get` function will return the chosen key from the object and the default value if the key is
-not present in the target object.
+`get` retrieves the value stored at the provided key, or returns the supplied default when the key
+is missing.
 
-As an example, `{{ get "key" .object "defaultValue" }}` with a `object` containing
-`{"key":"value1"}` will return `value1`.
+Example: `{{ get "key" .object "defaultValue" }}` with `.object` equal to `{"key":"value1"}`
+produces `value1`.
 
 ### `set`
 
-The `set` function will add or change the chosen key to the object with the given value and will
-return the new object resulting from the addition.
+`set` stores the provided value at the given key and returns the updated object.
 
-As an example, `{{ set "otherKey" .aKey .object | toJSON }}` with a `object` containing
-`{"key":"value1"}` and `aKey` containing `new value` will return
-`{"key":"value1","otherKey";"new value"}`.
+Example: `{{ set "otherKey" .aKey .object | toJSON }}` with `.object` equal to `{"key":"value1"}`
+and `.aKey` equal to `new value` produces `{"key":"value1","otherKey":"new value"}`.
 
 ### `list`
 
-The `list` function will create a new array with the element passed to it.
+`list` creates a new array containing the provided elements.
 
-As an example, `{{ list 1 2 3 4 }}` will return `[1, 2, 3, 4]`.
+Example: `{{ list 1 2 3 4 }}` produces `[1,2,3,4]`.
 
 ### `append`
 
-The `append` function will add elements to the end of an existing array.
+`append` adds elements to the end of an existing list.
+It returns an error if the first argument is not an array or slice.
 
-As an example, `{{ append .list 3, 4, 5 }}` with `list` containing `[1, 2]` will return
-`[1, 2, 3, 4, 5]`
+Example: `{{ append .list 3 4 5 }}` with `.list` equal to `[1,2]` produces `[1,2,3,4,5]`.
 
 ### `prepend`
 
-The `prepend` function will add elements to the beginning of an existing array.
+`prepend` adds elements to the beginning of an existing list.
+It returns an error if the first argument is not an array or slice.
 
-As an example, `{{ prepend .list 3, 4, 5 }}` with `list` containing `[1, 2]` will return
-`[3, 4, 5, 1, 2]`
+Example: `{{ prepend .list 3 4 5 }}` with `.list` equal to `[1,2]` produces `[3,4,5,1,2]`.
 
 ### `first`
 
-The `first` function will return the first element of a passed list, or the first character of a
-string. If the list or string is empty it will return nil and if is used on any other type will
-return an error.
+`first` returns the first element of a list, array, or string.
+It returns `nil` for empty inputs and an error for unsupported types.
 
-As an example, `{{ .object | first }}` with `objects` containing `[1,2,3]` will return `1`.
+Example: `{{ .items | first }}` with `.items` equal to `[1,2,3]` produces `1`.
 
 ### `last`
 
-The `last` function will return the last element of a passed list, or the last character of a
-string. If the list or string is empty it will return nil and if is used on any other type will
-return an error.
+`last` returns the final element of a list, array, or string.
+It returns `nil` for empty inputs and an error for unsupported types.
 
-As an example, `{{ .object | last }}` with `objects` containing `[1,2,3]` will return `3`.
+Example: `{{ .items | last }}` with `.items` equal to `[1,2,3]` produces `3`.
 
 ### `now`
 
-The `now` function will return the actual timestamp when the mapping is occurring in UTC time zone
-following the [RFC3339] format.
+`now` returns the current UTC timestamp formatted according to [RFC3339].
 
-As an example `{{ now }}` will return `1969-07-20T20:17:40Z`.
+Example: `{{ now }}` might produce `1969-07-20T20:17:40Z`.
 
 ### `sha256sum`
 
-The `sha256sum` function will return the hash of the data passed to it in 256 bit form.
+`sha256sum` returns the SHA-256 hash of the provided data as a hexadecimal string.
 
-As an example `{{ .aKey | sha256sum }}` with a `aKey` containing `Hello World!` will return
-`7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069`.
+Example: `{{ .aKey | sha256sum }}` with `.aKey` equal to `Hello World!` produces
+`7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1f...d9069`.
 
 ### `sha512sum`
 
-The `sha512sum` function will return the hash of the data passed to it in 512 bit form.
+`sha512sum` returns the SHA-512 hash of the provided data as a hexadecimal string.
 
-As an example `{{ .aKey | sha256sum }}` with a `aKey` containing `Hello World!` will return
-`861844d6704e8573fec34d967e20bcfef3d424cf48be04e6dc08f2bd58c729743371015ead891cc3cf1c9d34b49264b510751b1ff9e537937bc46b5d6ff4ecc8`.
+Example: `{{ .aKey | sha512sum }}` with `.aKey` equal to `Hello World!` produces
+`861844d6704e8573fec34d967e20bcfe...6ff4ecc8`.
 
 ### `uuidv4`
 
-The `uuidv4` function will return a valid [UUID in the v4 format]. It's a valid default choice for
-generating random UUIDs.
+`uuidv4` returns a random [UUID in the v4 format], which is a sound default for generating
+identifiers.
 
-As an example `{{ uuidv4 }}` will return `2ab22cfe-6448-4ca3-bb5b-6d752461b0d1`.
+Example: `{{ uuidv4 }}` might produce `2ab22cfe-6448-4ca3-bb5b-6d752461b0d1`.
 
 ### `uuidv6`
 
-The `uuidv6` function will return a valid [UUID in the v6 format]. It's used as an alternative
-to the old v1 format and can be used to maintain compatibility with it as an id in databases
-where the v1 format has already been used.
+`uuidv6` returns a [UUID in the v6 format], a time-ordered alternative to the legacy v1 format.
+Use it when you need ordering compatibility with existing v1 identifiers.
 
-As an example `{{ uuidv6 }}` will return `01f0c399-715a-66be-bf48-62e7f2a0bc55`.
+Example: `{{ uuidv6 }}` might produce `01f0c399-715a-66be-bf48-62e7f2a0bc55`.
 
 ### `uuidv7`
 
-The `uuidv7` function will return a valid [UUID in the v7 format]. It's the preferred choice
-for generating UUIDs for DB usage when you don't have prior data or UUIDs generated with the
-v1 version.
+`uuidv7` returns a [UUID in the v7 format], the recommended option for new, time-ordered identifiers.
+Prefer it when you do not already store v1 values.
 
-As an example `{{ uuidv7 }}` will return `019a912f-de3b-724d-81ce-3a602ebf1a98`.
+Example: `{{ uuidv7 }}` might produce `019a912f-de3b-724d-81ce-3a602ebf1a98`.
 
 [Go Text Template]: https://pkg.go.dev/text/template@go1.25.4 "data-driven templates for generating textual output"
 [default functions]: https://pkg.go.dev/text/template@go1.25.4#hdr-Functions
