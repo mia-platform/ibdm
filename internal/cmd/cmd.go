@@ -15,8 +15,8 @@ import (
 
 const (
 	runCmdUsageTemplate = "run [%s]"
-	runCmdShort         = "start a specific integration by name"
-	runCmdLong          = `Start a specific integration by name.
+	runCmdShort         = "start an event stream specific integration by name"
+	runCmdLong          = `Start an event stream specific integration by name.
 	Every integration can expose a webhook or start a polling mechanism to receive
 	data events and have its own configuration options, please refer to the
 	documentation for more details.
@@ -28,8 +28,8 @@ const (
 	ibdm run gcp --mapping-path mapping.yaml`
 
 	syncCmdUsageTemplate = "sync [%s]"
-	syncCmdShort         = "start a specific integration by name"
-	syncCmdLong          = `Start a specific integration by name.
+	syncCmdShort         = "start a sync specific integration by name"
+	syncCmdLong          = `Start a sync specific integration by name.
 	Some integrations support data synchronization from external sources.
 	The synchronization process run once and fetches all the data types
 	marked as 'syncable' in the mapping configurations.
