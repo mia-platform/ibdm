@@ -14,6 +14,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 )
 
@@ -31,10 +32,6 @@ var (
 	availableSyncSources = map[string]string{
 		"gcp": "Google Cloud Platform synchronization",
 	}
-
-	// sourceGetter is a function that returns a pipeline source based on the provided integration name.
-	// It can be overridden for testing purposes.
-	sourceGetter = sourceFromIntegrationName
 )
 
 // handleError will do custom print error handling based on the type of error received.
@@ -55,17 +52,9 @@ func handleError(cmd *cobra.Command, err error) error {
 	}
 }
 
-// unwrappedError returns the unwrapped error if available, otherwise it returns the original error.
-func unwrappedError(err error) error {
-	if unwrapped := errors.Unwrap(err); unwrapped != nil {
-		return unwrapped
-	}
-
-	return err
-}
-
+// validArgsFunc returns a cobra.CompletionFunc that provides command completions from the given sources map.
 func validArgsFunc(sources map[string]string) cobra.CompletionFunc {
-	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var comps []string
 		if len(args) == 0 {
 			for name, description := range sources {
@@ -79,6 +68,26 @@ func validArgsFunc(sources map[string]string) cobra.CompletionFunc {
 	}
 }
 
+// sourceFromIntegrationName return a pipeline source based on the provided integrationName.
+func sourceFromIntegrationName(integrationName string) (any, error) {
+	if integrationName == "gcp" {
+		return gcp.NewSource()
+	}
+
+	return nil, nil
+}
+
+// unwrappedError returns the unwrapped error if available, otherwise it returns the original error.
+func unwrappedError(err error) error {
+	if unwrapped := errors.Unwrap(err); unwrapped != nil {
+		return unwrapped
+	}
+
+	return err
+}
+
+// collectPaths return a list of all file paths found in the provided paths.
+// If a path is a directory, it will recursively collect all file paths within it (one level deep).
 func collectPaths(paths []string) ([]string, error) {
 	collected := make([]string, 0)
 	for _, p := range paths {
@@ -109,13 +118,13 @@ func collectPaths(paths []string) ([]string, error) {
 // loadMappers loads the mapping configurations from the provided paths and
 // returns a map of typed mappers. If syncOnly is true, only mappings
 // of syncable types are loaded.
-func loadMappers(paths []string, syncOnly bool) (map[string]mapper.Mapper, error) {
+func loadMappers(paths []string, syncOnly bool) (map[string]pipeline.DataMapper, error) {
 	mappings, err := loadMappingConfigs(paths)
 	if err != nil {
 		return nil, err
 	}
 
-	typedMappers := make(map[string]mapper.Mapper)
+	typedMappers := make(map[string]pipeline.DataMapper)
 	for _, mapping := range mappings {
 		if syncOnly && !mapping.Syncable {
 			continue
@@ -127,7 +136,11 @@ func loadMappers(paths []string, syncOnly bool) (map[string]mapper.Mapper, error
 			return nil, err
 		}
 
-		typedMappers[mapping.Type] = mapper
+		typedMappers[mapping.Type] = pipeline.DataMapper{
+			APIVersion: mapping.APIVersion,
+			Resource:   mapping.Resource,
+			Mapper:     mapper,
+		}
 	}
 
 	return typedMappers, nil
@@ -146,13 +159,4 @@ func loadMappingConfigs(paths []string) ([]*config.MappingConfig, error) {
 	}
 
 	return mappings, nil
-}
-
-// sourceFromIntegrationName return a pipeline source based on the provided integrationName.
-func sourceFromIntegrationName(integrationName string) (any, error) {
-	if integrationName == "gcp" {
-		return gcp.NewSource()
-	}
-
-	return nil, nil
 }

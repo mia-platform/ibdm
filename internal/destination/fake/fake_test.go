@@ -7,23 +7,32 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/mia-platform/ibdm/internal/destination"
 )
 
 func TestFakeDestination(t *testing.T) {
 	t.Parallel()
 
-	destination := NewFakeDestination(t)
-	assert.Empty(t, destination.SentData)
-	assert.Empty(t, destination.DeletedData)
+	fakeDestination := NewFakeDestination(t)
+	assert.Empty(t, fakeDestination.SentData)
+	assert.Empty(t, fakeDestination.DeletedData)
 
-	data := SentDataRecord{
-		Identifier: "id1",
-		Spec:       map[string]any{"key": "value"},
+	data := &destination.Data{
+		APIVersion: "version",
+		Resource:   "resource",
+		Name:       "id1",
+		Data:       map[string]any{"key": "value"},
 	}
 
-	assert.NoError(t, destination.SendData(t.Context(), data.Identifier, data.Spec))
-	assert.Equal(t, []SentDataRecord{data}, destination.SentData)
+	assert.NoError(t, fakeDestination.SendData(t.Context(), data))
+	assert.Equal(t, []*destination.Data{data}, fakeDestination.SentData)
 
-	assert.NoError(t, destination.DeleteData(t.Context(), data.Identifier))
-	assert.Equal(t, []string{data.Identifier}, destination.DeletedData)
+	deleteData := &destination.Data{
+		APIVersion: "version",
+		Resource:   "resource",
+		Name:       "id1",
+	}
+	assert.NoError(t, fakeDestination.DeleteData(t.Context(), deleteData))
+	assert.Equal(t, []*destination.Data{deleteData}, fakeDestination.DeletedData)
 }

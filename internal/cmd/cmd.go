@@ -25,13 +25,25 @@ const (
 	- gcp: Google Cloud Platform integration`
 
 	runCmdExample = `# Run the Google Cloud Platform integration
-	ibdm run gcp`
-	// runLoggerName = "ibdm:run"
+	ibdm run gcp --mapping-path mapping.yaml`
+
+	syncCmdUsageTemplate = "sync [%s]"
+	syncCmdShort         = "start a specific integration by name"
+	syncCmdLong          = `Start a specific integration by name.
+	Some integrations support data synchronization from external sources.
+	The synchronization process run once and fetches all the data types
+	marked as 'syncable' in the mapping configurations.
+
+	The available integrations are:
+	- gcp: Google Cloud Platform integration`
+
+	syncCmdExample = `# Run the Google Cloud Platform synchronization
+	ibdm sync gcp --mapping-path mapping.yaml`
 )
 
 // RunCmd return the "run" cli command for starting an integration.
 func RunCmd() *cobra.Command {
-	flags := &runFlags{}
+	flags := &flags{}
 	allSources := slices.Sorted(maps.Keys(availableEventSources))
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf(runCmdUsageTemplate, strings.Join(allSources, "|")),
@@ -53,7 +65,43 @@ func RunCmd() *cobra.Command {
 				return handleError(cmd, err)
 			}
 
-			if err := opts.execute(cmd.Context()); err != nil {
+			if err := opts.executeEventStream(cmd.Context()); err != nil {
+				return handleError(cmd, err)
+			}
+
+			return nil
+		},
+	}
+
+	flags.addFlags(cmd)
+	return cmd
+}
+
+func SyncCmd() *cobra.Command {
+	flags := &flags{}
+
+	allSources := slices.Sorted(maps.Keys(availableEventSources))
+	cmd := &cobra.Command{
+		Use:     fmt.Sprintf(syncCmdUsageTemplate, strings.Join(allSources, "|")),
+		Short:   heredoc.Doc(syncCmdShort),
+		Long:    heredoc.Doc(syncCmdLong),
+		Example: heredoc.Doc(syncCmdExample),
+
+		SilenceErrors: true,
+		SilenceUsage:  true,
+
+		ValidArgsFunction: validArgsFunc(availableSyncSources),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts, err := flags.toOptions(cmd, args)
+			if err != nil {
+				return handleError(cmd, err)
+			}
+
+			if err := opts.validate(); err != nil {
+				return handleError(cmd, err)
+			}
+
+			if err := opts.executeSync(cmd.Context()); err != nil {
 				return handleError(cmd, err)
 			}
 

@@ -1,0 +1,7 @@
+type: valid
+apiVersion: v1
+resource: resource
+mappings:
+  identifier: "{{ .id }}"
+  spec:
+    field1: "{{ .field1 | invalidFunc }}"

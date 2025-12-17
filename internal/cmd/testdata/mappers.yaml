@@ -9,7 +9,8 @@ mappings:
 type: mapper-type
 apiVersion: v1
 resource: resource
+syncable: true
 mappings:
   identifier: "{{ .id }}"
   spec:
-    field1: "{{ .field1 | invalidFunc }}"
+    field1: "{{ .field1 | lower }}"

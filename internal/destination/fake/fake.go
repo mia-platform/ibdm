@@ -12,16 +12,11 @@ import (
 
 var _ destination.Sender = &FakeDestination{}
 
-type SentDataRecord struct {
-	Identifier string
-	Spec       map[string]any
-}
-
 type FakeDestination struct {
 	tb testing.TB
 
-	SentData    []SentDataRecord
-	DeletedData []string
+	SentData    []*destination.Data
+	DeletedData []*destination.Data
 }
 
 func NewFakeDestination(tb testing.TB) *FakeDestination {
@@ -29,14 +24,14 @@ func NewFakeDestination(tb testing.TB) *FakeDestination {
 	return &FakeDestination{tb: tb}
 }
 
-func (f *FakeDestination) SendData(ctx context.Context, identifier string, spec map[string]any) error {
+func (f *FakeDestination) SendData(ctx context.Context, data *destination.Data) error {
 	f.tb.Helper()
-	f.SentData = append(f.SentData, SentDataRecord{Identifier: identifier, Spec: spec})
+	f.SentData = append(f.SentData, data)
 	return nil
 }
 
-func (f *FakeDestination) DeleteData(ctx context.Context, identifier string) error {
+func (f *FakeDestination) DeleteData(ctx context.Context, data *destination.Data) error {
 	f.tb.Helper()
-	f.DeletedData = append(f.DeletedData, identifier)
+	f.DeletedData = append(f.DeletedData, data)
 	return nil
 }

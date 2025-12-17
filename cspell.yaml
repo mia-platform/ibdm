@@ -5,6 +5,7 @@ allowCompoundWords: true
 words:
   - gsrv
   - ibdm
+  - nolint
   - tmpl
   - uuidv
 ignoreWords:
