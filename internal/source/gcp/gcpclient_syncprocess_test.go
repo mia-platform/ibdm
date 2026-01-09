@@ -29,9 +29,9 @@ type fakeAssetServiceServer struct {
 	assets []*assetpb.Asset
 }
 
-func filterFakeAssetsByTypes(assets []*assetpb.Asset, types []string) []*assetpb.Asset {
+func filterFakeAssetsByTypes(assets []*assetpb.Asset, types map[string]source.Extra) []*assetpb.Asset {
 	typeSet := make(map[string]struct{})
-	for _, t := range types {
+	for t := range types {
 		typeSet[t] = struct{}{}
 	}
 
@@ -103,7 +103,11 @@ func (s *fakeAssetServiceServer) ListAssets(ctx context.Context, req *assetpb.Li
 func TestStartSyncProcessClient_Success(t *testing.T) {
 	t.Parallel()
 
-	typesToSync := []string{"storage.googleapis.com/Bucket", "compute.googleapis.com/Network"}
+	typesToSync := map[string]source.Extra{
+		"storage.googleapis.com/Bucket":  nil,
+		"compute.googleapis.com/Network": nil,
+	}
+
 	fakeAssets := []*assetpb.Asset{
 		{
 			Name:      "//storage.googleapis.com/my-custom-bucket",
@@ -150,7 +154,9 @@ func TestStartSyncProcessClient_Success(t *testing.T) {
 func TestStartSyncProcessClient_NoAssets(t *testing.T) {
 	t.Parallel()
 
-	typesToSync := []string{"compute.googleapis.com/Network"}
+	typesToSync := map[string]source.Extra{
+		"compute.googleapis.com/Network": nil,
+	}
 	fakeAssets := []*assetpb.Asset{
 		{
 			Name:      "//storage.googleapis.com/my-custom-bucket",
@@ -190,7 +196,9 @@ func TestStartSyncProcessClient_NoAssets(t *testing.T) {
 func TestStartSyncProcessClient_Success_LoadJson_Bucket(t *testing.T) {
 	t.Parallel()
 
-	typesToSync := []string{"storage.googleapis.com/Bucket"}
+	typesToSync := map[string]source.Extra{
+		"storage.googleapis.com/Bucket": nil,
+	}
 	fakeBucketBytes, err := os.ReadFile("testdata/sync/bucket-test.json")
 	require.NoError(t, err)
 	var fakeBucket *assetpb.Asset
@@ -223,7 +231,9 @@ func TestStartSyncProcessClient_Success_LoadJson_Bucket(t *testing.T) {
 func TestStartSyncProcessClient_Success_LoadJson_Network(t *testing.T) {
 	t.Parallel()
 
-	typesToSync := []string{"compute.googleapis.com/Network"}
+	typesToSync := map[string]source.Extra{
+		"compute.googleapis.com/Network": nil,
+	}
 	fakeNetworkBytes, err := os.ReadFile("testdata/sync/network-test.json")
 	require.NoError(t, err)
 	var fakeNetwork *assetpb.Asset
@@ -256,7 +266,9 @@ func TestStartSyncProcessClient_Success_LoadJson_Network(t *testing.T) {
 func TestStartSyncProcessClient_NoAssets_LoadJson_Bucket(t *testing.T) {
 	t.Parallel()
 
-	typesToSync := []string{"compute.googleapis.com/Network"}
+	typesToSync := map[string]source.Extra{
+		"compute.googleapis.com/Network": nil,
+	}
 	fakeBucketBytes, err := os.ReadFile("testdata/sync/bucket-test.json")
 	require.NoError(t, err)
 	var fakeBucket *assetpb.Asset
@@ -282,7 +294,9 @@ func TestStartSyncProcessClient_NoAssets_LoadJson_Bucket(t *testing.T) {
 func TestStartSyncProcessClient_NoAssets_LoadJson_Network(t *testing.T) {
 	t.Parallel()
 
-	typesToSync := []string{"storage.googleapis.com/Bucket"}
+	typesToSync := map[string]source.Extra{
+		"storage.googleapis.com/Bucket": nil,
+	}
 	fakeNetworkBytes, err := os.ReadFile("testdata/sync/network-test.json")
 	require.NoError(t, err)
 	var fakeNetwork *assetpb.Asset

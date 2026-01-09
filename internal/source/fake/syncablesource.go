@@ -38,7 +38,7 @@ func NewFakeSyncableSource(tb testing.TB, syncData []source.Data) FakeSyncableSo
 }
 
 // StartSyncProcess emits syncData until completion, cancellation, or close.
-func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ []string, results chan<- source.Data) error {
+func (f *fakeSyncableSource) StartSyncProcess(ctx context.Context, _ map[string]source.Extra, results chan<- source.Data) error {
 	f.tb.Helper()
 
 	if ctx.Err() != nil {

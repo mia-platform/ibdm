@@ -13,6 +13,11 @@ ignoreWords:
   - acks
   - apiv
   - assetpb
+  - azblob
+  - azcore
+  - azeventhubs
+  - azidentity
+  - azsystemevents
   - caarlos
   - errln
   - goarch

@@ -37,7 +37,6 @@ var (
 		Operation: source.DataOperationDelete,
 		Values: map[string]any{
 			"identifier": "item2",
-			"attributeA": "valueA",
 		},
 		Time: testTime,
 	}

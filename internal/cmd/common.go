@@ -143,6 +143,7 @@ func loadMappers(paths []string, syncOnly bool) (map[string]pipeline.DataMapper,
 			APIVersion: mapping.APIVersion,
 			Resource:   mapping.Resource,
 			Mapper:     mapper,
+			Extra:      mapping.Extra,
 		}
 	}
 

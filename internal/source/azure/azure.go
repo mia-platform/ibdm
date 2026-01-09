@@ -5,17 +5,27 @@ package azure
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azsystemevents"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	"github.com/caarlos0/env/v11"
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
+
+type eventHandler func(context.Context, *azeventhubs.ReceivedEventData)
 
 var (
 	// ErrAzureSource is the sentinel error for all Azure Source errors.
@@ -34,12 +44,14 @@ var _ source.ClosableSource = &Source{}
 type Source struct {
 	config
 
+	eventStreamContext atomic.Pointer[processContext]
+
 	syncLock    sync.Mutex
-	syncContext atomic.Pointer[syncContext]
+	syncContext atomic.Pointer[processContext]
 }
 
-// syncContext holds references needed for a sync process lifecycle.
-type syncContext struct {
+// processContext holds references needed for a sync process lifecycle.
+type processContext struct {
 	cancel context.CancelFunc
 }
 
@@ -56,7 +68,7 @@ func NewSource() (*Source, error) {
 }
 
 // StartSyncProcess implement source.SyncableSource.
-func (s *Source) StartSyncProcess(ctx context.Context, _ []string, _ chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, _ map[string]source.Extra, _ chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(logName)
 	if !s.syncLock.TryLock() {
 		log.Debug("sync process already running")
@@ -72,14 +84,89 @@ func (s *Source) StartSyncProcess(ctx context.Context, _ []string, _ chan<- sour
 }
 
 // StartEventStream implement source.EventSource.
-func (s *Source) StartEventStream(context.Context, []string, chan<- source.Data) error {
+func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
 	if err := s.validateForEventStream(); err != nil {
 		return handleError(err)
 	}
 
-	return nil
+	eventHubClient, err := s.newEventHubClient()
+	if err != nil {
+		return handleError(err)
+	}
+	defer eventHubClient.Close(ctx)
+
+	checkpointClient, err := s.newCheckpointClient()
+	if err != nil {
+		return handleError(err)
+	}
+
+	processor, err := azeventhubs.NewProcessor(eventHubClient, checkpointClient, nil)
+	if err != nil {
+		return handleError(err)
+	}
+
+	clientFactory, err := s.azureClientFactory()
+	if err != nil {
+		return handleError(err)
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	s.eventStreamContext.Store(&processContext{
+		cancel: cancel,
+	})
+
+	eventHandler := partitionEventHandler(clientFactory, typesToFilter, dataChannel)
+	go startPartitionClients(ctx, processor, eventHandler)
+	return handleError(processor.Run(ctx))
 }
 
+func partitionEventHandler(_ *armresources.ClientFactory, typesToFilter map[string]source.Extra, _ chan<- source.Data) eventHandler {
+	typesSlice := make([]string, 0, len(typesToFilter))
+	for t := range typesToFilter {
+		typesSlice = append(typesSlice, t)
+	}
+
+	return func(ctx context.Context, receivedData *azeventhubs.ReceivedEventData) {
+		logger := logger.FromContext(ctx).WithName(logName)
+		cloudEvents := make([]messaging.CloudEvent, 0)
+		if err := json.Unmarshal(receivedData.Body, &cloudEvents); err != nil {
+			logger.Error("failed to unmarshal received event data", "error", err.Error())
+			return
+		}
+
+		for _, envelope := range cloudEvents {
+			if envelope.Subject != nil && filterBasedOnResourceURI(*envelope.Subject, typesSlice) {
+				logger.Trace("skipping event based on type", "subject", *envelope.Subject)
+				continue
+			}
+
+			switch envelope.Type {
+			case azsystemevents.TypeResourceWriteSuccess:
+
+			case azsystemevents.TypeResourceDeleteSuccess:
+
+			default:
+				logger.Trace("skipping event with unhandled type", "type", envelope.Type)
+			}
+		}
+	}
+}
+
+func filterBasedOnResourceURI(resourceURI string, typesToFilter []string) bool {
+	// Example resource URI: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	resID, err := arm.ParseResourceID(resourceURI)
+	if err != nil { // if we can't parse it, filter it out
+		return true
+	}
+
+	resourceType := resID.ResourceType.String()
+	return !slices.ContainsFunc(typesToFilter, func(s string) bool {
+		return strings.EqualFold(s, resourceType)
+	})
+}
+
+// Close implement source.ClosableSource.
 func (s *Source) Close(ctx context.Context, _ time.Duration) error {
 	log := logger.FromContext(ctx).WithName(logName)
 	log.Debug("closing Microsoft Azure client")
@@ -89,6 +176,11 @@ func (s *Source) Close(ctx context.Context, _ time.Duration) error {
 		syncClient.cancel()
 	}
 
+	eventStreamClient := s.eventStreamContext.Swap(nil)
+	if eventStreamClient != nil {
+		eventStreamClient.cancel()
+	}
+
 	log.Trace("closed Microsoft Azure client")
 	return nil
 }
@@ -96,15 +188,53 @@ func (s *Source) Close(ctx context.Context, _ time.Duration) error {
 // handleError always wraps the given error with ErrAzureSource.
 // It also unwraps some errors to cleanup the error message and removing unnecessary layers.
 func handleError(err error) error {
-	if err == nil {
+	var parseErr env.AggregateError
+	if errors.As(err, &parseErr) {
+		err = parseErr.Errors[0]
+	}
+
+	if errors.Is(err, context.Canceled) {
 		return nil
 	}
 
-	switch u := errors.Unwrap(err); u != nil {
-	case errors.Is(u, env.ParseError{}):
-	default:
-		err = u
-	}
-
 	return fmt.Errorf("%w: %w", ErrAzureSource, err)
+}
+
+func startPartitionClients(ctx context.Context, processor *azeventhubs.Processor, handleEvent eventHandler) {
+	logger := logger.FromContext(ctx).WithName(logName)
+	for {
+		partitionClient := processor.NextPartitionClient(ctx)
+		if partitionClient == nil {
+			break
+		}
+
+		go func(ctx context.Context, pc *azeventhubs.ProcessorPartitionClient) {
+			defer pc.Close(ctx)
+			logger.Trace("starting partition client", "partitionID", partitionClient.PartitionID())
+
+			for {
+				receiveCtx, cancelReceive := context.WithTimeout(ctx, 30*time.Second)
+				events, err := pc.ReceiveEvents(receiveCtx, 10, nil)
+				cancelReceive()
+
+				if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+					var eventHubError *azeventhubs.Error
+					if errors.As(err, &eventHubError) && eventHubError.Code == azeventhubs.ErrorCodeOwnershipLost {
+						logger.Error("closing partition client for ownership lost", "partitionID", pc.PartitionID())
+						return
+					}
+
+					logger.Error("partition client receive failed", "error", err.Error(), "partitionID", pc.PartitionID())
+					return
+				}
+
+				for _, event := range events {
+					handleEvent(ctx, event)
+					if err := partitionClient.UpdateCheckpoint(ctx, event, nil); err != nil && !errors.Is(err, context.Canceled) {
+						logger.Error("failed to update checkpoint", "error", err.Error(), "partitionID", pc.PartitionID())
+					}
+				}
+			}
+		}(ctx, partitionClient)
+	}
 }

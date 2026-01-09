@@ -20,11 +20,12 @@ var (
 
 // MappingConfig holds the configuration for mapping rules.
 type MappingConfig struct {
-	Type       string   `json:"type" yaml:"type"`
-	APIVersion string   `json:"apiVersion" yaml:"apiVersion"`
-	Resource   string   `json:"resource" yaml:"resource"`
-	Syncable   bool     `json:"syncable" yaml:"syncable"`
-	Mappings   Mappings `json:"mappings" yaml:"mappings"`
+	Type       string         `json:"type" yaml:"type"`
+	Extra      map[string]any `json:"extra,omitempty" yaml:"extra,omitempty"`
+	APIVersion string         `json:"apiVersion" yaml:"apiVersion"`
+	Resource   string         `json:"resource" yaml:"resource"`
+	Syncable   bool           `json:"syncable" yaml:"syncable"`
+	Mappings   Mappings       `json:"mappings" yaml:"mappings"`
 }
 
 // Mappings holds the identifier and specification templates for mapping rules.

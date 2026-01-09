@@ -93,7 +93,7 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 
 	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
 	bucketModifyPayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-modify.json"
-	typeToStream := []string{"storage.googleapis.com/Bucket"}
+	typeToStream := map[string]source.Extra{"storage.googleapis.com/Bucket": nil}
 	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
@@ -137,7 +137,7 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 		require.Fail(t, "timeout waiting for event")
 	}
 
-	gcpInstance.Close(ctx)
+	gcpInstance.Close(ctx, 1*time.Second)
 	<-closeChannel
 }
 
@@ -149,7 +149,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 
 	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
 	bucketDeletePayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-delete.json"
-	typeToStream := []string{"storage.googleapis.com/Bucket"}
+	typeToStream := map[string]source.Extra{"storage.googleapis.com/Bucket": nil}
 	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
@@ -193,7 +193,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 		require.Fail(t, "timeout waiting for event")
 	}
 
-	gcpInstance.Close(ctx)
+	gcpInstance.Close(ctx, 1*time.Second)
 	<-closeChannel
 }
 
@@ -204,7 +204,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 	defer cancel()
 
 	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
-	typeToStream := []string{"compute.googleapis.com/Network"}
+	typeToStream := map[string]source.Extra{"compute.googleapis.com/Network": nil}
 	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
@@ -240,7 +240,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 		}
 	}
 
-	gcpInstance.Close(ctx)
+	gcpInstance.Close(ctx, 1*time.Second)
 	<-closeChannel
 	assert.Empty(t, results)
 }
@@ -252,7 +252,7 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 	defer cancel()
 
 	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
-	typeToStream := []string{"compute.googleapis.com/Network"}
+	typeToStream := map[string]source.Extra{"compute.googleapis.com/Network": nil}
 	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
@@ -288,7 +288,7 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 		}
 	}
 
-	gcpInstance.Close(ctx)
+	gcpInstance.Close(ctx, 1*time.Second)
 	<-closeChannel
 	assert.Empty(t, results)
 }
