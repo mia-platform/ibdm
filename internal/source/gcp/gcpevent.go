@@ -6,6 +6,7 @@ package gcp
 import (
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/mia-platform/ibdm/internal/source"
 )
@@ -18,14 +19,14 @@ type GCPEvent struct {
 	Deleted         bool           `json:"deleted"`
 }
 
-// GetAsset returns the current asset snapshot.
+// GetAsset returns the current asset snapshot if the event is not a deletion;
+// otherwise, it returns the prior asset snapshot.
 func (e GCPEvent) GetAsset() map[string]any {
-	return e.Asset
-}
+	if e.Deleted {
+		return e.PriorAsset
+	}
 
-// GetPriorAsset returns the previous asset snapshot when available.
-func (e GCPEvent) GetPriorAsset() map[string]any {
-	return e.PriorAsset
+	return e.Asset
 }
 
 // GetName returns the resource name for the asset.
@@ -45,6 +46,17 @@ func (e GCPEvent) Operation() source.DataOperation {
 	}
 
 	return source.DataOperationUpsert
+}
+
+func (e GCPEvent) GetEventTime() time.Time {
+	asset := e.GetAsset()
+	if updateTime, ok := asset["updateTime"].(string); ok {
+		if parsedTime, err := time.Parse(time.RFC3339Nano, updateTime); err == nil {
+			return parsedTime
+		}
+	}
+
+	return time.Now()
 }
 
 // IsTypeIn checks whether the asset type is in types, ignoring case.

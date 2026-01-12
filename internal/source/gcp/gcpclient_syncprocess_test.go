@@ -143,6 +143,7 @@ func TestStartSyncProcessClient_Success(t *testing.T) {
 		assert.Equal(t, filteredFakeAssets[0].GetAssetType(), result.Type)
 		assert.Equal(t, source.DataOperationUpsert, result.Operation)
 		assert.Equal(t, assetMap, result.Values)
+		assert.False(t, result.Time.IsZero())
 	}
 }
 
@@ -215,6 +216,7 @@ func TestStartSyncProcessClient_Success_LoadJson_Bucket(t *testing.T) {
 		assert.Equal(t, filteredFakeAssets[0].GetAssetType(), result.Type)
 		assert.Equal(t, source.DataOperationUpsert, result.Operation)
 		assert.Equal(t, assetMap, result.Values)
+		assert.False(t, result.Time.IsZero())
 	}
 }
 
@@ -247,6 +249,7 @@ func TestStartSyncProcessClient_Success_LoadJson_Network(t *testing.T) {
 		assert.Equal(t, filteredFakeAssets[0].GetAssetType(), result.Type)
 		assert.Equal(t, source.DataOperationUpsert, result.Operation)
 		assert.Equal(t, assetMap, result.Values)
+		assert.False(t, result.Time.IsZero())
 	}
 }
 

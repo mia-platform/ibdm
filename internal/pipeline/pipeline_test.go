@@ -20,7 +20,8 @@ import (
 )
 
 var (
-	type1 = source.Data{
+	testTime = time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
+	type1    = source.Data{
 		Type:      "type1",
 		Operation: source.DataOperationUpsert,
 		Values: map[string]any{
@@ -28,6 +29,7 @@ var (
 			"field1": "value1",
 			"field2": "value2",
 		},
+		Time: testTime,
 	}
 
 	type2 = source.Data{
@@ -37,6 +39,7 @@ var (
 			"identifier": "item2",
 			"attributeA": "valueA",
 		},
+		Time: testTime,
 	}
 	brokenType = source.Data{
 		Type:      "type1",
@@ -46,6 +49,7 @@ var (
 			"field1": "value3",
 			// missing field2
 		},
+		Time: testTime,
 	}
 
 	unknownType = source.Data{
@@ -54,6 +58,7 @@ var (
 		Values: map[string]any{
 			"someField": "someValue",
 		},
+		Time: testTime,
 	}
 )
 
@@ -123,13 +128,15 @@ func TestStreamPipeline(t *testing.T) {
 						"field1": "value1",
 						"field2": "value2",
 					},
+					OperationTime: "2024-06-01T12:00:00Z",
 				},
 			},
 			expectedDeletion: []*destination.Data{
 				{
-					APIVersion: "v2",
-					Resource:   "resource2",
-					Name:       "item2",
+					APIVersion:    "v2",
+					Resource:      "resource2",
+					Name:          "item2",
+					OperationTime: "2024-06-01T12:00:00Z",
 				},
 			},
 		},
@@ -260,13 +267,15 @@ func TestSyncPipeline(t *testing.T) {
 						"field1": "value1",
 						"field2": "value2",
 					},
+					OperationTime: "2024-06-01T12:00:00Z",
 				},
 			},
 			expectedDeletion: []*destination.Data{
 				{
-					APIVersion: "v2",
-					Resource:   "resource2",
-					Name:       "item2",
+					APIVersion:    "v2",
+					Resource:      "resource2",
+					Name:          "item2",
+					OperationTime: "2024-06-01T12:00:00Z",
 				},
 			},
 		},

@@ -71,6 +71,5 @@
 		"location": "us",
 		"parent": "//cloudresourcemanager.googleapis.com/projects/20318464073",
 		"version": "v1"
-	},
-	"updateTime": "2025-11-26T10:53:17.775678Z"
+	}
 }

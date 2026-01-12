@@ -262,6 +262,7 @@ func (g *Source) StartSyncProcess(ctx context.Context, typesToSync []string, res
 			Type:      asset.GetAssetType(),
 			Operation: source.DataOperationUpsert,
 			Values:    assetToMap(asset),
+			Time:      asset.GetUpdateTime().AsTime(),
 		}
 	}
 	return nil
@@ -305,13 +306,7 @@ func (g *Source) StartEventStream(ctx context.Context, typesToStream []string, r
 			return
 		}
 
-		var valuesMap map[string]any
-		if event.Operation() == source.DataOperationDelete {
-			valuesMap = event.GetPriorAsset()
-		} else {
-			valuesMap = event.GetAsset()
-		}
-
+		valuesMap := event.GetAsset()
 		if valuesMap == nil {
 			log.Error("failed to convert asset to map",
 				"messageId", msg.ID,
@@ -325,6 +320,7 @@ func (g *Source) StartEventStream(ctx context.Context, typesToStream []string, r
 			Type:      event.GetAssetType(),
 			Operation: event.Operation(),
 			Values:    valuesMap,
+			Time:      event.GetEventTime(),
 		}
 		msg.Ack()
 	})

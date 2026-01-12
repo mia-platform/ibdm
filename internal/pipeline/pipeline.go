@@ -146,9 +146,10 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 
 			log.Trace("sending data", "type", data.Type, "operation", data.Operation.String())
 			dataToSend := &destination.Data{
-				APIVersion: mapper.APIVersion,
-				Resource:   mapper.Resource,
-				Name:       output.Identifier,
+				APIVersion:    mapper.APIVersion,
+				Resource:      mapper.Resource,
+				Name:          output.Identifier,
+				OperationTime: data.Timestamp(),
 			}
 			switch data.Operation {
 			case source.DataOperationUpsert:

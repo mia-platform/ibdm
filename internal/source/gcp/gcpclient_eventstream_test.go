@@ -242,7 +242,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 
 	gcpInstance.Close(ctx)
 	<-closeChannel
-	assert.Empty(t, results, 0)
+	assert.Empty(t, results)
 }
 
 func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
@@ -290,5 +290,5 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 
 	gcpInstance.Close(ctx)
 	<-closeChannel
-	assert.Empty(t, results, 0)
+	assert.Empty(t, results)
 }
