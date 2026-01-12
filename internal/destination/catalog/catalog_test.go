@@ -174,6 +174,13 @@ func TestSendData(t *testing.T) {
 			},
 			expectedError: &CatalogError{err: errors.New("invalid token or insufficient permissions")},
 		},
+		"not found send": {
+			endpoint: "/not-found-endpoint",
+			data: &destination.Data{
+				APIVersion: "v1",
+			},
+			expectedError: &CatalogError{err: errors.New("integration registration not found")},
+		},
 		"invalid error response": {
 			endpoint: "/invalid-error-response",
 			data: &destination.Data{
@@ -210,8 +217,10 @@ func TestSendData(t *testing.T) {
 					assert.Equal(t, tc.expectedBody, decodedBody)
 					w.WriteHeader(http.StatusNoContent)
 					return
-				case "/invalid-error-response":
+				case "/not-found-endpoint":
 					http.NotFound(w, r)
+				case "/invalid-error-response":
+					http.Error(w, "unexpected error", http.StatusBadGateway)
 				case "/unauthorized-endpoint":
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
 				default:
