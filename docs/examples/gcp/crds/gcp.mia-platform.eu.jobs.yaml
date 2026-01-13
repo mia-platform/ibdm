@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
 kind: CustomResourceDefinition

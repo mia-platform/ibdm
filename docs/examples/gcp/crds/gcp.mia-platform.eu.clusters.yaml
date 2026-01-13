@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
 kind: CustomResourceDefinition
@@ -46,7 +46,7 @@ spec:
                 description: The IP address range for the services in this cluster
                 type: string
               clusterEndpoints:
-                description:
+                description: Configuration of the cluster's API server endpoints
                 type: object
                 properties:
                   dnsEndpointConfig:
