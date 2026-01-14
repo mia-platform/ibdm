@@ -42,6 +42,8 @@ func (o *options) executeEventStream(ctx context.Context) error {
 	}
 	defer o.lock.Unlock()
 
+	// fiber server needs to be started at startup to register webhooks and healthcheck routes
+
 	pipeline, err := o.pipeline()
 	if err != nil {
 		return err

@@ -30,3 +30,9 @@ type ClosableSource interface {
 	// Close releases resources, respecting the provided timeout.
 	Close(ctx context.Context, timeout time.Duration) (err error)
 }
+
+type WebhookSource interface {
+	// RegisterWebhook sets up webhooks for the specified data types, sending updates to results or returning an error.
+	// typesToStream lists the expected data types.
+	RegisterWebhook(ctx context.Context, typesToStream []string, results chan<- Data) (err error)
+}

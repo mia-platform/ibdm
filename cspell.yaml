@@ -12,6 +12,7 @@ words:
   - tmpl
   - upserted
   - uuidv
+  - healthz
 ignoreWords:
   - acks
   - apiv
@@ -36,6 +37,7 @@ ignoreWords:
   - structpb
   - tlog
   - vtpm
+  - gofiber
 files:
   - "**/*.go"
   - "**/*.md"
