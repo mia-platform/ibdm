@@ -10,6 +10,6 @@ mappings:
     name: "{{ .name }}"
     location: "{{ .location | lower }}"
     provisioningState: "{{ .properties.provisioningState | lower }}"
-    tags: "{{ .tags | toJSON }}"
     kind: "{{ .kind }}"
     endpoint: "{{ .properties.endpoint }}"
+    tags: "{{ .tags | toJSON }}"

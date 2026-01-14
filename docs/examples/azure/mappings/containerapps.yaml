@@ -10,7 +10,6 @@ mappings:
     name: "{{ .name }}"
     location: "{{ .location | lower }}"
     provisioningState: "{{ .properties.provisioningState | lower }}"
-    tags: "{{ .tags | toJSON }}"
     runningStatus: "{{ .properties.runningStatus | lower }}"
     fqdn: |-
       {{ $ingress := get "ingress" .properties.configuration (object) -}}
@@ -24,3 +23,4 @@ mappings:
       {{- if gt $targetPort -1 -}}{{- $targetPort -}}{{- end }}
     minReplicas: "{{ .properties.template.scale.minReplicas }}"
     maxReplicas: "{{ .properties.template.scale.maxReplicas }}"
+    tags: "{{ .tags | toJSON }}"

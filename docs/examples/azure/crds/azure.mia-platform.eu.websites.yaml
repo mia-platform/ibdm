@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: websites.azure.mia-platform.eu
+spec:
+  group: azure.mia-platform.eu
+  names:
+    kind: WebSite
+    plural: websites
+    singular: website
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The name of the resource.
+                type: string
+              location:
+                description: Location of the resource.
+                type: string
+              state:
+                description: The state of the resource.
+                type: string
+              kind:
+                description: The kind of the resource, for example if it is an app or a function.
+                type: string
+              enabled:
+                description: Indicates whether the website is enabled.
+                type: boolean
+              availabilityState:
+                description: The availability state of the website.
+                type: string
+              defaultHostname:
+                description: The default hostname of the website.
+                type: string
+              serverFarmId:
+                description: The ID of the App Service Plan associated with the website.
+                type: string
+              tags:
+                description: User-provided tags in key-value pairs.
+                type: object
+                additionalProperties:
+                  type: string
+    served: true
+    storage: true

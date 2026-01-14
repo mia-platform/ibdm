@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: virtualnetworks.azure.mia-platform.eu
+spec:
+  group: azure.mia-platform.eu
+  names:
+    kind: VirtualNetwork
+    plural: virtualnetworks
+    singular: virtualnetwork
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The name of the resource.
+                type: string
+              location:
+                description: Location of the resource.
+                type: string
+              provisioningState:
+                description: The provisioning state of the resource.
+                type: string
+              addressPrefixes:
+                description: The address prefixes of the virtual network.
+                type: array
+                items:
+                  type: string
+              subnets:
+                description: The subnets of the virtual network.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      description: The name of the subnet.
+                      type: string
+                    addressPrefix:
+                      description: The address prefix of the subnet.
+                      type: string
+                    provisioningState:
+                      description: The provisioning state of the subnet.
+                      type: string
+              tags:
+                description: User-provided tags in key-value pairs.
+                type: object
+                additionalProperties:
+                  type: string
+    served: true
+    storage: true

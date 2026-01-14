@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: cognitiveaccounts.azure.mia-platform.eu
+spec:
+  group: azure.mia-platform.eu
+  names:
+    kind: CognitiveAccount
+    plural: cognitiveaccounts
+    singular: cognitiveaccount
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The name of the resource.
+                type: string
+              location:
+                description: Location of the resource.
+                type: string
+              provisioningState:
+                description: The provisioning state of the resource.
+                type: string
+              kind:
+                description: The kind of the cognitive account resource.
+                type: string
+              endpoint:
+                description: The endpoint of the cognitive account.
+                type: string
+              tags:
+                description: User-provided tags in key-value pairs.
+                type: object
+                additionalProperties:
+                  type: string
+    served: true
+    storage: true
