@@ -1,0 +1,13 @@
+apiVersion: azure.mia-platform.eu/v1alpha1
+resource: subscriptions
+type: Microsoft.Resources/subscriptions
+extra:
+  apiVersion: "2022-12-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  spec:
+    name: "{{ .name }}"
+    displayName: "{{ get \"displayName\" . \"\" | quote }}"
+    state: "{{ .properties.state | lower }}"
+    tags: "{{ .tags | toJSON }}"

@@ -1,0 +1,20 @@
+apiVersion: azure.mia-platform.eu/v1alpha1
+resource: subscriptions
+type: Microsoft.Compute/virtualMachines
+extra:
+  apiVersion: "2025-04-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  spec:
+    name: "{{ .name }}"
+    location: "{{ .location | lower }}"
+    vmSize: "{{ .properties.hardwareProfile.vmSize }}"
+    provisioningState: "{{ .properties.provisioningState | lower }}"
+    osType: "{{ .properties.storageProfile.osDisk.osType | lower | quote }}"
+    osVersion: |-
+      {{ $image := get "imageReference" .properties.storageProfile (object) -}}
+      {{- $publisher := get "publisher" $image "" -}}
+      {{- $version := get "sku" $image "" -}}
+      {{- printf "%s %s" $publisher $version | trim }}
+    tags: "{{ .tags | toJSON }}"

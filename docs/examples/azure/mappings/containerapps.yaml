@@ -1,0 +1,26 @@
+apiVersion: azure.mia-platform.eu/v1alpha1
+resource: containerapps
+type: Microsoft.App/containerApps
+extra:
+  apiVersion: "2025-07-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  spec:
+    name: "{{ .name }}"
+    location: "{{ .location | lower }}"
+    provisioningState: "{{ .properties.provisioningState | lower }}"
+    tags: "{{ .tags | toJSON }}"
+    runningStatus: "{{ .properties.runningStatus | lower }}"
+    fqdn: |-
+      {{ $ingress := get "ingress" .properties.configuration (object) -}}
+      {{- get "fqdn" $ingress "" | quote }}
+    external: |-
+      {{ $ingress := get "ingress" .properties.configuration (object) -}}
+      {{- get "external" $ingress false }}
+    targetPort: |-
+      {{ $ingress := get "ingress" .properties.configuration (object) -}}
+      {{- $targetPort := get "targetPort" $ingress -1 }}
+      {{- if gt $targetPort -1 -}}{{- $targetPort -}}{{- end }}
+    minReplicas: "{{ .properties.template.scale.minReplicas }}"
+    maxReplicas: "{{ .properties.template.scale.maxReplicas }}"

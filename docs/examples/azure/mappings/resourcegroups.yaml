@@ -1,0 +1,13 @@
+apiVersion: azure.mia-platform.eu/v1alpha1
+resource: resourcegroups
+type: Microsoft.Resources/resourceGroups
+extra:
+  apiVersion: "2021-04-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  spec:
+    name: "{{ .name }}"
+    location: "{{ .location | lower }}"
+    provisioningState: "{{ .properties.provisioningState | lower }}"
+    tags: "{{ .tags | toJSON }}"

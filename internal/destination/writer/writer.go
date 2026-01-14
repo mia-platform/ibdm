@@ -37,6 +37,7 @@ func (d *writerDestination) SendData(_ context.Context, data *destination.Data) 
 	builder.WriteString("\tAPIVersion: " + data.APIVersion + "\n")
 	builder.WriteString("\tResource: " + data.Resource + "\n")
 	builder.WriteString("\tResource Name: " + data.Name + "\n")
+	builder.WriteString("\tTimestamp: " + data.OperationTime + "\n")
 	builder.WriteString("\tSpec: ")
 
 	encoder := json.NewEncoder(builder)
@@ -57,6 +58,7 @@ func (d *writerDestination) DeleteData(_ context.Context, data *destination.Data
 	builder.WriteString("\tAPIVersion: " + data.APIVersion + "\n")
 	builder.WriteString("\tResource: " + data.Resource + "\n")
 	builder.WriteString("\tResource Name: " + data.Name + "\n")
+	builder.WriteString("\tTimestamp: " + data.OperationTime + "\n")
 	builder.WriteString("\n")
 
 	d.lock.Lock()

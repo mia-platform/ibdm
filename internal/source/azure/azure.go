@@ -16,8 +16,10 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azsystemevents"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	"github.com/caarlos0/env/v11"
 
@@ -34,6 +36,15 @@ var (
 
 const (
 	logName = "ibdm:source:azure"
+
+	resourceGraphQueryTemplate = `resources |
+	where type =~ '%s' |
+	project extendedLocation,identity,kind,location,managedBy,plan,properties,sku,tags,id,name,type
+	`
+	resourceContainerGraphQueryTemplate = `resourcecontainers |
+	where type =~ '%s' |
+	project extendedLocation,identity,kind,location,managedBy,plan,properties,sku,tags,id,name,type
+	`
 )
 
 var _ source.SyncableSource = &Source{}
@@ -68,16 +79,86 @@ func NewSource() (*Source, error) {
 }
 
 // StartSyncProcess implement source.SyncableSource.
-func (s *Source) StartSyncProcess(ctx context.Context, _ map[string]source.Extra, _ chan<- source.Data) error {
-	log := logger.FromContext(ctx).WithName(logName)
+func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+	logger := logger.FromContext(ctx).WithName(logName)
 	if !s.syncLock.TryLock() {
-		log.Debug("sync process already running")
+		logger.Debug("sync process already running")
 		return nil
 	}
 	defer s.syncLock.Unlock()
 
 	if err := s.validateForSync(); err != nil {
 		return handleError(err)
+	}
+
+	client, err := s.azureGraphClient()
+	if err != nil {
+		return handleError(err)
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	s.syncContext.Store(&processContext{
+		cancel: cancel,
+	})
+
+	for resType := range typesToFilter {
+		var query *string
+		switch resType {
+		case arm.ResourceGroupResourceType.String():
+			graphResourceType := arm.SubscriptionResourceType.String() + "/resourceGroups"
+			query = to.Ptr(fmt.Sprintf(resourceContainerGraphQueryTemplate, graphResourceType))
+		case arm.SubscriptionResourceType.String():
+			query = to.Ptr(fmt.Sprintf(resourceContainerGraphQueryTemplate, resType))
+		default:
+			query = to.Ptr(fmt.Sprintf(resourceGraphQueryTemplate, resType))
+		}
+
+		queryRequest := armresourcegraph.QueryRequest{
+			Subscriptions: []*string{to.Ptr(s.SubscriptionID)},
+			Query:         query,
+		}
+
+		for {
+			timestamp := time.Now()
+			response, err := client.Resources(ctx, queryRequest, nil)
+
+			switch {
+			case errors.Is(err, context.Canceled):
+				logger.Debug("stopping sync process due to context cancellation")
+				return nil
+			case err != nil:
+				return handleError(err)
+			}
+
+			if data, ok := response.Data.([]any); ok {
+				for _, item := range data {
+					if values, ok := item.(map[string]any); ok {
+						values["type"] = resType // ensure type is case-normalized, and resourceGroup is normalized too
+						dataChannel <- source.Data{
+							Type:      resType,
+							Operation: source.DataOperationUpsert,
+							Time:      timestamp,
+							Values:    values,
+						}
+					} else {
+						// something very wrong is going on, print an error and continue
+						logger.Debug("retrieve data item is not a valid map")
+					}
+				}
+			} else {
+				// something very wrong is going on, print an error and continue
+				logger.Debug("response data is not a valid type")
+			}
+
+			if response.ResultTruncated == nil || *response.ResultTruncated == armresourcegraph.ResultTruncatedFalse {
+				break
+			}
+
+			queryRequest.Options = &armresourcegraph.QueryRequestOptions{
+				SkipToken: response.SkipToken,
+			}
+		}
 	}
 
 	return nil
@@ -89,26 +170,16 @@ func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]
 		return handleError(err)
 	}
 
-	eventHubClient, err := s.newEventHubClient()
+	client, err := s.azureClient()
+	if err != nil {
+		return handleError(err)
+	}
+
+	eventHubClient, processor, err := s.setupEventStreamProcessors()
 	if err != nil {
 		return handleError(err)
 	}
 	defer eventHubClient.Close(ctx)
-
-	checkpointClient, err := s.newCheckpointClient()
-	if err != nil {
-		return handleError(err)
-	}
-
-	processor, err := azeventhubs.NewProcessor(eventHubClient, checkpointClient, nil)
-	if err != nil {
-		return handleError(err)
-	}
-
-	clientFactory, err := s.azureClientFactory()
-	if err != nil {
-		return handleError(err)
-	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -116,12 +187,12 @@ func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]
 		cancel: cancel,
 	})
 
-	eventHandler := partitionEventHandler(clientFactory, typesToFilter, dataChannel)
+	eventHandler := partitionEventHandler(client, typesToFilter, dataChannel)
 	go startPartitionClients(ctx, processor, eventHandler)
 	return handleError(processor.Run(ctx))
 }
 
-func partitionEventHandler(_ *armresources.ClientFactory, typesToFilter map[string]source.Extra, _ chan<- source.Data) eventHandler {
+func partitionEventHandler(client *armresources.Client, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) eventHandler {
 	typesSlice := make([]string, 0, len(typesToFilter))
 	for t := range typesToFilter {
 		typesSlice = append(typesSlice, t)
@@ -136,30 +207,93 @@ func partitionEventHandler(_ *armresources.ClientFactory, typesToFilter map[stri
 		}
 
 		for _, envelope := range cloudEvents {
-			if envelope.Subject != nil && filterBasedOnResourceURI(*envelope.Subject, typesSlice) {
-				logger.Trace("skipping event based on type", "subject", *envelope.Subject)
+			resID, err := resourceIDFromSubject(envelope.Subject)
+			if err != nil {
+				logger.Error("failed to parse resource ID from subject", "error", err.Error(), "subject", envelope.Subject)
 				continue
 			}
 
+			if envelope.Subject != nil && filterBasedOnResourceID(resID, typesSlice) {
+				logger.Debug("skipping event based on type", "resourceID", resID.ResourceType.String())
+				continue
+			}
+
+			apiVersion, ok := typesToFilter[resID.ResourceType.String()]["apiVersion"].(string)
+			if !ok {
+				logger.Debug("skipping event with missing apiVersion", "resourceID", resID.ResourceType.String())
+				continue
+			}
+
+			logger.Trace("handling resource", "resourceID", resID.ResourceType.String(), "eventType", envelope.Type, "apiVersion", apiVersion)
 			switch envelope.Type {
 			case azsystemevents.TypeResourceWriteSuccess:
+				logger.Trace("request resource data from azure", "resourceID", *envelope.Subject)
+				response, err := client.GetByID(ctx, resID.String(), apiVersion, nil)
+				switch {
+				case errors.Is(err, context.Canceled):
+					logger.Debug("stopping processing due to context cancellation")
+					continue
+				case err != nil:
+					logger.Error("failed to get resource from Azure", "error", err.Error(), "resourceID", *envelope.Subject)
+					continue
+				}
 
+				values, err := unmarshalAzureResponse(response.GenericResource)
+				if err != nil {
+					logger.Error("failed to unmarshal resource from Azure", "error", err.Error(), "resourceID", *envelope.Subject)
+					continue
+				}
+
+				dataChannel <- source.Data{
+					Type:      resID.ResourceType.String(),
+					Operation: source.DataOperationUpsert,
+					Time:      *envelope.Time,
+					Values:    values,
+				}
 			case azsystemevents.TypeResourceDeleteSuccess:
-
+				logger.Trace("we have to delete something", "resourceID", resID.ResourceType.String())
+				dataChannel <- source.Data{
+					Type:      resID.ResourceType.String(),
+					Operation: source.DataOperationDelete,
+					Time:      *envelope.Time,
+					Values: map[string]any{
+						"id":   resID.String(),
+						"type": resID.ResourceType.String(),
+					},
+				}
 			default:
-				logger.Trace("skipping event with unhandled type", "type", envelope.Type)
+				logger.Trace("skipping resource", "resourceID", resID.ResourceType.String(), "eventType", envelope.Type, "apiVersion", apiVersion)
 			}
 		}
 	}
 }
 
-func filterBasedOnResourceURI(resourceURI string, typesToFilter []string) bool {
-	// Example resource URI: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	resID, err := arm.ParseResourceID(resourceURI)
-	if err != nil { // if we can't parse it, filter it out
-		return true
+// unmarshalAzureResponse converts an armresources.ClientGetByIDResponse to a map[string]any.
+func unmarshalAzureResponse(res armresources.GenericResource) (map[string]any, error) {
+	data, err := res.MarshalJSON()
+	if err != nil {
+		return nil, err
 	}
 
+	var values map[string]any
+	if err := json.Unmarshal(data, &values); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+// resourceIDFromSubject parses a resource ID from a subject string.
+func resourceIDFromSubject(subject *string) (*arm.ResourceID, error) {
+	if subject == nil {
+		return nil, errors.New("subject is nil")
+	}
+
+	// Example resource URI: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	return arm.ParseResourceID(*subject)
+}
+
+// filterBasedOnResourceID checks if the resource type is in the typesToFilter slice.
+func filterBasedOnResourceID(resID *arm.ResourceID, typesToFilter []string) bool {
 	resourceType := resID.ResourceType.String()
 	return !slices.ContainsFunc(typesToFilter, func(s string) bool {
 		return strings.EqualFold(s, resourceType)
@@ -217,7 +351,11 @@ func startPartitionClients(ctx context.Context, processor *azeventhubs.Processor
 				events, err := pc.ReceiveEvents(receiveCtx, 10, nil)
 				cancelReceive()
 
-				if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+				switch {
+				case errors.Is(err, context.Canceled):
+					logger.Debug("stopping partition client due to context cancellation", "partitionID", pc.PartitionID())
+					return
+				case err != nil && !errors.Is(err, context.DeadlineExceeded):
 					var eventHubError *azeventhubs.Error
 					if errors.As(err, &eventHubError) && eventHubError.Code == azeventhubs.ErrorCodeOwnershipLost {
 						logger.Error("closing partition client for ownership lost", "partitionID", pc.PartitionID())

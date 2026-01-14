@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/checkpoints"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 )
@@ -39,6 +40,10 @@ type config struct {
 
 // validateForSync checks if the configuration is valid for sync operations.
 func (c config) validateForSync() error {
+	if len(c.SubscriptionID) == 0 {
+		return fmt.Errorf("%w: %s", ErrMissingEnvVariable, "AZURE_SUBSCRIPTION_ID")
+	}
+
 	return nil
 }
 
@@ -76,7 +81,31 @@ func (c config) eventHubFullyQualifiedNamespace() string {
 	return c.EventHubNamespace + ".servicebus.windows.net"
 }
 
-func (c config) newCheckpointClient() (azeventhubs.CheckpointStore, error) {
+func (c config) setupEventStreamProcessors() (*azeventhubs.ConsumerClient, *azeventhubs.Processor, error) {
+	azureCredentials, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	eventHubClient, err := c.newEventHubClient(azureCredentials)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	checkpointClient, err := c.newCheckpointClient(azureCredentials)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	processor, err := azeventhubs.NewProcessor(eventHubClient, checkpointClient, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return eventHubClient, processor, nil
+}
+
+func (c config) newCheckpointClient(credentials azcore.TokenCredential) (azeventhubs.CheckpointStore, error) {
 	var storageAccountClient *azblob.Client
 	if c.CheckpointConnectionString != "" {
 		client, err := azblob.NewClientFromConnectionString(c.CheckpointConnectionString, nil)
@@ -85,11 +114,6 @@ func (c config) newCheckpointClient() (azeventhubs.CheckpointStore, error) {
 		}
 		storageAccountClient = client
 	} else {
-		credentials, err := azureCredentials()
-		if err != nil {
-			return nil, err
-		}
-
 		client, err := azblob.NewClient(c.checkpointServiceURL(), credentials, nil)
 		if err != nil {
 			return nil, err
@@ -101,7 +125,7 @@ func (c config) newCheckpointClient() (azeventhubs.CheckpointStore, error) {
 	return checkpoints.NewBlobStore(containerClient, nil)
 }
 
-func (c config) newEventHubClient() (*azeventhubs.ConsumerClient, error) {
+func (c config) newEventHubClient(credentials azcore.TokenCredential) (*azeventhubs.ConsumerClient, error) {
 	if c.EventHubConnectionString != "" {
 		return azeventhubs.NewConsumerClientFromConnectionString(
 			c.EventHubConnectionString,
@@ -109,11 +133,6 @@ func (c config) newEventHubClient() (*azeventhubs.ConsumerClient, error) {
 			c.EventHubConsumerGroup,
 			nil,
 		)
-	}
-
-	credentials, err := azureCredentials()
-	if err != nil {
-		return nil, err
 	}
 
 	return azeventhubs.NewConsumerClient(
@@ -125,30 +144,20 @@ func (c config) newEventHubClient() (*azeventhubs.ConsumerClient, error) {
 	)
 }
 
-func (c config) azureClientFactory() (*armresources.ClientFactory, error) {
-	credentials, err := azureCredentials()
+func (c config) azureGraphClient() (*armresourcegraph.Client, error) {
+	azureCredentials, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return armresources.NewClientFactory(c.SubscriptionID, credentials, nil)
+	return armresourcegraph.NewClient(azureCredentials, nil)
 }
 
-// azureCredentials creates a chained token credential using environment, workload identity,
-// and managed identity credentials.
-func azureCredentials() (azcore.TokenCredential, error) {
-	// any failing credential is skipped to allow fallback to the next one
-	if envCredentials, err := azidentity.NewEnvironmentCredential(nil); err == nil {
-		return envCredentials, nil
+func (c config) azureClient() (*armresources.Client, error) {
+	azureCredentials, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, err
 	}
 
-	if workloadCredentials, err := azidentity.NewWorkloadIdentityCredential(nil); err == nil {
-		return workloadCredentials, nil
-	}
-
-	if managedIdentityCredentials, err := azidentity.NewManagedIdentityCredential(nil); err == nil {
-		return managedIdentityCredentials, nil
-	}
-
-	return nil, errors.New("unable to find a valid Microsoft Azure credentials")
+	return armresources.NewClient(c.SubscriptionID, azureCredentials, nil)
 }

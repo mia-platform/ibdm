@@ -1,0 +1,19 @@
+apiVersion: azure.mia-platform.eu/v1alpha1
+resource: storageaccounts
+type: Microsoft.Storage/storageAccounts
+extra:
+  apiVersion: "2025-06-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  spec:
+    name: "{{ .name }}"
+    provisioningState: "{{ .properties.provisioningState | lower }}"
+    allowBlobPublicAccess: "{{ get \"allowBlobPublicAccess\" .properties false }}"
+    publicNetworkAccess: "{{ get \"publicNetworkAccess\" .properties \"Disabled\" | lower }}"
+    isHnsEnabled: "{{ get \"isHnsEnabled\" .properties false }}"
+    primaryLocation: "{{ .properties.primaryLocation | lower}}"
+    statusOfPrimaryLocation: "{{ .properties.statusOfPrimary | lower }}"
+    secondaryLocation: "{{ get \"secondaryLocation\" .properties \"\" | lower | quote }}"
+    statusOfSecondaryLocation: "{{ get \"statusOfSecondary\" .properties \"\" | lower | quote }}"
+    tags: "{{ .tags | toJSON }}"
