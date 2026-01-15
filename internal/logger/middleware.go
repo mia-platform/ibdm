@@ -4,6 +4,7 @@
 package logger
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -157,7 +158,7 @@ func logRequestCompleted(ctx *fiber.Ctx, logger Logger, startTime time.Time, err
 
 // RequestMiddlewareLogger is a fiber middleware to log all requests
 // It logs the incoming request and when request is completed, adding latency of the request
-func RequestMiddlewareLogger(logger Logger, excludedPrefix []string) func(*fiber.Ctx) error {
+func RequestMiddlewareLogger(appCtx context.Context, logger Logger, excludedPrefix []string) func(*fiber.Ctx) error {
 	return func(fiberCtx *fiber.Ctx) error {
 		for _, prefix := range excludedPrefix {
 			if strings.HasPrefix(string(fiberCtx.Request().URI().RequestURI()), prefix) {
@@ -170,7 +171,7 @@ func RequestMiddlewareLogger(logger Logger, excludedPrefix []string) func(*fiber
 		requestID := getReqID(fiberCtx)
 		loggerWithReqID := logger.WithName("request").WithName(requestID)
 
-		ctx := WithContext(fiberCtx.UserContext(), loggerWithReqID)
+		ctx := WithContext(appCtx, loggerWithReqID)
 		fiberCtx.SetUserContext(ctx)
 
 		logIncomingRequest(fiberCtx, loggerWithReqID)

@@ -26,7 +26,7 @@ func NewServer(ctx context.Context, envs EnvironmentVariables) (*fiber.App, func
 		DisableStartupMessage: envs.DisableStartupMessage,
 	})
 	log := logger.FromContext(ctx)
-	app.Use(logger.RequestMiddlewareLogger(log, []string{"/-/"}))
+	app.Use(logger.RequestMiddlewareLogger(ctx, log, []string{"/-/"}))
 
 	statusRoutes(app, serviceName, version.ServiceVersionInformation())
 

@@ -89,7 +89,7 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 			logger.SetLevel(test.loggerLevel)
 
 			app := fiber.New()
-			app.Use(RequestMiddlewareLogger(logger, test.excludedPrefixes))
+			app.Use(RequestMiddlewareLogger(t.Context(), logger, test.excludedPrefixes))
 
 			app.Get(test.path, func(c *fiber.Ctx) error {
 				return c.SendString("foo")
@@ -139,7 +139,7 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 			require.Equal(t, host, firstLog["host"])
 
 			if test.loggerLevel == INFO {
-				require.Equal(t, test.statusCode, firstLog["http"].(map[string]any)["response"].(map[string]any)["statusCode"])
+				require.InEpsilon(t, test.statusCode, firstLog["http"].(map[string]any)["response"].(map[string]any)["statusCode"], 0.001)
 				require.Equal(t, RequestCompletedMessage, firstLog["@message"])
 				require.Equal(t, "info", strings.ToLower(firstLog["@level"].(string)))
 				return
