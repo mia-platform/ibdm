@@ -4,6 +4,7 @@
 package logger
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -21,28 +22,6 @@ const (
 	IncomingRequestMessage  = "incoming request"
 	RequestCompletedMessage = "request completed"
 )
-
-type fiberLoggingContext struct {
-	c          *fiber.Ctx
-	handlerErr error
-}
-
-type loggingContext interface {
-	Request() requestLoggingContext
-	Response() responseLoggingContext
-}
-
-type requestLoggingContext interface {
-	GetHeader(string) string
-	URI() string
-	Host() string
-	Method() string
-}
-
-type responseLoggingContext interface {
-	BodySize() int
-	StatusCode() int
-}
 
 // http is the struct of the log formatter.
 type http struct {
@@ -86,11 +65,11 @@ func removePort(host string) string {
 	return strings.Split(host, ":")[0]
 }
 
-func GetReqID(ctx loggingContext) string {
-	if requestID := ctx.Request().GetHeader(requestIDHeaderName); requestID != "" {
+func getReqID(ctx *fiber.Ctx) string {
+	if requestID := ctx.Get(requestIDHeaderName, ""); requestID != "" {
 		return requestID
 	}
-	// Generate a random uuid string. e.g. 16c9c1f2-c001-40d3-bbfe-48857367e7b5
+
 	requestID, err := uuid.NewRandom()
 	if err != nil {
 		panic(fmt.Errorf("error generating request id: %w", err))
@@ -98,136 +77,106 @@ func GetReqID(ctx loggingContext) string {
 	return requestID.String()
 }
 
-func logIncomingRequest[T any](ctx loggingContext, logger Logger) {
-	logger.
-		WithName("incoming_request").
-		Trace(IncomingRequestMessage,
-			"http", http{
-				Request: &request{
-					Method: ctx.Request().Method(),
-					UserAgent: userAgent{
-						Original: ctx.Request().GetHeader("user-agent"),
-					},
-				},
-			},
-			"url", url{Path: ctx.Request().URI()},
-			"host", host{
-				ForwardedHost: ctx.Request().GetHeader(forwardedHostHeaderKey),
-				Hostname:      removePort(ctx.Request().Host()),
-				IP:            ctx.Request().GetHeader(forwardedForHeaderKey),
-			},
-		)
-}
-
-func logRequestCompleted(ctx loggingContext, logger Logger, startTime time.Time) {
-	logger.
-		WithName("request_completed").
-		Info(RequestCompletedMessage,
-			"http", http{
-				Request: &request{
-					Method: ctx.Request().Method(),
-					UserAgent: userAgent{
-						Original: ctx.Request().GetHeader("user-agent"),
-					},
-				},
-				Response: &response{
-					StatusCode: ctx.Response().StatusCode(),
-					Body: responseBody{
-						Bytes: ctx.Response().BodySize(),
-					},
-				},
-			},
-			"url", url{Path: ctx.Request().URI()},
-			"host", host{
-				ForwardedHost: ctx.Request().GetHeader(forwardedHostHeaderKey),
-				Hostname:      removePort(ctx.Request().Host()),
-				IP:            ctx.Request().GetHeader(forwardedForHeaderKey),
-			},
-			"responseTime", float64(time.Since(startTime).Milliseconds()),
-		)
-}
-
-func (flc *fiberLoggingContext) Request() requestLoggingContext {
-	return flc
-}
-
-func (flc *fiberLoggingContext) Response() responseLoggingContext {
-	return flc
-}
-
-func (flc *fiberLoggingContext) GetHeader(key string) string {
-	return flc.c.Get(key, "")
-}
-
-func (flc *fiberLoggingContext) URI() string {
-	return string(flc.c.Request().URI().RequestURI())
-}
-
-func (flc *fiberLoggingContext) Host() string {
-	return string(flc.c.Request().Host())
-}
-
-func (flc *fiberLoggingContext) Method() string {
-	return flc.c.Method()
-}
-
-func (flc fiberLoggingContext) getFiberError() *fiber.Error {
-	if fiberErr, ok := flc.handlerErr.(*fiber.Error); flc.handlerErr != nil && ok {
+func getFiberError(err error) *fiber.Error {
+	var fiberErr *fiber.Error
+	if ok := errors.As(err, &fiberErr); err != nil && ok {
 		return fiberErr
 	}
 	return nil
 }
 
-func (flc *fiberLoggingContext) setError(err error) {
-	flc.handlerErr = err
-}
-
-func (flc *fiberLoggingContext) BodySize() int {
-	if fiberErr := flc.getFiberError(); fiberErr != nil {
+func BodySize(ctx *fiber.Ctx, err error) int {
+	if fiberErr := getFiberError(err); fiberErr != nil {
 		return len(fiberErr.Error())
 	}
 
-	if content := flc.c.GetRespHeader("Content-Length"); content != "" {
+	if content := ctx.GetRespHeader("Content-Length"); content != "" {
 		if length, err := strconv.Atoi(content); err == nil {
 			return length
 		}
 	}
-	return len(flc.c.Response().Body())
+	return len(ctx.Response().Body())
 }
 
-func (flc *fiberLoggingContext) StatusCode() int {
-	if fiberErr := flc.getFiberError(); fiberErr != nil {
+func StatusCode(ctx *fiber.Ctx, err error) int {
+	if fiberErr := getFiberError(err); fiberErr != nil {
 		return fiberErr.Code
 	}
 
-	return flc.c.Response().StatusCode()
+	return ctx.Response().StatusCode()
+}
+
+func logIncomingRequest(ctx *fiber.Ctx, logger Logger) {
+	logger.
+		WithName("incoming_request").
+		Trace(IncomingRequestMessage,
+			"http", http{
+				Request: &request{
+					Method: ctx.Method(),
+					UserAgent: userAgent{
+						Original: ctx.Get("user-agent", ""),
+					},
+				},
+			},
+			"url", url{Path: string(ctx.Request().URI().RequestURI())},
+			"host", host{
+				ForwardedHost: ctx.Get(forwardedHostHeaderKey, ""),
+				Hostname:      removePort(string(ctx.Request().Host())),
+				IP:            ctx.Get(forwardedForHeaderKey, ""),
+			},
+		)
+}
+
+func logRequestCompleted(ctx *fiber.Ctx, logger Logger, startTime time.Time, err error) {
+	logger.
+		WithName("request_completed").
+		Info(RequestCompletedMessage,
+			"http", http{
+				Request: &request{
+					Method: ctx.Method(),
+					UserAgent: userAgent{
+						Original: ctx.Get("user-agent", ""),
+					},
+				},
+				Response: &response{
+					StatusCode: StatusCode(ctx, err),
+					Body: responseBody{
+						Bytes: BodySize(ctx, err),
+					},
+				},
+			},
+			"url", url{Path: string(ctx.Request().URI().RequestURI())},
+			"host", host{
+				ForwardedHost: ctx.Get(fiber.HeaderXForwardedHost, ""),
+				Hostname:      removePort(string(ctx.Request().Host())),
+				IP:            ctx.Get(fiber.HeaderXForwardedFor, ""),
+			},
+			"responseTime", float64(time.Since(startTime).Milliseconds()),
+		)
 }
 
 // RequestMiddlewareLogger is a fiber middleware to log all requests
 // It logs the incoming request and when request is completed, adding latency of the request
 func RequestMiddlewareLogger(logger Logger, excludedPrefix []string) func(*fiber.Ctx) error {
 	return func(fiberCtx *fiber.Ctx) error {
-		fiberLoggingContext := &fiberLoggingContext{c: fiberCtx}
-
 		for _, prefix := range excludedPrefix {
-			if strings.HasPrefix(fiberLoggingContext.Request().URI(), prefix) {
+			if strings.HasPrefix(string(fiberCtx.Request().URI().RequestURI()), prefix) {
 				return fiberCtx.Next()
 			}
 		}
 
 		start := time.Now()
 
-		requestID := GetReqID(fiberLoggingContext)
+		requestID := getReqID(fiberCtx)
 		loggerWithReqID := logger.WithName("request").WithName(requestID)
 
 		ctx := WithContext(fiberCtx.UserContext(), loggerWithReqID)
 		fiberCtx.SetUserContext(ctx)
 
-		logIncomingRequest[any](fiberLoggingContext, loggerWithReqID)
+		logIncomingRequest(fiberCtx, loggerWithReqID)
 		err := fiberCtx.Next()
-		fiberLoggingContext.setError(err)
 
-		logRequestCompleted(fiberLoggingContext, loggerWithReqID, start)
+		logRequestCompleted(fiberCtx, loggerWithReqID, start, err)
 
 		return err
 	}
