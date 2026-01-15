@@ -20,6 +20,7 @@ ignoreWords:
   - azsystemevents
   - caarlos
   - errln
+  - fakeazcore
   - goarch
   - goarm
   - gobin

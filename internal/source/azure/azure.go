@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azsystemevents"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph"
@@ -32,6 +33,7 @@ type eventHandler func(context.Context, *azeventhubs.ReceivedEventData)
 var (
 	// ErrAzureSource is the sentinel error for all Azure Source errors.
 	ErrAzureSource = errors.New("azure source")
+	timeProvider   = time.Now
 )
 
 const (
@@ -72,6 +74,12 @@ func NewSource() (*Source, error) {
 	if err != nil {
 		return nil, handleError(err)
 	}
+
+	azureCredentials, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, handleError(err)
+	}
+	config.azureCredentials = azureCredentials
 
 	return &Source{
 		config: config,
@@ -120,7 +128,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 		}
 
 		for {
-			timestamp := time.Now()
+			timestamp := timeProvider()
 			response, err := client.Resources(ctx, queryRequest, nil)
 
 			switch {

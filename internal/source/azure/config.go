@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/checkpoints"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph"
@@ -31,11 +31,14 @@ type config struct {
 	EventHubConnectionString string `env:"AZURE_EVENT_HUB_CONNECTION_STRING"`
 	EventHubNamespace        string `env:"AZURE_EVENT_HUB_NAMESPACE"`
 	EventHubName             string `env:"AZURE_EVENT_HUB_NAME"`
-	EventHubConsumerGroup    string `env:"AZURE_EVENT_HUB_NAMESPACE" envDefault:"$Default"`
+	EventHubConsumerGroup    string `env:"AZURE_EVENT_HUB_CONSUMER_GROUP" envDefault:"$Default"`
 
 	CheckpointConnectionString string `env:"AZURE_STORAGE_BLOB_CONNECTION_STRING"`
 	CheckpointStorageAccount   string `env:"AZURE_STORAGE_BLOB_ACCOUNT_NAME"`
 	CheckpointContainerName    string `env:"AZURE_STORAGE_BLOB_CONTAINER_NAME"`
+
+	azureCredentials azcore.TokenCredential
+	clientOptions    *arm.ClientOptions
 }
 
 // validateForSync checks if the configuration is valid for sync operations.
@@ -82,17 +85,12 @@ func (c config) eventHubFullyQualifiedNamespace() string {
 }
 
 func (c config) setupEventStreamProcessors() (*azeventhubs.ConsumerClient, *azeventhubs.Processor, error) {
-	azureCredentials, err := azidentity.NewDefaultAzureCredential(nil)
+	eventHubClient, err := c.newEventHubClient(c.azureCredentials)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	eventHubClient, err := c.newEventHubClient(azureCredentials)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	checkpointClient, err := c.newCheckpointClient(azureCredentials)
+	checkpointClient, err := c.newCheckpointClient(c.azureCredentials)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -145,19 +143,9 @@ func (c config) newEventHubClient(credentials azcore.TokenCredential) (*azeventh
 }
 
 func (c config) azureGraphClient() (*armresourcegraph.Client, error) {
-	azureCredentials, err := azidentity.NewDefaultAzureCredential(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return armresourcegraph.NewClient(azureCredentials, nil)
+	return armresourcegraph.NewClient(c.azureCredentials, c.clientOptions)
 }
 
 func (c config) azureClient() (*armresources.Client, error) {
-	azureCredentials, err := azidentity.NewDefaultAzureCredential(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return armresources.NewClient(c.SubscriptionID, azureCredentials, nil)
+	return armresources.NewClient(c.SubscriptionID, c.azureCredentials, c.clientOptions)
 }
