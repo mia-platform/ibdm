@@ -38,6 +38,7 @@ ignoreWords:
   - tlog
   - vtpm
   - gofiber
+  - nhttp
 files:
   - "**/*.go"
   - "**/*.md"
