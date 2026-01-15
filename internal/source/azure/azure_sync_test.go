@@ -353,10 +353,6 @@ func TestDoubleStartSyncProcess(t *testing.T) {
 	<-dataChannel
 }
 
-func TestStartEventStreamProcess(t *testing.T) {
-	t.Parallel()
-}
-
 func fakeResourceGraphTransport(t *testing.T) policy.Transporter {
 	t.Helper()
 	return fakearmresourcegraph.NewServerTransport(&fakearmresourcegraph.Server{

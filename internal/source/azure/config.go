@@ -37,8 +37,10 @@ type config struct {
 	CheckpointStorageAccount   string `env:"AZURE_STORAGE_BLOB_ACCOUNT_NAME"`
 	CheckpointContainerName    string `env:"AZURE_STORAGE_BLOB_CONTAINER_NAME"`
 
-	azureCredentials azcore.TokenCredential
-	clientOptions    *arm.ClientOptions
+	azureCredentials        azcore.TokenCredential
+	clientOptions           *arm.ClientOptions
+	consumerClientOptions   *azeventhubs.ConsumerClientOptions
+	checkpointClientOptions *azblob.ClientOptions
 }
 
 // validateForSync checks if the configuration is valid for sync operations.
@@ -106,13 +108,13 @@ func (c config) setupEventStreamProcessors() (*azeventhubs.ConsumerClient, *azev
 func (c config) newCheckpointClient(credentials azcore.TokenCredential) (azeventhubs.CheckpointStore, error) {
 	var storageAccountClient *azblob.Client
 	if c.CheckpointConnectionString != "" {
-		client, err := azblob.NewClientFromConnectionString(c.CheckpointConnectionString, nil)
+		client, err := azblob.NewClientFromConnectionString(c.CheckpointConnectionString, c.checkpointClientOptions)
 		if err != nil {
 			return nil, err
 		}
 		storageAccountClient = client
 	} else {
-		client, err := azblob.NewClient(c.checkpointServiceURL(), credentials, nil)
+		client, err := azblob.NewClient(c.checkpointServiceURL(), credentials, c.checkpointClientOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +131,7 @@ func (c config) newEventHubClient(credentials azcore.TokenCredential) (*azeventh
 			c.EventHubConnectionString,
 			c.EventHubName,
 			c.EventHubConsumerGroup,
-			nil,
+			c.consumerClientOptions,
 		)
 	}
 
@@ -138,7 +140,7 @@ func (c config) newEventHubClient(credentials azcore.TokenCredential) (*azeventh
 		c.EventHubName,
 		c.EventHubConsumerGroup,
 		credentials,
-		nil,
+		c.consumerClientOptions,
 	)
 }
 
