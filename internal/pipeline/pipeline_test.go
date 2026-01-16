@@ -144,12 +144,15 @@ func TestStreamPipeline(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			ctx := t.Context()
+
 			destination := fakedestination.NewFakeDestination(t)
 			syncChan := make(chan struct{}, 1)
 			defer close(syncChan)
 
 			testSource := test.source(syncChan)
-			pipeline := New(testSource, testMappers(t), destination)
+			pipeline, err := New(ctx, testSource, testMappers(t), destination)
+			require.NoError(t, err)
 
 			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
@@ -181,10 +184,11 @@ func TestStreamPipelineCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	destination := fakedestination.NewFakeDestination(t)
-	pipeline := New(fakesource.NewFakeEventSource(t, nil, make(chan<- struct{})), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeEventSource(t, nil, make(chan<- struct{})), map[string]DataMapper{}, destination)
+	require.NoError(t, err)
 	cancel()
 
-	err := pipeline.Start(ctx)
+	err = pipeline.Start(ctx)
 
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Empty(t, destination.SentData)
@@ -199,7 +203,8 @@ func TestStreamClosableSource(t *testing.T) {
 	syncChan := make(chan struct{})
 
 	destination := fakedestination.NewFakeDestination(t)
-	pipeline := New(fakesource.NewFakeEventSource(t, []source.Data{}, syncChan), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeEventSource(t, []source.Data{}, syncChan), map[string]DataMapper{}, destination)
+	require.NoError(t, err)
 	go func() {
 		err := pipeline.Start(ctx)
 		assert.NoError(t, err)
@@ -207,7 +212,7 @@ func TestStreamClosableSource(t *testing.T) {
 	}()
 
 	<-syncChan
-	err := pipeline.Stop(ctx, 2*time.Second)
+	err = pipeline.Stop(ctx, 2*time.Second)
 	assert.NoError(t, err)
 
 	<-syncChan
@@ -222,14 +227,15 @@ func TestNotClosableSourceStop(t *testing.T) {
 	destination := fakedestination.NewFakeDestination(t)
 
 	syncChan := make(chan struct{})
-	pipeline := New(fakesource.NewFakeUnclosableEventSource(t, nil, syncChan), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeUnclosableEventSource(t, nil, syncChan), map[string]DataMapper{}, destination)
+	require.NoError(t, err)
 	go func() {
 		err := pipeline.Start(ctx)
 		assert.ErrorIs(t, err, context.Canceled)
 		close(syncChan)
 	}()
 
-	err := pipeline.Stop(ctx, 2*time.Second)
+	err = pipeline.Stop(ctx, 2*time.Second)
 	assert.NoError(t, err)
 	cancel()
 
@@ -283,13 +289,15 @@ func TestSyncPipeline(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			ctx := t.Context()
 			destination := fakedestination.NewFakeDestination(t)
-			pipeline := New(test.source, testMappers(t), destination)
+			pipeline, err := New(ctx, test.source, testMappers(t), destination)
+			require.NoError(t, err)
 
-			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 			defer cancel()
 
-			err := pipeline.Sync(ctx)
+			err = pipeline.Sync(ctx)
 			if test.expectedErr != nil {
 				assert.ErrorIs(t, err, test.expectedErr)
 				return
@@ -307,10 +315,11 @@ func TestSyncPipelineCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	destination := fakedestination.NewFakeDestination(t)
-	pipeline := New(fakesource.NewFakeSyncableSource(t, nil), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, nil), map[string]DataMapper{}, destination)
+	require.NoError(t, err)
 	cancel()
 
-	err := pipeline.Sync(ctx)
+	err = pipeline.Sync(ctx)
 
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Empty(t, destination.SentData)
@@ -323,7 +332,8 @@ func TestSyncClosableSource(t *testing.T) {
 	defer cancel()
 
 	destination := fakedestination.NewFakeDestination(t)
-	pipeline := New(fakesource.NewFakeSyncableSource(t, []source.Data{}), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, []source.Data{}), map[string]DataMapper{}, destination)
+	require.NoError(t, err)
 	assert.NoError(t, pipeline.Stop(ctx, 2*time.Second))
 	assert.NoError(t, pipeline.Sync(ctx))
 

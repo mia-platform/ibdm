@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
+
 	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 )
@@ -18,6 +20,7 @@ type options struct {
 	mappingPaths    []string
 	destination     destination.Sender
 	sourceGetter    func(string) (any, error)
+	server          *fiber.App
 
 	lock sync.Mutex
 }
@@ -42,9 +45,7 @@ func (o *options) executeEventStream(ctx context.Context) error {
 	}
 	defer o.lock.Unlock()
 
-	// fiber server needs to be started at startup to register webhooks and healthcheck routes
-
-	pipeline, err := o.pipeline()
+	pipeline, err := o.pipeline(ctx)
 	if err != nil {
 		return err
 	}
@@ -59,7 +60,7 @@ func (o *options) executeSync(ctx context.Context) error {
 	}
 	defer o.lock.Unlock()
 
-	pipeline, err := o.pipeline()
+	pipeline, err := o.pipeline(ctx)
 	if err != nil {
 		return err
 	}
@@ -68,7 +69,7 @@ func (o *options) executeSync(ctx context.Context) error {
 }
 
 // pipeline assembles a pipeline from the configured source, mappers, and destination.
-func (o *options) pipeline() (*pipeline.Pipeline, error) {
+func (o *options) pipeline(ctx context.Context) (*pipeline.Pipeline, error) {
 	mappers, err := loadMappers(o.mappingPaths, false)
 	if err != nil {
 		return nil, err
@@ -79,5 +80,10 @@ func (o *options) pipeline() (*pipeline.Pipeline, error) {
 		return nil, err
 	}
 
-	return pipeline.New(source, mappers, o.destination), nil
+	pipeline, err := pipeline.New(ctx, source, mappers, o.destination)
+	if err != nil {
+		return nil, err
+	}
+
+	return pipeline, nil
 }

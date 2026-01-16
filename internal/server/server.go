@@ -14,29 +14,70 @@ import (
 	"github.com/mia-platform/ibdm/internal/version"
 )
 
-const serviceName = "ibdm"
-
-var (
-	ErrFiberServerShutdown    = errors.New("fiber server shutdown error")
-	ErrFiberServerEnvNotValid = errors.New("fiber server environment variables not valid")
+const (
+	serviceName = "ibdm"
+	loggerName  = "ibdm:server"
 )
 
-func NewServer(ctx context.Context, envs EnvironmentVariables) (*fiber.App, func() error) {
+type Server struct {
+	app *fiber.App
+	cfg Config
+}
+
+var (
+	ErrFiberListen   = errors.New("fiber server listen error")
+	ErrFiberShutdown = errors.New("fiber server shutdown error")
+)
+
+func NewServer(ctx context.Context) (*Server, error) {
+	cfg, err := LoadServerConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	app := fiber.New(fiber.Config{
-		DisableStartupMessage: envs.DisableStartupMessage,
+		DisableStartupMessage: cfg.DisableStartupMessage,
 	})
 	log := logger.FromContext(ctx)
 	app.Use(logger.RequestMiddlewareLogger(ctx, log, []string{"/-/"}))
 
 	statusRoutes(app, serviceName, version.ServiceVersionInformation())
 
-	return app, func() error {
-		log.Info("shutting down server")
-		err := app.Shutdown()
-		if err != nil {
-			return fmt.Errorf("%w: %s", ErrFiberServerShutdown, err.Error())
+	return &Server{
+		app: app,
+		cfg: *cfg,
+	}, nil
+}
+
+func (s Server) App() *fiber.App {
+	return s.app
+}
+
+func (s Server) Config() Config {
+	return s.cfg
+}
+
+func (s *Server) Start() error {
+	if err := s.app.Listen(":" + s.cfg.HTTPPort); err != nil {
+		fmt.Errorf("%w: %s", ErrFiberListen, err.Error())
+	}
+	return nil
+}
+
+func (s *Server) StartAsync(ctx context.Context) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+	go func() {
+		if err := s.Start(); err != nil {
+			log.Error(err.Error())
 		}
-		log.Info("server shutdown complete")
-		return nil
+	}()
+}
+
+func FiberHandlerWrapper(handler func() error) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		if err := handler(); err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("handler error: %s", err.Error()))
+		}
+		return ctx.SendStatus(fiber.StatusOK)
 	}
 }

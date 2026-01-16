@@ -32,7 +32,7 @@ type ClosableSource interface {
 }
 
 type WebhookSource interface {
-	// RegisterWebhook sets up webhooks for the specified data types, sending updates to results or returning an error.
+	// GetWebhook sets up webhooks for the specified data types, sending updates to results or returning an error.
 	// typesToStream lists the expected data types.
-	RegisterWebhook(ctx context.Context, typesToStream []string, results chan<- Data) (err error)
+	GetWebhook(ctx context.Context, typesToStream map[string]Extra, results chan<- Data) (webhook Webhook, err error)
 }

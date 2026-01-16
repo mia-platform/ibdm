@@ -16,14 +16,14 @@ var (
 	ErrEnvVariablesNotValid = errors.New("environment variables not valid")
 )
 
-type EnvironmentVariables struct {
+type Config struct {
 	LoggerLevel           string `env:"LOGGER_LEVEL" envDefault:"Info"`
 	DisableStartupMessage bool   `env:"DISABLE_STARTUP_MESSAGE" envDefault:"true"`
 	HTTPPort              string `env:"HTTP_PORT" envDefault:"3000"`
 }
 
-func LoadServerEnvs() (*EnvironmentVariables, error) {
-	var envVars EnvironmentVariables
+func LoadServerConfig() (*Config, error) {
+	var envVars Config
 	if err := env.Parse(&envVars); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrEnvVariablesNotValid, err.Error())
 	}
@@ -34,7 +34,7 @@ func LoadServerEnvs() (*EnvironmentVariables, error) {
 	return &envVars, nil
 }
 
-func validateEnvironmentVariables(envVars *EnvironmentVariables) error {
+func validateEnvironmentVariables(envVars *Config) error {
 	envError := make([]string, 0)
 
 	serverPortNumber, err := strconv.Atoi(envVars.HTTPPort)
