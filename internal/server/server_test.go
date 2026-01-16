@@ -15,22 +15,20 @@ import (
 func TestNewApp(t *testing.T) {
 	t.Run("successfully creates app with valid config", func(t *testing.T) {
 		ctx := t.Context()
-		envs := EnvironmentVariables{
-			LoggerLevel:           "info",
-			DisableStartupMessage: true,
-		}
+		t.Setenv("HTTP_PORT", "3000")
+		t.Setenv("LOG_LEVEL", "INFO")
 
-		app, cleanup := NewServer(ctx, envs)
-		require.NotNil(t, app)
-		require.NotNil(t, cleanup)
+		srv, err := NewServer(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, srv)
 
 		time.Sleep(1 * time.Second)
 		request := httptest.NewRequest(http.MethodGet, "/-/healthz", nil)
-		response, err := app.Test(request)
+		response, err := srv.app.Test(request)
 		require.NoError(t, err)
 
 		defer response.Body.Close()
 		require.Equal(t, http.StatusOK, response.StatusCode)
-		defer cleanup()
+		defer srv.app.Shutdown()
 	})
 }
