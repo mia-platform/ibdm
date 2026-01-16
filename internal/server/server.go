@@ -59,7 +59,7 @@ func (s Server) Config() Config {
 
 func (s *Server) Start() error {
 	if err := s.app.Listen(":" + s.cfg.HTTPPort); err != nil {
-		fmt.Errorf("%w: %s", ErrFiberListen, err.Error())
+		return fmt.Errorf("%w: %s", ErrFiberListen, err.Error())
 	}
 	return nil
 }
