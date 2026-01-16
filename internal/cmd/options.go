@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gofiber/fiber/v2"
-
 	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 )
@@ -20,7 +18,6 @@ type options struct {
 	mappingPaths    []string
 	destination     destination.Sender
 	sourceGetter    func(string) (any, error)
-	server          *fiber.App
 
 	lock sync.Mutex
 }

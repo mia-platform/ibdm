@@ -154,7 +154,7 @@ func TestStreamPipeline(t *testing.T) {
 			pipeline, err := New(ctx, testSource, testMappers(t), destination)
 			require.NoError(t, err)
 
-			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 			defer cancel()
 
 			go func() {
@@ -289,12 +289,11 @@ func TestSyncPipeline(t *testing.T) {
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			ctx := t.Context()
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			destination := fakedestination.NewFakeDestination(t)
 			pipeline, err := New(ctx, test.source, testMappers(t), destination)
 			require.NoError(t, err)
 
-			ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 			defer cancel()
 
 			err = pipeline.Sync(ctx)

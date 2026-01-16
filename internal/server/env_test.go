@@ -11,14 +11,14 @@ import (
 
 func TestLoadEnvironmentVariables(t *testing.T) {
 	t.Run("Environment variables validation", func(t *testing.T) {
-		envVars := &EnvironmentVariables{HTTPPort: ""}
+		envVars := &Config{HTTPPort: ""}
 		err := validateEnvironmentVariables(envVars)
 		require.Error(t, err)
 	})
 
 	t.Run("Load environment variables", func(t *testing.T) {
 		t.Setenv("HTTP_PORT", "3000")
-		envVars, err := LoadServerEnvs()
+		envVars, err := LoadServerConfig()
 		require.NoError(t, err)
 		require.Equal(t, "3000", envVars.HTTPPort)
 	})
