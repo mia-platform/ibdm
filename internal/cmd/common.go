@@ -16,6 +16,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/azure"
+	"github.com/mia-platform/ibdm/internal/source/console"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 )
 
@@ -25,8 +26,9 @@ var (
 
 	// availableEventSources covers event-stream integration sources used for completion and help text.
 	availableEventSources = map[string]string{
-		"azure": "Microsoft Azure integration",
-		"gcp":   "Google Cloud Platform integration",
+		"azure":   "Microsoft Azure integration",
+		"gcp":     "Google Cloud Platform integration",
+		"console": "Mia Platform Console integration",
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{
@@ -77,7 +79,9 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 	case "gcp":
 		return gcp.NewSource()
 	}
-
+	if integrationName == "console" {
+		return console.NewSource()
+	}
 	return nil, nil
 }
 

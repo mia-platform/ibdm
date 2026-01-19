@@ -73,11 +73,11 @@ func (s *Server) StartAsync(ctx context.Context) {
 	}()
 }
 
-func FiberHandlerWrapper(handler func() error) fiber.Handler {
+func FiberHandlerWrapper(handler func([]byte) error) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		if err := handler(); err != nil {
+		if err := handler(ctx.Body()); err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "handler error: "+err.Error())
 		}
-		return ctx.SendStatus(fiber.StatusOK)
+		return ctx.SendStatus(fiber.StatusNoContent)
 	}
 }

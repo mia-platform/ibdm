@@ -1,0 +1,15 @@
+apiVersion: console.mia-platform.eu/v1alpha1
+resource: buckets
+type: console.mia-platform.eu/Bucket
+syncable: true
+mappings:
+  identifier: |-
+    {{ $name := .name -}}
+    {{- $name = trimPrefix "//console.mia-platform.eu/" $name -}}
+    {{- replace "_" "-" $name }}
+  spec:
+    name: "{{ .name }}"
+    location: "{{ .location | lower }}"
+    created: "{{ .timeCreated }}"
+    lastUpdate: "{{ .updated }}"
+    labels: "{{ .labels | toJSON }}"
