@@ -6,6 +6,7 @@ package console
 import (
 	"slices"
 	"strings"
+	"time"
 )
 
 const BaseResourcePath = "console.mia-platform.eu/"
@@ -28,9 +29,9 @@ const (
 )
 
 type event struct {
-	EventName string         `json:"eventName"`
-	Type      string         `json:"type"`
-	Data      map[string]any `json:"data"`
+	EventName      string         `json:"eventName"`
+	EventTimestamp int64          `json:"eventTimestamp"`
+	Data           map[string]any `json:"data"`
 }
 
 func (e event) GetName() string {
@@ -58,6 +59,10 @@ func (e event) GetResource() string {
 	default:
 		return e.EventName
 	}
+}
+
+func (e event) GetEventTimestamp() time.Time {
+	return time.Unix(e.EventTimestamp, 0)
 }
 
 func (e event) IsTypeIn(types []string) bool {
