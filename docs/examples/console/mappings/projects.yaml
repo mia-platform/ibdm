@@ -1,6 +1,6 @@
 apiVersion: console.mia-platform.eu/v1alpha1
-resource: buckets
-type: console.mia-platform.eu/Bucket
+resource: projects
+type: console.mia-platform.eu/Project
 syncable: true
 mappings:
   identifier: |-
@@ -9,7 +9,6 @@ mappings:
     {{- replace "_" "-" $name }}
   spec:
     name: "{{ .name }}"
-    location: "{{ .location | lower }}"
     created: "{{ .timeCreated }}"
     lastUpdate: "{{ .updated }}"
     labels: "{{ .labels | toJSON }}"

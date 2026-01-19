@@ -9,9 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 
+	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
+)
+
+const (
+	loggerName = "ibdm:source:console"
 )
 
 var (
@@ -42,21 +46,30 @@ func newConsoleClient() (*consoleClient, error) {
 }
 
 func (s *Source) GetWebhook(ctx context.Context, typesToStream []string, results chan<- source.Data) (source.Webhook, error) {
+	log := logger.FromContext(ctx).WithName(loggerName)
 	return source.Webhook{
 		Method: http.MethodPost,
 		Path:   s.c.config.WebhookPath,
 		Handler: func(body []byte) error {
 			var event event
 			if err := json.Unmarshal(body, &event); err != nil {
+				log.Error(ErrUnmarshalingEvent.Error(), "body", string(body), "error", err.Error())
 				return fmt.Errorf("%w: %s", ErrUnmarshalingEvent, err.Error())
 			}
 
-			if !slices.Contains(typesToStream, event.Type) {
+			eventResource := event.GetResource()
+
+			log.Trace("event type", "event name", event.EventName, "resource", eventResource)
+			if !event.IsTypeIn(typesToStream) {
+				log.Debug("ignoring event with unlisted type", "type", event.Type, "name", event.GetName())
 				return nil
 			}
 
+			log.Trace("received event", "type", event.Type)
+			log.Trace("received event data", "data", event.Data)
+
 			results <- source.Data{
-				Type:      event.Type,
+				Type:      eventResource,
 				Operation: source.DataOperationUpsert,
 				Values:    event.Data,
 			}

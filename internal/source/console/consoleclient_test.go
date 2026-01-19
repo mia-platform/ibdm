@@ -22,7 +22,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NoError(t, err)
 
 		results := make(chan source.Data, 1)
-		typesToStream := []string{"users"}
+		typesToStream := []string{BaseResourcePath + "Project"}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
@@ -32,9 +32,9 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NotNil(t, webhook.Handler)
 
 		payload := map[string]any{
-			"type": "users",
+			"eventName": "project_created",
 			"data": map[string]any{
-				"name": "test-user",
+				"name": "test-project",
 				"key":  "value",
 			},
 		}
@@ -46,9 +46,9 @@ func TestSource_GetWebhook(t *testing.T) {
 
 		select {
 		case data := <-results:
-			require.Equal(t, "users", data.Type)
+			require.Equal(t, BaseResourcePath+"Project", data.Type)
 			require.Equal(t, source.DataOperationUpsert, data.Operation)
-			require.Equal(t, "value", data.Values["key"])
+			require.Equal(t, payload["data"], data.Values)
 		default:
 			t.Fatal("expected data in channel")
 		}
@@ -62,13 +62,13 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NoError(t, err)
 
 		results := make(chan source.Data, 1)
-		typesToStream := []string{"users"}
+		typesToStream := []string{BaseResourcePath + "Project"}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
 
 		payload := map[string]any{
-			"type": "orders",
+			"eventName": "order_created",
 			"data": map[string]any{
 				"name": "test-order",
 				"key":  "value",

@@ -88,7 +88,7 @@ func (p *Pipeline) Start(ctx context.Context) error {
 			}
 			log.Trace("registering webhook")
 			p.server.App().Add(webhook.Method, webhook.Path, server.FiberHandlerWrapper(webhook.Handler))
-			log.Trace("registered webhook")
+			log.Trace("registered webhook, starting server")
 			log.Trace("starting server")
 			return p.server.Start()
 		}
