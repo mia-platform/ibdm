@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -169,6 +170,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 		}
 	}
 
+	s.syncContext.Swap(nil)
 	return nil
 }
 
@@ -197,14 +199,13 @@ func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]
 
 	eventHandler := partitionEventHandler(client, typesToFilter, dataChannel)
 	go startPartitionClients(ctx, processor, eventHandler)
-	return handleError(processor.Run(ctx))
+	err = processor.Run(ctx)
+	s.eventStreamContext.Swap(nil)
+	return handleError(err)
 }
 
 func partitionEventHandler(client *armresources.Client, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) eventHandler {
-	typesSlice := make([]string, 0, len(typesToFilter))
-	for t := range typesToFilter {
-		typesSlice = append(typesSlice, t)
-	}
+	typesSlice := slices.Sorted(maps.Keys(typesToFilter))
 
 	return func(ctx context.Context, receivedData *azeventhubs.ReceivedEventData) {
 		logger := logger.FromContext(ctx).WithName(logName)
@@ -221,7 +222,7 @@ func partitionEventHandler(client *armresources.Client, typesToFilter map[string
 				continue
 			}
 
-			if envelope.Subject != nil && filterBasedOnResourceID(resID, typesSlice) {
+			if filterBasedOnResourceID(resID, typesSlice) {
 				logger.Debug("skipping event based on type", "resourceID", resID.ResourceType.String())
 				continue
 			}
@@ -330,6 +331,10 @@ func (s *Source) Close(ctx context.Context, _ time.Duration) error {
 // handleError always wraps the given error with ErrAzureSource.
 // It also unwraps some errors to cleanup the error message and removing unnecessary layers.
 func handleError(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	var parseErr env.AggregateError
 	if errors.As(err, &parseErr) {
 		err = parseErr.Errors[0]

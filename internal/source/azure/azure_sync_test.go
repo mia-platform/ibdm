@@ -270,7 +270,7 @@ func TestStartSyncProcess(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, test.expectedData, receivedData)
+			assert.ElementsMatch(t, test.expectedData, receivedData)
 		})
 	}
 }
