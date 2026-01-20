@@ -22,6 +22,8 @@ mappings:
 apiVersion: group/v1
 resource: configs
 type: third
+extra:
+  apiVersion: 2025-01-04-preview
 syncable: false
 mappings:
   identifier: "{{ .spec.code }}"

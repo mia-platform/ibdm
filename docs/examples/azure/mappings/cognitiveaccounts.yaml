@@ -1,0 +1,15 @@
+apiVersion: azure.mia-platform.eu/v1alpha1
+resource: cognitiveaccounts
+type: Microsoft.CognitiveServices/accounts
+extra:
+  apiVersion: "2025-06-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  spec:
+    name: "{{ .name }}"
+    location: "{{ .location | lower }}"
+    provisioningState: "{{ .properties.provisioningState | lower }}"
+    kind: "{{ .kind }}"
+    endpoint: "{{ .properties.endpoint }}"
+    tags: "{{ .tags | toJSON }}"

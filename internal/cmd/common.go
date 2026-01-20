@@ -15,6 +15,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/pipeline"
+	"github.com/mia-platform/ibdm/internal/source/azure"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 )
 
@@ -24,11 +25,13 @@ var (
 
 	// availableEventSources covers event-stream integration sources used for completion and help text.
 	availableEventSources = map[string]string{
-		"gcp": "Google Cloud Platform integration",
+		"azure": "Microsoft Azure integration",
+		"gcp":   "Google Cloud Platform integration",
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{
-		"gcp": "Google Cloud Platform synchronization",
+		"azure": "Microsoft Azure integration",
+		"gcp":   "Google Cloud Platform synchronization",
 	}
 )
 
@@ -68,7 +71,10 @@ func validArgsFunc(sources map[string]string) cobra.CompletionFunc {
 
 // sourceFromIntegrationName returns the pipeline source matching integrationName.
 func sourceFromIntegrationName(integrationName string) (any, error) {
-	if integrationName == "gcp" {
+	switch integrationName {
+	case "azure":
+		return azure.NewSource()
+	case "gcp":
 		return gcp.NewSource()
 	}
 
@@ -137,6 +143,7 @@ func loadMappers(paths []string, syncOnly bool) (map[string]pipeline.DataMapper,
 			APIVersion: mapping.APIVersion,
 			Resource:   mapping.Resource,
 			Mapper:     mapper,
+			Extra:      mapping.Extra,
 		}
 	}
 

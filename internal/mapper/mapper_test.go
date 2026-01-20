@@ -249,3 +249,102 @@ func TestMapper(t *testing.T) {
 		})
 	}
 }
+
+func TestIdentifierOnly(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		mapper        Mapper
+		input         map[string]any
+		expected      string
+		expectedError bool
+	}{
+		"simple mapping": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", map[string]string{
+					"key":           "name",
+					"string":        "{{ .name }}",
+					"otherKey":      "{{ .otherKey.value }}",
+					"nested":        "{{ .otherKey | toJSON }}",
+					"array":         "{{ .array | toJSON }}",
+					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+			},
+			expected: "example",
+		},
+		"always casting identifier to a string": {
+			mapper: func() Mapper {
+				m, err := New("{{ .id }}", map[string]string{
+					"key": "name",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"id": 12345,
+			},
+			expected: "12345",
+		},
+		"identifier mapping with missing fields": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}-{{ .missingField }}", map[string]string{
+					"key": "name",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+			},
+			expectedError: true,
+		},
+		"identifier with invalid characters": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}_invalid", map[string]string{
+					"key": "name",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+			},
+			expectedError: true,
+		},
+		"identifier too long": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", map[string]string{
+					"key": "name",
+				})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "a-very-long-name-that-exceeds-the-maximum-length-limit-imposed-by-the-identifier-validation-rules-set-in-place-to-ensure-compliance-with-kubernetes-naming-conventions-and-best-practices-which-stipulate-that-identifiers-must-not-only-contain-lowercase-alphanumeric-characters-dashes-or-dots",
+			},
+			expectedError: true,
+		},
+	}
+
+	for testName, test := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+
+			output, err := test.mapper.ApplyIdentifierTemplate(test.input)
+			if test.expectedError {
+				var expectedError template.ExecError
+				assert.Empty(t, output)
+				assert.ErrorAs(t, err, &expectedError)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, output)
+		})
+	}
+}

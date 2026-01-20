@@ -1,0 +1,25 @@
+apiVersion: azure.mia-platform.eu/v1alpha1
+resource: managedclusters
+type: Microsoft.ContainerService/managedClusters
+extra:
+  apiVersion: "2025-10-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  spec:
+    name: "{{ .name }}"
+    location: "{{ .location | lower }}"
+    provisioningState: "{{ .properties.provisioningState | lower }}"
+    currentKubernetesVersion: "{{ .properties.currentKubernetesVersion | quote }}"
+    supportPlan: "{{ .properties.supportPlan }}"
+    publicNetworkAccess: "{{ get \"publicNetworkAccess\" .properties \"Disabled\" | lower }}"
+    disableLocalAccounts: "{{ .properties.disableLocalAccounts }}"
+    dnsPrefix: "{{ .properties.dnsPrefix }}"
+    fqdn: "{{ .properties.fqdn }}"
+    enableRBAC: "{{ .properties.enableRBAC }}"
+    skuTier: "{{ .sku.tier | lower }}"
+    podCidrs: "{{ get \"podCidrs\" .properties.networkProfile (list) | toJSON }}"
+    serviceCidrs: "{{ .properties.networkProfile.serviceCidrs | toJSON }}"
+    networkPlugin: "{{ .properties.networkProfile.networkPlugin | lower }}"
+    outboundType: "{{ .properties.networkProfile.outboundType | lower }}"
+    tags: "{{ .tags | toJSON }}"

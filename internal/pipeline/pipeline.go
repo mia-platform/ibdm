@@ -5,8 +5,6 @@ package pipeline
 
 import (
 	"context"
-	"maps"
-	"slices"
 	"time"
 
 	"github.com/mia-platform/ibdm/internal/destination"
@@ -26,6 +24,7 @@ type dataPipeline = func(ctx context.Context, channel chan<- source.Data) error
 type DataMapper struct {
 	APIVersion string
 	Resource   string
+	Extra      source.Extra
 	Mapper     mapper.Mapper
 }
 
@@ -33,16 +32,21 @@ type DataMapper struct {
 type Pipeline struct {
 	source      any
 	mappers     map[string]DataMapper
-	mapperTypes []string
+	mapperTypes map[string]source.Extra
 	destination destination.Sender
 }
 
 // New wires together the given source, mappers, and destination into a Pipeline.
-func New(source any, mappers map[string]DataMapper, destination destination.Sender) *Pipeline {
+func New(src any, mappers map[string]DataMapper, destination destination.Sender) *Pipeline {
+	mapperTypes := make(map[string]source.Extra, len(mappers))
+	for dataType, mapping := range mappers {
+		mapperTypes[dataType] = mapping.Extra
+	}
+
 	return &Pipeline{
-		source:      source,
+		source:      src,
 		mappers:     mappers,
-		mapperTypes: slices.Sorted(maps.Keys(mappers)),
+		mapperTypes: mapperTypes,
 		destination: destination,
 	}
 }
@@ -138,27 +142,32 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 				continue
 			}
 
-			output, err := mapper.Mapper.ApplyTemplates(data.Values)
-			if err != nil {
-				log.Error("error applying mapper templates", "type", data.Type, "error", err)
-				continue
-			}
-
 			log.Trace("sending data", "type", data.Type, "operation", data.Operation.String())
 			dataToSend := &destination.Data{
 				APIVersion:    mapper.APIVersion,
 				Resource:      mapper.Resource,
-				Name:          output.Identifier,
 				OperationTime: data.Timestamp(),
 			}
 			switch data.Operation {
 			case source.DataOperationUpsert:
+				output, err := mapper.Mapper.ApplyTemplates(data.Values)
+				if err != nil {
+					log.Error("error applying mapper templates", "type", data.Type, "error", err)
+					continue
+				}
+				dataToSend.Name = output.Identifier
 				dataToSend.Data = output.Spec
 				if err := p.destination.SendData(ctx, dataToSend); err != nil {
 					log.Error("error sending data to destination", "type", data.Type, "error", err)
 					continue
 				}
 			case source.DataOperationDelete:
+				identifier, err := mapper.Mapper.ApplyIdentifierTemplate(data.Values)
+				dataToSend.Name = identifier
+				if err != nil {
+					log.Error("error applying mapper templates", "type", data.Type, "error", err)
+					continue
+				}
 				if err := p.destination.DeleteData(ctx, dataToSend); err != nil {
 					log.Error("error deleting data from destination", "type", data.Type, "error", err)
 					continue

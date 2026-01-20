@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: managedclusters.azure.mia-platform.eu
+spec:
+  group: azure.mia-platform.eu
+  names:
+    kind: ManagedCluster
+    plural: managedclusters
+    singular: managedcluster
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The name of the resource.
+                type: string
+              location:
+                description: Location of the resource.
+                type: string
+              provisioningState:
+                description: The provisioning state of the resource.
+                type: string
+              currentKubernetesVersion:
+                description: The current Kubernetes version of the cluster.
+                type: string
+              supportPlan:
+                description: The support plan of the cluster.
+                type: string
+              publicNetworkAccess:
+                description: Indicates whether public network access is enabled or disabled.
+                type: string
+              disableLocalAccounts:
+                description: Indicates whether local accounts are disabled.
+                type: boolean
+              dnsPrefix:
+                description: The DNS prefix for the cluster.
+                type: string
+              fqdn:
+                description: The fully qualified domain name for the api-server of the cluster.
+                type: string
+              enableRBAC:
+                description: Indicates whether RBAC is enabled for the cluster.
+                type: boolean
+              skuTier:
+                description: The SKU tier of the cluster.
+                type: string
+              podCidrs:
+                description: The pod CIDRs for the cluster.
+                type: array
+                items:
+                  type: string
+              serviceCidrs:
+                description: The service CIDRs for the cluster.
+                type: array
+                items:
+                  type: string
+              networkPlugin:
+                description: The network plugin used by the cluster.
+                type: string
+              outboundType:
+                description: The outbound type of the cluster.
+                type: string
+              tags:
+                description: User-provided tags in key-value pairs.
+                type: object
+                additionalProperties:
+                  type: string
+    served: true
+    storage: true

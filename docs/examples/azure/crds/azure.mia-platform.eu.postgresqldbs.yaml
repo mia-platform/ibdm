@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: postgresqldbs.azure.mia-platform.eu
+spec:
+  group: azure.mia-platform.eu
+  names:
+    kind: PostgreSQLDB
+    plural: postgresqldbs
+    singular: postgresqldb
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The name of the resource.
+                type: string
+              location:
+                description: Location of the resource.
+                type: string
+              state:
+                description: The state of the db.
+                type: string
+              version:
+                description: The major version of the server.
+                type: string
+              minorVersion:
+                description: The minor version of the server.
+                type: string
+              fullyQualifiedDomainName:
+                description: The fully qualified domain name of the server.
+                type: string
+              publicNetworkAccess:
+                description: Whether public network access is allowed for this server.
+                type: string
+              tags:
+                description: User-provided tags in key-value pairs.
+                type: object
+                additionalProperties:
+                  type: string
+    served: true
+    storage: true

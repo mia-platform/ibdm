@@ -22,6 +22,8 @@ import (
 type Mapper interface {
 	// ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
 	ApplyTemplates(input map[string]any) (output MappedData, err error)
+	// ApplyIdentifierTemplate applies only the identifier template to the given input data and returns
+	ApplyIdentifierTemplate(data map[string]any) (string, error)
 }
 
 const (
@@ -78,7 +80,7 @@ func New(identifierTemplate string, specTemplates map[string]string) (Mapper, er
 	}, nil
 }
 
-// ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
+// ApplyTemplates implements Mapper.ApplyTemplates.
 func (m *internalMapper) ApplyTemplates(data map[string]any) (MappedData, error) {
 	identifier, err := executeIdentifierTemplate(m.idTemplate, data)
 	if err != nil {
@@ -94,6 +96,11 @@ func (m *internalMapper) ApplyTemplates(data map[string]any) (MappedData, error)
 		Identifier: identifier,
 		Spec:       specData,
 	}, nil
+}
+
+// ApplyIdentifierTemplate implements Mapper.ApplyTemplates.
+func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, error) {
+	return executeIdentifierTemplate(m.idTemplate, data)
 }
 
 // templateFunctions exposes the custom helpers added to every mapping template.

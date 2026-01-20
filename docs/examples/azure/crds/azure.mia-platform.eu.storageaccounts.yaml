@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: storageaccounts.azure.mia-platform.eu
+spec:
+  group: azure.mia-platform.eu
+  names:
+    kind: StorageAccount
+    plural: storageaccounts
+    singular: storageaccount
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The name of the resource.
+                type: string
+              provisioningState:
+                description: The provisioning state of the resource.
+                type: string
+              allowBlobPublicAccess:
+                description: Indicates whether data in the storage account may be accessed publicly.
+                type: boolean
+              publicNetworkAccess:
+                description: Specifies whether public network access is allowed for this storage account.
+                type: string
+              isHnsEnabled:
+                description: Indicates whether Hierarchical Namespace is enabled for the storage account.
+                type: boolean
+              primaryLocation:
+                description: The primary location of the resource.
+                type: string
+              statusOfPrimaryLocation:
+                description: The status of the primary location of the resource.
+                type: string
+              secondaryLocation:
+                description: The secondary location of the resource if available.
+                type: string
+              statusOfSecondaryLocation:
+                description: The status of the secondary location of the resource if available.
+                type: string
+              tags:
+                description: User-provided tags in key-value pairs.
+                type: object
+                additionalProperties:
+                  type: string
+    served: true
+    storage: true

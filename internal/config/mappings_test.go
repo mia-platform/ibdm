@@ -89,6 +89,9 @@ func TestNewMappingsFromPath(t *testing.T) {
 					APIVersion: "group/v1",
 					Resource:   "configs",
 					Syncable:   false,
+					Extra: map[string]any{
+						"apiVersion": "2025-01-04-preview",
+					},
 					Mappings: Mappings{
 						Identifier: "{{ .spec.code }}",
 						Spec: map[string]string{

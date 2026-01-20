@@ -61,7 +61,7 @@ func NewFakeUnclosableEventSource(tb testing.TB, eventsData []source.Data, strea
 }
 
 // StartEventStream pushes queued events and blocks until Close is invoked or the context ends.
-func (f *unclosableEventSource) StartEventStream(ctx context.Context, _ []string, results chan<- source.Data) error {
+func (f *unclosableEventSource) StartEventStream(ctx context.Context, _ map[string]source.Extra, results chan<- source.Data) error {
 	f.tb.Helper()
 
 	if ctx.Err() != nil {
@@ -120,13 +120,13 @@ func NewFakeSourceWithError(tb testing.TB, err error) ErrorEventSource {
 }
 
 // StartEventStream satisfies the EventSource interface returning the configured error.
-func (f *errorEventSource) StartEventStream(_ context.Context, _ []string, _ chan<- source.Data) error {
+func (f *errorEventSource) StartEventStream(_ context.Context, _ map[string]source.Extra, _ chan<- source.Data) error {
 	f.tb.Helper()
 	return f.err
 }
 
 // StartSyncProcess satisfies the SyncableSource interface returning the configured error.
-func (f *errorEventSource) StartSyncProcess(_ context.Context, _ []string, _ chan<- source.Data) error {
+func (f *errorEventSource) StartSyncProcess(_ context.Context, _ map[string]source.Extra, _ chan<- source.Data) error {
 	f.tb.Helper()
 	return f.err
 }

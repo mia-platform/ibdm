@@ -8,8 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strings"
+	"time"
 
 	asset "cloud.google.com/go/asset/apiv1"
 	"cloud.google.com/go/asset/apiv1/assetpb"
@@ -66,6 +69,10 @@ func checkAssetConfig(cfg assetConfig) error {
 	}
 	return nil
 }
+
+var _ source.SyncableSource = &Source{}
+var _ source.EventSource = &Source{}
+var _ source.ClosableSource = &Source{}
 
 // NewSource returns a ready-to-use GCPSource backed by Cloud Asset and Pub/Sub clients.
 func NewSource() (*Source, error) {
@@ -178,7 +185,7 @@ func (a *assetClient) closeAssetClient(log logger.Logger) error {
 }
 
 // Close shuts down the underlying GCP clients.
-func (g *Source) Close(ctx context.Context) error {
+func (g *Source) Close(ctx context.Context, _ time.Duration) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	log.Debug("closing GCP source clients")
 	errorsList := make([]error, 0)
@@ -216,16 +223,16 @@ func assetToMap(asset *assetpb.Asset) map[string]any {
 }
 
 // getListAssetsRequest builds a ListAssets request for the configured parent.
-func (a *assetClient) getListAssetsRequest(typesToSync []string) *assetpb.ListAssetsRequest {
+func (a *assetClient) getListAssetsRequest(typesToSync map[string]source.Extra) *assetpb.ListAssetsRequest {
 	return &assetpb.ListAssetsRequest{
 		Parent:      a.config.Parent,
-		AssetTypes:  typesToSync,
+		AssetTypes:  slices.Sorted(maps.Keys(typesToSync)),
 		ContentType: assetpb.ContentType_RESOURCE,
 	}
 }
 
 // StartSyncProcess iterates Cloud Asset listings and emits upsert events.
-func (g *Source) StartSyncProcess(ctx context.Context, typesToSync []string, results chan<- source.Data) error {
+func (g *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !g.a.startMutex.TryLock() {
 		log.Debug("sync process already running")
@@ -269,8 +276,9 @@ func (g *Source) StartSyncProcess(ctx context.Context, typesToSync []string, res
 }
 
 // StartEventStream subscribes to Pub/Sub updates and forwards them as source.Data.
-func (g *Source) StartEventStream(ctx context.Context, typesToStream []string, results chan<- source.Data) error {
+func (g *Source) StartEventStream(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
+	types := slices.Sorted(maps.Keys(typesToStream))
 	client, err := g.p.initPubSubClient(ctx)
 	if err := handleError(err); err != nil {
 		return err
@@ -297,7 +305,7 @@ func (g *Source) StartEventStream(ctx context.Context, typesToStream []string, r
 			return
 		}
 
-		if !event.IsTypeIn(typesToStream) {
+		if !event.IsTypeIn(types) {
 			log.Debug("skipping event of unrequested type",
 				"messageId", msg.ID,
 				"eventType", event.GetAssetType(),

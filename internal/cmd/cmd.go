@@ -22,6 +22,7 @@ const (
 	documentation for more details.
 
 	The available integrations are:
+	- azure: Microsoft Azure integration
 	- gcp: Google Cloud Platform integration`
 
 	runCmdExample = `# Run the Google Cloud Platform integration
@@ -35,6 +36,7 @@ const (
 	marked as 'syncable' in the mapping configurations.
 
 	The available integrations are:
+	- azure: Microsoft Azure integration
 	- gcp: Google Cloud Platform integration`
 
 	syncCmdExample = `# Run the Google Cloud Platform synchronization
