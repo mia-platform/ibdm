@@ -53,10 +53,6 @@ func (s Server) App() *fiber.App {
 	return s.app
 }
 
-func (s Server) Config() Config {
-	return s.cfg
-}
-
 func (s *Server) Start() error {
 	if err := s.app.Listen(":" + s.cfg.HTTPPort); err != nil {
 		return fmt.Errorf("%w: %s", ErrFiberListen, err.Error())
