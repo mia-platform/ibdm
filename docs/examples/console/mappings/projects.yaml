@@ -1,7 +1,7 @@
 apiVersion: console.mia-platform.eu/v1alpha1
 resource: projects
-type: console.mia-platform.eu/Project
-syncable: true
+type: project
+syncable: false
 mappings:
   identifier: |-
     {{ $name := .name -}}

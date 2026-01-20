@@ -7,67 +7,47 @@ import (
 	"slices"
 	"strings"
 	"time"
-)
 
-const BaseResourcePath = "console.mia-platform.eu/"
-
-const (
-	projectCreatedEvent     = "project_created"
-	serviceCreatedEvent     = "service_created"
-	tagCreatedEvent         = "tag_created"
-	tagDeletedEvent         = "tag_deleted"
-	configurationSavedEvent = "configuration_saved"
-	companyUserAddedEvent   = "company_user_added"
-	companyUserEditedEvent  = "company_user_edited"
-	companyUserRemovedEvent = "company_user_removed"
-
-	projectsResource       = BaseResourcePath + "Project"
-	servicesResource       = BaseResourcePath + "Service"
-	tagsResource           = BaseResourcePath + "Tag"
-	configurationsResource = BaseResourcePath + "Configuration"
-	companyUsersResource   = BaseResourcePath + "CompanyUser"
+	"github.com/mia-platform/ibdm/internal/source"
 )
 
 type event struct {
 	EventName      string         `json:"eventName"`
 	EventTimestamp int64          `json:"eventTimestamp"`
-	Data           map[string]any `json:"data"`
+	Payload        map[string]any `json:"payload"`
 }
 
 func (e event) GetName() string {
-	return e.Data["name"].(string)
+	return e.Payload["name"].(string)
 }
 
-func (e event) GetResource() string {
-	switch e.EventName {
-	case projectCreatedEvent:
-		return projectsResource
-	case serviceCreatedEvent:
-		return servicesResource
-	case tagCreatedEvent:
-		return tagsResource
-	case tagDeletedEvent:
-		return tagsResource
-	case configurationSavedEvent:
-		return configurationsResource
-	case companyUserAddedEvent:
-		return companyUsersResource
-	case companyUserEditedEvent:
-		return companyUsersResource
-	case companyUserRemovedEvent:
-		return companyUsersResource
-	default:
-		return e.EventName
-	}
-}
-
-func (e event) GetEventTimestamp() time.Time {
+func (e event) UnixEventTimestamp() time.Time {
 	return time.Unix(e.EventTimestamp, 0)
 }
 
+func (e event) Resource() string {
+	parts := strings.Split(e.EventName, "_")
+	if len(parts) > 0 {
+		resourceSlice := parts[0 : len(parts)-1]
+		if len(resourceSlice) > 0 {
+			return strings.Join(resourceSlice, "_")
+		}
+		return resourceSlice[0]
+	}
+	return ""
+}
+
+func (e event) Operation() source.DataOperation {
+	if strings.HasSuffix(strings.ToLower(e.EventName), "deleted") ||
+		strings.HasSuffix(strings.ToLower(e.EventName), "removed") {
+		return source.DataOperationDelete
+	}
+	return source.DataOperationUpsert
+}
+
 func (e event) IsTypeIn(types []string) bool {
-	eventResource := e.GetResource()
+	resource := e.Resource()
 	return slices.ContainsFunc(types, func(s string) bool {
-		return strings.EqualFold(s, eventResource)
+		return strings.EqualFold(s, resource)
 	})
 }

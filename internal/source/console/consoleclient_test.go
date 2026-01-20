@@ -22,7 +22,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NoError(t, err)
 
 		results := make(chan source.Data, 1)
-		typesToStream := []string{BaseResourcePath + "Project"}
+		typesToStream := []string{"project"}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
@@ -33,7 +33,7 @@ func TestSource_GetWebhook(t *testing.T) {
 
 		payload := map[string]any{
 			"eventName": "project_created",
-			"data": map[string]any{
+			"payload": map[string]any{
 				"name": "test-project",
 				"key":  "value",
 			},
@@ -44,11 +44,19 @@ func TestSource_GetWebhook(t *testing.T) {
 		err = webhook.Handler(body)
 		require.NoError(t, err)
 
+		expectedEvent := event{
+			EventName: "project_created",
+			Payload: map[string]any{
+				"name": "test-project",
+				"key":  "value",
+			},
+		}
+
 		select {
 		case data := <-results:
-			require.Equal(t, BaseResourcePath+"Project", data.Type)
-			require.Equal(t, source.DataOperationUpsert, data.Operation)
-			require.Equal(t, payload["data"], data.Values)
+			require.Equal(t, expectedEvent.Resource(), data.Type)
+			require.Equal(t, expectedEvent.Operation(), data.Operation)
+			require.Equal(t, expectedEvent.Payload, data.Values)
 		default:
 			t.Fatal("expected data in channel")
 		}
@@ -62,14 +70,14 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NoError(t, err)
 
 		results := make(chan source.Data, 1)
-		typesToStream := []string{BaseResourcePath + "Project"}
+		typesToStream := []string{"project"}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
 
 		payload := map[string]any{
 			"eventName": "order_created",
-			"data": map[string]any{
+			"payload": map[string]any{
 				"name": "test-order",
 				"key":  "value",
 			},
@@ -95,7 +103,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NoError(t, err)
 
 		results := make(chan source.Data, 1)
-		typesToStream := []string{"users"}
+		typesToStream := []string{"user"}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)

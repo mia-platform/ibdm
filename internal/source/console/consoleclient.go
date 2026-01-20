@@ -57,20 +57,20 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream []string, results
 				return fmt.Errorf("%w: %s", ErrUnmarshalingEvent, err.Error())
 			}
 
-			eventResource := event.GetResource()
+			resource := event.Resource()
 
 			if !event.IsTypeIn(typesToStream) {
-				log.Debug("ignoring event with unlisted type", "eventName ", event.EventName, "resource", eventResource, "name", event.GetName())
+				log.Debug("ignoring event with unlisted type", "eventName ", event.EventName, "resource", resource, "name", event.GetName(), "availableTypes", typesToStream)
 				return nil
 			}
 
-			log.Trace("received event", "type", event.EventName, "resource", eventResource, "data", event.Data, "timestamp", event.GetEventTimestamp())
+			log.Trace("received event", "type", event.EventName, "resource", resource, "payload", event.Payload, "timestamp", event.UnixEventTimestamp())
 
 			results <- source.Data{
-				Type:      eventResource,
-				Operation: source.DataOperationUpsert,
-				Values:    event.Data,
-				Time:      event.GetEventTimestamp(),
+				Type:      resource,
+				Operation: event.Operation(),
+				Values:    event.Payload,
+				Time:      event.UnixEventTimestamp(),
 			}
 			return nil
 		},
