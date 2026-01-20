@@ -14,6 +14,11 @@ system with their data structure to the Mia-Platform Catalog with user predefine
 are targeted to their needs and can hide complexities that are not needed or surface certain
 values to use them more easily.
 
+## EndUser Documentation
+
+If yu are here to know how to use `ibdm` in your system go to the
+[`ibdm User Documentation`](./docs/README.md).
+
 ## Development Setup
 
 If you want to contribute or develop `ibdm` you need the following programs installed on your

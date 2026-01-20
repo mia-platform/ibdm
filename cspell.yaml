@@ -3,6 +3,7 @@ language: en,en-GB,en-US
 useGitignore: true
 allowCompoundWords: true
 words:
+  - gopath
   - gsrv
   - ibdm
   - nolint
@@ -33,7 +34,7 @@ ignoreWords:
   - structpb
   - vtpm
 files:
-  - '**/*.go'
-  - '**/*.md'
-  - '**/*.mk'
+  - "**/*.go"
+  - "**/*.md"
+  - "**/*.mk"
   - Makefile
