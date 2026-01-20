@@ -18,7 +18,7 @@ mappings:
     fqdn: "{{ .properties.fqdn }}"
     enableRBAC: "{{ .properties.enableRBAC }}"
     skuTier: "{{ .sku.tier | lower }}"
-    podCidrs: "{{ .properties.networkProfile.podCidrs | toJSON }}"
+    podCidrs: "{{ get \"podCidrs\" .properties.networkProfile (list) | toJSON }}"
     serviceCidrs: "{{ .properties.networkProfile.serviceCidrs | toJSON }}"
     networkPlugin: "{{ .properties.networkProfile.networkPlugin | lower }}"
     outboundType: "{{ .properties.networkProfile.outboundType | lower }}"

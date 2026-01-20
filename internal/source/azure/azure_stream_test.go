@@ -6,6 +6,7 @@ package azure
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -161,6 +162,27 @@ func TestPartitionEventHandler(t *testing.T) {
 			require.NotErrorIs(t, ctx.Err(), context.DeadlineExceeded)
 			assert.ElementsMatch(t, test.expectedData, receivedData)
 		})
+	}
+}
+
+func TestSendCloseChannel(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	client, err := armresources.NewClient("00000000-0000-0000-0000-000000000000", &fakeazcore.TokenCredential{}, &arm.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: fakearmresources.NewServerTransport(&fakearmresources.Server{
+				GetByID: func(_ context.Context, resourceID, apiVersion string, _ *armresources.ClientGetByIDOptions) (responder fakeazcore.Responder[armresources.ClientGetByIDResponse], errResponder fakeazcore.ErrorResponder) {
+					return responder, errResponder
+				},
+			}),
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = client.GetByID(ctx, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG", "2021-04-01", nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
