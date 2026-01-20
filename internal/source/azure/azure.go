@@ -176,6 +176,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 
 // StartEventStream implement source.EventSource.
 func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+	logger := logger.FromContext(ctx).WithName(logName)
 	if err := s.validateForEventStream(); err != nil {
 		return handleError(err)
 	}
@@ -199,6 +200,7 @@ func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]
 
 	eventHandler := partitionEventHandler(client, typesToFilter, dataChannel)
 	go startPartitionClients(ctx, processor, eventHandler)
+	logger.Debug("starting azure event hub processor")
 	err = processor.Run(ctx)
 	s.eventStreamContext.Swap(nil)
 	return handleError(err)
@@ -316,11 +318,13 @@ func (s *Source) Close(ctx context.Context, _ time.Duration) error {
 
 	syncClient := s.syncContext.Swap(nil)
 	if syncClient != nil {
+		log.Debug("cancelling sync process")
 		syncClient.cancel()
 	}
 
 	eventStreamClient := s.eventStreamContext.Swap(nil)
 	if eventStreamClient != nil {
+		log.Debug("cancelling event stream process")
 		eventStreamClient.cancel()
 	}
 
