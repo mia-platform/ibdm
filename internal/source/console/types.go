@@ -3,6 +3,8 @@
 
 package console
 
+import "github.com/mia-platform/ibdm/internal/source"
+
 // config holds the environment-driven Console settings.
 type config struct {
 	WebhookPath string `env:"CONSOLE_WEBHOOK_PATH" envDefault:"/console-webhook"`
@@ -12,6 +14,8 @@ type config struct {
 type consoleClient struct {
 	config config
 }
+
+var _ source.WebhookSource = &Source{}
 
 type Source struct {
 	c *consoleClient

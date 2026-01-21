@@ -22,7 +22,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NoError(t, err)
 
 		results := make(chan source.Data, 1)
-		typesToStream := []string{"project"}
+		typesToStream := map[string]source.Extra{"project": {}}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NoError(t, err)
 
 		results := make(chan source.Data, 1)
-		typesToStream := []string{"project"}
+		typesToStream := map[string]source.Extra{"project": {}}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NoError(t, err)
 
 		results := make(chan source.Data, 1)
-		typesToStream := []string{"user"}
+		typesToStream := map[string]source.Extra{"user": {}}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)

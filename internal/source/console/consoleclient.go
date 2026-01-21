@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
@@ -45,7 +47,7 @@ func newConsoleClient() (*consoleClient, error) {
 	}, nil
 }
 
-func (s *Source) GetWebhook(ctx context.Context, typesToStream []string, results chan<- source.Data) (source.Webhook, error) {
+func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	return source.Webhook{
 		Method: http.MethodPost,
@@ -59,8 +61,8 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream []string, results
 
 			resource := event.Resource()
 
-			if !event.IsTypeIn(typesToStream) {
-				log.Debug("ignoring event with unlisted type", "eventName ", event.EventName, "resource", resource, "name", event.GetName(), "availableTypes", typesToStream)
+			if !event.IsTypeIn(slices.Sorted(maps.Keys(typesToStream))) {
+				log.Debug("ignoring event with unlisted type", "eventName ", event.EventName, "resource", resource, "name", event.GetName())
 				return nil
 			}
 
