@@ -44,7 +44,7 @@ JSON).
 
 ## Template Functions
 
-The [Mappings Reference](../reference/mappings.md) lists the helper functions you can call inside
+The [Mappings Reference](../reference/10_mappings.md) lists the helper functions you can call inside
 your templates to transform data for the target custom resource.
 We intentionally expose a compact, practical set of utilities instead of a broad API surface.
 
