@@ -4,11 +4,16 @@ type: project
 syncable: false
 mappings:
   identifier: |-
-    {{ $name := .name -}}
-    {{- $name = trimPrefix "//console.mia-platform.eu/" $name -}}
-    {{- replace "_" "-" $name }}
+    {{ printf "%s-%s" .tenantId .projectId }}
   spec:
-    name: "{{ .name }}"
-    created: "{{ .timeCreated }}"
-    lastUpdate: "{{ .updated }}"
-    labels: "{{ .labels | toJSON }}"
+    projectId: "{{ .project.projectId }}"
+    tenantId: "{{ .project.tenantId }}"
+    name: "{{ .project.name }}"
+    repository: "{{ .project.repository | toJSON }}"
+    repositoryUrl: "{{ .project.repositoryUrl }}"
+    availableNamespaces: "{{ get \"availableNamespaces\" .project (list) | toJSON }}"
+    configurationGitPath: "{{ .project.configurationGitPath }}"
+    defaultBranch: "{{ get \"defaultBranch\" .project \"\" | quote }}"
+    description: "{{ get \"description\" .project \"\" | quote }}"
+    environments: "{{ .project.environments | toJSON }}"
+    imagePullSecretNames: "{{ get \"imagePullSecretNames\" .project (list) | toJSON }}"

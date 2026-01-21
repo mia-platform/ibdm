@@ -1,0 +1,104 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: projects.console.mia-platform.eu
+spec:
+  group: console.mia-platform.eu
+  names:
+    kind: Project
+    plural: projects
+    singular: project
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                projectId:
+                  description: The project ID used to identify the project in Console
+                  type: string
+                tenantId:
+                  description: The tenant ID used to identify the tenant in Console
+                  type: string
+                name:
+                  description: The user visible name for the project.
+                  type: string
+                repository:
+                  description: The parent resource identifier (for example, 'folders/{folder_id}' or 'organizations/{org_id}')
+                  type: object
+                  additionalProperties:
+                    type: string
+                repositoryUrl:
+                  description: The URL of the git repository associated with the project.
+                  type: string
+                availableNamespaces:
+                  description: The list of namespaces available for the project.
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties:
+                      type: string
+                configurationGitPath:
+                  description: The git path where the project configuration is stored.
+                  type: string
+                defaultBranch:
+                  description: The default branch for the project.
+                  type: string
+                description:
+                  description: The user visible description for the project.
+                  type: string
+                environments:
+                  description: The list of environments associated with the project.
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      label:
+                        type: string
+                      envId:
+                        type: string
+                      envPrefix:
+                        type: string
+                      hosts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            host:
+                              type: string
+                            isBackoffice:
+                              type: boolean
+                            scheme:
+                              type: string
+                              description: an url schema, usually one of 'http' or 'https'
+                      description:
+                        type: string
+                      isProduction:
+                        type: boolean
+                        default: false
+                      cluster:
+                        type: object
+                        properties:
+                          namespace:
+                            type: string
+                          clusterId:
+                            type: string
+                      deploy:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                imagePullSecretNames:
+                  description: The list of image pull secret names associated with the project.
+                  type: array
+                  items:
+                    type: string
+      served: true
+      storage: true
