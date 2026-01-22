@@ -20,7 +20,7 @@ build:
 
 BUILD_DATE:= $(shell date -u "+%Y-%m-%d")
 GO_LDFLAGS+= -s -w
-CGO_ENABLED?=0
+ENABLE_CGO_BUILD?=0
 
 ifdef VERSION_MODULE_NAME
 GO_LDFLAGS+= -X $(VERSION_MODULE_NAME).Version=$(VERSION)
@@ -36,7 +36,7 @@ $(BUILD_OUTPUT)/%: $(SOURCE)
 	$(info Building binary for $(OS) $(ARCH) $(ARM))
 
 	mkdir -p $(@D)
-	GOOS=$(OS) GOARCH=$(ARCH) GOARM=$(ARM) CGO_ENABLED=$(CGO_ENABLED) go build -trimpath \
+	GOOS=$(OS) GOARCH=$(ARCH) GOARM=$(ARM) CGO_ENABLED=$(ENABLE_CGO_BUILD) go build -trimpath \
 		-ldflags "$(GO_LDFLAGS)" -o $@ $(BUILD_PATH)
 
 .PHONY: build
