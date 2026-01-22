@@ -75,7 +75,6 @@ jobs:
       id-token: write
     needs:
     - test
-    # - upload-coverage
     # Only run on the main repository, not on forks
     if: (github.event_name == 'push') && (github.repository == 'mia-platform/ibdm')
     steps:
@@ -174,7 +173,7 @@ jobs:
         cosign-release: ${{ env.COSIGN_VERSION }}
     - name: Setup Syft and Generate SBOM for Docker Image
       if: github.ref_type == 'tag'
-      uses: anchore/sbom-action@62ad5284b8ced813296287a0b63906cb364b73ee v0.22.0
+      uses: anchore/sbom-action@62ad5284b8ced813296287a0b63906cb364b73ee # v0.22.0
       with:
         syft-version: ${{ env.SYFT_VERSION }}
         artifact-name: sbom.spdx sbom.spdx.json
