@@ -10,8 +10,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"github.com/mia-platform/ibdm/internal/info"
 	"github.com/mia-platform/ibdm/internal/logger"
-	"github.com/mia-platform/ibdm/internal/version"
 )
 
 const (
@@ -41,7 +41,7 @@ func NewServer(ctx context.Context) (*Server, error) {
 	log := logger.FromContext(ctx)
 	app.Use(logger.RequestMiddlewareLogger(ctx, log, []string{"/-/"}))
 
-	statusRoutes(app, serviceName, version.ServiceVersionInformation())
+	statusRoutes(app, serviceName, info.Version)
 
 	return &Server{
 		app: app,

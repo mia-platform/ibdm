@@ -13,13 +13,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mia-platform/ibdm/internal/version"
+	"github.com/mia-platform/ibdm/internal/info"
 )
 
 func TestStatusRoutes(t *testing.T) {
 	app := fiber.New()
 	serviceName := "ibdm"
-	serviceVersion := version.Version
+	serviceVersion := info.Version
 	statusRoutes(app, serviceName, serviceVersion)
 
 	t.Run("/-/healthz - ok", func(t *testing.T) {
