@@ -1,0 +1,86 @@
+name: "CodeQL"
+run-name: ${{ github.event.inputs.code_scanning_run_name }}
+on:
+  push:
+    branches:
+    - main
+    tags:
+    - "*"
+  pull_request:
+    branches:
+    - main
+    paths-ignore:
+    - "**/*.md"
+    - docs/**
+    - .editorconfig
+    - .markdownlint.yaml
+    - .pre-commit-config.yaml
+    - cspell.yaml
+    - LICENSE
+
+  schedule:
+  - cron: 0 5 * * 1 # Run every monday at 5 UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CODE_SCANNING_REF: ${{ github.event.inputs.code_scanning_ref }}
+  CODE_SCANNING_BASE_BRANCH: ${{ github.event.inputs.code_scanning_base_branch }}
+  CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH: ${{ github.event.inputs.code_scanning_is_analyzing_default_branch }}
+
+permissions: {}
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    # Only run on the main repository, not on forks
+    if: github.repository == 'mia-platform/ibdm'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: actions
+          category: /language:actions
+          build-mode: none
+        - language: go
+          category: /language:go
+          build-mode: manual
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      with:
+        show-progress: false
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        dependency-caching: ${{ runner.environment == 'github-hosted' }}
+        packs: github/ccr-${{ matrix.language }}-queries
+        config: |
+          default-setup:
+            org:
+              model-packs: [ ${{ github.event.inputs.code_scanning_codeql_packs }} ]
+          threat-models: [  ]
+    - name: Setup Golang
+      if: matrix.language == 'go'
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      with:
+        go-version-file: go.mod
+    - name: Build Golang
+      if: matrix.language == 'go'
+      run: |
+        make build
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+      with:
+        category: ${{ matrix.category }}
