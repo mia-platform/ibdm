@@ -54,7 +54,7 @@ func TestSource_GetWebhook(t *testing.T) {
 
 		select {
 		case data := <-results:
-			require.Equal(t, expectedEvent.Resource(), data.Type)
+			require.Equal(t, expectedEvent.GetResource(), data.Type)
 			require.Equal(t, expectedEvent.Operation(), data.Operation)
 			require.Equal(t, expectedEvent.Payload, data.Values)
 		default:

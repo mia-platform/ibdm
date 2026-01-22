@@ -59,20 +59,20 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 				return fmt.Errorf("%w: %s", ErrUnmarshalingEvent, err.Error())
 			}
 
-			resource := event.Resource()
-
 			if !event.IsTypeIn(slices.Sorted(maps.Keys(typesToStream))) {
-				log.Debug("ignoring event with unlisted type", "eventName ", event.EventName, "resource", resource, "name", event.GetName())
+				log.Debug("ignoring event with unlisted type", "eventName ", event.EventName, "resource", event.GetResource(), "name", event.GetName())
 				return nil
 			}
 
-			log.Trace("received event", "type", event.EventName, "resource", resource, "payload", event.Payload, "timestamp", event.UnixEventTimestamp())
+			log.Trace("received event", "type", event.EventName, "resource", event.GetResource(), "payload", event.Payload, "timestamp", event.UnixEventTimestamp())
 
-			results <- source.Data{
-				Type:      resource,
-				Operation: event.Operation(),
-				Values:    event.Payload,
-				Time:      event.UnixEventTimestamp(),
+			ec := &eventChain{
+				event: event,
+			}
+
+			if err := ec.doChain(results); err != nil {
+				log.Error("error processing event chain", "error", err.Error())
+				return err
 			}
 			return nil
 		},
