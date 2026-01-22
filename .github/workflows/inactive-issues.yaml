@@ -1,0 +1,26 @@
+name: Close Inactive Issues
+on:
+  schedule:
+  - cron: "30 7 * * *" # Run every day at 07:30 UTC
+
+jobs:
+  close-issues:
+    runs-on: ubuntu-latest
+    env:
+      DAYS_BEFORE_INACTIVE: 30
+      DAYS_BEFORE_CLOSE: 60
+      INACTIVE_LABEL: inactive
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+    - uses: actions/stale@997185467fa4f803885201cee163a9f38240193d # v10.1.1
+      with:
+        days-before-issue-stale: ${{ env.DAYS_BEFORE_INACTIVE }}
+        days-before-issue-close: ${{ env.DAYS_BEFORE_CLOSE }}
+        stale-issue-label: ${{ env.INACTIVE_LABEL }}
+        stale-issue-message: "This issue is inactive because it has been open for ${{ env.DAYS_BEFORE_INACTIVE }} days with no activity. Leave a comment to avoid closing this issue in ${{ env.DAYS_BEFORE_CLOSE }} days."
+        close-issue-message: "This issue was closed because it has been inactive for ${{ env.DAYS_BEFORE_CLOSE }} days since being marked as such."
+        days-before-pr-stale: ${{ env.DAYS_BEFORE_INACTIVE }}
+        days-before-pr-close: ${{ env.DAYS_BEFORE_INACTIVE }}
+        ascending: true
