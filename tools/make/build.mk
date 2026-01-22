@@ -41,10 +41,3 @@ $(BUILD_OUTPUT)/%: $(SOURCE)
 
 .PHONY: build
 build: $(BUILD_OUTPUT)/$(GOOS)/$(GOARCH)/$(if $(GOARM),/v$(GOARM)/,)$(CMD_NAME)$(if $(filter windows,$(GOOS)),.exe,)
-
-.PHONY: ci-build
-ci-build: $(BUILD_OUTPUT)/linux/amd64/$(CMD_NAME) \
-	$(BUILD_OUTPUT)/linux/arm64/$(CMD_NAME) \
-	$(BUILD_OUTPUT)/darwin/amd64/$(CMD_NAME) \
-	$(BUILD_OUTPUT)/darwin/arm64/$(CMD_NAME) \
-	$(BUILD_OUTPUT)/windows/amd64/$(CMD_NAME)

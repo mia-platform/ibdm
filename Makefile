@@ -40,7 +40,7 @@ OUTPUT_DIR:= $(PROJECT_DIR)/bin
 endif
 
 ifeq ($(origin RELEASE_DIR),undefined)
-RELEASE_DIR:= $(PROJECT_DIR)/release
+RELEASE_DIR:= release
 endif
 
 ifeq ($(origin TOOLS_DIR),undefined)
@@ -52,7 +52,7 @@ TOOLS_BIN:= $(TOOLS_DIR)/bin
 endif
 
 ifeq ($(origin BUILD_OUTPUT),undefined)
-BUILD_OUTPUT:= $(PROJECT_DIR)/bin
+BUILD_OUTPUT:= bin
 endif
 
 # Set here the name of the package you want to build
