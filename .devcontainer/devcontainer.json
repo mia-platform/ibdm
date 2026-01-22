@@ -3,7 +3,7 @@
 	"image": "mcr.microsoft.com/devcontainers/base:2.1.2-trixie",
 	"features": {
 		"ghcr.io/devcontainers/features/go:1.3.2": {
-			"version": "1.25.5",
+			"version": "1.25.6",
 			"golangciLintVersion": "2.8.0"
 		}
 	},
@@ -22,7 +22,7 @@
 				"go.gopath": "/go",
 				"go.useLanguageServer": true,
 				"go.toolsManagement.checkForUpdates": "local",
-				"go.buildFlags": ["-tags=conformance,integration"],
+				"go.buildFlags": [ "-tags=conformance,integration" ],
 				"go.lintTool": "golangci-lint",
 				"go.lintFlags": [
 					"--path-mode=abs",
