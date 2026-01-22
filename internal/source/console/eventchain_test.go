@@ -14,7 +14,6 @@ import (
 
 func TestEventChain_DoChain(t *testing.T) {
 	tests := map[string]struct {
-		name          string
 		event         event
 		expectedError error
 		expectedData  []source.Data
