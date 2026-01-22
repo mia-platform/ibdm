@@ -39,6 +39,10 @@ ifeq ($(origin OUTPUT_DIR),undefined)
 OUTPUT_DIR:= $(PROJECT_DIR)/bin
 endif
 
+ifeq ($(origin RELEASE_DIR),undefined)
+RELEASE_DIR:= $(PROJECT_DIR)/release
+endif
+
 ifeq ($(origin TOOLS_DIR),undefined)
 TOOLS_DIR:= $(PROJECT_DIR)/tools
 endif
@@ -77,6 +81,7 @@ include tools/make/build.mk
 include tools/make/clean.mk
 include tools/make/generate.mk
 include tools/make/lint.mk
+include tools/make/release.mk
 include tools/make/test.mk
 
 # Uncomment the correct test suite to run during CI

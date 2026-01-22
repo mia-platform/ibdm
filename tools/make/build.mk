@@ -20,23 +20,31 @@ build:
 
 BUILD_DATE:= $(shell date -u "+%Y-%m-%d")
 GO_LDFLAGS+= -s -w
+CGO_ENABLED?=0
 
 ifdef VERSION_MODULE_NAME
 GO_LDFLAGS+= -X $(VERSION_MODULE_NAME).Version=$(VERSION)
 GO_LDFLAGS+= -X $(VERSION_MODULE_NAME).BuildDate=$(BUILD_DATE)
 endif
 
-.PHONY: go/build/%
-go/build/%:
-	$(eval OS:= $(word 1,$(subst /, ,$*)))
-	$(eval ARCH:= $(word 2,$(subst /, ,$*)))
-	$(eval ARM:= $(word 3,$(subst /, ,$*)))
-	$(eval EXT:= $(if $(filter windows,$(OS)),.exe,))
-	$(info Building image for $(OS) $(ARCH) $(ARM))
+SOURCE=$(shell find . -iname "*.go")
 
-	mkdir -p "$(BUILD_OUTPUT)/$(OS)/$(ARCH)$(if $(ARM),/v$(ARM),)"
-	GOOS=$(OS) GOARCH=$(ARCH) GOARM=$(ARM) CGO_ENABLED=0 go build -trimpath \
-		-ldflags "$(GO_LDFLAGS)" -o $(BUILD_OUTPUT)/$(OS)/$(ARCH)$(if $(ARM),/v$(ARM),)/$(CMD_NAME)$(EXT) $(BUILD_PATH)
+$(BUILD_OUTPUT)/%: $(SOURCE)
+	$(eval OS:= $(word 1,$(subst /, ,$(*D))))
+	$(eval ARCH:= $(word 2,$(subst /, ,$(*D))))
+	$(eval ARM:= $(word 3,$(subst /, ,$(*D))))
+	$(info Building binary for $(OS) $(ARCH) $(ARM))
+
+	mkdir -p $(@D)
+	GOOS=$(OS) GOARCH=$(ARCH) GOARM=$(ARM) CGO_ENABLED=$(CGO_ENABLED) go build -trimpath \
+		-ldflags "$(GO_LDFLAGS)" -o $@ $(BUILD_PATH)
 
 .PHONY: build
-build: clean/bin go/build/$(GOOS)/$(GOARCH)/$(GOARM)
+build: $(BUILD_OUTPUT)/$(GOOS)/$(GOARCH)/$(if $(GOARM),/v$(GOARM)/,)$(CMD_NAME)$(if $(filter windows,$(GOOS)),.exe,)
+
+.PHONY: ci-build
+ci-build: $(BUILD_OUTPUT)/linux/amd64/$(CMD_NAME) \
+	$(BUILD_OUTPUT)/linux/arm64/$(CMD_NAME) \
+	$(BUILD_OUTPUT)/darwin/amd64/$(CMD_NAME) \
+	$(BUILD_OUTPUT)/darwin/arm64/$(CMD_NAME) \
+	$(BUILD_OUTPUT)/windows/amd64/$(CMD_NAME)

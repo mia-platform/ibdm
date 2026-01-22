@@ -2,6 +2,7 @@
 
 bin/
 local/
+release/
 coverage.txt
 
 # End of Custom gitignore rules

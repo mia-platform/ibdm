@@ -18,28 +18,36 @@
 .PHONY: clean
 clean:
 
-.PHONY: clean/coverage
+.PHONY: clean-all
+clean-all: clean
+
 clean: clean/coverage
+.PHONY: clean/coverage
 clean/coverage:
 	$(info Clean coverage file...)
 	rm -fr coverage.txt
 
-.PHONY: clean/bin
 clean: clean/bin
+.PHONY: clean/bin
 clean/bin:
 	$(info Clean artifacts files...)
 	rm -fr $(OUTPUT_DIR)
 
+clean: clean/release
+.PHONY: clean/release
+clean/release:
+	$(info Clean release files...)
+	rm -fr $(RELEASE_DIR)
+
+clean-all: clean/tools
 .PHONY: clean/tools
 clean/tools:
 	$(info Clean tools folder...)
 	[ -d $(TOOLS_BIN)/k8s ] && chmod +w $(TOOLS_BIN)/k8s/* || true
 	rm -fr $(TOOLS_BIN)
 
+clean-all: clean/go
 .PHONY: clean/go
 clean/go:
 	$(info Clean golang cache...)
 	go clean -cache
-
-.PHONY: clean-all
-clean-all: clean clean/tools clean/go
