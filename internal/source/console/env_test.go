@@ -33,6 +33,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	t.Run("invalid configuration - wrong path", func(t *testing.T) {
 		t.Setenv("CONSOLE_WEBHOOK_PATH", "webhook")
 		_, err := loadConfigFromEnv()
-		require.ErrorIs(t, err, ErrConfigNotValid)
+		require.ErrorIs(t, err, ErrWebhookConfigNotValid)
 	})
 }

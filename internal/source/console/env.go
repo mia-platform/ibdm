@@ -16,11 +16,16 @@ const (
 )
 
 var (
-	ErrConfigNotValid = errors.New("console source configuration not valid")
+	ErrWebhookConfigNotValid = errors.New("console source configuration not valid")
 )
 
-func loadConfigFromEnv() (*config, error) {
-	config, err := env.ParseAs[config]()
+// webhookConfig holds the environment-driven Console settings.
+type webhookConfig struct {
+	WebhookPath string `env:"CONSOLE_WEBHOOK_PATH" envDefault:"/console-webhook"`
+}
+
+func loadConfigFromEnv() (*webhookConfig, error) {
+	config, err := env.ParseAs[webhookConfig]()
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +35,7 @@ func loadConfigFromEnv() (*config, error) {
 	return &config, nil
 }
 
-func (c config) Validate() error {
+func (c webhookConfig) Validate() error {
 	errorsList := make([]string, 0)
 
 	if !strings.HasPrefix(c.WebhookPath, "/") {
@@ -38,7 +43,7 @@ func (c config) Validate() error {
 	}
 
 	if len(errorsList) > 0 {
-		return fmt.Errorf("%w: %v", ErrConfigNotValid, strings.Join(errorsList, "; "))
+		return fmt.Errorf("%w: %v", ErrWebhookConfigNotValid, strings.Join(errorsList, "; "))
 	}
 	return nil
 }

@@ -25,6 +25,17 @@ var (
 	ErrUnmarshalingEvent = errors.New("error unmarshaling console event")
 )
 
+// Source wires Console clients to satisfy source interfaces.
+type webhookClient struct {
+	config webhookConfig
+}
+
+var _ source.WebhookSource = &Source{}
+
+type Source struct {
+	c *webhookClient
+}
+
 func NewSource() (*Source, error) {
 	consoleClient, err := newConsoleClient()
 	if err != nil {
@@ -36,13 +47,13 @@ func NewSource() (*Source, error) {
 	}, nil
 }
 
-func newConsoleClient() (*consoleClient, error) {
+func newConsoleClient() (*webhookClient, error) {
 	config, err := loadConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
 
-	return &consoleClient{
+	return &webhookClient{
 		config: *config,
 	}, nil
 }
