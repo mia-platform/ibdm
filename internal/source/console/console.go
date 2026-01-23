@@ -86,7 +86,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 
 			log.Trace("received event", "type", event.EventName, "resource", event.GetResource(), "payload", event.Payload, "timestamp", event.UnixEventTimestamp())
 
-			if err := doChain(event, results, s.cs); err != nil {
+			if err := doChain(ctx, event, results, s.cs); err != nil {
 				log.Error("error processing event chain", "error", err.Error())
 				return err
 			}
@@ -95,12 +95,12 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 	}, nil
 }
 
-func doChain(event event, channel chan<- source.Data, cs service.ConsoleServiceInterface) error {
+func doChain(ctx context.Context, event event, channel chan<- source.Data, cs service.ConsoleServiceInterface) error {
 	var data []source.Data
 	var err error
 	switch event.GetResource() {
 	case "configuration":
-		data, err = configurationEventChain(event, cs)
+		data, err = configurationEventChain(ctx, event, cs)
 	case "project":
 		data = defaultEventChain(event)
 	default:
@@ -126,7 +126,7 @@ func defaultEventChain(event event) []source.Data {
 	}
 }
 
-func configurationEventChain(event event, cs service.ConsoleServiceInterface) ([]source.Data, error) {
+func configurationEventChain(ctx context.Context, event event, cs service.ConsoleServiceInterface) ([]source.Data, error) {
 	var projectID, resourceID string
 	var ok bool
 	if event.Payload == nil {
@@ -139,7 +139,7 @@ func configurationEventChain(event event, cs service.ConsoleServiceInterface) ([
 		return nil, errors.New("configuration event payload missing resourceId")
 	}
 
-	configuration, err := cs.GetRevision(context.Background(), projectID, resourceID)
+	configuration, err := cs.GetRevision(ctx, projectID, resourceID)
 	if err != nil {
 		return nil, err
 	}

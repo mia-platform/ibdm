@@ -224,13 +224,15 @@ func Test_DoChain(t *testing.T) {
 
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
+			ctx := t.Context()
+
 			ch := make(chan source.Data, len(test.expectedData)+1)
 			mockSvc := &MockConsoleService{}
 			if test.mockSetup != nil {
 				test.mockSetup(mockSvc)
 			}
 
-			err := doChain(test.event, ch, mockSvc)
+			err := doChain(ctx, test.event, ch, mockSvc)
 			if test.expectedError != nil {
 				require.ErrorIs(t, err, test.expectedError)
 				return
