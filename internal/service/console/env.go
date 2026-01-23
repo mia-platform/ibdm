@@ -15,7 +15,7 @@ var (
 	errParsingConfig       = errors.New("error parsing console configuration from environment variables")
 	errMissingClientID     = errors.New("CONSOLE_CLIENT_ID is required when CONSOLE_CLIENT_SECRET is set")
 	errMissingClientSecret = errors.New("CONSOLE_CLIENT_SECRET is required when CONSOLE_CLIENT_ID is set")
-	errMissingJWTFields    = errors.New("wrong JWT service account configuration")
+	errMissingJWTFields    = errors.New("CONSOLE_PRIVATE_KEY and CONSOLE_PRIVATE_KEY_ID are required when CONSOLE_JWT_SERVICE_ACCOUNT is true")
 )
 
 // config holds the environment-driven Console settings.
