@@ -1,7 +1,7 @@
 // Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
-package console
+package service
 
 import (
 	"context"
@@ -111,7 +111,7 @@ func TestDoRequest(t *testing.T) {
 				},
 			}
 
-			err := svc.DoRequest(t.Context(), "configuration")
+			_, err := svc.DoRequest(t.Context(), "configuration", "main")
 
 			if test.expectedError != "" {
 				require.Error(t, err)
@@ -135,7 +135,7 @@ func TestDoRequest_ContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	err = svc.DoRequest(ctx, "configuration")
+	_, err = svc.DoRequest(ctx, "configuration", "main")
 	require.NoError(t, err)
 }
 
@@ -167,7 +167,7 @@ func Test_RealCase(t *testing.T) {
 	require.NotEmpty(t, svc.ClientID)
 	require.NotEmpty(t, svc.ClientSecret)
 
-	err = svc.DoRequest(t.Context(), "configuration")
+	_, err = svc.DoRequest(t.Context(), "configuration", "main")
 	require.NoError(t, err)
 }
 
@@ -210,6 +210,6 @@ func Test_RealCase_JWT(t *testing.T) {
 	require.NotEmpty(t, svc.PrivateKey)
 	require.NotEmpty(t, svc.PrivateKeyID)
 
-	err = svc.DoRequest(t.Context(), "configuration")
+	_, err = svc.DoRequest(t.Context(), "configuration", "main")
 	require.NoError(t, err)
 }

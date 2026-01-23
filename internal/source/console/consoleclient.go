@@ -14,6 +14,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
+	"github.com/mia-platform/ibdm/internal/source/console/service"
 )
 
 const (
@@ -21,8 +22,9 @@ const (
 )
 
 var (
-	ErrSourceCreation    = errors.New("console source creation error")
-	ErrUnmarshalingEvent = errors.New("error unmarshaling console event")
+	ErrSourceCreation       = errors.New("console source creation error")
+	ErrUnmarshalingEvent    = errors.New("error unmarshaling console event")
+	ErrEventChainProcessing = errors.New("error in event processing chain")
 )
 
 // Source wires Console clients to satisfy source interfaces.
@@ -33,7 +35,8 @@ type webhookClient struct {
 var _ source.WebhookSource = &Source{}
 
 type Source struct {
-	c *webhookClient
+	c  *webhookClient
+	cs *service.ConsoleService
 }
 
 func NewSource() (*Source, error) {
@@ -42,8 +45,14 @@ func NewSource() (*Source, error) {
 		return nil, fmt.Errorf("%w: %s", ErrSourceCreation, err.Error())
 	}
 
+	consoleService, err := service.NewConsoleService()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrSourceCreation, err.Error())
+	}
+
 	return &Source{
-		c: consoleClient,
+		c:  consoleClient,
+		cs: consoleService,
 	}, nil
 }
 
@@ -77,15 +86,53 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 
 			log.Trace("received event", "type", event.EventName, "resource", event.GetResource(), "payload", event.Payload, "timestamp", event.UnixEventTimestamp())
 
-			ec := &eventChain{
-				event: event,
-			}
-
-			if err := ec.doChain(results); err != nil {
+			if err := doChain(event, results); err != nil {
 				log.Error("error processing event chain", "error", err.Error())
 				return err
 			}
 			return nil
+		},
+	}, nil
+}
+
+func doChain(event event, channel chan<- source.Data) error {
+	var data []source.Data
+	var err error
+	switch event.GetResource() {
+	case "configuration":
+		data, err = configurationEventChain(event)
+	case "project":
+		data = defaultEventChain(event)
+	default:
+		data = defaultEventChain(event)
+	}
+	if err != nil {
+		return fmt.Errorf("%w: %s", ErrEventChainProcessing, err.Error())
+	}
+	for _, d := range data {
+		channel <- d
+	}
+	return nil
+}
+
+func defaultEventChain(event event) []source.Data {
+	return []source.Data{
+		{
+			Type:      event.GetResource(),
+			Operation: event.Operation(),
+			Values:    event.Payload,
+			Time:      event.UnixEventTimestamp(),
+		},
+	}
+}
+
+func configurationEventChain(event event) ([]source.Data, error) {
+	return []source.Data{
+		{
+			Type:      event.GetResource(),
+			Operation: event.Operation(),
+			Values:    event.Payload,
+			Time:      event.UnixEventTimestamp(),
 		},
 	}, nil
 }

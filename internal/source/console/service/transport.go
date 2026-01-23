@@ -1,7 +1,7 @@
 // Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
-package console
+package service
 
 import (
 	"context"
@@ -36,6 +36,7 @@ func newTransport(ctx context.Context, tokenURL, clientID, clientSecret string) 
 }
 
 func newTransportWithJWT(ctx context.Context, tokenURL, privateKey, privateKeyID, clientID string) http.RoundTripper {
+	// WIP
 	config := &jwt.Config{
 		Subject:      clientID,
 		PrivateKey:   []byte(privateKey),

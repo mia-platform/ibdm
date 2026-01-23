@@ -1,16 +1,21 @@
 // Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
-package console
+package service
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"sync/atomic"
 
 	"github.com/mia-platform/ibdm/internal/info"
+)
+
+const (
+	loggerName = "ibdm:service:console"
 )
 
 var _ consoleServiceInterface = &ConsoleService{}
@@ -33,20 +38,21 @@ func NewConsoleService() (*ConsoleService, error) {
 }
 
 // DoRequest implements consoleServiceInterface.
-func (c *ConsoleService) DoRequest(ctx context.Context, resource string) error {
+func (c *ConsoleService) DoRequest(ctx context.Context, resource, resourceId string) (map[string]any, error) {
 	switch resource {
 	case "configuration":
-		return c.handleConfigurationRequest(ctx, http.MethodGet)
+		return c.handleConfigurationRequest(ctx, http.MethodGet, resourceId)
 	default:
-		return errors.New("unsupported resource")
+		return nil, errors.New("unsupported resource")
 	}
 }
 
 // handleConfigurationRequest issues an HTTP call to the Console API using the provided method and payload.
-func (c *ConsoleService) handleConfigurationRequest(ctx context.Context, method string) error {
-	request, err := http.NewRequestWithContext(ctx, method, c.ConsoleEndpoint, nil)
+func (c *ConsoleService) handleConfigurationRequest(ctx context.Context, method, resourceId string) (map[string]any, error) {
+	requestPath := "/projects/" + c.ProjectID + "/revisions/" + resourceId + "/configuration"
+	request, err := http.NewRequestWithContext(ctx, method, c.ConsoleEndpoint+requestPath, nil)
 	if err != nil {
-		return handleError(err)
+		return nil, handleError(err)
 	}
 
 	request.Header.Set("User-Agent", userAgentString())
@@ -55,27 +61,28 @@ func (c *ConsoleService) handleConfigurationRequest(ctx context.Context, method 
 	//nolint:contextcheck // need a new context because it will be used in token requests
 	resp, err := c.getClient(context.Background()).Do(request)
 	if err != nil {
-		return handleError(err)
+		return nil, handleError(err)
 	}
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
 	case http.StatusForbidden, http.StatusUnauthorized:
-		return handleError(errors.New("invalid token or insufficient permissions"))
+		return nil, handleError(errors.New("invalid token or insufficient permissions"))
 	case http.StatusNotFound:
-		return handleError(errors.New("integration registration not found"))
+		return nil, handleError(errors.New("integration registration not found"))
 	case http.StatusNoContent:
-		return nil
+		return nil, nil
 	default:
-		decoder := json.NewDecoder(resp.Body)
-		var respBody map[string]any
-		if err := decoder.Decode(&respBody); err == nil {
-			if message, ok := respBody["message"].(string); ok {
-				return handleError(errors.New(message))
-			}
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, handleError(err)
 		}
 
-		return handleError(errors.New("unexpected error"))
+		var respBody map[string]any
+		if err := json.Unmarshal(body, &respBody); err != nil {
+			return nil, handleError(err)
+		}
+		return respBody, nil
 	}
 }
 
