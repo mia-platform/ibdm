@@ -18,8 +18,6 @@ const (
 	loggerName = "ibdm:service:console"
 )
 
-var _ consoleServiceInterface = &ConsoleService{}
-
 // ConsoleService implements consoleServiceInterface against the Mia-Platform Console API.
 type ConsoleService struct {
 	config
@@ -37,20 +35,9 @@ func NewConsoleService() (*ConsoleService, error) {
 	}, nil
 }
 
-// DoRequest implements consoleServiceInterface.
-func (c *ConsoleService) DoRequest(ctx context.Context, resource, resourceId string) (map[string]any, error) {
-	switch resource {
-	case "configuration":
-		return c.handleConfigurationRequest(ctx, http.MethodGet, resourceId)
-	default:
-		return nil, errors.New("unsupported resource")
-	}
-}
-
-// handleConfigurationRequest issues an HTTP call to the Console API using the provided method and payload.
-func (c *ConsoleService) handleConfigurationRequest(ctx context.Context, method, resourceId string) (map[string]any, error) {
+func (c *ConsoleService) getRevision(ctx context.Context, resourceId string) (map[string]any, error) {
 	requestPath := "/projects/" + c.ProjectID + "/revisions/" + resourceId + "/configuration"
-	request, err := http.NewRequestWithContext(ctx, method, c.ConsoleEndpoint+requestPath, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, c.ConsoleEndpoint+requestPath, nil)
 	if err != nil {
 		return nil, handleError(err)
 	}
@@ -76,6 +63,16 @@ func (c *ConsoleService) handleConfigurationRequest(ctx context.Context, method,
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, handleError(err)
+		}
+
+		if resp.StatusCode >= 400 {
+			var errResp map[string]any
+			if err := json.Unmarshal(body, &errResp); err == nil {
+				if msg, ok := errResp["message"].(string); ok {
+					return nil, handleError(errors.New(msg))
+				}
+			}
+			return nil, handleError(errors.New("unexpected error"))
 		}
 
 		var respBody map[string]any
