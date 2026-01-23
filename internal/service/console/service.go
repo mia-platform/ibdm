@@ -4,7 +4,6 @@
 package console
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -34,27 +33,24 @@ func NewConsoleService() (*ConsoleService, error) {
 }
 
 // DoRequest implements consoleServiceInterface.
-func (c *ConsoleService) DoRequest(ctx context.Context, data any) error {
-	return c.handleRequest(ctx, http.MethodPost, data)
+func (c *ConsoleService) DoRequest(ctx context.Context, resource string) error {
+	switch resource {
+	case "configuration":
+		return c.handleConfigurationRequest(ctx, http.MethodGet)
+	default:
+		return errors.New("unsupported resource")
+	}
 }
 
-// handleRequest issues an HTTP call to the Console API using the provided method and payload.
-func (c *ConsoleService) handleRequest(ctx context.Context, method string, data any) error {
-	body, err := json.Marshal(data)
-	if err != nil {
-		return handleError(err)
-	}
-
-	request, err := http.NewRequestWithContext(ctx, method, c.ConsoleEndpoint, bytes.NewReader(body))
+// handleConfigurationRequest issues an HTTP call to the Console API using the provided method and payload.
+func (c *ConsoleService) handleConfigurationRequest(ctx context.Context, method string) error {
+	request, err := http.NewRequestWithContext(ctx, method, c.ConsoleEndpoint, nil)
 	if err != nil {
 		return handleError(err)
 	}
 
 	request.Header.Set("User-Agent", userAgentString())
 	request.Header.Set("Accept", "application/json")
-	if body != nil {
-		request.Header.Set("Content-Type", "application/json")
-	}
 
 	//nolint:contextcheck // need a new context because it will be used in token requests
 	resp, err := c.getClient(context.Background()).Do(request)
@@ -95,6 +91,9 @@ func (c *ConsoleService) getClient(ctx context.Context) *http.Client {
 	}
 
 	client = &http.Client{}
+	if c.ConsoleJWTServiceAccount {
+		client.Transport = newTransportWithJWT(ctx, c.AuthEndpoint, c.PrivateKey, c.PrivateKeyID, c.ClientID)
+	}
 	client.Transport = newTransport(ctx, c.AuthEndpoint, c.ClientID, c.ClientSecret)
 	c.client.Store(client)
 	return client

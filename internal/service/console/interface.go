@@ -10,5 +10,5 @@ import (
 
 type consoleServiceInterface interface {
 	getClient(ctx context.Context) *http.Client
-	DoRequest(ctx context.Context, data any) error
+	DoRequest(ctx context.Context, resource string) error
 }
