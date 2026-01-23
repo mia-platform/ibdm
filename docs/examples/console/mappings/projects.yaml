@@ -1,16 +1,16 @@
 apiVersion: console.mia-platform.eu/v1alpha1
 resource: projects
 type: project
-syncable: false
+syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s-%s" .tenantId .projectId }}
+    {{ printf "%s-%s" .project.tenantId .project.projectId }}
   spec:
     projectId: "{{ .project.projectId }}"
     tenantId: "{{ .project.tenantId }}"
     name: "{{ .project.name }}"
     repository: "{{ .project.repository | toJSON }}"
-    repositoryUrl: "{{ .project.repositoryUrl }}"
+    repositoryUrl: "{{ get \"repositoryUrl\" .project \"\" | quote }}"
     availableNamespaces: "{{ get \"availableNamespaces\" .project (list) | toJSON }}"
     configurationGitPath: "{{ .project.configurationGitPath }}"
     defaultBranch: "{{ get \"defaultBranch\" .project \"\" | quote }}"
