@@ -72,16 +72,13 @@ func TestSource_GetWebhook(t *testing.T) {
 			},
 		}
 
-		// wait for data to be processed
-		time.Sleep(1 * time.Second)
-
 		select {
 		case data := <-results:
 			require.Equal(t, expectedEvent.GetResource(), data.Type)
 			require.Equal(t, expectedEvent.Operation(), data.Operation)
 			require.Equal(t, expectedEvent.Payload, data.Values)
-		default:
-			t.Fatal("expected data in channel")
+		case <-time.After(1 * time.Second):
+			t.Fatal("Timeout waiting for message processing: expected data in channel")
 		}
 	})
 
