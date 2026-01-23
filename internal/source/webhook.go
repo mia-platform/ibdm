@@ -3,8 +3,10 @@
 
 package source
 
+import "net/http"
+
 type Webhook struct {
 	Method  string
 	Path    string
-	Handler func(body []byte) error
+	Handler func(headers http.Header, body []byte) error
 }

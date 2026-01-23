@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -69,9 +70,14 @@ func (s *Server) StartAsync(ctx context.Context) {
 	}()
 }
 
-func FiberHandlerWrapper(handler func([]byte) error) fiber.Handler {
+func FiberHandlerWrapper(handler func(http.Header, []byte) error) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		if err := handler(ctx.Body()); err != nil {
+		headers := make(http.Header)
+		ctx.Request().Header.VisitAll(func(key, value []byte) {
+			headers.Add(string(key), string(value))
+		})
+
+		if err := handler(headers, ctx.Body()); err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "handler error: "+err.Error())
 		}
 		return ctx.SendStatus(fiber.StatusNoContent)

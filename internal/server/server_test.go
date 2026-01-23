@@ -99,7 +99,7 @@ func TestFiberHandlerWrapper(t *testing.T) {
 		t.Setenv("LOG_LEVEL", "INFO")
 
 		processed := false
-		handler := func(body []byte) error {
+		handler := func(headers http.Header, body []byte) error {
 			processed = true
 			require.Equal(t, "test body", string(body))
 			return nil

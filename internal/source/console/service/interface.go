@@ -8,5 +8,6 @@ import (
 )
 
 type ConsoleServiceInterface interface {
+	GetProjects(ctx context.Context) ([]map[string]any, error)
 	GetRevision(ctx context.Context, projectID, resourceID string) (map[string]any, error)
 }

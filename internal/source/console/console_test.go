@@ -17,6 +17,11 @@ import (
 
 type MockConsoleService struct {
 	GetRevisionFunc func(ctx context.Context, projectId, resourceId string) (map[string]any, error)
+	GetProjectsFunc func(ctx context.Context) ([]map[string]any, error)
+}
+
+func (m *MockConsoleService) GetProjects(ctx context.Context) ([]map[string]any, error) {
+	return nil, nil
 }
 
 func (m *MockConsoleService) GetRevision(ctx context.Context, projectID, resourceID string) (map[string]any, error) {
@@ -55,7 +60,8 @@ func TestSource_GetWebhook(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
-		err = webhook.Handler(body)
+		headers := http.Header{}
+		err = webhook.Handler(headers, body)
 		require.NoError(t, err)
 
 		expectedEvent := event{
@@ -65,6 +71,9 @@ func TestSource_GetWebhook(t *testing.T) {
 				"key":  "value",
 			},
 		}
+
+		// wait for data to be processed
+		time.Sleep(1 * time.Second)
 
 		select {
 		case data := <-results:
@@ -100,7 +109,8 @@ func TestSource_GetWebhook(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
-		err = webhook.Handler(body)
+		headers := http.Header{}
+		err = webhook.Handler(headers, body)
 		require.NoError(t, err)
 
 		select {
@@ -124,7 +134,9 @@ func TestSource_GetWebhook(t *testing.T) {
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
 
-		err = webhook.Handler([]byte(`{invalid-json`))
+		body := []byte(`{invalid-json`)
+		headers := http.Header{}
+		err = webhook.Handler(headers, body)
 		require.Error(t, err)
 	})
 }
@@ -133,6 +145,8 @@ func TestNewSource(t *testing.T) {
 	t.Run("creates source successfully", func(t *testing.T) {
 		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
 		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
+		t.Setenv("CONSOLE_WEBHOOK_SECRET", "secret")
+		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		s, err := NewSource()
 		require.NoError(t, err)
 		require.NotNil(t, s)

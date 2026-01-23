@@ -142,7 +142,7 @@ func TestDoRequest_ContextCanceled(t *testing.T) {
 func Test_RealCase(t *testing.T) {
 	t.Skip("skipping real case test; uncomment to run against real Console instance")
 	// Load configuration JSON
-	cfgBytes, err := os.ReadFile("../../../local/secret/basic/config.json")
+	cfgBytes, err := os.ReadFile("../../../../local/secret/basic/config.json")
 	require.NoError(t, err)
 
 	var jc struct {
@@ -174,7 +174,7 @@ func Test_RealCase(t *testing.T) {
 func Test_RealCase_JWT(t *testing.T) {
 	t.Skip("skipping real case test; uncomment to run against real Console instance")
 	// Load JWT configuration JSON
-	cfgBytes, err := os.ReadFile("../../../local/secret/jwt/config.json")
+	cfgBytes, err := os.ReadFile("../../../../local/secret/jwt/config.json")
 	require.NoError(t, err)
 
 	var jc struct {
@@ -187,7 +187,7 @@ func Test_RealCase_JWT(t *testing.T) {
 	require.NoError(t, json.Unmarshal(cfgBytes, &jc))
 
 	// Load private key file
-	keyBytes, err := os.ReadFile("../../../local/secret/jwt/private.key")
+	keyBytes, err := os.ReadFile("../../../../local/secret/jwt/private.key")
 	require.NoError(t, err)
 	if jc.PrivateKey == "" {
 		jc.PrivateKey = string(keyBytes)

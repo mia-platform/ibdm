@@ -11,6 +11,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
@@ -18,13 +19,16 @@ import (
 )
 
 const (
-	loggerName = "ibdm:source:console"
+	loggerName     = "ibdm:source:console"
+	authHeaderName = "X-Mia-Signature"
 )
 
 var (
 	ErrSourceCreation       = errors.New("console source creation error")
 	ErrUnmarshalingEvent    = errors.New("error unmarshaling console event")
 	ErrEventChainProcessing = errors.New("error in event processing chain")
+	ErrSignatureMismatch    = errors.New("webhook signature mismatch")
+	ErrRetrievingAssets     = errors.New("error retrieving assets from console")
 )
 
 // Source wires Console clients to satisfy source interfaces.
@@ -67,12 +71,36 @@ func newConsoleClient() (*webhookClient, error) {
 	}, nil
 }
 
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+	log := logger.FromContext(ctx).WithName(loggerName)
+	projectList, err := s.cs.GetProjects(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+	}
+	log.Trace("fetched projects", "count", len(projectList))
+	for _, project := range projectList {
+		data := source.Data{
+			Type:      "project",
+			Operation: source.DataOperationUpsert,
+			Values:    map[string]any{"project": project},
+			Time:      time.Now(),
+		}
+		results <- data
+	}
+	return nil
+}
+
 func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	return source.Webhook{
 		Method: http.MethodPost,
 		Path:   s.c.config.WebhookPath,
-		Handler: func(body []byte) error {
+		Handler: func(headers http.Header, body []byte) error {
+			// if !validateSignature(body, s.c.config.WebhookSecret, headers.Get(authHeaderName)) {
+			// 	log.Error("webhook signature validation failed")
+			// 	return ErrSignatureMismatch
+			// }
+
 			var event event
 			if err := json.Unmarshal(body, &event); err != nil {
 				log.Error(ErrUnmarshalingEvent.Error(), "body", string(body), "error", err.Error())
@@ -86,10 +114,11 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 
 			log.Trace("received event", "type", event.EventName, "resource", event.GetResource(), "payload", event.Payload, "timestamp", event.UnixEventTimestamp())
 
-			if err := doChain(ctx, event, results, s.cs); err != nil {
-				log.Error("error processing event chain", "error", err.Error())
-				return err
-			}
+			go func(ctx context.Context) {
+				if err := doChain(ctx, event, results, s.cs); err != nil {
+					log.Error("error processing event chain", "error", err.Error())
+				}
+			}(ctx)
 			return nil
 		},
 	}, nil
@@ -158,3 +187,24 @@ func configurationEventChain(ctx context.Context, event event, cs service.Consol
 		},
 	}, nil
 }
+
+// func validateSignature(body []byte, secret, signatureHeader string) bool {
+// 	if secret == "" {
+// 		return true
+// 	}
+// 	signature, found := strings.CutPrefix(signatureHeader, "sha256=")
+// 	if !found {
+// 		return false
+// 	}
+
+// 	mac := hmac.New(sha256.New, []byte(secret))
+// 	mac.Write(body)
+// 	expectedMAC := mac.Sum(nil)
+
+// 	decodedSignature, err := hex.DecodeString(signature)
+// 	if err != nil {
+// 		return false
+// 	}
+
+// 	return hmac.Equal(expectedMAC, decodedSignature)
+// }
