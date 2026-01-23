@@ -13,7 +13,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	t.Run("fails when CONSOLE_ENDPOINT is missing", func(t *testing.T) {
 		// Ideally we should ensure the env var is unset, but t.Setenv can only set values.
 		// However, assuming the test runner environment doesn't have these set, or we can set it to empty.
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "")
 		config, err := loadConfigFromEnv()
 		require.Error(t, err)
@@ -21,7 +20,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	})
 
 	t.Run("fails when CONSOLE_ENDPOINT is invalid URL", func(t *testing.T) {
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "://invalid-url")
 		config, err := loadConfigFromEnv()
 		require.Error(t, err)
@@ -30,7 +28,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	})
 
 	t.Run("fails when CONSOLE_CLIENT_ID is present but CONSOLE_CLIENT_SECRET is missing", func(t *testing.T) {
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "https://console.mia-platform.eu")
 		t.Setenv("CONSOLE_CLIENT_ID", "client-id")
 		t.Setenv("CONSOLE_CLIENT_SECRET", "")
@@ -41,7 +38,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	})
 
 	t.Run("fails when CONSOLE_CLIENT_SECRET is present but CONSOLE_CLIENT_ID is missing", func(t *testing.T) {
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "https://console.mia-platform.eu")
 		t.Setenv("CONSOLE_CLIENT_ID", "")
 		t.Setenv("CONSOLE_CLIENT_SECRET", "client-secret")
@@ -52,7 +48,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	})
 
 	t.Run("fails when CONSOLE_AUTH_ENDPOINT is invalid URL", func(t *testing.T) {
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "https://console.mia-platform.eu")
 		t.Setenv("CONSOLE_AUTH_ENDPOINT", "://invalid-url")
 		config, err := loadConfigFromEnv()
@@ -62,7 +57,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	})
 
 	t.Run("succeeds with minimal valid config", func(t *testing.T) {
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "https://console.mia-platform.eu")
 		config, err := loadConfigFromEnv()
 		require.NoError(t, err)
@@ -73,7 +67,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	})
 
 	t.Run("succeeds with full valid config", func(t *testing.T) {
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "https://console.mia-platform.eu")
 		t.Setenv("CONSOLE_CLIENT_ID", "client-id")
 		t.Setenv("CONSOLE_CLIENT_SECRET", "client-secret")

@@ -27,7 +27,6 @@ type config struct {
 	PrivateKey               string `env:"CONSOLE_PRIVATE_KEY"`
 	PrivateKeyID             string `env:"CONSOLE_PRIVATE_KEY_ID"`
 	ConsoleJWTServiceAccount bool   `env:"CONSOLE_JWT_SERVICE_ACCOUNT" envDefault:"false"`
-	ProjectID                string `env:"CONSOLE_PROJECT_ID,required"`
 }
 
 func loadConfigFromEnv() (*config, error) {

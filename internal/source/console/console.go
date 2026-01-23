@@ -36,7 +36,7 @@ var _ source.WebhookSource = &Source{}
 
 type Source struct {
 	c  *webhookClient
-	cs *service.ConsoleService
+	cs service.ConsoleServiceInterface
 }
 
 func NewSource() (*Source, error) {
@@ -86,7 +86,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 
 			log.Trace("received event", "type", event.EventName, "resource", event.GetResource(), "payload", event.Payload, "timestamp", event.UnixEventTimestamp())
 
-			if err := doChain(event, results); err != nil {
+			if err := doChain(event, results, s.cs); err != nil {
 				log.Error("error processing event chain", "error", err.Error())
 				return err
 			}
@@ -95,12 +95,12 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 	}, nil
 }
 
-func doChain(event event, channel chan<- source.Data) error {
+func doChain(event event, channel chan<- source.Data, cs service.ConsoleServiceInterface) error {
 	var data []source.Data
 	var err error
 	switch event.GetResource() {
 	case "configuration":
-		data, err = configurationEventChain(event)
+		data, err = configurationEventChain(event, cs)
 	case "project":
 		data = defaultEventChain(event)
 	default:
@@ -126,12 +126,34 @@ func defaultEventChain(event event) []source.Data {
 	}
 }
 
-func configurationEventChain(event event) ([]source.Data, error) {
+func configurationEventChain(event event, cs service.ConsoleServiceInterface) ([]source.Data, error) {
+	var projectID, resourceID string
+	var ok bool
+	if event.Payload == nil {
+		return nil, errors.New("configuration event payload is nil")
+	}
+	if projectID, ok = event.Payload["projectId"].(string); !ok {
+		return nil, errors.New("configuration event payload missing projectId")
+	}
+	if resourceID, ok = event.Payload["resourceId"].(string); !ok {
+		return nil, errors.New("configuration event payload missing resourceId")
+	}
+
+	configuration, err := cs.GetRevision(context.Background(), projectID, resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	values := map[string]any{
+		"event":         event.Payload,
+		"configuration": configuration,
+	}
+
 	return []source.Data{
 		{
 			Type:      event.GetResource(),
 			Operation: event.Operation(),
-			Values:    event.Payload,
+			Values:    values,
 			Time:      event.UnixEventTimestamp(),
 		},
 	}, nil

@@ -23,7 +23,6 @@ func TestNewConsoleService(t *testing.T) {
 	})
 
 	t.Run("fails when credentials are incomplete", func(t *testing.T) {
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 		t.Setenv("CONSOLE_CLIENT_ID", "foo")
 		t.Setenv("CONSOLE_CLIENT_SECRET", "") // Missing secret
@@ -34,7 +33,6 @@ func TestNewConsoleService(t *testing.T) {
 	})
 
 	t.Run("succeeds with valid config", func(t *testing.T) {
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 		svc, err := NewConsoleService()
 		require.NoError(t, err)
@@ -43,7 +41,6 @@ func TestNewConsoleService(t *testing.T) {
 	})
 
 	t.Run("infers AuthEndpoint from ConsoleEndpoint", func(t *testing.T) {
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 		t.Setenv("CONSOLE_ENDPOINT", "http://example.com/api/v1")
 		svc, err := NewConsoleService()
 		require.NoError(t, err)
@@ -114,7 +111,7 @@ func TestDoRequest(t *testing.T) {
 				},
 			}
 
-			_, err := svc.getRevision(t.Context(), "main")
+			_, err := svc.GetRevision(t.Context(), "project-id", "resource-id")
 
 			if test.expectedError != "" {
 				require.Error(t, err)
@@ -131,7 +128,6 @@ func TestDoRequest(t *testing.T) {
 }
 
 func TestDoRequest_ContextCanceled(t *testing.T) {
-	t.Setenv("CONSOLE_PROJECT_ID", "test-project")
 	t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 	svc, err := NewConsoleService()
 	require.NoError(t, err)
@@ -139,7 +135,7 @@ func TestDoRequest_ContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	_, err = svc.getRevision(ctx, "main")
+	_, err = svc.GetRevision(ctx, "project-id", "resource-id")
 	require.NoError(t, err)
 }
 
@@ -171,7 +167,7 @@ func Test_RealCase(t *testing.T) {
 	require.NotEmpty(t, svc.ClientID)
 	require.NotEmpty(t, svc.ClientSecret)
 
-	_, err = svc.getRevision(t.Context(), "main")
+	_, err = svc.GetRevision(t.Context(), "project-id", "resource-id")
 	require.NoError(t, err)
 }
 
@@ -214,6 +210,6 @@ func Test_RealCase_JWT(t *testing.T) {
 	require.NotEmpty(t, svc.PrivateKey)
 	require.NotEmpty(t, svc.PrivateKeyID)
 
-	_, err = svc.getRevision(t.Context(), "main")
+	_, err = svc.GetRevision(t.Context(), "project-id", "resource-id")
 	require.NoError(t, err)
 }

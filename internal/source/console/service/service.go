@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	loggerName = "ibdm:service:console"
+	statusCodeErrorRangeStart = 400
 )
+
+var _ ConsoleServiceInterface = &ConsoleService{}
 
 // ConsoleService implements consoleServiceInterface against the Mia-Platform Console API.
 type ConsoleService struct {
@@ -35,8 +37,8 @@ func NewConsoleService() (*ConsoleService, error) {
 	}, nil
 }
 
-func (c *ConsoleService) getRevision(ctx context.Context, resourceId string) (map[string]any, error) {
-	requestPath := "/projects/" + c.ProjectID + "/revisions/" + resourceId + "/configuration"
+func (c *ConsoleService) GetRevision(ctx context.Context, projectID, resourceID string) (map[string]any, error) {
+	requestPath := "/projects/" + projectID + "/revisions/" + resourceID + "/configuration"
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, c.ConsoleEndpoint+requestPath, nil)
 	if err != nil {
 		return nil, handleError(err)
@@ -65,7 +67,7 @@ func (c *ConsoleService) getRevision(ctx context.Context, resourceId string) (ma
 			return nil, handleError(err)
 		}
 
-		if resp.StatusCode >= 400 {
+		if resp.StatusCode >= statusCodeErrorRangeStart {
 			var errResp map[string]any
 			if err := json.Unmarshal(body, &errResp); err == nil {
 				if msg, ok := errResp["message"].(string); ok {

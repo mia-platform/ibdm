@@ -4,6 +4,7 @@
 package console
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -14,10 +15,22 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
+type MockConsoleService struct {
+	GetRevisionFunc func(ctx context.Context, projectId, resourceId string) (map[string]any, error)
+}
+
+func (m *MockConsoleService) GetRevision(ctx context.Context, projectID, resourceID string) (map[string]any, error) {
+	if m.GetRevisionFunc != nil {
+		return m.GetRevisionFunc(ctx, projectID, resourceID)
+	}
+	return nil, nil
+}
+
 func TestSource_GetWebhook(t *testing.T) {
 	t.Run("successfully creates webhook and processes events", func(t *testing.T) {
 		ctx := t.Context()
 		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 
 		s, err := NewSource()
 		require.NoError(t, err)
@@ -66,6 +79,7 @@ func TestSource_GetWebhook(t *testing.T) {
 	t.Run("ignores events not in typesToStream", func(t *testing.T) {
 		ctx := t.Context()
 		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 
 		s, err := NewSource()
 		require.NoError(t, err)
@@ -99,6 +113,7 @@ func TestSource_GetWebhook(t *testing.T) {
 	t.Run("returns error on invalid json", func(t *testing.T) {
 		ctx := t.Context()
 		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 
 		s, err := NewSource()
 		require.NoError(t, err)
@@ -117,6 +132,7 @@ func TestSource_GetWebhook(t *testing.T) {
 func TestNewSource(t *testing.T) {
 	t.Run("creates source successfully", func(t *testing.T) {
 		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 		s, err := NewSource()
 		require.NoError(t, err)
 		require.NotNil(t, s)
@@ -128,6 +144,7 @@ func TestNewSource(t *testing.T) {
 func Test_DoChain(t *testing.T) {
 	tests := map[string]struct {
 		event         event
+		mockSetup     func(*MockConsoleService)
 		expectedError error
 		expectedData  []source.Data
 	}{
@@ -136,15 +153,30 @@ func Test_DoChain(t *testing.T) {
 				EventName:      "configuration_created",
 				EventTimestamp: 1672531200, // 2023-01-01 00:00:00 UTC
 				Payload: map[string]any{
-					"key": "value",
+					"projectId":  "p1",
+					"resourceId": "r1",
 				},
+			},
+			mockSetup: func(m *MockConsoleService) {
+				m.GetRevisionFunc = func(ctx context.Context, projectId, resourceId string) (map[string]any, error) {
+					if projectId == "p1" && resourceId == "r1" {
+						return map[string]any{"key": "value"}, nil
+					}
+					return nil, nil
+				}
 			},
 			expectedData: []source.Data{
 				{
 					Type:      "configuration",
 					Operation: source.DataOperationUpsert,
 					Values: map[string]any{
-						"key": "value",
+						"event": map[string]any{
+							"projectId":  "p1",
+							"resourceId": "r1",
+						},
+						"configuration": map[string]any{
+							"key": "value",
+						},
 					},
 					Time: time.Unix(1672531200, 0),
 				},
@@ -193,8 +225,12 @@ func Test_DoChain(t *testing.T) {
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
 			ch := make(chan source.Data, len(test.expectedData)+1)
+			mockSvc := &MockConsoleService{}
+			if test.mockSetup != nil {
+				test.mockSetup(mockSvc)
+			}
 
-			err := doChain(test.event, ch)
+			err := doChain(test.event, ch, mockSvc)
 			if test.expectedError != nil {
 				require.ErrorIs(t, err, test.expectedError)
 				return
