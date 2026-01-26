@@ -7,7 +7,7 @@ mappings:
     {{ printf "%s--%s" .data.project._id .data.revision.name }}
   spec:
     projectUniqueId: "{{ .data.project._id }}"
-    projectId: "{{ .data.project.projectId }}"
+    projectId: "{{ get \"projectId\" .data.project \"\" | quote }}"
     tenantId: "{{ .data.project.tenantId }}"
     revisionName: "{{ .data.revision.name }}"
     configuration: "{{ .data.configuration | toJSON }}"
