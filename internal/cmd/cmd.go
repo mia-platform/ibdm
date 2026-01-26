@@ -64,7 +64,7 @@ func RunCmd() *cobra.Command {
 				return handleError(cmd, err)
 			}
 
-			if err := opts.validate(); err != nil {
+			if err := opts.validate(availableEventSources); err != nil {
 				return handleError(cmd, err)
 			}
 
@@ -84,7 +84,7 @@ func RunCmd() *cobra.Command {
 func SyncCmd() *cobra.Command {
 	flags := &flags{}
 
-	allSources := slices.Sorted(maps.Keys(availableEventSources))
+	allSources := slices.Sorted(maps.Keys(availableSyncSources))
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf(syncCmdUsageTemplate, strings.Join(allSources, "|")),
 		Short:   heredoc.Doc(syncCmdShort),
@@ -101,7 +101,7 @@ func SyncCmd() *cobra.Command {
 				return handleError(cmd, err)
 			}
 
-			if err := opts.validate(); err != nil {
+			if err := opts.validate(availableSyncSources); err != nil {
 				return handleError(cmd, err)
 			}
 

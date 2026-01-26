@@ -17,6 +17,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/azure"
+	azuredevops "github.com/mia-platform/ibdm/internal/source/azure-devops"
 	"github.com/mia-platform/ibdm/internal/source/console"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 )
@@ -33,8 +34,9 @@ var (
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{
-		"azure": "Microsoft Azure integration",
-		"gcp":   "Google Cloud Platform synchronization",
+		"azure":        "Microsoft Azure integration",
+		"azure-devops": "Microsoft Azure DevOps integration",
+		"gcp":          "Google Cloud Platform integration",
 	}
 )
 
@@ -77,6 +79,8 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 	switch integrationName {
 	case "azure":
 		return azure.NewSource()
+	case "azure-devops":
+		return azuredevops.NewSource()
 	case "gcp":
 		return gcp.NewSource()
 	case "console":
