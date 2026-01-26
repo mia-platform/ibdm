@@ -65,7 +65,7 @@ func TestDoRequest(t *testing.T) {
 		},
 		"not found (404)": {
 			statusCode:    http.StatusNotFound,
-			expectedError: "integration registration not found",
+			expectedError: "resource not found",
 		},
 		"json error message": {
 			statusCode:    http.StatusBadRequest,
@@ -111,7 +111,7 @@ func TestDoRequest(t *testing.T) {
 				},
 			}
 
-			_, err := svc.GetRevision(t.Context(), "project-id", "resource-id")
+			_, err := svc.GetConfiguration(t.Context(), "project-id", "resource-id")
 
 			if test.expectedError != "" {
 				require.Error(t, err)
@@ -135,7 +135,7 @@ func TestDoRequest_ContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	_, err = svc.GetRevision(ctx, "project-id", "resource-id")
+	_, err = svc.GetConfiguration(ctx, "project-id", "resource-id")
 	require.NoError(t, err)
 }
 
@@ -167,7 +167,7 @@ func Test_RealCase(t *testing.T) {
 	require.NotEmpty(t, svc.ClientID)
 	require.NotEmpty(t, svc.ClientSecret)
 
-	_, err = svc.GetRevision(t.Context(), "project-id", "resource-id")
+	_, err = svc.GetConfiguration(t.Context(), "project-id", "resource-id")
 	require.NoError(t, err)
 }
 
@@ -210,6 +210,6 @@ func Test_RealCase_JWT(t *testing.T) {
 	require.NotEmpty(t, svc.PrivateKey)
 	require.NotEmpty(t, svc.PrivateKeyID)
 
-	_, err = svc.GetRevision(t.Context(), "project-id", "resource-id")
+	_, err = svc.GetConfiguration(t.Context(), "project-id", "resource-id")
 	require.NoError(t, err)
 }

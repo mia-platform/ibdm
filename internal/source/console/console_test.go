@@ -16,17 +16,27 @@ import (
 )
 
 type MockConsoleService struct {
-	GetRevisionFunc func(ctx context.Context, projectId, resourceId string) (map[string]any, error)
-	GetProjectsFunc func(ctx context.Context) ([]map[string]any, error)
+	GetProjectFunc       func(ctx context.Context, projectID string) (map[string]any, error)
+	GetProjectsFunc      func(ctx context.Context) ([]map[string]any, error)
+	GetRevisionsFunc     func(ctx context.Context, projectID string) ([]map[string]any, error)
+	GetConfigurationFunc func(ctx context.Context, projectID, revisionID string) (map[string]any, error)
+}
+
+func (m *MockConsoleService) GetProject(ctx context.Context, projectID string) (map[string]any, error) {
+	return nil, nil
 }
 
 func (m *MockConsoleService) GetProjects(ctx context.Context) ([]map[string]any, error) {
 	return nil, nil
 }
 
-func (m *MockConsoleService) GetRevision(ctx context.Context, projectID, resourceID string) (map[string]any, error) {
-	if m.GetRevisionFunc != nil {
-		return m.GetRevisionFunc(ctx, projectID, resourceID)
+func (m *MockConsoleService) GetRevisions(ctx context.Context, projectID string) ([]map[string]any, error) {
+	return nil, nil
+}
+
+func (m *MockConsoleService) GetConfiguration(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
+	if m.GetConfigurationFunc != nil {
+		return m.GetConfigurationFunc(ctx, projectID, revisionID)
 	}
 	return nil, nil
 }
@@ -165,12 +175,12 @@ func Test_DoChain(t *testing.T) {
 				EventTimestamp: 1672531200, // 2023-01-01 00:00:00 UTC
 				Payload: map[string]any{
 					"projectId":  "p1",
-					"resourceId": "r1",
+					"revisionId": "r1",
 				},
 			},
 			mockSetup: func(m *MockConsoleService) {
-				m.GetRevisionFunc = func(ctx context.Context, projectId, resourceId string) (map[string]any, error) {
-					if projectId == "p1" && resourceId == "r1" {
+				m.GetConfigurationFunc = func(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
+					if projectID == "p1" && revisionID == "r1" {
 						return map[string]any{"key": "value"}, nil
 					}
 					return nil, nil
@@ -183,7 +193,7 @@ func Test_DoChain(t *testing.T) {
 					Values: map[string]any{
 						"event": map[string]any{
 							"projectId":  "p1",
-							"resourceId": "r1",
+							"revisionId": "r1",
 						},
 						"configuration": map[string]any{
 							"key": "value",

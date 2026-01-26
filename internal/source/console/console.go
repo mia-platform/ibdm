@@ -71,13 +71,16 @@ func newConsoleClient() (*webhookClient, error) {
 	}, nil
 }
 
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) listProjects(ctx context.Context) ([]source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
+
+	dataToSync := []source.Data{}
 	projectList, err := s.cs.GetProjects(ctx)
 	if err != nil {
-		return fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
 	}
 	log.Trace("fetched projects", "count", len(projectList))
+
 	for _, project := range projectList {
 		data := source.Data{
 			Type:      "project",
@@ -85,6 +88,108 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 			Values:    map[string]any{"project": project},
 			Time:      time.Now(),
 		}
+		dataToSync = append(dataToSync, data)
+	}
+
+	return dataToSync, nil
+}
+
+func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	dataToSync := []source.Data{}
+	var configurationList []map[string]any
+	projectList, err := s.cs.GetProjects(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+	}
+	log.Trace("fetched projects", "count", len(projectList))
+	for _, project := range projectList {
+		log.Trace("fetching revisions for project", "_id", project["_id"], "projectId", project["projectId"])
+
+		revisions, err := s.cs.GetRevisions(ctx, project["projectId"].(string))
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+		}
+		log.Trace("fetched revisions", "count", len(revisions), "_id", project["_id"], "projectId", project["projectId"])
+
+		for _, revision := range revisions {
+			log.Trace("fetching configuration for project", "_id", project["_id"], "projectId", project["projectId"], "revisionName", revision["name"])
+
+			configuration, err := s.cs.GetConfiguration(ctx, project["projectId"].(string), revision["name"].(string))
+			if err != nil {
+				return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+			}
+
+			// Remove castFunctions from fastDataConfig to reduce payload size
+			if fdConfig, ok := configuration["fastDataConfig"].(map[string]any); ok {
+				fdConfig["castFunctions"] = nil
+			}
+
+			configurationData := map[string]any{
+				"project": map[string]any{
+					"_id":       project["_id"],
+					"projectId": project["projectId"],
+					"tenantId":  project["tenantId"],
+				},
+				"revision": map[string]any{
+					"name": revision["name"],
+				},
+				"configuration": map[string]any{
+					"commitId": configuration,
+				},
+			}
+			configurationList = append(configurationList, configurationData)
+		}
+	}
+	for _, fullConfiguration := range configurationList {
+		data := source.Data{
+			Type:      "configuration",
+			Operation: source.DataOperationUpsert,
+			Values:    map[string]any{"data": fullConfiguration},
+			Time:      time.Now(),
+		}
+		dataToSync = append(dataToSync, data)
+	}
+
+	return dataToSync, nil
+}
+
+func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.Extra) ([]source.Data, error) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	dataToSync := []source.Data{}
+	typesToSyncSlice := slices.Sorted(maps.Keys(typesToSync))
+
+	if slices.Contains(typesToSyncSlice, "project") {
+		log.Trace("fetching projects from console")
+		projectsData, err := s.listProjects(ctx)
+		log.Trace("fetching projects from console done")
+		if err != nil {
+			return nil, err
+		}
+		dataToSync = append(dataToSync, projectsData...)
+	}
+
+	if slices.Contains(typesToSyncSlice, "configuration") {
+		log.Trace("fetching configurations from console")
+		configurationsData, err := s.listConfigurations(ctx)
+		log.Trace("fetching configurations from console done")
+		if err != nil {
+			return nil, err
+		}
+		dataToSync = append(dataToSync, configurationsData...)
+	}
+
+	return dataToSync, nil
+}
+
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+	dataToSync, err := s.listAssets(ctx, typesToSync)
+	if err != nil {
+		return err
+	}
+	for _, data := range dataToSync {
 		results <- data
 	}
 	return nil
@@ -125,7 +230,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 }
 
 func doChain(ctx context.Context, event event, channel chan<- source.Data, cs service.ConsoleServiceInterface) error {
-	var data []source.Data
+	var data *source.Data
 	var err error
 	switch event.GetResource() {
 	case "configuration":
@@ -138,25 +243,23 @@ func doChain(ctx context.Context, event event, channel chan<- source.Data, cs se
 	if err != nil {
 		return fmt.Errorf("%w: %s", ErrEventChainProcessing, err.Error())
 	}
-	for _, d := range data {
-		channel <- d
-	}
+	channel <- *data
 	return nil
 }
 
-func defaultEventChain(event event) []source.Data {
-	return []source.Data{
-		{
-			Type:      event.GetResource(),
-			Operation: event.Operation(),
-			Values:    event.Payload,
-			Time:      event.UnixEventTimestamp(),
-		},
+func defaultEventChain(event event) *source.Data {
+	return &source.Data{
+		Type:      event.GetResource(),
+		Operation: event.Operation(),
+		Values:    event.Payload,
+		Time:      event.UnixEventTimestamp(),
 	}
 }
 
-func configurationEventChain(ctx context.Context, event event, cs service.ConsoleServiceInterface) ([]source.Data, error) {
-	var projectID, resourceID string
+func configurationEventChain(ctx context.Context, event event, cs service.ConsoleServiceInterface) (*source.Data, error) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	var projectID, revisionID, tenantID string
 	var ok bool
 	if event.Payload == nil {
 		return nil, errors.New("configuration event payload is nil")
@@ -164,28 +267,54 @@ func configurationEventChain(ctx context.Context, event event, cs service.Consol
 	if projectID, ok = event.Payload["projectId"].(string); !ok {
 		return nil, errors.New("configuration event payload missing projectId")
 	}
-	if resourceID, ok = event.Payload["resourceId"].(string); !ok {
-		return nil, errors.New("configuration event payload missing resourceId")
+	if revisionID, ok = event.Payload["revisionId"].(string); !ok {
+		return nil, errors.New("configuration event payload missing revisionId")
+	}
+	if tenantID, ok = event.Payload["tenantId"].(string); !ok {
+		log.Error("configuration event payload missing tenantId")
 	}
 
-	configuration, err := cs.GetRevision(ctx, projectID, resourceID)
+	configuration, err := getProjectConfiguration(ctx, tenantID, projectID, revisionID, cs)
 	if err != nil {
 		return nil, err
 	}
+	return configuration, nil
+}
 
-	values := map[string]any{
-		"event":         event.Payload,
-		"configuration": configuration,
+func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionName string, cs service.ConsoleServiceInterface) (*source.Data, error) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	log.Trace("fetching configuration for project", "_id", projectID, "revisionName", revisionName)
+	configuration, err := cs.GetConfiguration(ctx, projectID, revisionName)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
 	}
 
-	return []source.Data{
-		{
-			Type:      event.GetResource(),
-			Operation: event.Operation(),
-			Values:    values,
-			Time:      event.UnixEventTimestamp(),
+	// Remove castFunctions from fastDataConfig to reduce payload size
+	if fdConfig, ok := configuration["fastDataConfig"].(map[string]any); ok {
+		fdConfig["castFunctions"] = nil
+	}
+
+	configurationData := map[string]any{
+		"project": map[string]any{
+			"_id":      projectID,
+			"tenantId": tenantID,
 		},
-	}, nil
+		"revision": map[string]any{
+			"name": revisionName,
+		},
+		"configuration": map[string]any{
+			"commitId": configuration,
+		},
+	}
+
+	data := source.Data{
+		Type:      "configuration",
+		Operation: source.DataOperationUpsert,
+		Values:    map[string]any{"data": configurationData},
+		Time:      time.Now(),
+	}
+	return &data, nil
 }
 
 // func validateSignature(body []byte, secret, signatureHeader string) bool {
