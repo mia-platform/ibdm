@@ -107,7 +107,7 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 	for _, project := range projectList {
 		log.Trace("fetching revisions for project", "_id", project["_id"], "projectId", project["projectId"])
 
-		revisions, err := s.cs.GetRevisions(ctx, project["projectId"].(string))
+		revisions, err := s.cs.GetRevisions(ctx, project["_id"].(string))
 		if err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
 		}
@@ -116,7 +116,7 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 		for _, revision := range revisions {
 			log.Trace("fetching configuration for project", "_id", project["_id"], "projectId", project["projectId"], "revisionName", revision["name"])
 
-			configuration, err := s.cs.GetConfiguration(ctx, project["projectId"].(string), revision["name"].(string))
+			configuration, err := s.cs.GetConfiguration(ctx, project["_id"].(string), revision["name"].(string))
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
 			}
