@@ -1,6 +1,6 @@
 apiVersion: console.mia-platform.eu/v1alpha1
 resource: configurations
-type: configurations
+type: configuration
 syncable: true
 mappings:
   identifier: |-
