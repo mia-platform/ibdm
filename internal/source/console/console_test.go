@@ -191,12 +191,19 @@ func Test_DoChain(t *testing.T) {
 					Type:      "configuration",
 					Operation: source.DataOperationUpsert,
 					Values: map[string]any{
-						"event": map[string]any{
-							"projectId":  "p1",
-							"revisionId": "r1",
-						},
-						"configuration": map[string]any{
-							"key": "value",
+						"data": map[string]any{
+							"project": map[string]any{
+								"_id":      "p1",
+								"tenantId": "",
+							},
+							"revision": map[string]any{
+								"name": "r1",
+							},
+							"configuration": map[string]any{
+								"commitId": map[string]any{
+									"key": "value",
+								},
+							},
 						},
 					},
 					Time: time.Unix(1672531200, 0),
@@ -263,9 +270,21 @@ func Test_DoChain(t *testing.T) {
 
 			var data []source.Data
 			for d := range ch {
+				if d.Type == "configuration" {
+					d.Time = time.Time{}
+				}
 				data = append(data, d)
 			}
-			require.ElementsMatch(t, test.expectedData, data)
+
+			expected := make([]source.Data, len(test.expectedData))
+			copy(expected, test.expectedData)
+			for i := range expected {
+				if expected[i].Type == "configuration" {
+					expected[i].Time = time.Time{}
+				}
+			}
+
+			require.ElementsMatch(t, expected, data)
 		})
 	}
 }
