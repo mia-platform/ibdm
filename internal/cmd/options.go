@@ -23,12 +23,12 @@ type options struct {
 }
 
 // validate checks the configured values and reports invalid setups.
-func (o *options) validate() error {
+func (o *options) validate(eventSources map[string]string) error {
 	if o.integrationName == "" {
 		return errNoArguments
 	}
 
-	if _, ok := availableEventSources[o.integrationName]; !ok {
+	if _, ok := eventSources[o.integrationName]; !ok {
 		return fmt.Errorf("%w: %s", errInvalidIntegration, o.integrationName)
 	}
 
