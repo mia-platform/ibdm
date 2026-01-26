@@ -259,7 +259,7 @@ func defaultEventChain(event event) *source.Data {
 func configurationEventChain(ctx context.Context, event event, cs service.ConsoleServiceInterface) (*source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	var projectID, revisionID, tenantID string
+	var projectID, revisionName, tenantID string
 	var ok bool
 	if event.Payload == nil {
 		return nil, errors.New("configuration event payload is nil")
@@ -267,14 +267,14 @@ func configurationEventChain(ctx context.Context, event event, cs service.Consol
 	if projectID, ok = event.Payload["projectId"].(string); !ok {
 		return nil, errors.New("configuration event payload missing projectId")
 	}
-	if revisionID, ok = event.Payload["revisionId"].(string); !ok {
-		return nil, errors.New("configuration event payload missing revisionId")
+	if revisionName, ok = event.Payload["revisionName"].(string); !ok {
+		return nil, errors.New("configuration event payload missing revisionName")
 	}
 	if tenantID, ok = event.Payload["tenantId"].(string); !ok {
 		log.Error("configuration event payload missing tenantId")
 	}
 
-	configuration, err := getProjectConfiguration(ctx, tenantID, projectID, revisionID, cs)
+	configuration, err := getProjectConfiguration(ctx, tenantID, projectID, revisionName, cs)
 	if err != nil {
 		return nil, err
 	}
