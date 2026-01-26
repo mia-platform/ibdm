@@ -4,8 +4,9 @@ type: project
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s-%s" .project.tenantId .project.projectId }}
+    {{ printf "%s" .project._id }}
   spec:
+    uniqueId: "{{ .project._id }}"
     projectId: "{{ .project.projectId }}"
     tenantId: "{{ .project.tenantId }}"
     name: "{{ .project.name }}"

@@ -21,6 +21,9 @@ spec:
             spec:
               type: object
               properties:
+                uniqueId:
+                  description: The unique identifier for the project.
+                  type: string
                 projectId:
                   description: The project ID used to identify the project in Console
                   type: string

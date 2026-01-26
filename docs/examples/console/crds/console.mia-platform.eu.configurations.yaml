@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: configurations.console.mia-platform.eu
+spec:
+  group: console.mia-platform.eu
+  names:
+    kind: Configuration
+    plural: configurations
+    singular: configuration
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                projectUniqueId:
+                  description: The unique identifier for the project.
+                  type: string
+                projectId:
+                  description: The project ID used to identify the project in Console
+                  type: string
+                tenantId:
+                  description: The tenant ID used to identify the tenant in Console
+                  type: string
+                revisionName:
+                  description: The user visible name for the revision.
+                  type: string
+                configuration:
+                  description: The configuration data for the revision.
+                  type: object
+                  additionalProperties: true
+      served: true
+      storage: true
