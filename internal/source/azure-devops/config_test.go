@@ -4,10 +4,10 @@
 package azuredevops
 
 import (
-	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConnection(t *testing.T) {
@@ -18,10 +18,11 @@ func TestConnection(t *testing.T) {
 		PersonalToken:   "pat",
 	}
 
-	conn := cfg.connection()
-	assert.NotNil(t, conn)
-	assert.Equal(t, "https://localhost:3000/myorg", conn.BaseUrl)
-	assert.Equal(t, "Basic "+base64.StdEncoding.EncodeToString([]byte(":pat")), conn.AuthorizationString)
+	client, err := cfg.client()
+	require.NoError(t, err)
+	assert.NotNil(t, client)
+	assert.Equal(t, "https://localhost:3000/myorg/", client.organizationURL.String())
+	assert.Equal(t, "pat", client.personalToken)
 }
 
 func TestValidation(t *testing.T) {

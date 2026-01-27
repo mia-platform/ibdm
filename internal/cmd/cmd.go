@@ -24,6 +24,7 @@ const (
 	The available integrations are:
 	- azure: Microsoft Azure integration
 	- console: Mia Platform Console integration
+	- azure-devops: Microsoft Azure DevOps integration
 	- gcp: Google Cloud Platform integration`
 
 	runCmdExample = `# Run the Google Cloud Platform integration
@@ -38,6 +39,7 @@ const (
 
 	The available integrations are:
 	- azure: Microsoft Azure integration
+	- azure-devops: Microsoft Azure DevOps integration
 	- gcp: Google Cloud Platform integration`
 
 	syncCmdExample = `# Run the Google Cloud Platform synchronization
