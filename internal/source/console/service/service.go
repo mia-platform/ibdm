@@ -18,8 +18,6 @@ const (
 	statusCodeErrorRangeStart = 400
 )
 
-var _ ConsoleServiceInterface = &ConsoleService{}
-
 // ConsoleService implements consoleServiceInterface against the Mia-Platform Console API.
 type ConsoleService struct {
 	config
@@ -39,29 +37,21 @@ func NewConsoleService() (*ConsoleService, error) {
 
 func (c *ConsoleService) GetProjects(ctx context.Context) ([]map[string]any, error) {
 	requestPath := "/projects/"
-	return c.doListRequest(ctx, requestPath)
+	return doRequest[[]map[string]any](ctx, c, requestPath)
 }
 
 func (c *ConsoleService) GetRevisions(ctx context.Context, projectID string) ([]map[string]any, error) {
 	requestPath := "/projects/" + projectID + "/revisions"
-	return c.doListRequest(ctx, requestPath)
+	return doRequest[[]map[string]any](ctx, c, requestPath)
 }
 
 func (c *ConsoleService) GetProject(ctx context.Context, projectID string) (map[string]any, error) {
 	requestPath := "/projects/" + projectID + "?withTenant=true"
-	return c.doRequest(ctx, requestPath)
+	return doRequest[map[string]any](ctx, c, requestPath)
 }
 
 func (c *ConsoleService) GetConfiguration(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
 	requestPath := "/projects/" + projectID + "/revisions/" + revisionID + "/configuration"
-	return c.doRequest(ctx, requestPath)
-}
-
-func (c *ConsoleService) doListRequest(ctx context.Context, requestPath string) ([]map[string]any, error) {
-	return doRequest[[]map[string]any](ctx, c, requestPath)
-}
-
-func (c *ConsoleService) doRequest(ctx context.Context, requestPath string) (map[string]any, error) {
 	return doRequest[map[string]any](ctx, c, requestPath)
 }
 

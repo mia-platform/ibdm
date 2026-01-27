@@ -4,57 +4,23 @@
 package console
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/source"
+	"github.com/mia-platform/ibdm/internal/source/console/service"
 )
-
-type MockConsoleService struct {
-	GetProjectFunc       func(ctx context.Context, projectID string) (map[string]any, error)
-	GetProjectsFunc      func(ctx context.Context) ([]map[string]any, error)
-	GetRevisionsFunc     func(ctx context.Context, projectID string) ([]map[string]any, error)
-	GetConfigurationFunc func(ctx context.Context, projectID, revisionID string) (map[string]any, error)
-}
-
-func (m *MockConsoleService) GetProject(ctx context.Context, projectID string) (map[string]any, error) {
-	if m.GetProjectFunc != nil {
-		return m.GetProjectFunc(ctx, projectID)
-	}
-	return nil, nil
-}
-
-func (m *MockConsoleService) GetProjects(ctx context.Context) ([]map[string]any, error) {
-	if m.GetProjectsFunc != nil {
-		return m.GetProjectsFunc(ctx)
-	}
-	return nil, nil
-}
-
-func (m *MockConsoleService) GetRevisions(ctx context.Context, projectID string) ([]map[string]any, error) {
-	if m.GetRevisionsFunc != nil {
-		return m.GetRevisionsFunc(ctx, projectID)
-	}
-	return nil, nil
-}
-
-func (m *MockConsoleService) GetConfiguration(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
-	if m.GetConfigurationFunc != nil {
-		return m.GetConfigurationFunc(ctx, projectID, revisionID)
-	}
-	return nil, nil
-}
 
 func TestSource_GetWebhook(t *testing.T) {
 	t.Run("successfully creates webhook and processes events", func(t *testing.T) {
 		ctx := t.Context()
-		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
-		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
+		// t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+		// t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 
 		s, err := NewSource()
 		require.NoError(t, err)
@@ -65,7 +31,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
 
-		require.Equal(t, "/webhook", webhook.Path)
+		require.Equal(t, "/console-webhook", webhook.Path)
 		require.Equal(t, http.MethodPost, webhook.Method)
 		require.NotNil(t, webhook.Handler)
 
@@ -174,26 +140,25 @@ func TestNewSource(t *testing.T) {
 func Test_DoChain(t *testing.T) {
 	tests := map[string]struct {
 		event         event
-		mockSetup     func(*MockConsoleService)
+		handler       http.HandlerFunc
 		expectedError error
 		expectedData  []source.Data
 	}{
 		"configuration event": {
 			event: event{
 				EventName:      "configuration_created",
-				EventTimestamp: 1672531200, // 2023-01-01 00:00:00 UTC
+				EventTimestamp: 1672531200000, // 2023-01-01 00:00:00 UTC
 				Payload: map[string]any{
 					"projectId":    "p1",
 					"revisionName": "r1",
 				},
 			},
-			mockSetup: func(m *MockConsoleService) {
-				m.GetConfigurationFunc = func(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
-					if projectID == "p1" && revisionID == "r1" {
-						return map[string]any{"key": "value"}, nil
-					}
-					return nil, nil
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/projects/p1/revisions/r1/configuration" {
+					w.WriteHeader(http.StatusNotFound)
+					return
 				}
+				json.NewEncoder(w).Encode(map[string]any{"key": "value"})
 			},
 			expectedData: []source.Data{
 				{
@@ -222,10 +187,13 @@ func Test_DoChain(t *testing.T) {
 		"project event: delete": {
 			event: event{
 				EventName:      "project_deleted",
-				EventTimestamp: 1672531200,
+				EventTimestamp: 1672531200000,
 				Payload: map[string]any{
 					"id": "123",
 				},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNotImplemented)
 			},
 			expectedData: []source.Data{
 				{
@@ -241,10 +209,13 @@ func Test_DoChain(t *testing.T) {
 		"other event": {
 			event: event{
 				EventName:      "other_resource_updated",
-				EventTimestamp: 1672531200,
+				EventTimestamp: 1672531200000,
 				Payload: map[string]any{
 					"foo": "bar",
 				},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNotImplemented)
 			},
 			expectedData: []source.Data{
 				{
@@ -263,13 +234,16 @@ func Test_DoChain(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			ctx := t.Context()
 
-			ch := make(chan source.Data, len(test.expectedData)+1)
-			mockSvc := &MockConsoleService{}
-			if test.mockSetup != nil {
-				test.mockSetup(mockSvc)
-			}
+			server := httptest.NewServer(test.handler)
+			defer server.Close()
+			t.Setenv("CONSOLE_ENDPOINT", server.URL)
 
-			err := doChain(ctx, test.event, ch, mockSvc)
+			cs, err := service.NewConsoleService()
+			require.NoError(t, err)
+
+			ch := make(chan source.Data, len(test.expectedData)+1)
+
+			err = doChain(ctx, test.event, ch, cs)
 			if test.expectedError != nil {
 				require.ErrorIs(t, err, test.expectedError)
 				return
@@ -299,9 +273,7 @@ func Test_DoChain(t *testing.T) {
 }
 
 func TestSource_listAssets(t *testing.T) {
-	t.Parallel()
 	t.Run("successfully lists projects and configurations", func(t *testing.T) {
-		t.Parallel()
 		ctx := t.Context()
 
 		project1 := map[string]any{
@@ -314,30 +286,33 @@ func TestSource_listAssets(t *testing.T) {
 			"name": "r1",
 		}
 
-		mockSvc := &MockConsoleService{
-			GetProjectsFunc: func(ctx context.Context) ([]map[string]any, error) {
-				return []map[string]any{project1}, nil
-			},
-			GetRevisionsFunc: func(ctx context.Context, projectID string) ([]map[string]any, error) {
-				if projectID == "p1" {
-					return []map[string]any{revision1}, nil
-				}
-				return nil, nil
-			},
-			GetConfigurationFunc: func(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
-				if projectID == "p1" && revisionID == "r1" {
-					return map[string]any{
-						"key": "value",
-						"fastDataConfig": map[string]any{
-							"castFunctions": "some-code",
-						},
-					}, nil
-				}
-				return nil, nil
-			},
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/projects/":
+				json.NewEncoder(w).Encode([]map[string]any{project1})
+			case "/projects/p1/revisions":
+				json.NewEncoder(w).Encode([]map[string]any{revision1})
+			case "/projects/p1/revisions/r1/configuration":
+				json.NewEncoder(w).Encode(map[string]any{
+					"key": "value",
+					"fastDataConfig": map[string]any{
+						"castFunctions": "some-code",
+					},
+				})
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
 		}
 
-		s := &Source{cs: mockSvc}
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
 		typesToSync := map[string]source.Extra{
 			"project":       {},
 			"configuration": {},
@@ -390,56 +365,76 @@ func TestSource_listAssets(t *testing.T) {
 	})
 
 	t.Run("returns error when GetProjects fails", func(t *testing.T) {
-		t.Parallel()
 		ctx := t.Context()
-		mockSvc := &MockConsoleService{
-			GetProjectsFunc: func(ctx context.Context) ([]map[string]any, error) {
-				return nil, http.ErrHandlerTimeout
-			},
-		}
-		s := &Source{cs: mockSvc}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
 		typesToSync := map[string]source.Extra{"project": {}}
 
-		_, err := s.listAssets(ctx, typesToSync)
+		_, err = s.listAssets(ctx, typesToSync)
 		require.ErrorIs(t, err, ErrRetrievingAssets)
 	})
 
 	t.Run("returns error when GetRevisions fails during configuration sync", func(t *testing.T) {
-		t.Parallel()
 		ctx := t.Context()
-		mockSvc := &MockConsoleService{
-			GetProjectsFunc: func(ctx context.Context) ([]map[string]any, error) {
-				return []map[string]any{{"_id": "p1"}}, nil
-			},
-			GetRevisionsFunc: func(ctx context.Context, projectID string) ([]map[string]any, error) {
-				return nil, http.ErrHandlerTimeout
-			},
+
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/projects/" {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode([]map[string]any{{"_id": "p1"}})
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
 		}
-		s := &Source{cs: mockSvc}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
 		typesToSync := map[string]source.Extra{"configuration": {}}
 
-		_, err := s.listAssets(ctx, typesToSync)
+		_, err = s.listAssets(ctx, typesToSync)
 		require.ErrorIs(t, err, ErrRetrievingAssets)
 	})
 
 	t.Run("returns error when GetConfiguration fails during configuration sync", func(t *testing.T) {
-		t.Parallel()
 		ctx := t.Context()
-		mockSvc := &MockConsoleService{
-			GetProjectsFunc: func(ctx context.Context) ([]map[string]any, error) {
-				return []map[string]any{{"_id": "p1"}}, nil
-			},
-			GetRevisionsFunc: func(ctx context.Context, projectID string) ([]map[string]any, error) {
-				return []map[string]any{{"name": "r1"}}, nil
-			},
-			GetConfigurationFunc: func(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
-				return nil, http.ErrHandlerTimeout
-			},
+
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/projects/":
+				json.NewEncoder(w).Encode([]map[string]any{{"_id": "p1"}})
+			case "/projects/p1/revisions":
+				json.NewEncoder(w).Encode([]map[string]any{{"name": "r1"}})
+			default:
+				w.WriteHeader(http.StatusInternalServerError)
+			}
 		}
-		s := &Source{cs: mockSvc}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
 		typesToSync := map[string]source.Extra{"configuration": {}}
 
-		_, err := s.listAssets(ctx, typesToSync)
+		_, err = s.listAssets(ctx, typesToSync)
 		require.ErrorIs(t, err, ErrRetrievingAssets)
 	})
 }

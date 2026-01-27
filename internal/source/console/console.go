@@ -19,8 +19,10 @@ import (
 )
 
 const (
-	loggerName     = "ibdm:source:console"
-	authHeaderName = "X-Mia-Signature"
+	loggerName            = "ibdm:source:console"
+	authHeaderName        = "X-Mia-Signature"
+	configurationResource = "configuration"
+	projectResource       = "project"
 )
 
 var (
@@ -31,7 +33,6 @@ var (
 	ErrRetrievingAssets     = errors.New("error retrieving assets from console")
 )
 
-// Source wires Console clients to satisfy source interfaces.
 type webhookClient struct {
 	config webhookConfig
 }
@@ -40,7 +41,7 @@ var _ source.WebhookSource = &Source{}
 
 type Source struct {
 	c  *webhookClient
-	cs service.ConsoleServiceInterface
+	cs *service.ConsoleService
 }
 
 func NewSource() (*Source, error) {
@@ -229,13 +230,13 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 	}, nil
 }
 
-func doChain(ctx context.Context, event event, channel chan<- source.Data, cs service.ConsoleServiceInterface) error {
+func doChain(ctx context.Context, event event, channel chan<- source.Data, cs *service.ConsoleService) error {
 	var data *source.Data
 	var err error
 	switch event.GetResource() {
-	case "configuration":
+	case configurationResource:
 		data, err = configurationEventChain(ctx, event, cs)
-	case "project":
+	case projectResource:
 		data = defaultEventChain(event)
 	default:
 		data = defaultEventChain(event)
@@ -256,7 +257,7 @@ func defaultEventChain(event event) *source.Data {
 	}
 }
 
-func configurationEventChain(ctx context.Context, event event, cs service.ConsoleServiceInterface) (*source.Data, error) {
+func configurationEventChain(ctx context.Context, event event, cs *service.ConsoleService) (*source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	var projectID, revisionName, tenantID string
@@ -281,7 +282,7 @@ func configurationEventChain(ctx context.Context, event event, cs service.Consol
 	return configuration, nil
 }
 
-func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionName string, cs service.ConsoleServiceInterface) (*source.Data, error) {
+func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionName string, cs *service.ConsoleService) (*source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	log.Trace("fetching configuration for project", "_id", projectID, "revisionName", revisionName)
