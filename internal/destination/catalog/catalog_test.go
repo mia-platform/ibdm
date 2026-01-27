@@ -354,6 +354,9 @@ func TestContextCancelled(t *testing.T) {
 	t.Parallel()
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			defer r.Body.Close()
+		}
 		http.Error(w, "should not be called", http.StatusInternalServerError)
 	}))
 
@@ -372,6 +375,9 @@ func TestClientCredentialFlow(t *testing.T) {
 	t.Parallel()
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			defer r.Body.Close()
+		}
 		if r.Method == http.MethodPost && r.RequestURI == "/oauth/token" {
 			err := r.ParseForm()
 			assert.NoError(t, err)

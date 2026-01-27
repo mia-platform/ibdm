@@ -74,6 +74,10 @@ func TestMultipleSyncStart(t *testing.T) {
 
 	syncChan := make(chan struct{})
 	hangedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			defer r.Body.Close()
+		}
+
 		syncChan <- struct{}{}
 		<-ctx.Done()
 		http.NotFound(w, r)

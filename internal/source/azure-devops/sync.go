@@ -17,6 +17,8 @@ import (
 const (
 	gitRepositoryType = "gitrepository"
 	teamType          = "team"
+
+	continuationHeader = "X-MS-ContinuationToken"
 )
 
 var timeSource = time.Now
@@ -57,7 +59,7 @@ func syncResources(ctx context.Context, client *client, typesToFilter map[string
 				}
 			}
 
-			if nextLink := resp.Header.Get("X-MS-ContinuationToken"); nextLink != "" {
+			if nextLink := resp.Header.Get(continuationHeader); nextLink != "" { //nolint:canonicalheader
 				queryParam.Set("continuationToken", nextLink)
 				continue
 			}

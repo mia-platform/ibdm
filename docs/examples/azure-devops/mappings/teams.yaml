@@ -3,6 +3,8 @@ resource: teams
 type: team
 syncable: true
 mappings:
-  identifier: "{{ .identityUrl | sha256sum }}"
+  identifier: "{{ .url | sha256sum }}"
   spec:
-    original: "{{ . | toJSON }}"
+    name: "{{ .name }}"
+    projectName: "{{ .projectName }}"
+    description: "{{ get \"description\" . \"\" | quote }}"
