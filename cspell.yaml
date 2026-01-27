@@ -4,6 +4,7 @@ useGitignore: true
 allowCompoundWords: true
 words:
   - anchore
+  - crds
   - gopath
   - gsrv
   - ibdm

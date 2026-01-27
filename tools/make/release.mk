@@ -20,7 +20,7 @@ BUILD_TARGETS := $(RELEASE_DIR)/$(CMD_NAME)-Linux-x86_64 \
 	$(RELEASE_DIR)/$(CMD_NAME)-Darwin-x86_64 \
 	$(RELEASE_DIR)/$(CMD_NAME)-Darwin-arm64
 
-TARGETS := $(BUILD_TARGETS:%=%.sigstore.json) $(BUILD_TARGETS:%=%.sbom.json)
+TARGETS := $(BUILD_TARGETS:%=%.sigstore.json) $(RELEASE_DIR)/crds-mappings.tar.gz.sigstore.json $(BUILD_TARGETS:%=%.sbom.json)
 
 # if not already installed in the system install a pinned version in tools folder
 SYFT_PATH:= $(shell command -v syft 2> /dev/null)
@@ -63,6 +63,10 @@ ifdef COSIGN_PRIVATE_KEY
 else
 	$(COSIGN_PATH) sign-blob $< --key cosign.key --tlog-upload=false --use-signing-config=false --bundle $@ --yes
 endif
+
+$(RELEASE_DIR)/crds-mappings.tar.gz: docs/examples/*
+	$(info Creating crds-mappings tarball...)
+	tar -czf $@ -C docs/examples .
 
 $(TOOLS_BIN)/cosign: $(TOOLS_DIR)/COSIGN_VERSION
 	$(eval COSIGN_VERSION:= $(shell cat $<))
