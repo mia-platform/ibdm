@@ -34,13 +34,18 @@ func TestSource_NewSource(t *testing.T) {
 }
 
 func TestSource_GetWebhook(t *testing.T) {
+	t.Parallel()
 	t.Run("successfully creates webhook and processes events", func(t *testing.T) {
+		t.Parallel()
 		ctx := t.Context()
-		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
-		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 
-		s, err := NewSource()
-		require.NoError(t, err)
+		s := Source{
+			c: &webhookClient{
+				config: webhookConfig{
+					WebhookPath: "/webhook",
+				},
+			},
+		}
 
 		results := make(chan source.Data, 1)
 		typesToStream := map[string]source.Extra{"project": {}}
@@ -85,12 +90,16 @@ func TestSource_GetWebhook(t *testing.T) {
 	})
 
 	t.Run("ignores events not in typesToStream", func(t *testing.T) {
+		t.Parallel()
 		ctx := t.Context()
-		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
-		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 
-		s, err := NewSource()
-		require.NoError(t, err)
+		s := Source{
+			c: &webhookClient{
+				config: webhookConfig{
+					WebhookPath: "/webhook",
+				},
+			},
+		}
 
 		results := make(chan source.Data, 1)
 		typesToStream := map[string]source.Extra{"project": {}}
@@ -120,12 +129,16 @@ func TestSource_GetWebhook(t *testing.T) {
 	})
 
 	t.Run("returns error on invalid json", func(t *testing.T) {
+		t.Parallel()
 		ctx := t.Context()
-		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
-		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 
-		s, err := NewSource()
-		require.NoError(t, err)
+		s := Source{
+			c: &webhookClient{
+				config: webhookConfig{
+					WebhookPath: "/webhook",
+				},
+			},
+		}
 
 		results := make(chan source.Data, 1)
 		typesToStream := map[string]source.Extra{"user": {}}
@@ -137,20 +150,6 @@ func TestSource_GetWebhook(t *testing.T) {
 		headers := http.Header{}
 		err = webhook.Handler(headers, body)
 		require.Error(t, err)
-	})
-}
-
-func TestNewSource(t *testing.T) {
-	t.Run("creates source successfully", func(t *testing.T) {
-		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
-		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
-		t.Setenv("CONSOLE_WEBHOOK_SECRET", "secret")
-		t.Setenv("CONSOLE_PROJECT_ID", "test-project")
-		s, err := NewSource()
-		require.NoError(t, err)
-		require.NotNil(t, s)
-		require.NotNil(t, s.c)
-		require.Equal(t, "/webhook", s.c.config.WebhookPath)
 	})
 }
 
