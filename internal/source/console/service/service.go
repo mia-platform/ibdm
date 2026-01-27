@@ -58,56 +58,18 @@ func (c *ConsoleService) GetConfiguration(ctx context.Context, projectID, revisi
 }
 
 func (c *ConsoleService) doListRequest(ctx context.Context, requestPath string) ([]map[string]any, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, c.ConsoleEndpoint+requestPath, nil)
-	if err != nil {
-		return nil, handleError(err)
-	}
-
-	request.Header.Set("User-Agent", userAgentString())
-	request.Header.Set("Accept", "application/json")
-
-	//nolint:contextcheck // need a new context because it will be used in token requests
-	resp, err := c.getClient(context.Background()).Do(request)
-	if err != nil {
-		return nil, handleError(err)
-	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusForbidden, http.StatusUnauthorized:
-		return nil, handleError(errors.New("invalid token or insufficient permissions"))
-	case http.StatusNotFound:
-		return nil, handleError(errors.New("resource not found"))
-	case http.StatusNoContent:
-		return nil, nil
-	default:
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, handleError(err)
-		}
-
-		if resp.StatusCode >= statusCodeErrorRangeStart {
-			var errResp map[string]any
-			if err := json.Unmarshal(body, &errResp); err == nil {
-				if msg, ok := errResp["message"].(string); ok {
-					return nil, handleError(errors.New(msg))
-				}
-			}
-			return nil, handleError(errors.New("unexpected error"))
-		}
-
-		var respBody []map[string]any
-		if err := json.Unmarshal(body, &respBody); err != nil {
-			return nil, handleError(err)
-		}
-		return respBody, nil
-	}
+	return doRequest[[]map[string]any](ctx, c, requestPath)
 }
 
 func (c *ConsoleService) doRequest(ctx context.Context, requestPath string) (map[string]any, error) {
+	return doRequest[map[string]any](ctx, c, requestPath)
+}
+
+func doRequest[T []map[string]any | map[string]any](ctx context.Context, c *ConsoleService, requestPath string) (T, error) {
+	var nilValue T
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, c.ConsoleEndpoint+requestPath, nil)
 	if err != nil {
-		return nil, handleError(err)
+		return nilValue, handleError(err)
 	}
 
 	request.Header.Set("User-Agent", userAgentString())
@@ -116,36 +78,36 @@ func (c *ConsoleService) doRequest(ctx context.Context, requestPath string) (map
 	//nolint:contextcheck // need a new context because it will be used in token requests
 	resp, err := c.getClient(context.Background()).Do(request)
 	if err != nil {
-		return nil, handleError(err)
+		return nilValue, handleError(err)
 	}
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
 	case http.StatusForbidden, http.StatusUnauthorized:
-		return nil, handleError(errors.New("invalid token or insufficient permissions"))
+		return nilValue, handleError(errors.New("invalid token or insufficient permissions"))
 	case http.StatusNotFound:
-		return nil, handleError(errors.New("resource not found"))
+		return nilValue, handleError(errors.New("resource not found"))
 	case http.StatusNoContent:
-		return nil, nil
+		return nilValue, nil
 	default:
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return nil, handleError(err)
+			return nilValue, handleError(err)
 		}
 
 		if resp.StatusCode >= statusCodeErrorRangeStart {
 			var errResp map[string]any
 			if err := json.Unmarshal(body, &errResp); err == nil {
 				if msg, ok := errResp["message"].(string); ok {
-					return nil, handleError(errors.New(msg))
+					return nilValue, handleError(errors.New(msg))
 				}
 			}
-			return nil, handleError(errors.New("unexpected error"))
+			return nilValue, handleError(errors.New("unexpected error"))
 		}
 
-		var respBody map[string]any
+		var respBody T
 		if err := json.Unmarshal(body, &respBody); err != nil {
-			return nil, handleError(err)
+			return nilValue, handleError(err)
 		}
 		return respBody, nil
 	}
