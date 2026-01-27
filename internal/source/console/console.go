@@ -213,7 +213,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 			}
 
 			if !event.IsTypeIn(slices.Sorted(maps.Keys(typesToStream))) {
-				log.Debug("ignoring event with unlisted type", "eventName ", event.EventName, "resource", event.GetResource(), "name", event.GetName())
+				log.Debug("ignoring event with unlisted type", "eventName ", event.EventName, "resource", event.GetResource())
 				return nil
 			}
 

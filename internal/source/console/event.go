@@ -19,12 +19,8 @@ type event struct {
 	Resource *string
 }
 
-func (e event) GetName() string {
-	return e.Payload["name"].(string)
-}
-
 func (e event) UnixEventTimestamp() time.Time {
-	return time.Unix(e.EventTimestamp, 0)
+	return time.UnixMilli(e.EventTimestamp)
 }
 
 func (e *event) GetResource() string {
