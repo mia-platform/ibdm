@@ -28,7 +28,7 @@ type ConsoleService struct {
 func NewConsoleService() (*ConsoleService, error) {
 	config, err := loadConfigFromEnv()
 	if err != nil {
-		return nil, err
+		return nil, handleError(err)
 	}
 	return &ConsoleService{
 		config: *config,

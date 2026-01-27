@@ -26,11 +26,11 @@ const (
 )
 
 var (
-	ErrSourceCreation       = errors.New("console source creation error")
-	ErrUnmarshalingEvent    = errors.New("error unmarshaling console event")
+	ErrSourceCreation       = errors.New("source creation error")
+	ErrUnmarshalingEvent    = errors.New("error unmarshaling event")
 	ErrEventChainProcessing = errors.New("error in event processing chain")
 	ErrSignatureMismatch    = errors.New("webhook signature mismatch")
-	ErrRetrievingAssets     = errors.New("error retrieving assets from console")
+	ErrRetrievingAssets     = errors.New("error retrieving assets")
 )
 
 type webhookClient struct {

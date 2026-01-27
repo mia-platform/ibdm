@@ -32,7 +32,7 @@ type config struct {
 func loadConfigFromEnv() (*config, error) {
 	config, err := env.ParseAs[config]()
 	if err != nil {
-		return nil, handleError(fmt.Errorf("%w: %s", errParsingConfig, err.Error()))
+		return nil, fmt.Errorf("%w: %s", errParsingConfig, err.Error())
 	}
 	if err := config.validate(); err != nil {
 		return nil, err
@@ -42,20 +42,20 @@ func loadConfigFromEnv() (*config, error) {
 
 func (c *config) validate() error {
 	if c.ConsoleEndpoint == "" {
-		return handleError(errors.New("CONSOLE_ENDPOINT is required"))
+		return errors.New("CONSOLE_ENDPOINT is required")
 	}
 	endpointURL, err := url.Parse(c.ConsoleEndpoint)
 	if err != nil {
-		return handleError(fmt.Errorf("invalid CONSOLE_ENDPOINT: %w", err))
+		return fmt.Errorf("invalid CONSOLE_ENDPOINT: %w", err)
 	}
 
 	switch {
 	case len(c.ClientID) > 0 && len(c.ClientSecret) == 0:
-		return handleError(errMissingClientSecret)
+		return errMissingClientSecret
 	case len(c.ClientSecret) > 0 && len(c.ClientID) == 0:
-		return handleError(errMissingClientID)
+		return errMissingClientID
 	case c.ConsoleJWTServiceAccount && (len(c.PrivateKey) == 0 || len(c.PrivateKeyID) == 0):
-		return handleError(errMissingJWTFields)
+		return errMissingJWTFields
 	}
 
 	if len(c.AuthEndpoint) == 0 {
@@ -64,7 +64,7 @@ func (c *config) validate() error {
 	} else {
 		_, err := url.Parse(c.AuthEndpoint)
 		if err != nil {
-			return handleError(fmt.Errorf("invalid CONSOLE_AUTH_ENDPOINT: %w", err))
+			return fmt.Errorf("invalid CONSOLE_AUTH_ENDPOINT: %w", err)
 		}
 	}
 	return nil

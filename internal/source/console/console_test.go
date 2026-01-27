@@ -16,11 +16,28 @@ import (
 	"github.com/mia-platform/ibdm/internal/source/console/service"
 )
 
+func TestSource_NewSource(t *testing.T) {
+	t.Run("fails when CONSOLE_WEBHOOK_PATH is missing", func(t *testing.T) {
+		s, err := NewSource()
+		require.Error(t, err)
+		require.Nil(t, s)
+	})
+
+	t.Run("succeeds with valid config", func(t *testing.T) {
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
+		s, err := NewSource()
+		require.NoError(t, err)
+		require.NotNil(t, s)
+		require.Equal(t, "/webhook", s.c.config.WebhookPath)
+	})
+}
+
 func TestSource_GetWebhook(t *testing.T) {
 	t.Run("successfully creates webhook and processes events", func(t *testing.T) {
 		ctx := t.Context()
-		// t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
-		// t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 
 		s, err := NewSource()
 		require.NoError(t, err)
@@ -31,7 +48,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
 
-		require.Equal(t, "/console-webhook", webhook.Path)
+		require.Equal(t, "/webhook", webhook.Path)
 		require.Equal(t, http.MethodPost, webhook.Method)
 		require.NotNil(t, webhook.Handler)
 
