@@ -32,6 +32,10 @@ func (c config) validate() error {
 	return nil
 }
 
+func (c config) client() (*client, error) {
+	return newClient(c.OrganizationURL, c.PersonalToken)
+}
+
 func (c config) connection() *azuredevops.Connection {
 	return azuredevops.NewPatConnection(c.OrganizationURL, c.PersonalToken)
 }

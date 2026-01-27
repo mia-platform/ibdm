@@ -6,75 +6,81 @@ package azuredevops
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/url"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/git"
-
-	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
 const (
 	gitRepositoryType = "gitrepository"
+	teamType          = "team"
 )
 
 var timeSource = time.Now
 
-func syncResources(ctx context.Context, connection *azuredevops.Connection, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) (err error) {
+func syncResources(ctx context.Context, client *client, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) (err error) {
 	for typeString := range typesToFilter {
+		var path string
+		queryParam := url.Values{}
 		switch typeString {
 		case gitRepositoryType:
-			err = syncGitRepositories(ctx, connection, dataChannel)
+			path = "_apis/git/repositories"
+			queryParam.Set("includeLinks", "true")
+			queryParam.Set("includeAllUrls", "true")
+			queryParam.Set("includeHidden", "true")
+		case teamType:
+			path = "_apis/teams"
+			queryParam.Set("$expandIdentity", "true")
+		}
+
+		for {
+			resp, err := client.doRequest(ctx, http.MethodGet, path, queryParam)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			results, err := unmarshalResponse(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			for _, item := range results {
+				dataChannel <- source.Data{
+					Type:      typeString,
+					Operation: source.DataOperationUpsert,
+					Time:      timeSource(),
+					Values:    item,
+				}
+			}
+
+			if nextLink := resp.Header.Get("X-MS-ContinuationToken"); nextLink != "" {
+				queryParam.Set("continuationToken", nextLink)
+				continue
+			}
+
+			break
 		}
 	}
 
 	return err
 }
 
-func syncGitRepositories(ctx context.Context, connection *azuredevops.Connection, dataChannel chan<- source.Data) error {
-	log := logger.FromContext(ctx).WithName(logName)
-	client, err := git.NewClient(ctx, connection)
-	if err != nil {
-		return err
+func unmarshalResponse(body io.Reader) ([]map[string]any, error) {
+	type resultsStruct struct {
+		Count int              `json:"count"`
+		Value []map[string]any `json:"value"`
 	}
 
-	timestamp := timeSource()
-	response, err := client.GetRepositories(ctx, git.GetRepositoriesArgs{
-		IncludeLinks:   to.Ptr(true),
-		IncludeAllUrls: to.Ptr(true),
-		IncludeHidden:  to.Ptr(true),
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, repo := range *response {
-		values, err := valuesFromObject(repo)
-		if err != nil {
-			log.Error("fail to parse git repository", "error", err.Error(), "repositoryId", *repo.Id)
-			continue
-		}
-
-		dataChannel <- source.Data{
-			Type:      gitRepositoryType,
-			Operation: source.DataOperationUpsert,
-			Time:      timestamp,
-			Values:    values,
-		}
-	}
-
-	return nil
-}
-
-func valuesFromObject(obj any) (map[string]any, error) {
-	data, err := json.Marshal(obj)
+	results := new(resultsStruct)
+	unmarshaler := json.NewDecoder(body)
+	err := unmarshaler.Decode(&results)
 	if err != nil {
 		return nil, err
 	}
 
-	values := map[string]any{}
-	err = json.Unmarshal(data, &values)
-	return values, err
+	return results.Value, nil
 }

@@ -1,0 +1,8 @@
+apiVersion: azuredevops.mia-platform.eu/v1alpha1
+resource: teams
+type: team
+syncable: true
+mappings:
+  identifier: "{{ .identityUrl | sha256sum }}"
+  spec:
+    original: "{{ . | toJSON }}"

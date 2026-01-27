@@ -66,6 +66,11 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 		return handleErr(err)
 	}
 
+	client, err := s.client()
+	if err != nil {
+		return handleErr(err)
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -73,8 +78,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 		cancel: cancel,
 	})
 
-	err := syncResources(ctx, s.connection(), typesToFilter, dataChannel)
-
+	err = syncResources(ctx, client, typesToFilter, dataChannel)
 	s.syncContext.Store(nil)
 	return handleErr(err)
 }
