@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -100,16 +101,32 @@ func collectPaths(paths []string) ([]string, error) {
 	collected := make([]string, 0)
 	for _, p := range paths {
 		cleanedPath := filepath.Clean(p)
-		err := filepath.Walk(cleanedPath, func(walkedPath string, info fs.FileInfo, err error) error {
+		err := filepath.WalkDir(cleanedPath, func(walkedPath string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return fmt.Errorf("mapping file %q: %w", walkedPath, unwrappedError(err))
 			}
 
 			switch {
-			case !info.IsDir(): // file found, add it to the collection
-				collected = append(collected, walkedPath)
-			case info.IsDir() && cleanedPath != walkedPath: // skip nested directories beyond the root path
+			case d.Type()&fs.ModeSymlink != 0: // resolve symlink and re-evaluate
+				resolvedPath, err := filepath.EvalSymlinks(walkedPath)
+				if err != nil {
+					return fmt.Errorf("resolving symlink %q: %w", walkedPath, unwrappedError(err))
+				}
+
+				info, err := os.Lstat(resolvedPath)
+				if err != nil {
+					return fmt.Errorf("lstat on resolved symlink %q: %w", resolvedPath, unwrappedError(err))
+				}
+
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+
+				collected = append(collected, resolvedPath)
+			case d.IsDir() && cleanedPath != walkedPath: // skip nested directories beyond the root path
 				return filepath.SkipDir
+			case !d.IsDir(): // file found, add it to the collection
+				collected = append(collected, walkedPath)
 			}
 
 			return nil

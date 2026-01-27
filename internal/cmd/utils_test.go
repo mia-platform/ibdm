@@ -22,6 +22,10 @@ func setupTestFileStructure(tb testing.TB, baseDir string) {
 		require.NoError(tb, err)
 	}
 
+	if err := os.Symlink(filepath.Join(baseDir, "valid", "subdir"), filepath.Join(baseDir, "valid", "link")); err != nil {
+		require.NoError(tb, err)
+	}
+
 	if err := os.WriteFile(filepath.Join(baseDir, "valid", "invalid.yaml"), []byte("\tinvalid yaml file"), os.ModePerm); err != nil {
 		require.NoError(tb, err)
 	}
