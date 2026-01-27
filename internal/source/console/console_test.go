@@ -23,14 +23,23 @@ type MockConsoleService struct {
 }
 
 func (m *MockConsoleService) GetProject(ctx context.Context, projectID string) (map[string]any, error) {
+	if m.GetProjectFunc != nil {
+		return m.GetProjectFunc(ctx, projectID)
+	}
 	return nil, nil
 }
 
 func (m *MockConsoleService) GetProjects(ctx context.Context) ([]map[string]any, error) {
+	if m.GetProjectsFunc != nil {
+		return m.GetProjectsFunc(ctx)
+	}
 	return nil, nil
 }
 
 func (m *MockConsoleService) GetRevisions(ctx context.Context, projectID string) ([]map[string]any, error) {
+	if m.GetRevisionsFunc != nil {
+		return m.GetRevisionsFunc(ctx, projectID)
+	}
 	return nil, nil
 }
 
@@ -174,8 +183,8 @@ func Test_DoChain(t *testing.T) {
 				EventName:      "configuration_created",
 				EventTimestamp: 1672531200, // 2023-01-01 00:00:00 UTC
 				Payload: map[string]any{
-					"projectId":  "p1",
-					"revisionId": "r1",
+					"projectId":    "p1",
+					"revisionName": "r1",
 				},
 			},
 			mockSetup: func(m *MockConsoleService) {
@@ -287,4 +296,150 @@ func Test_DoChain(t *testing.T) {
 			require.ElementsMatch(t, expected, data)
 		})
 	}
+}
+
+func TestSource_listAssets(t *testing.T) {
+	t.Parallel()
+	t.Run("successfully lists projects and configurations", func(t *testing.T) {
+		t.Parallel()
+		ctx := t.Context()
+
+		project1 := map[string]any{
+			"_id":       "p1",
+			"projectId": "project-1",
+			"tenantId":  "tenant-1",
+		}
+
+		revision1 := map[string]any{
+			"name": "r1",
+		}
+
+		mockSvc := &MockConsoleService{
+			GetProjectsFunc: func(ctx context.Context) ([]map[string]any, error) {
+				return []map[string]any{project1}, nil
+			},
+			GetRevisionsFunc: func(ctx context.Context, projectID string) ([]map[string]any, error) {
+				if projectID == "p1" {
+					return []map[string]any{revision1}, nil
+				}
+				return nil, nil
+			},
+			GetConfigurationFunc: func(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
+				if projectID == "p1" && revisionID == "r1" {
+					return map[string]any{
+						"key": "value",
+						"fastDataConfig": map[string]any{
+							"castFunctions": "some-code",
+						},
+					}, nil
+				}
+				return nil, nil
+			},
+		}
+
+		s := &Source{cs: mockSvc}
+		typesToSync := map[string]source.Extra{
+			"project":       {},
+			"configuration": {},
+		}
+
+		data, err := s.listAssets(ctx, typesToSync)
+		require.NoError(t, err)
+		require.Len(t, data, 2)
+
+		projectData := data[0]
+		require.Equal(t, "project", projectData.Type)
+		require.Equal(t, source.DataOperationUpsert, projectData.Operation)
+		require.WithinDuration(t, time.Now(), projectData.Time, 5*time.Second)
+
+		expectedProjectValues := map[string]any{
+			"project": map[string]any{
+				"_id":       "p1",
+				"projectId": "project-1",
+				"tenantId":  "tenant-1",
+			},
+		}
+		require.Equal(t, expectedProjectValues, projectData.Values)
+
+		configData := data[1]
+		require.Equal(t, "configuration", configData.Type)
+		require.Equal(t, source.DataOperationUpsert, configData.Operation)
+		require.WithinDuration(t, time.Now(), configData.Time, 5*time.Second)
+
+		expectedConfigValues := map[string]any{
+			"data": map[string]any{
+				"project": map[string]any{
+					"_id":       "p1",
+					"projectId": "project-1",
+					"tenantId":  "tenant-1",
+				},
+				"revision": map[string]any{
+					"name": "r1",
+				},
+				"configuration": map[string]any{
+					"commitId": map[string]any{
+						"key": "value",
+						"fastDataConfig": map[string]any{
+							"castFunctions": nil,
+						},
+					},
+				},
+			},
+		}
+		require.Equal(t, expectedConfigValues, configData.Values)
+	})
+
+	t.Run("returns error when GetProjects fails", func(t *testing.T) {
+		t.Parallel()
+		ctx := t.Context()
+		mockSvc := &MockConsoleService{
+			GetProjectsFunc: func(ctx context.Context) ([]map[string]any, error) {
+				return nil, http.ErrHandlerTimeout
+			},
+		}
+		s := &Source{cs: mockSvc}
+		typesToSync := map[string]source.Extra{"project": {}}
+
+		_, err := s.listAssets(ctx, typesToSync)
+		require.ErrorIs(t, err, ErrRetrievingAssets)
+	})
+
+	t.Run("returns error when GetRevisions fails during configuration sync", func(t *testing.T) {
+		t.Parallel()
+		ctx := t.Context()
+		mockSvc := &MockConsoleService{
+			GetProjectsFunc: func(ctx context.Context) ([]map[string]any, error) {
+				return []map[string]any{{"_id": "p1"}}, nil
+			},
+			GetRevisionsFunc: func(ctx context.Context, projectID string) ([]map[string]any, error) {
+				return nil, http.ErrHandlerTimeout
+			},
+		}
+		s := &Source{cs: mockSvc}
+		typesToSync := map[string]source.Extra{"configuration": {}}
+
+		_, err := s.listAssets(ctx, typesToSync)
+		require.ErrorIs(t, err, ErrRetrievingAssets)
+	})
+
+	t.Run("returns error when GetConfiguration fails during configuration sync", func(t *testing.T) {
+		t.Parallel()
+		ctx := t.Context()
+		mockSvc := &MockConsoleService{
+			GetProjectsFunc: func(ctx context.Context) ([]map[string]any, error) {
+				return []map[string]any{{"_id": "p1"}}, nil
+			},
+			GetRevisionsFunc: func(ctx context.Context, projectID string) ([]map[string]any, error) {
+				return []map[string]any{{"name": "r1"}}, nil
+			},
+			GetConfigurationFunc: func(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
+				return nil, http.ErrHandlerTimeout
+			},
+		}
+		s := &Source{cs: mockSvc}
+		typesToSync := map[string]source.Extra{"configuration": {}}
+
+		_, err := s.listAssets(ctx, typesToSync)
+		require.ErrorIs(t, err, ErrRetrievingAssets)
+	})
 }
