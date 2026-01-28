@@ -115,9 +115,6 @@ func (c *ConsoleService) getClient(ctx context.Context) *http.Client {
 	}
 
 	client = &http.Client{}
-	if c.ConsoleJWTServiceAccount {
-		client.Transport = newTransportWithJWT(ctx, c.AuthEndpoint, c.PrivateKey, c.PrivateKeyID, c.ClientID)
-	}
 	client.Transport = newTransport(ctx, c.AuthEndpoint, c.ClientID, c.ClientSecret)
 	c.client.Store(client)
 	return client

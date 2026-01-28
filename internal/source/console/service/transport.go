@@ -9,7 +9,6 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
-	"golang.org/x/oauth2/jwt"
 )
 
 // newTransport creates an HTTP transport configured with either a static token or a client-credentials flow.
@@ -32,19 +31,5 @@ func newTransport(ctx context.Context, tokenURL, clientID, clientSecret string) 
 
 	return &oauth2.Transport{
 		Source: source,
-	}
-}
-
-func newTransportWithJWT(ctx context.Context, tokenURL, privateKey, privateKeyID, clientID string) http.RoundTripper {
-	// WIP
-	config := &jwt.Config{
-		Subject:      clientID,
-		PrivateKey:   []byte(privateKey),
-		PrivateKeyID: privateKeyID,
-		TokenURL:     tokenURL,
-	}
-
-	return &oauth2.Transport{
-		Source: config.TokenSource(ctx),
 	}
 }

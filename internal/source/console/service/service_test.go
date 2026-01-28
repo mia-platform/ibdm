@@ -195,20 +195,15 @@ func Test_RealCase_JWT(t *testing.T) {
 
 	svc := &ConsoleService{
 		config: config{
-			ConsoleEndpoint:          jc.ConsoleEndpoint,
-			AuthEndpoint:             jc.AuthEndpoint,
-			ClientID:                 jc.ClientID,
-			PrivateKey:               jc.PrivateKey,
-			PrivateKeyID:             jc.PrivateKeyID,
-			ConsoleJWTServiceAccount: true,
+			ConsoleEndpoint: jc.ConsoleEndpoint,
+			AuthEndpoint:    jc.AuthEndpoint,
+			ClientID:        jc.ClientID,
 		},
 	}
 
 	require.NotEmpty(t, svc.ConsoleEndpoint)
 	require.NotEmpty(t, svc.AuthEndpoint)
 	require.NotEmpty(t, svc.ClientID)
-	require.NotEmpty(t, svc.PrivateKey)
-	require.NotEmpty(t, svc.PrivateKeyID)
 
 	_, err = svc.GetConfiguration(t.Context(), "project-id", "resource-id")
 	require.NoError(t, err)
