@@ -78,7 +78,11 @@ func FiberHandlerWrapper(handler func(http.Header, []byte) error) fiber.Handler 
 		})
 
 		if err := handler(headers, ctx.Body()); err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "handler error: "+err.Error())
+			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"statusCode": fiber.StatusInternalServerError,
+				"error":      http.StatusText(fiber.StatusInternalServerError),
+				"message":    "error processing webhook message",
+			})
 		}
 		return ctx.SendStatus(fiber.StatusNoContent)
 	}
