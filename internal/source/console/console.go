@@ -5,12 +5,16 @@ package console
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/mia-platform/ibdm/internal/logger"
@@ -202,10 +206,10 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 		Method: http.MethodPost,
 		Path:   s.c.config.WebhookPath,
 		Handler: func(headers http.Header, body []byte) error {
-			// if !validateSignature(body, s.c.config.WebhookSecret, headers.Get(authHeaderName)) {
-			// 	log.Error("webhook signature validation failed")
-			// 	return ErrSignatureMismatch
-			// }
+			if !validateSignature(ctx, body, s.c.config.WebhookSecret, headers.Get(authHeaderName)) {
+				log.Error("webhook signature validation failed")
+				return ErrSignatureMismatch
+			}
 
 			var event event
 			if err := json.Unmarshal(body, &event); err != nil {
@@ -318,23 +322,30 @@ func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionN
 	return &data, nil
 }
 
-// func validateSignature(body []byte, secret, signatureHeader string) bool {
-// 	if secret == "" {
-// 		return true
-// 	}
-// 	signature, found := strings.CutPrefix(signatureHeader, "sha256=")
-// 	if !found {
-// 		return false
-// 	}
+func validateSignature(ctx context.Context, body []byte, secret, signatureHeader string) bool {
+	log := logger.FromContext(ctx).WithName(loggerName)
 
-// 	mac := hmac.New(sha256.New, []byte(secret))
-// 	mac.Write(body)
-// 	expectedMAC := mac.Sum(nil)
+	// TODO: remove this check when webhook secret will be mandatory
+	if secret == "" {
+		log.Warn("webhook secret is empty, skipping signature validation")
+		return true
+	}
 
-// 	decodedSignature, err := hex.DecodeString(signature)
-// 	if err != nil {
-// 		return false
-// 	}
+	signature, found := strings.CutPrefix(signatureHeader, "sha256=")
+	if !found {
+		log.Error("webhook signature missing or malformed")
+	}
 
-// 	return hmac.Equal(expectedMAC, decodedSignature)
-// }
+	hasher := sha256.New()
+	hasher.Write(body)
+	hasher.Write([]byte(secret))
+	generatedMAC := hasher.Sum(nil)
+
+	expectedMac, err := hex.DecodeString(signature)
+	if err != nil {
+		log.Error("error decoding webhook signature", "error", err.Error())
+		return false
+	}
+
+	return hmac.Equal(generatedMAC, expectedMac)
+}
