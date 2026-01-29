@@ -21,7 +21,7 @@ spec:
             spec:
               type: object
               properties:
-                uniqueId:
+                projectUniqueId:
                   description: The unique identifier for the project.
                   type: string
                 projectId:
@@ -103,5 +103,9 @@ spec:
                   type: array
                   items:
                     type: string
+                lastUpdate:
+                  description: Time when the project was last updated.
+                  type: string
+                  format: date-time
       served: true
       storage: true

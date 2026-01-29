@@ -37,5 +37,9 @@ spec:
                   description: The configuration data for the revision.
                   type: object
                   additionalProperties: true
+                lastUpdate:
+                  description: Time when the configuration was updated.
+                  type: string
+                  format: date-time
       served: true
       storage: true
