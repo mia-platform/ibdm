@@ -113,7 +113,7 @@ func collectPaths(paths []string) ([]string, error) {
 					return fmt.Errorf("resolving symlink %q: %w", walkedPath, unwrappedError(err))
 				}
 
-				info, err := os.Lstat(resolvedPath)
+				info, err := os.Stat(resolvedPath)
 				if err != nil {
 					return fmt.Errorf("lstat on resolved symlink %q: %w", resolvedPath, unwrappedError(err))
 				}
@@ -122,7 +122,7 @@ func collectPaths(paths []string) ([]string, error) {
 					return filepath.SkipDir
 				}
 
-				collected = append(collected, resolvedPath)
+				collected = append(collected, walkedPath)
 			case d.IsDir() && cleanedPath != walkedPath: // skip nested directories beyond the root path
 				return filepath.SkipDir
 			case !d.IsDir(): // file found, add it to the collection

@@ -125,6 +125,20 @@ func TestCollectPath(t *testing.T) {
 				filepath.Join(tmpDir, "valid", "invalid.yaml"),
 			},
 		},
+		"directory with symlink": {
+			paths: []string{
+				filepath.Join(tmpDir, "valid", "link"),
+			},
+			expectedFiles: []string{},
+		},
+		"symlink to file": {
+			paths: []string{
+				filepath.Join(tmpDir, "symlink.file"),
+			},
+			expectedFiles: []string{
+				filepath.Join(tmpDir, "symlink.file"),
+			},
+		},
 		"file and directory": {
 			paths: []string{
 				filepath.Join(tmpDir, "valid", "subdir", "file.txt"),

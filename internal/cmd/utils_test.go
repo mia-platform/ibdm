@@ -34,6 +34,10 @@ func setupTestFileStructure(tb testing.TB, baseDir string) {
 		require.NoError(tb, err)
 	}
 
+	if err := os.Symlink(filepath.Join(baseDir, "valid", "invalid.yaml"), filepath.Join(baseDir, "symlink.file")); err != nil {
+		require.NoError(tb, err)
+	}
+
 	if err := os.Mkdir(filepath.Join(baseDir, "secret"), os.ModePerm); err != nil {
 		require.NoError(tb, err)
 	}
