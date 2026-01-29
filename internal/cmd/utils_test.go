@@ -22,10 +22,6 @@ func setupTestFileStructure(tb testing.TB, baseDir string) {
 		require.NoError(tb, err)
 	}
 
-	if err := os.Symlink(filepath.Join(baseDir, "valid", "subdir"), filepath.Join(baseDir, "valid", "link")); err != nil {
-		require.NoError(tb, err)
-	}
-
 	if err := os.WriteFile(filepath.Join(baseDir, "valid", "invalid.yaml"), []byte("\tinvalid yaml file"), os.ModePerm); err != nil {
 		require.NoError(tb, err)
 	}
@@ -34,14 +30,41 @@ func setupTestFileStructure(tb testing.TB, baseDir string) {
 		require.NoError(tb, err)
 	}
 
-	if err := os.Symlink(filepath.Join(baseDir, "valid", "invalid.yaml"), filepath.Join(baseDir, "symlink.file")); err != nil {
-		require.NoError(tb, err)
-	}
-
 	if err := os.Mkdir(filepath.Join(baseDir, "secret"), os.ModePerm); err != nil {
 		require.NoError(tb, err)
 	}
 	if err := os.Chmod(filepath.Join(baseDir, "secret"), 0o0000); err != nil {
+		require.NoError(tb, err)
+	}
+}
+
+func setupKubernetesVolumeMountTestFileStructure(tb testing.TB, baseDir string) {
+	tb.Helper()
+
+	mountDirectory := filepath.Join(baseDir, "..2020_01_01_00_00_00.0000000000")
+	dataSymlink := filepath.Join(baseDir, "..data")
+
+	if err := os.MkdirAll(mountDirectory, os.ModePerm); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.Symlink(mountDirectory, dataSymlink); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.WriteFile(filepath.Join(mountDirectory, "invalid.yaml"), []byte("\tinvalid yaml file"), os.ModePerm); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.WriteFile(filepath.Join(mountDirectory, "file.txt"), []byte("txt file"), os.ModePerm); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.Symlink(filepath.Join(dataSymlink, "invalid.yaml"), filepath.Join(baseDir, "invalid.yaml")); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.Symlink(filepath.Join(dataSymlink, "file.txt"), filepath.Join(baseDir, "file.txt")); err != nil {
 		require.NoError(tb, err)
 	}
 }

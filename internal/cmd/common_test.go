@@ -125,20 +125,6 @@ func TestCollectPath(t *testing.T) {
 				filepath.Join(tmpDir, "valid", "invalid.yaml"),
 			},
 		},
-		"directory with symlink": {
-			paths: []string{
-				filepath.Join(tmpDir, "valid", "link"),
-			},
-			expectedFiles: []string{},
-		},
-		"symlink to file": {
-			paths: []string{
-				filepath.Join(tmpDir, "symlink.file"),
-			},
-			expectedFiles: []string{
-				filepath.Join(tmpDir, "symlink.file"),
-			},
-		},
 		"file and directory": {
 			paths: []string{
 				filepath.Join(tmpDir, "valid", "subdir", "file.txt"),
@@ -178,6 +164,21 @@ func TestCollectPath(t *testing.T) {
 			assert.ElementsMatch(t, test.expectedFiles, files)
 		})
 	}
+}
+
+func TestCollectPathKubernetesVolumeMount(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	setupKubernetesVolumeMountTestFileStructure(t, tmpDir)
+
+	files, err := collectPaths([]string{tmpDir})
+	require.NoError(t, err)
+	expectedFiles := []string{
+		filepath.Join(tmpDir, "invalid.yaml"),
+		filepath.Join(tmpDir, "file.txt"),
+	}
+	assert.ElementsMatch(t, expectedFiles, files)
 }
 
 func TestLoadMappers(t *testing.T) {
