@@ -4,11 +4,9 @@
 package console
 
 import (
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -93,13 +91,14 @@ func TestSource_GetWebhook(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
-		mac := hmac.New(sha256.New, []byte("secret"))
-		mac.Write(body)
-		signature := hex.EncodeToString(mac.Sum(nil))
+		hasher := sha256.New()
+		hasher.Write(body)
+		hasher.Write([]byte("secret"))
+		signature := hex.EncodeToString(hasher.Sum(nil))
 
 		headers := http.Header{}
 		headers.Add(
-			authHeaderName, fmt.Sprintf("sha256=%s", signature),
+			authHeaderName, signature,
 		)
 		err = webhook.Handler(headers, body)
 		require.NoError(t, err)
@@ -151,13 +150,14 @@ func TestSource_GetWebhook(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
-		mac := hmac.New(sha256.New, []byte("secret"))
-		mac.Write(body)
-		signature := hex.EncodeToString(mac.Sum(nil))
+		hasher := sha256.New()
+		hasher.Write(body)
+		hasher.Write([]byte("secret"))
+		signature := hex.EncodeToString(hasher.Sum(nil))
 
 		headers := http.Header{}
 		headers.Add(
-			authHeaderName, fmt.Sprintf("sha256=%s", signature),
+			authHeaderName, "sha256="+signature,
 		)
 		err = webhook.Handler(headers, body)
 		require.NoError(t, err)
@@ -190,13 +190,14 @@ func TestSource_GetWebhook(t *testing.T) {
 
 		body := []byte(`{invalid-json`)
 
-		mac := hmac.New(sha256.New, []byte("secret"))
-		mac.Write(body)
-		signature := hex.EncodeToString(mac.Sum(nil))
+		hasher := sha256.New()
+		hasher.Write(body)
+		hasher.Write([]byte("secret"))
+		signature := hex.EncodeToString(hasher.Sum(nil))
 
 		headers := http.Header{}
 		headers.Add(
-			authHeaderName, fmt.Sprintf("sha256=%s", signature),
+			authHeaderName, "sha256="+signature,
 		)
 
 		err = webhook.Handler(headers, body)
