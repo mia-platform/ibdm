@@ -140,9 +140,7 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 				"revision": map[string]any{
 					"name": revision["name"],
 				},
-				"configuration": map[string]any{
-					"commitId": configuration,
-				},
+				"configuration": configuration,
 			}
 			configurationList = append(configurationList, configurationData)
 		}
@@ -151,7 +149,7 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 		data := source.Data{
 			Type:      "configuration",
 			Operation: source.DataOperationUpsert,
-			Values:    map[string]any{"data": fullConfiguration},
+			Values:    fullConfiguration,
 			Time:      time.Now(),
 		}
 		dataToSync = append(dataToSync, data)
@@ -308,15 +306,13 @@ func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionN
 		"revision": map[string]any{
 			"name": revisionName,
 		},
-		"configuration": map[string]any{
-			"commitId": configuration,
-		},
+		"configuration": configuration,
 	}
 
 	data := source.Data{
 		Type:      "configuration",
 		Operation: source.DataOperationUpsert,
-		Values:    map[string]any{"data": configurationData},
+		Values:    configurationData,
 		Time:      time.Now(),
 	}
 	return &data, nil

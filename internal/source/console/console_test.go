@@ -181,19 +181,15 @@ func Test_DoChain(t *testing.T) {
 					Type:      "configuration",
 					Operation: source.DataOperationUpsert,
 					Values: map[string]any{
-						"data": map[string]any{
-							"project": map[string]any{
-								"_id":      "p1",
-								"tenantId": "",
-							},
-							"revision": map[string]any{
-								"name": "r1",
-							},
-							"configuration": map[string]any{
-								"commitId": map[string]any{
-									"key": "value",
-								},
-							},
+						"project": map[string]any{
+							"_id":      "p1",
+							"tenantId": "",
+						},
+						"revision": map[string]any{
+							"name": "r1",
+						},
+						"configuration": map[string]any{
+							"key": "value",
 						},
 					},
 					Time: time.Unix(1672531200, 0),
@@ -358,22 +354,18 @@ func TestSource_listAssets(t *testing.T) {
 		require.WithinDuration(t, time.Now(), configData.Time, 5*time.Second)
 
 		expectedConfigValues := map[string]any{
-			"data": map[string]any{
-				"project": map[string]any{
-					"_id":       "p1",
-					"projectId": "project-1",
-					"tenantId":  "tenant-1",
-				},
-				"revision": map[string]any{
-					"name": "r1",
-				},
-				"configuration": map[string]any{
-					"commitId": map[string]any{
-						"key": "value",
-						"fastDataConfig": map[string]any{
-							"castFunctions": nil,
-						},
-					},
+			"project": map[string]any{
+				"_id":       "p1",
+				"projectId": "project-1",
+				"tenantId":  "tenant-1",
+			},
+			"revision": map[string]any{
+				"name": "r1",
+			},
+			"configuration": map[string]any{
+				"key": "value",
+				"fastDataConfig": map[string]any{
+					"castFunctions": nil,
 				},
 			},
 		}

@@ -4,10 +4,11 @@ type: configuration
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s--%s" .data.project._id .data.revision.name }}
+    {{ printf "%s--%s" .project._id .revision.name }}
   spec:
-    projectUniqueId: "{{ .data.project._id }}"
-    projectId: "{{ get \"projectId\" .data.project \"\" | quote }}"
-    tenantId: "{{ .data.project.tenantId }}"
-    revisionName: "{{ .data.revision.name }}"
-    configuration: "{{ .data.configuration | toJSON }}"
+    projectUniqueId: "{{ .project._id }}"
+    projectId: "{{ get \"projectId\" .project \"\" | quote }}"
+    tenantId: "{{ .project.tenantId }}"
+    revisionName: "{{ .revision.name }}"
+    configuration: "{{ .configuration | toJSON }}"
+    updatedAt: "{{ get \"committedDate\" .configuration (now) }}"

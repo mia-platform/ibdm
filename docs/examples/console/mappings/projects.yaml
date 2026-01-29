@@ -18,3 +18,4 @@ mappings:
     description: "{{ get \"description\" .project \"\" | quote }}"
     environments: "{{ .project.environments | toJSON }}"
     imagePullSecretNames: "{{ get \"imagePullSecretNames\" .project (list) | toJSON }}"
+    updatedAt: "{{ get \"updatedAt\" .project (now) }}"
