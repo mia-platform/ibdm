@@ -11,4 +11,4 @@ mappings:
     tenantId: "{{ .project.tenantId }}"
     revisionName: "{{ .revision.name }}"
     configuration: "{{ .configuration | toJSON }}"
-    updatedAt: "{{ get \"committedDate\" .configuration (now) }}"
+    lastUpdate: "{{ get \"committedDate\" .configuration (now) }}"
