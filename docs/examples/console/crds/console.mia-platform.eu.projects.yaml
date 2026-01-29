@@ -27,14 +27,17 @@ spec:
                 projectId:
                   description: The project ID used to identify the project in Console
                   type: string
-                tenantId:
-                  description: The tenant ID used to identify the tenant in Console
-                  type: string
                 name:
                   description: The user visible name for the project.
                   type: string
+                tenantId:
+                  description: The tenant ID used to identify the tenant in Console
+                  type: string
+                tenantName:
+                  description: The user visible name for the tenant.
+                  type: string
                 repository:
-                  description: The parent resource identifier (for example, 'folders/{folder_id}' or 'organizations/{org_id}')
+                  description: The repository information for the project.
                   type: object
                   additionalProperties:
                     type: string
@@ -51,12 +54,34 @@ spec:
                 configurationGitPath:
                   description: The git path where the project configuration is stored.
                   type: string
+                containerRegistries:
+                  description: The container registries associated with the project.
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
                 defaultBranch:
                   description: The default branch for the project.
                   type: string
+                deploy:
+                  description: The deployment settings for the project.
+                  type: object
+                  additionalProperties: true
                 description:
                   description: The user visible description for the project.
                   type: string
+                dockerImageNameSuggestion:
+                  description: Suggested name for the docker image associated with the project.
+                  type: object
+                  additionalProperties: true
+                enabledSecurityFeatures:
+                  description: The enabled security features for the project.
+                  type: object
+                  additionalProperties: true
+                enabledServices:
+                  description: The enabled services for the project.
+                  type: object
+                  additionalProperties: true
                 environments:
                   description: The list of environments associated with the project.
                   type: array
@@ -98,11 +123,63 @@ spec:
                         properties:
                           type:
                             type: string
+                environmentsVariables:
+                  description: The environment variables associated with the project.
+                  type: object
+                  additionalProperties: true
+                flavor:
+                  description: The flavor of the project.
+                  type: string
+                info:
+                  description: Additional information about the project.
+                  type: object
+                  properties:
+                    createdAt:
+                      type: string
+                      format: date-time
+                    projectOwner:
+                      type: string
+                    teamContact:
+                      type: string
+                  additionalProperties: true
                 imagePullSecretNames:
                   description: The list of image pull secret names associated with the project.
                   type: array
                   items:
                     type: string
+                links:
+                  description: The list of links associated with the project.
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+                logicalScopeLayers:
+                  description: The logical scope layers associated with the project.
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+                originalTemplate:
+                  description: The original template used for the project.
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                  additionalProperties: true
+                pipelines:
+                  description: The pipelines associated with the project.
+                  type: object
+                  properties:
+                    providerId:
+                      type: string
+                    type:
+                      type: string
+                  additionalProperties: true
+                projectNamespaceVariable:
+                  description: The project namespace variable.
+                  type: string
                 lastUpdate:
                   description: Time when the project was last updated.
                   type: string
