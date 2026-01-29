@@ -43,6 +43,7 @@ type webhookClient struct {
 }
 
 var _ source.WebhookSource = &Source{}
+var _ source.SyncableSource = &Source{}
 
 type Source struct {
 	c  *webhookClient
