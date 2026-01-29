@@ -6,7 +6,7 @@ mappings:
   identifier: |-
     {{ printf "%s" .project._id }}
   spec:
-    uniqueId: "{{ .project._id }}"
+    projectUniqueId: "{{ .project._id }}"
     projectId: "{{ .project.projectId }}"
     tenantId: "{{ .project.tenantId }}"
     name: "{{ .project.name }}"
@@ -18,4 +18,4 @@ mappings:
     description: "{{ get \"description\" .project \"\" | quote }}"
     environments: "{{ .project.environments | toJSON }}"
     imagePullSecretNames: "{{ get \"imagePullSecretNames\" .project (list) | toJSON }}"
-    updatedAt: "{{ get \"updatedAt\" .project (now) }}"
+    lastUpdate: "{{ get \"lastUpdate\" .project (now) }}"
