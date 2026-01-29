@@ -149,7 +149,7 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 	}
 	for _, fullConfiguration := range configurationList {
 		data := source.Data{
-			Type:      "configuration",
+			Type:      configurationResource,
 			Operation: source.DataOperationUpsert,
 			Values:    fullConfiguration,
 			Time:      time.Now(),
@@ -295,10 +295,18 @@ func configurationEventChain(ctx context.Context, event event, cs *service.Conso
 	if err != nil {
 		return nil, err
 	}
-	return configuration, nil
+
+	data := source.Data{
+		Type:      configurationResource,
+		Operation: source.DataOperationUpsert,
+		Values:    configuration,
+		Time:      event.UnixEventTimestamp(),
+	}
+
+	return &data, nil
 }
 
-func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionName string, cs *service.ConsoleService) (*source.Data, error) {
+func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionName string, cs *service.ConsoleService) (map[string]any, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	log.Trace("fetching configuration for project", "_id", projectID, "revisionName", revisionName)
@@ -323,13 +331,7 @@ func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionN
 		"configuration": configuration,
 	}
 
-	data := source.Data{
-		Type:      "configuration",
-		Operation: source.DataOperationUpsert,
-		Values:    configurationData,
-		Time:      time.Now(),
-	}
-	return &data, nil
+	return configurationData, nil
 }
 
 func validateSignature(ctx context.Context, body []byte, secret, signatureHeader string) bool {
