@@ -4,7 +4,11 @@
 package console
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,6 +29,7 @@ func TestSource_NewSource(t *testing.T) {
 
 	t.Run("succeeds with valid config", func(t *testing.T) {
 		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+		t.Setenv("CONSOLE_WEBHOOK_SECRET", "secret")
 		t.Setenv("CONSOLE_ENDPOINT", "http://example.com")
 		s, err := NewSource()
 		require.NoError(t, err)
@@ -35,7 +40,7 @@ func TestSource_NewSource(t *testing.T) {
 
 func TestSource_GetWebhook(t *testing.T) {
 	t.Parallel()
-	t.Run("successfully creates webhook and processes events", func(t *testing.T) {
+	t.Run("fails when CONSOLE_WEBHOOK_SECRET is missing", func(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 
@@ -43,6 +48,27 @@ func TestSource_GetWebhook(t *testing.T) {
 			c: &webhookClient{
 				config: webhookConfig{
 					WebhookPath: "/webhook",
+				},
+			},
+		}
+
+		results := make(chan source.Data, 1)
+		typesToStream := map[string]source.Extra{"nothing": {}}
+
+		webhook, err := s.GetWebhook(ctx, typesToStream, results)
+		require.ErrorIs(t, err, ErrWebhookSecretMissing)
+		require.Equal(t, source.Webhook{}, webhook)
+	})
+
+	t.Run("successfully creates webhook and processes events", func(t *testing.T) {
+		t.Parallel()
+		ctx := t.Context()
+
+		s := Source{
+			c: &webhookClient{
+				config: webhookConfig{
+					WebhookPath:   "/webhook",
+					WebhookSecret: "secret",
 				},
 			},
 		}
@@ -67,7 +93,14 @@ func TestSource_GetWebhook(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
+		mac := hmac.New(sha256.New, []byte("secret"))
+		mac.Write(body)
+		signature := hex.EncodeToString(mac.Sum(nil))
+
 		headers := http.Header{}
+		headers.Add(
+			authHeaderName, fmt.Sprintf("sha256=%s", signature),
+		)
 		err = webhook.Handler(headers, body)
 		require.NoError(t, err)
 
@@ -96,7 +129,8 @@ func TestSource_GetWebhook(t *testing.T) {
 		s := Source{
 			c: &webhookClient{
 				config: webhookConfig{
-					WebhookPath: "/webhook",
+					WebhookPath:   "/webhook",
+					WebhookSecret: "secret",
 				},
 			},
 		}
@@ -117,7 +151,14 @@ func TestSource_GetWebhook(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
+		mac := hmac.New(sha256.New, []byte("secret"))
+		mac.Write(body)
+		signature := hex.EncodeToString(mac.Sum(nil))
+
 		headers := http.Header{}
+		headers.Add(
+			authHeaderName, fmt.Sprintf("sha256=%s", signature),
+		)
 		err = webhook.Handler(headers, body)
 		require.NoError(t, err)
 
@@ -135,7 +176,8 @@ func TestSource_GetWebhook(t *testing.T) {
 		s := Source{
 			c: &webhookClient{
 				config: webhookConfig{
-					WebhookPath: "/webhook",
+					WebhookPath:   "/webhook",
+					WebhookSecret: "secret",
 				},
 			},
 		}
@@ -147,7 +189,16 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.NoError(t, err)
 
 		body := []byte(`{invalid-json`)
+
+		mac := hmac.New(sha256.New, []byte("secret"))
+		mac.Write(body)
+		signature := hex.EncodeToString(mac.Sum(nil))
+
 		headers := http.Header{}
+		headers.Add(
+			authHeaderName, fmt.Sprintf("sha256=%s", signature),
+		)
+
 		err = webhook.Handler(headers, body)
 		require.Error(t, err)
 	})

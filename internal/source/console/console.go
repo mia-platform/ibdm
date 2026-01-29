@@ -35,6 +35,7 @@ var (
 	ErrEventChainProcessing = errors.New("error in event processing chain")
 	ErrSignatureMismatch    = errors.New("webhook signature mismatch")
 	ErrRetrievingAssets     = errors.New("error retrieving assets")
+	ErrWebhookSecretMissing = errors.New("webhook secret not configured")
 )
 
 type webhookClient struct {
@@ -198,8 +199,20 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	return nil
 }
 
+func (s *Source) validateWebhookSecret() error {
+	if s.c.config.WebhookSecret == "" {
+		return ErrWebhookSecretMissing
+	}
+	return nil
+}
+
 func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
+
+	if err := s.validateWebhookSecret(); err != nil {
+		return source.Webhook{}, err
+	}
+
 	return source.Webhook{
 		Method: http.MethodPost,
 		Path:   s.c.config.WebhookPath,
@@ -321,21 +334,11 @@ func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionN
 func validateSignature(ctx context.Context, body []byte, secret, signatureHeader string) bool {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	// TODO: remove this check when webhook secret will be mandatory
-	if secret == "" {
-		log.Warn("webhook secret is empty, skipping signature validation")
-		return true
-	}
+	signature, _ := strings.CutPrefix(signatureHeader, "sha256=")
 
-	signature, found := strings.CutPrefix(signatureHeader, "sha256=")
-	if !found {
-		log.Error("webhook signature missing or malformed")
-	}
-
-	hasher := sha256.New()
-	hasher.Write(body)
-	hasher.Write([]byte(secret))
-	generatedMAC := hasher.Sum(nil)
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(body)
+	generatedMAC := mac.Sum(nil)
 
 	expectedMac, err := hex.DecodeString(signature)
 	if err != nil {

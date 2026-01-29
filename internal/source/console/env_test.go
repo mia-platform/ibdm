@@ -19,7 +19,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		require.Equal(t, "secret", config.WebhookSecret)
 	})
 
-	t.Run("default configuration - missing env", func(t *testing.T) {
+	t.Run("default configuration - missing path", func(t *testing.T) {
 		t.Setenv("CONSOLE_WEBHOOK_SECRET", "secret")
 		config, err := loadConfigFromEnv()
 		require.NoError(t, err)
