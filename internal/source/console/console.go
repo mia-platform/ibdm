@@ -336,9 +336,10 @@ func validateSignature(ctx context.Context, body []byte, secret, signatureHeader
 
 	signature, _ := strings.CutPrefix(signatureHeader, "sha256=")
 
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write(body)
-	generatedMAC := mac.Sum(nil)
+	hasher := sha256.New()
+	hasher.Write(body)
+	hasher.Write([]byte(secret))
+	generatedMAC := hasher.Sum(nil)
 
 	expectedMac, err := hex.DecodeString(signature)
 	if err != nil {
