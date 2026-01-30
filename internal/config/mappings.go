@@ -32,6 +32,7 @@ type MappingConfig struct {
 type Mappings struct {
 	Identifier string            `json:"identifier" yaml:"identifier"`
 	Spec       map[string]string `json:"spec" yaml:"spec"`
+	Extra      []map[string]any  `json:"extra,omitempty" yaml:"extra,omitempty"`
 }
 
 // NewMappingConfigsFromPath parses the file or directory at path and returns any mapping
