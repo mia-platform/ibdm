@@ -1,0 +1,188 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: CustomResourceDefinition
+metadata:
+  name: projects.console.mia-platform.eu
+spec:
+  group: console.mia-platform.eu
+  names:
+    kind: Project
+    plural: projects
+    singular: project
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                projectUniqueId:
+                  description: The unique identifier for the project.
+                  type: string
+                projectId:
+                  description: The project ID used to identify the project in Console
+                  type: string
+                name:
+                  description: The user visible name for the project.
+                  type: string
+                tenantId:
+                  description: The tenant ID used to identify the tenant in Console
+                  type: string
+                tenantName:
+                  description: The user visible name for the tenant.
+                  type: string
+                repository:
+                  description: The repository information for the project.
+                  type: object
+                  additionalProperties:
+                    type: string
+                repositoryUrl:
+                  description: The URL of the git repository associated with the project.
+                  type: string
+                availableNamespaces:
+                  description: The list of namespaces available for the project.
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties:
+                      type: string
+                configurationGitPath:
+                  description: The git path where the project configuration is stored.
+                  type: string
+                containerRegistries:
+                  description: The container registries associated with the project.
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+                defaultBranch:
+                  description: The default branch for the project.
+                  type: string
+                deploy:
+                  description: The deployment settings for the project.
+                  type: object
+                  additionalProperties: true
+                description:
+                  description: The user visible description for the project.
+                  type: string
+                dockerImageNameSuggestion:
+                  description: Suggested name for the docker image associated with the project.
+                  type: object
+                  additionalProperties: true
+                enabledSecurityFeatures:
+                  description: The enabled security features for the project.
+                  type: object
+                  additionalProperties: true
+                enabledServices:
+                  description: The enabled services for the project.
+                  type: object
+                  additionalProperties: true
+                environments:
+                  description: The list of environments associated with the project.
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      label:
+                        type: string
+                      envId:
+                        type: string
+                      envPrefix:
+                        type: string
+                      hosts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            host:
+                              type: string
+                            isBackoffice:
+                              type: boolean
+                            scheme:
+                              type: string
+                              description: an url schema, usually one of 'http' or 'https'
+                      description:
+                        type: string
+                      isProduction:
+                        type: boolean
+                        default: false
+                      cluster:
+                        type: object
+                        properties:
+                          namespace:
+                            type: string
+                          clusterId:
+                            type: string
+                      deploy:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                environmentsVariables:
+                  description: The environment variables associated with the project.
+                  type: object
+                  additionalProperties: true
+                flavor:
+                  description: The flavor of the project.
+                  type: string
+                info:
+                  description: Additional information about the project.
+                  type: object
+                  properties:
+                    createdAt:
+                      type: string
+                      format: date-time
+                    projectOwner:
+                      type: string
+                    teamContact:
+                      type: string
+                  additionalProperties: true
+                imagePullSecretNames:
+                  description: The list of image pull secret names associated with the project.
+                  type: array
+                  items:
+                    type: string
+                links:
+                  description: The list of links associated with the project.
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+                logicalScopeLayers:
+                  description: The logical scope layers associated with the project.
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+                originalTemplate:
+                  description: The original template used for the project.
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                  additionalProperties: true
+                pipelines:
+                  description: The pipelines associated with the project.
+                  type: object
+                  properties:
+                    providerId:
+                      type: string
+                    type:
+                      type: string
+                  additionalProperties: true
+                projectNamespaceVariable:
+                  description: The project namespace variable.
+                  type: string
+                lastUpdate:
+                  description: Time when the project was last updated.
+                  type: string
+                  format: date-time
+      served: true
+      storage: true

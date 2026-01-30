@@ -38,6 +38,37 @@ func setupTestFileStructure(tb testing.TB, baseDir string) {
 	}
 }
 
+func setupKubernetesVolumeMountTestFileStructure(tb testing.TB, baseDir string) {
+	tb.Helper()
+
+	mountDirectory := filepath.Join(baseDir, "..2020_01_01_00_00_00.0000000000")
+	dataSymlink := filepath.Join(baseDir, "..data")
+
+	if err := os.MkdirAll(mountDirectory, os.ModePerm); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.Symlink(mountDirectory, dataSymlink); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.WriteFile(filepath.Join(mountDirectory, "invalid.yaml"), []byte("\tinvalid yaml file"), os.ModePerm); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.WriteFile(filepath.Join(mountDirectory, "file.txt"), []byte("txt file"), os.ModePerm); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.Symlink(filepath.Join(dataSymlink, "invalid.yaml"), filepath.Join(baseDir, "invalid.yaml")); err != nil {
+		require.NoError(tb, err)
+	}
+
+	if err := os.Symlink(filepath.Join(dataSymlink, "file.txt"), filepath.Join(baseDir, "file.txt")); err != nil {
+		require.NoError(tb, err)
+	}
+}
+
 // return a fake source getter for testing purposes.
 func testSourceGetter(tb testing.TB) func(string) (any, error) {
 	tb.Helper()

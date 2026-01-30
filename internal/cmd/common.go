@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/azure"
+	"github.com/mia-platform/ibdm/internal/source/console"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 )
 
@@ -25,8 +27,9 @@ var (
 
 	// availableEventSources covers event-stream integration sources used for completion and help text.
 	availableEventSources = map[string]string{
-		"azure": "Microsoft Azure integration",
-		"gcp":   "Google Cloud Platform integration",
+		"azure":   "Microsoft Azure integration",
+		"gcp":     "Google Cloud Platform integration",
+		"console": "Mia Platform Console integration",
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{
@@ -76,8 +79,9 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 		return azure.NewSource()
 	case "gcp":
 		return gcp.NewSource()
+	case "console":
+		return console.NewSource()
 	}
-
 	return nil, nil
 }
 
@@ -96,16 +100,30 @@ func collectPaths(paths []string) ([]string, error) {
 	collected := make([]string, 0)
 	for _, p := range paths {
 		cleanedPath := filepath.Clean(p)
-		err := filepath.Walk(cleanedPath, func(walkedPath string, info fs.FileInfo, err error) error {
+		err := filepath.WalkDir(cleanedPath, func(walkedPath string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return fmt.Errorf("mapping file %q: %w", walkedPath, unwrappedError(err))
 			}
 
 			switch {
-			case !info.IsDir(): // file found, add it to the collection
-				collected = append(collected, walkedPath)
-			case info.IsDir() && cleanedPath != walkedPath: // skip nested directories beyond the root path
+			case d.IsDir() && cleanedPath != walkedPath: // skip nested directories beyond the root path
 				return filepath.SkipDir
+			case d.Type()&fs.ModeSymlink != 0: // special case for symlink paths
+				realPath, err := filepath.EvalSymlinks(walkedPath)
+				if err != nil {
+					return fmt.Errorf("evaluating symlink %q: %w", walkedPath, unwrappedError(err))
+				}
+
+				info, err := os.Lstat(realPath)
+				if err != nil {
+					return fmt.Errorf("getting info for symlink %q: %w", realPath, unwrappedError(err))
+				}
+
+				if !info.IsDir() {
+					collected = append(collected, walkedPath)
+				}
+			case !d.IsDir(): // file found, add it to the collection
+				collected = append(collected, walkedPath)
 			}
 
 			return nil

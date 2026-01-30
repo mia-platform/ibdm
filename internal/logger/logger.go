@@ -74,19 +74,19 @@ type Logger interface {
 	SetLevel(level Level)
 
 	// Trace emits a message and key/value pairs at the TRACE level.
-	Trace(msg string, args ...interface{})
+	Trace(msg string, args ...any)
 
 	// Debug emits a message and key/value pairs at the DEBUG level.
-	Debug(msg string, args ...interface{})
+	Debug(msg string, args ...any)
 
 	// Info emits a message and key/value pairs at the INFO level.
-	Info(msg string, args ...interface{})
+	Info(msg string, args ...any)
 
 	// Warn emits a message and key/value pairs at the WARN level.
-	Warn(msg string, args ...interface{})
+	Warn(msg string, args ...any)
 
 	// Error emits a message and key/value pairs at the ERROR level.
-	Error(msg string, args ...interface{})
+	Error(msg string, args ...any)
 }
 
 // Make sure that instance satisfies Logger.
@@ -119,22 +119,22 @@ func (i instance) SetLevel(level Level) {
 	i.log.SetLevel(level.convertedLevel())
 }
 
-func (i instance) Trace(msg string, args ...interface{}) {
+func (i instance) Trace(msg string, args ...any) {
 	i.log.Trace(msg, args...)
 }
 
-func (i instance) Debug(msg string, args ...interface{}) {
+func (i instance) Debug(msg string, args ...any) {
 	i.log.Debug(msg, args...)
 }
 
-func (i instance) Info(msg string, args ...interface{}) {
+func (i instance) Info(msg string, args ...any) {
 	i.log.Info(msg, args...)
 }
 
-func (i instance) Warn(msg string, args ...interface{}) {
+func (i instance) Warn(msg string, args ...any) {
 	i.log.Warn(msg, args...)
 }
 
-func (i instance) Error(msg string, args ...interface{}) {
+func (i instance) Error(msg string, args ...any) {
 	i.log.Error(msg, args...)
 }

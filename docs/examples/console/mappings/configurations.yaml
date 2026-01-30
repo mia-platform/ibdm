@@ -1,0 +1,14 @@
+apiVersion: console.mia-platform.eu/v1alpha1
+resource: configurations
+type: configuration
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s-%s" .project._id .revision.name }}
+  spec:
+    projectUniqueId: "{{ .project._id }}"
+    projectId: "{{ get \"projectId\" .project \"\" | quote }}"
+    tenantId: "{{ .project.tenantId }}"
+    revisionName: "{{ .revision.name }}"
+    configuration: "{{ .configuration | toJSON }}"
+    lastUpdate: "{{ get \"committedDate\" .configuration (now) }}"

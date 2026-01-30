@@ -32,6 +32,7 @@ func TestCompletion(t *testing.T) {
 			expectedCompletion: []string{
 				"azure\tMicrosoft Azure integration",
 				"gcp\tGoogle Cloud Platform integration",
+				"console\tMia Platform Console integration",
 			},
 		},
 		"some args, no completions": {
@@ -163,6 +164,21 @@ func TestCollectPath(t *testing.T) {
 			assert.ElementsMatch(t, test.expectedFiles, files)
 		})
 	}
+}
+
+func TestCollectPathKubernetesVolumeMount(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	setupKubernetesVolumeMountTestFileStructure(t, tmpDir)
+
+	files, err := collectPaths([]string{tmpDir})
+	require.NoError(t, err)
+	expectedFiles := []string{
+		filepath.Join(tmpDir, "invalid.yaml"),
+		filepath.Join(tmpDir, "file.txt"),
+	}
+	assert.ElementsMatch(t, expectedFiles, files)
 }
 
 func TestLoadMappers(t *testing.T) {

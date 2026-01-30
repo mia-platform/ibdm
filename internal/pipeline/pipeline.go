@@ -10,6 +10,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/server"
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
@@ -34,10 +35,16 @@ type Pipeline struct {
 	mappers     map[string]DataMapper
 	mapperTypes map[string]source.Extra
 	destination destination.Sender
+	server      *server.Server
 }
 
 // New wires together the given source, mappers, and destination into a Pipeline.
-func New(src any, mappers map[string]DataMapper, destination destination.Sender) *Pipeline {
+func New(ctx context.Context, src any, mappers map[string]DataMapper, destination destination.Sender) (*Pipeline, error) {
+	server, err := server.NewServer(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	mapperTypes := make(map[string]source.Extra, len(mappers))
 	for dataType, mapping := range mappers {
 		mapperTypes[dataType] = mapping.Extra
@@ -48,24 +55,47 @@ func New(src any, mappers map[string]DataMapper, destination destination.Sender)
 		mappers:     mappers,
 		mapperTypes: mapperTypes,
 		destination: destination,
-	}
+		server:      server,
+	}, nil
 }
 
-// Start begins streaming data from a source.EventSource.
+// Start begins streaming data from a source.EventSource or source.WebhookSource.
 func (p *Pipeline) Start(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	streamSource, ok := p.source.(source.EventSource)
-	if !ok {
+	streamSource, isStream := p.source.(source.EventSource)
+	webhookSource, isWebhook := p.source.(source.WebhookSource)
+
+	var dataPipeline dataPipeline
+	switch {
+	case isStream:
+		dataPipeline = func(ctx context.Context, channel chan<- source.Data) error {
+			// server start in different goroutine
+			log.Trace("starting server")
+			p.server.StartAsync(ctx)
+			return streamSource.StartEventStream(ctx, p.mapperTypes, channel)
+		}
+	case isWebhook:
+		dataPipeline = func(ctx context.Context, channel chan<- source.Data) error {
+			// server start here and keeps pipeline alive, server error = pipeline error
+			webhook, err := webhookSource.GetWebhook(ctx, p.mapperTypes, channel)
+			if err != nil {
+				return err
+			}
+			log.Trace("registering webhook")
+			p.server.App().Add(webhook.Method, webhook.Path, server.FiberHandlerWrapper(webhook.Handler))
+			log.Trace("registered webhook, starting server")
+			log.Trace("starting server")
+			return p.server.Start()
+		}
+	default:
 		return &unsupportedSourceError{
-			Message: "source does not support streaming data",
+			Message: "source does not support either streaming or webhook data",
 		}
 	}
 
 	log.Trace("starting data pipeline")
-	err := p.runDataPipeline(ctx, func(ctx context.Context, channel chan<- source.Data) error {
-		return streamSource.StartEventStream(ctx, p.mapperTypes, channel)
-	})
+	err := p.runDataPipeline(ctx, dataPipeline)
 	log.Trace("event stream finished")
 
 	return err

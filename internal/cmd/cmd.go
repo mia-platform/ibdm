@@ -23,6 +23,7 @@ const (
 
 	The available integrations are:
 	- azure: Microsoft Azure integration
+	- console: Mia Platform Console integration
 	- gcp: Google Cloud Platform integration`
 
 	runCmdExample = `# Run the Google Cloud Platform integration
