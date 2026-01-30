@@ -77,10 +77,5 @@ func (o *options) pipeline(ctx context.Context) (*pipeline.Pipeline, error) {
 		return nil, err
 	}
 
-	pipeline, err := pipeline.New(ctx, source, mappers, o.destination)
-	if err != nil {
-		return nil, err
-	}
-
-	return pipeline, nil
+	return pipeline.New(ctx, source, mappers, o.destination)
 }

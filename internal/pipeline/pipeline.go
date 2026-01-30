@@ -65,21 +65,17 @@ func (p *Pipeline) Start(ctx context.Context) error {
 
 	streamSource, isStream := p.source.(source.EventSource)
 	webhookSource, isWebhook := p.source.(source.WebhookSource)
-	if !isStream && !isWebhook {
-		return &unsupportedSourceError{
-			Message: "source does not support either streaming or webhook data",
-		}
-	}
 
 	var dataPipeline dataPipeline
-	if isStream || isStream && isWebhook {
+	switch {
+	case isStream:
 		dataPipeline = func(ctx context.Context, channel chan<- source.Data) error {
 			// server start in different goroutine
 			log.Trace("starting server")
 			p.server.StartAsync(ctx)
 			return streamSource.StartEventStream(ctx, p.mapperTypes, channel)
 		}
-	} else { /* isWebhook */
+	case isWebhook:
 		dataPipeline = func(ctx context.Context, channel chan<- source.Data) error {
 			// server start here and keeps pipeline alive, server error = pipeline error
 			webhook, err := webhookSource.GetWebhook(ctx, p.mapperTypes, channel)
@@ -91,6 +87,10 @@ func (p *Pipeline) Start(ctx context.Context) error {
 			log.Trace("registered webhook, starting server")
 			log.Trace("starting server")
 			return p.server.Start()
+		}
+	default:
+		return &unsupportedSourceError{
+			Message: "source does not support either streaming or webhook data",
 		}
 	}
 

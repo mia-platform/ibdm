@@ -23,7 +23,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		t.Setenv("CONSOLE_WEBHOOK_SECRET", "secret")
 		config, err := loadConfigFromEnv()
 		require.NoError(t, err)
-		require.Equal(t, "/console-webhook", config.WebhookPath)
+		require.Equal(t, "/console/webhook", config.WebhookPath)
 		require.Equal(t, "secret", config.WebhookSecret)
 	})
 
@@ -32,7 +32,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		t.Setenv("CONSOLE_WEBHOOK_SECRET", "secret")
 		config, err := loadConfigFromEnv()
 		require.NoError(t, err)
-		require.Equal(t, "/console-webhook", config.WebhookPath)
+		require.Equal(t, "/console/webhook", config.WebhookPath)
 		require.Equal(t, "secret", config.WebhookSecret)
 	})
 

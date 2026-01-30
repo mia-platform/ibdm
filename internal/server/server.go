@@ -26,8 +26,8 @@ type Server struct {
 }
 
 var (
-	ErrFiberListen   = errors.New("fiber server listen error")
-	ErrFiberShutdown = errors.New("fiber server shutdown error")
+	ErrServerListen   = errors.New("server listen error")
+	ErrServerShutdown = errors.New("server shutdown error")
 )
 
 func NewServer(ctx context.Context) (*Server, error) {
@@ -55,8 +55,8 @@ func (s Server) App() *fiber.App {
 }
 
 func (s *Server) Start() error {
-	if err := s.app.Listen(":" + s.cfg.HTTPPort); err != nil {
-		return fmt.Errorf("%w: %s", ErrFiberListen, err.Error())
+	if err := s.app.Listen(fmt.Sprintf("%s:%d", s.cfg.HTTPHost, s.cfg.HTTPPort)); err != nil {
+		return fmt.Errorf("%w: %w", ErrServerListen, err)
 	}
 	return nil
 }
@@ -78,12 +78,12 @@ func FiberHandlerWrapper(handler func(http.Header, []byte) error) fiber.Handler 
 		})
 
 		if err := handler(headers, ctx.Body()); err != nil {
-			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"statusCode": fiber.StatusInternalServerError,
-				"error":      http.StatusText(fiber.StatusInternalServerError),
+			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"statusCode": http.StatusInternalServerError,
+				"error":      http.StatusText(http.StatusInternalServerError),
 				"message":    "error processing webhook message",
 			})
 		}
-		return ctx.SendStatus(fiber.StatusNoContent)
+		return ctx.SendStatus(http.StatusNoContent)
 	}
 }

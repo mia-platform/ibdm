@@ -79,8 +79,7 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 		return azure.NewSource()
 	case "gcp":
 		return gcp.NewSource()
-	}
-	if integrationName == "console" {
+	case "console":
 		return console.NewSource()
 	}
 	return nil, nil

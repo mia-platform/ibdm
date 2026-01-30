@@ -23,11 +23,18 @@ ibdm sync console --mapping-file <path to mapping file or folder>
 
 ## Configuration
 
+### Server
+
+When running in webhook mode (`ibdm run console`), a server is spawned and these configs are supported:
+
+- `HTTP_HOST`: The host of the underlying server
+- `HTTP_PORT`: The port of the underlying server
+
 ### Webhook Mode
 
 When running in webhook mode (`ibdm run console`), the following environment variables are supported:
 
-- `CONSOLE_WEBHOOK_PATH`: The path where the webhook server will listen (default: `/console-webhook`).
+- `CONSOLE_WEBHOOK_PATH`: The path where the webhook server will listen (default: `/console/webhook`).
 - `CONSOLE_WEBHOOK_SECRET`: The secret shared with the Console to validate the `X-Mia-Signature` header.
 
 ### Sync Mode

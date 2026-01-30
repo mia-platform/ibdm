@@ -21,7 +21,7 @@ var (
 
 // webhookConfig holds the environment-driven Console settings.
 type webhookConfig struct {
-	WebhookPath   string `env:"CONSOLE_WEBHOOK_PATH" envDefault:"/console-webhook"`
+	WebhookPath   string `env:"CONSOLE_WEBHOOK_PATH" envDefault:"/console/webhook"`
 	WebhookSecret string `env:"CONSOLE_WEBHOOK_SECRET"`
 }
 
