@@ -16,7 +16,6 @@ var (
 )
 
 type Config struct {
-	LoggerLevel           string `env:"LOGGER_LEVEL" envDefault:"Info"`
 	DisableStartupMessage bool   `env:"DISABLE_STARTUP_MESSAGE" envDefault:"true"`
 	HTTPHost              string `env:"HTTP_HOST" envDefault:"0.0.0.0"`
 	HTTPPort              int    `env:"HTTP_PORT" envDefault:"3000"`
