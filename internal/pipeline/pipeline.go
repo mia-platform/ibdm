@@ -181,7 +181,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 			}
 			switch data.Operation {
 			case source.DataOperationUpsert:
-				output, err := mapper.Mapper.ApplyTemplates(data.Values)
+				output, extra, err := mapper.Mapper.ApplyTemplates(data.Values)
 				if err != nil {
 					log.Error("error applying mapper templates", "type", data.Type, "error", err)
 					continue
@@ -191,6 +191,19 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 				if err := p.destination.SendData(ctx, dataToSend); err != nil {
 					log.Error("error sending data to destination", "type", data.Type, "error", err)
 					continue
+				}
+				for _, extraOutput := range extra {
+					extraDataToSend := &destination.Data{
+						APIVersion:    extraOutput.APIVersion,
+						Resource:      extraOutput.Resource,
+						OperationTime: data.Timestamp(),
+						Name:          extraOutput.Identifier,
+						Data:          extraOutput.Spec,
+					}
+					if err := p.destination.SendData(ctx, extraDataToSend); err != nil {
+						log.Error("error sending extra data to destination", "type", data.Type, "error", err)
+						continue
+					}
 				}
 			case source.DataOperationDelete:
 				identifier, err := mapper.Mapper.ApplyIdentifierTemplate(data.Values)

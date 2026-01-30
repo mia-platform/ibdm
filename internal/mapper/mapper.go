@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -21,27 +22,43 @@ import (
 // Template strings are evaluated using Go's text/template engine.
 type Mapper interface {
 	// ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
-	ApplyTemplates(input map[string]any) (output MappedData, err error)
+	ApplyTemplates(input map[string]any) (output MappedData, extra []ExtraMappedData, err error)
 	// ApplyIdentifierTemplate applies only the identifier template to the given input data and returns
 	ApplyIdentifierTemplate(data map[string]any) (string, error)
 }
 
 const (
-	maxIdentifierLength = 253
+	maxIdentifierLength   = 253
+	extraRelationshipKind = "relationships"
 )
 
 var (
 	errParsingSpecOutput = errors.New("error during casting to valid object")
+	errParsingExtra      = errors.New("error parsing extra templates")
 
 	identifierRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
+	validExtraKinds = []string{extraRelationshipKind}
 )
 
 var _ Mapper = &internalMapper{}
 
+// ExtraMapping defines a pre-compiled template for an extra resource.
+type ExtraMapping struct {
+	APIVersion string
+	// TODO: rename Kind to Resource everywhere
+	Kind         string
+	IDTemplate   *template.Template
+	BodyTemplate *template.Template
+}
+
 // internalMapper is the default Mapper implementation backed by text/template.
 type internalMapper struct {
-	idTemplate   *template.Template
-	specTemplate *template.Template
+	// TODO: check if there is a way to remove apiVersion and resource from internalMapper
+	apiVersion    string
+	resource      string
+	idTemplate    *template.Template
+	specTemplate  *template.Template
+	extraMappings []ExtraMapping
 }
 
 // MappedData wraps the identifier and rendered spec produced by a Mapper.
@@ -50,8 +67,16 @@ type MappedData struct {
 	Spec       map[string]any
 }
 
+// ExtraMappedData wraps the identifier and rendered spec produced by a Mapper.
+type ExtraMappedData struct {
+	APIVersion string
+	Resource   string
+	Identifier string
+	Spec       map[string]any
+}
+
 // New constructs a Mapper using the provided identifier template and spec templates.
-func New(identifierTemplate string, specTemplates map[string]string) (Mapper, error) {
+func New(apiVersion, resource, identifierTemplate string, specTemplates map[string]string, extraTemplates []map[string]any) (Mapper, error) {
 	var parsingErrs error
 	tmpl := template.New("main").Option("missingkey=error").Funcs(templateFunctions())
 	idTemplate, err := tmpl.New("identifier").Parse(identifierTemplate)
@@ -70,32 +95,87 @@ func New(identifierTemplate string, specTemplates map[string]string) (Mapper, er
 		parsingErrs = errors.Join(parsingErrs, err)
 	}
 
+	// TODO: make this cleaner and in a new function
+	compiledExtras := make([]ExtraMapping, 0, len(extraTemplates))
+	for _, extra := range extraTemplates {
+		apiVersion, _ := extra["apiVersion"].(string)
+		kind, _ := extra["kind"].(string)
+		ok := IsExtraKindValid(kind)
+		if !ok {
+			parsingErrs = errors.Join(parsingErrs, fmt.Errorf("invalid extra kind: %s", kind))
+			continue
+		}
+
+		idStr, _ := extra["identifier"].(string)
+
+		idTmpl, err := tmpl.New("extra-id").Parse(idStr)
+		if err != nil {
+			parsingErrs = errors.Join(parsingErrs, err)
+			continue
+		}
+
+		bodyMap := make(map[string]any, len(extra))
+		for k, v := range extra {
+			if k == "kind" || k == "identifier" || k == "apiVersion" {
+				continue
+			}
+			bodyMap[k] = v
+		}
+
+		bodyBytes, err := yaml.Marshal(bodyMap)
+		if err != nil {
+			parsingErrs = errors.Join(parsingErrs, err)
+			continue
+		}
+
+		bodyTmpl, err := tmpl.New("extra-body").Parse(string(bodyBytes))
+		if err != nil {
+			parsingErrs = errors.Join(parsingErrs, err)
+			continue
+		}
+
+		compiledExtras = append(compiledExtras, ExtraMapping{
+			APIVersion:   apiVersion,
+			Kind:         kind,
+			IDTemplate:   idTmpl,
+			BodyTemplate: bodyTmpl,
+		})
+	}
+
 	if parsingErrs != nil {
 		return nil, NewParsingError(parsingErrs)
 	}
 
 	return &internalMapper{
-		idTemplate:   idTemplate,
-		specTemplate: specTemplate,
+		apiVersion:    apiVersion,
+		resource:      resource,
+		idTemplate:    idTemplate,
+		specTemplate:  specTemplate,
+		extraMappings: compiledExtras,
 	}, nil
 }
 
 // ApplyTemplates implements Mapper.ApplyTemplates.
-func (m *internalMapper) ApplyTemplates(data map[string]any) (MappedData, error) {
+func (m *internalMapper) ApplyTemplates(data map[string]any) (MappedData, []ExtraMappedData, error) {
 	identifier, err := executeIdentifierTemplate(m.idTemplate, data)
 	if err != nil {
-		return MappedData{}, err
+		return MappedData{}, nil, err
 	}
 
 	specData, err := executeTemplatesMap(m.specTemplate, data)
 	if err != nil {
-		return MappedData{}, err
+		return MappedData{}, nil, err
+	}
+
+	extraData, err := executeExtraMappings(data, identifier, m.extraMappings, m.apiVersion, m.resource)
+	if err != nil {
+		return MappedData{}, nil, err
 	}
 
 	return MappedData{
 		Identifier: identifier,
 		Spec:       specData,
-	}, nil
+	}, extraData, nil
 }
 
 // ApplyIdentifierTemplate implements Mapper.ApplyTemplates.
@@ -176,4 +256,61 @@ func executeTemplatesMap(templates *template.Template, data map[string]any) (map
 		return nil, fmt.Errorf("%w: %s", errParsingSpecOutput, err.Error())
 	}
 	return output, nil
+}
+
+// executeExtraMappings renders the pre-compiled extra templates.
+func executeExtraMappings(data map[string]any, parentIdentifier string, extraMappings []ExtraMapping, apiVersion, resource string) ([]ExtraMappedData, error) {
+	output := make([]ExtraMappedData, 0, len(extraMappings))
+
+	for _, mapping := range extraMappings {
+		// Generate Identifier
+		var idBuf strings.Builder
+		if err := mapping.IDTemplate.Execute(&idBuf, data); err != nil {
+			return nil, err
+		}
+		identifier := idBuf.String()
+
+		// Generate Body (Spec)
+		var bodyBuf bytes.Buffer
+		if err := mapping.BodyTemplate.Execute(&bodyBuf, data); err != nil {
+			return nil, err
+		}
+
+		// Unmarshal the executed YAML back into a map
+		var spec map[string]any
+		if err := yaml.Unmarshal(bodyBuf.Bytes(), &spec); err != nil {
+			return nil, fmt.Errorf("error parsing extra spec: %w", err)
+		}
+
+		// Handle Special Kinds (Relationship)
+		if strings.EqualFold(mapping.Kind, extraRelationshipKind) {
+			spec = enrichRelationshipSpec(spec, parentIdentifier, apiVersion, resource)
+		}
+
+		output = append(output, ExtraMappedData{
+			APIVersion: mapping.APIVersion,
+			Resource:   mapping.Kind,
+			Identifier: identifier,
+			Spec:       spec,
+		})
+	}
+
+	return output, nil
+}
+
+func enrichRelationshipSpec(spec map[string]any, parentIdentifier, apiVersion, resource string) map[string]any {
+	// Inject targetRef
+	spec["targetRef"] = map[string]any{
+		"apiVersion": apiVersion,
+		"resource":   resource,
+		"name":       parentIdentifier,
+	}
+
+	return spec
+}
+
+func IsExtraKindValid(extraKind string) bool {
+	return slices.ContainsFunc(validExtraKinds, func(s string) bool {
+		return strings.EqualFold(s, extraKind)
+	})
 }
