@@ -61,7 +61,7 @@ var (
 	}
 )
 
-func testMappers(tb testing.TB) map[string]DataMapper {
+func testMappers(tb testing.TB, extra []map[string]any) map[string]DataMapper {
 	tb.Helper()
 
 	return map[string]DataMapper{
@@ -69,7 +69,7 @@ func testMappers(tb testing.TB) map[string]DataMapper {
 			mapper, err := mapper.New("{{ .id }}", map[string]string{
 				"field1": "{{ .field1 }}",
 				"field2": "{{ .field2 }}",
-			})
+			}, extra)
 			require.NoError(tb, err)
 			return DataMapper{
 				APIVersion: "v1",
@@ -80,7 +80,7 @@ func testMappers(tb testing.TB) map[string]DataMapper {
 		"type2": func() DataMapper {
 			mapper, err := mapper.New("{{ .identifier }}", map[string]string{
 				"attributeA": "{{ .attributeA }}",
-			})
+			}, extra)
 			require.NoError(tb, err)
 			return DataMapper{
 				APIVersion: "v2",
@@ -91,6 +91,28 @@ func testMappers(tb testing.TB) map[string]DataMapper {
 	}
 }
 
+func getMappingsExtra(tb testing.TB, returnExtra bool) []map[string]any {
+	tb.Helper()
+
+	if !returnExtra {
+		return nil
+	}
+
+	extraDef := map[string]any{
+		"apiVersion": "relationships/v1",
+		"resource":   "relationships",
+		"identifier": `{{ printf "relationship--%s--%s--dependency" .field1 .field2 }}`,
+		"sourceRef": map[string]any{
+			"apiVersion": "resource.custom-platform/v1",
+			"resource":   "resource1",
+			"name":       "{{ .field2 }}",
+		},
+		"type": "dependency",
+	}
+
+	return []map[string]any{extraDef}
+}
+
 func TestStreamPipeline(t *testing.T) {
 	t.Parallel()
 
@@ -99,6 +121,7 @@ func TestStreamPipeline(t *testing.T) {
 		expectedData     []*destination.Data
 		expectedDeletion []*destination.Data
 		expectedErr      error
+		useExtra         bool
 	}{
 		"unsupported source error": {
 			source: func(c chan<- struct{}) any {
@@ -106,6 +129,7 @@ func TestStreamPipeline(t *testing.T) {
 				return "not a valid source"
 			},
 			expectedErr: errors.ErrUnsupported,
+			useExtra:    false,
 		},
 		"source return an error": {
 			source: func(c chan<- struct{}) any {
@@ -113,6 +137,7 @@ func TestStreamPipeline(t *testing.T) {
 				return fakesource.NewFakeSourceWithError(t, assert.AnError)
 			},
 			expectedErr: assert.AnError,
+			useExtra:    false,
 		},
 		"valid pipeline return mapped data": {
 			source: func(c chan<- struct{}) any {
@@ -138,6 +163,52 @@ func TestStreamPipeline(t *testing.T) {
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
 			},
+			useExtra: false,
+		},
+		"valid pipeline return mapped data with extra mappings": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
+			},
+			expectedData: []*destination.Data{
+				{
+					APIVersion: "v1",
+					Resource:   "resource",
+					Name:       "item1",
+					Data: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion: "relationships/v1",
+					Resource:   "relationships",
+					Name:       "relationship--value1--value2--dependency",
+					Data: map[string]any{
+						"sourceRef": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"resource":   "resource1",
+							"name":       "value2",
+						},
+						"targetRef": map[string]any{
+							"apiVersion": "v1",
+							"resource":   "resource",
+							"name":       "item1",
+						},
+						"type": "dependency",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v2",
+					Resource:      "resource2",
+					Name:          "item2",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			useExtra: true,
 		},
 	}
 
@@ -151,7 +222,8 @@ func TestStreamPipeline(t *testing.T) {
 			defer close(syncChan)
 
 			testSource := test.source(syncChan)
-			pipeline, err := New(ctx, testSource, testMappers(t), destination)
+			extra := getMappingsExtra(t, test.useExtra)
+			pipeline, err := New(ctx, testSource, testMappers(t, extra), destination)
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
@@ -291,7 +363,7 @@ func TestSyncPipeline(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			destination := fakedestination.NewFakeDestination(t)
-			pipeline, err := New(ctx, test.source, testMappers(t), destination)
+			pipeline, err := New(ctx, test.source, testMappers(t, nil), destination)
 			require.NoError(t, err)
 
 			defer cancel()

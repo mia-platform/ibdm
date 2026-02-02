@@ -78,7 +78,7 @@ type ParentResourceInfo struct {
 }
 
 // New constructs a Mapper using the provided identifier template and spec templates.
-func New(apiVersion, resource, identifierTemplate string, specTemplates map[string]string, extraTemplates []map[string]any) (Mapper, error) {
+func New(identifierTemplate string, specTemplates map[string]string, extraTemplates []map[string]any) (Mapper, error) {
 	var parsingErrs error
 	tmpl := template.New("main").Option("missingkey=error").Funcs(templateFunctions())
 	idTemplate, err := tmpl.New("identifier").Parse(identifierTemplate)
@@ -270,20 +270,20 @@ func executeExtraMappings(data map[string]any, parentIdentifier string, extraMap
 		// Generate Identifier
 		var idBuf strings.Builder
 		if err := mapping.IDTemplate.Execute(&idBuf, data); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
 		}
 		identifier := idBuf.String()
 
 		// Generate Body (Spec)
 		var bodyBuf bytes.Buffer
 		if err := mapping.BodyTemplate.Execute(&bodyBuf, data); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
 		}
 
 		// Unmarshal the executed YAML back into a map
 		var spec map[string]any
 		if err := yaml.Unmarshal(bodyBuf.Bytes(), &spec); err != nil {
-			return nil, fmt.Errorf("error parsing extra spec: %w", err)
+			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
 		}
 
 		// Handle Special Resources (Relationship)
