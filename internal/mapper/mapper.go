@@ -97,14 +97,27 @@ func New(apiVersion, resource, identifierTemplate string, specTemplates map[stri
 		parsingErrs = errors.Join(parsingErrs, err)
 	}
 
-	// TODO: make this cleaner and in a new function
-	compiledExtras := make([]ExtraMapping, 0, len(extraTemplates))
+	extraMappings := compileExtraMappings(extraTemplates, tmpl, &parsingErrs)
+
+	if parsingErrs != nil {
+		return nil, NewParsingError(parsingErrs)
+	}
+
+	return &internalMapper{
+		idTemplate:    idTemplate,
+		specTemplate:  specTemplate,
+		extraMappings: extraMappings,
+	}, nil
+}
+
+func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Template, parsingErrs *error) []ExtraMapping {
+	extraMappings := make([]ExtraMapping, 0, len(extraTemplates))
 	for _, extra := range extraTemplates {
 		apiVersion, _ := extra["apiVersion"].(string)
 		resource, _ := extra["resource"].(string)
 		ok := IsExtraResourceValid(resource)
 		if !ok {
-			parsingErrs = errors.Join(parsingErrs, fmt.Errorf("invalid extra resource: %s", resource))
+			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid extra resource: %s", resource))
 			continue
 		}
 
@@ -112,7 +125,7 @@ func New(apiVersion, resource, identifierTemplate string, specTemplates map[stri
 
 		idTmpl, err := tmpl.New("extra-id").Parse(idStr)
 		if err != nil {
-			parsingErrs = errors.Join(parsingErrs, err)
+			*parsingErrs = errors.Join(*parsingErrs, err)
 			continue
 		}
 
@@ -126,33 +139,24 @@ func New(apiVersion, resource, identifierTemplate string, specTemplates map[stri
 
 		bodyBytes, err := yaml.Marshal(bodyMap)
 		if err != nil {
-			parsingErrs = errors.Join(parsingErrs, err)
+			*parsingErrs = errors.Join(*parsingErrs, err)
 			continue
 		}
 
 		bodyTmpl, err := tmpl.New("extra-body").Parse(string(bodyBytes))
 		if err != nil {
-			parsingErrs = errors.Join(parsingErrs, err)
+			*parsingErrs = errors.Join(*parsingErrs, err)
 			continue
 		}
 
-		compiledExtras = append(compiledExtras, ExtraMapping{
+		extraMappings = append(extraMappings, ExtraMapping{
 			APIVersion:   apiVersion,
 			Resource:     resource,
 			IDTemplate:   idTmpl,
 			BodyTemplate: bodyTmpl,
 		})
 	}
-
-	if parsingErrs != nil {
-		return nil, NewParsingError(parsingErrs)
-	}
-
-	return &internalMapper{
-		idTemplate:    idTemplate,
-		specTemplate:  specTemplate,
-		extraMappings: compiledExtras,
-	}, nil
+	return extraMappings
 }
 
 // ApplyTemplates implements Mapper.ApplyTemplates.
