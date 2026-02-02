@@ -22,40 +22,36 @@ import (
 // Template strings are evaluated using Go's text/template engine.
 type Mapper interface {
 	// ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
-	ApplyTemplates(input map[string]any) (output MappedData, extra []ExtraMappedData, err error)
+	ApplyTemplates(input map[string]any, parentResourceInfo ParentResourceInfo) (output MappedData, extra []ExtraMappedData, err error)
 	// ApplyIdentifierTemplate applies only the identifier template to the given input data and returns
 	ApplyIdentifierTemplate(data map[string]any) (string, error)
 }
 
 const (
-	maxIdentifierLength   = 253
-	extraRelationshipKind = "relationships"
+	maxIdentifierLength       = 253
+	extraRelationshipResource = "relationships"
 )
 
 var (
 	errParsingSpecOutput = errors.New("error during casting to valid object")
 	errParsingExtra      = errors.New("error parsing extra templates")
 
-	identifierRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
-	validExtraKinds = []string{extraRelationshipKind}
+	identifierRegex     = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
+	validExtraResources = []string{extraRelationshipResource}
 )
 
 var _ Mapper = &internalMapper{}
 
 // ExtraMapping defines a pre-compiled template for an extra resource.
 type ExtraMapping struct {
-	APIVersion string
-	// TODO: rename Kind to Resource everywhere
-	Kind         string
+	APIVersion   string
+	Resource     string
 	IDTemplate   *template.Template
 	BodyTemplate *template.Template
 }
 
 // internalMapper is the default Mapper implementation backed by text/template.
 type internalMapper struct {
-	// TODO: check if there is a way to remove apiVersion and resource from internalMapper
-	apiVersion    string
-	resource      string
 	idTemplate    *template.Template
 	specTemplate  *template.Template
 	extraMappings []ExtraMapping
@@ -73,6 +69,12 @@ type ExtraMappedData struct {
 	Resource   string
 	Identifier string
 	Spec       map[string]any
+}
+
+// ParentResourceInfo holds metadata about the parent resource for relationship extra mappings.
+type ParentResourceInfo struct {
+	ParentAPIVersion string
+	ParentResource   string
 }
 
 // New constructs a Mapper using the provided identifier template and spec templates.
@@ -99,10 +101,10 @@ func New(apiVersion, resource, identifierTemplate string, specTemplates map[stri
 	compiledExtras := make([]ExtraMapping, 0, len(extraTemplates))
 	for _, extra := range extraTemplates {
 		apiVersion, _ := extra["apiVersion"].(string)
-		kind, _ := extra["kind"].(string)
-		ok := IsExtraKindValid(kind)
+		resource, _ := extra["resource"].(string)
+		ok := IsExtraResourceValid(resource)
 		if !ok {
-			parsingErrs = errors.Join(parsingErrs, fmt.Errorf("invalid extra kind: %s", kind))
+			parsingErrs = errors.Join(parsingErrs, fmt.Errorf("invalid extra resource: %s", resource))
 			continue
 		}
 
@@ -116,7 +118,7 @@ func New(apiVersion, resource, identifierTemplate string, specTemplates map[stri
 
 		bodyMap := make(map[string]any, len(extra))
 		for k, v := range extra {
-			if k == "kind" || k == "identifier" || k == "apiVersion" {
+			if k == "resource" || k == "identifier" || k == "apiVersion" {
 				continue
 			}
 			bodyMap[k] = v
@@ -136,7 +138,7 @@ func New(apiVersion, resource, identifierTemplate string, specTemplates map[stri
 
 		compiledExtras = append(compiledExtras, ExtraMapping{
 			APIVersion:   apiVersion,
-			Kind:         kind,
+			Resource:     resource,
 			IDTemplate:   idTmpl,
 			BodyTemplate: bodyTmpl,
 		})
@@ -147,8 +149,6 @@ func New(apiVersion, resource, identifierTemplate string, specTemplates map[stri
 	}
 
 	return &internalMapper{
-		apiVersion:    apiVersion,
-		resource:      resource,
 		idTemplate:    idTemplate,
 		specTemplate:  specTemplate,
 		extraMappings: compiledExtras,
@@ -156,7 +156,7 @@ func New(apiVersion, resource, identifierTemplate string, specTemplates map[stri
 }
 
 // ApplyTemplates implements Mapper.ApplyTemplates.
-func (m *internalMapper) ApplyTemplates(data map[string]any) (MappedData, []ExtraMappedData, error) {
+func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo ParentResourceInfo) (MappedData, []ExtraMappedData, error) {
 	identifier, err := executeIdentifierTemplate(m.idTemplate, data)
 	if err != nil {
 		return MappedData{}, nil, err
@@ -167,7 +167,7 @@ func (m *internalMapper) ApplyTemplates(data map[string]any) (MappedData, []Extr
 		return MappedData{}, nil, err
 	}
 
-	extraData, err := executeExtraMappings(data, identifier, m.extraMappings, m.apiVersion, m.resource)
+	extraData, err := executeExtraMappings(data, identifier, m.extraMappings, parentResourceInfo)
 	if err != nil {
 		return MappedData{}, nil, err
 	}
@@ -259,7 +259,7 @@ func executeTemplatesMap(templates *template.Template, data map[string]any) (map
 }
 
 // executeExtraMappings renders the pre-compiled extra templates.
-func executeExtraMappings(data map[string]any, parentIdentifier string, extraMappings []ExtraMapping, apiVersion, resource string) ([]ExtraMappedData, error) {
+func executeExtraMappings(data map[string]any, parentIdentifier string, extraMappings []ExtraMapping, parentResourceInfo ParentResourceInfo) ([]ExtraMappedData, error) {
 	output := make([]ExtraMappedData, 0, len(extraMappings))
 
 	for _, mapping := range extraMappings {
@@ -282,14 +282,14 @@ func executeExtraMappings(data map[string]any, parentIdentifier string, extraMap
 			return nil, fmt.Errorf("error parsing extra spec: %w", err)
 		}
 
-		// Handle Special Kinds (Relationship)
-		if strings.EqualFold(mapping.Kind, extraRelationshipKind) {
-			spec = enrichRelationshipSpec(spec, parentIdentifier, apiVersion, resource)
+		// Handle Special Resources (Relationship)
+		if strings.EqualFold(mapping.Resource, extraRelationshipResource) {
+			spec = enrichRelationshipSpec(spec, parentIdentifier, parentResourceInfo.ParentAPIVersion, parentResourceInfo.ParentResource)
 		}
 
 		output = append(output, ExtraMappedData{
 			APIVersion: mapping.APIVersion,
-			Resource:   mapping.Kind,
+			Resource:   mapping.Resource,
 			Identifier: identifier,
 			Spec:       spec,
 		})
@@ -309,8 +309,8 @@ func enrichRelationshipSpec(spec map[string]any, parentIdentifier, apiVersion, r
 	return spec
 }
 
-func IsExtraKindValid(extraKind string) bool {
-	return slices.ContainsFunc(validExtraKinds, func(s string) bool {
-		return strings.EqualFold(s, extraKind)
+func IsExtraResourceValid(extraResource string) bool {
+	return slices.ContainsFunc(validExtraResources, func(s string) bool {
+		return strings.EqualFold(s, extraResource)
 	})
 }

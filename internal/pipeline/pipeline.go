@@ -167,7 +167,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 			if !ok {
 				return
 			}
-			mapper, found := p.mappers[data.Type]
+			dataMapper, found := p.mappers[data.Type]
 			if !found {
 				log.Debug("data type not mapped, skipping", "type", data.Type)
 				continue
@@ -175,13 +175,17 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 
 			log.Trace("sending data", "type", data.Type, "operation", data.Operation.String())
 			dataToSend := &destination.Data{
-				APIVersion:    mapper.APIVersion,
-				Resource:      mapper.Resource,
+				APIVersion:    dataMapper.APIVersion,
+				Resource:      dataMapper.Resource,
 				OperationTime: data.Timestamp(),
+			}
+			parentResourceInfo := mapper.ParentResourceInfo{
+				ParentAPIVersion: dataMapper.APIVersion,
+				ParentResource:   dataMapper.Resource,
 			}
 			switch data.Operation {
 			case source.DataOperationUpsert:
-				output, extra, err := mapper.Mapper.ApplyTemplates(data.Values)
+				output, extra, err := dataMapper.Mapper.ApplyTemplates(data.Values, parentResourceInfo)
 				if err != nil {
 					log.Error("error applying mapper templates", "type", data.Type, "error", err)
 					continue
@@ -206,7 +210,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 					}
 				}
 			case source.DataOperationDelete:
-				identifier, err := mapper.Mapper.ApplyIdentifierTemplate(data.Values)
+				identifier, err := dataMapper.Mapper.ApplyIdentifierTemplate(data.Values)
 				dataToSend.Name = identifier
 				if err != nil {
 					log.Error("error applying mapper templates", "type", data.Type, "error", err)

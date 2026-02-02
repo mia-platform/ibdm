@@ -14,7 +14,7 @@ mappings:
     lastUpdate: "{{ get \"committedDate\" .configuration (now) }}"
   extra:
     - apiVersion: console.mia-platform.eu/v1alpha1
-      kind: relationships
+      resource: relationships
       identifier: |-
         {{ printf "relationship--%s--%s--%s--dependency" .project._id .project._id .revision.name }}
       sourceRef:
