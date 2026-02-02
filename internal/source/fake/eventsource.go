@@ -5,6 +5,7 @@ package fake
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -33,6 +34,25 @@ var _ FakeEventSource = &fakeEventSource{}
 // fakeEventSource wraps an unclosableEventSource with a Close implementation.
 type fakeEventSource struct {
 	*unclosableEventSource
+}
+
+// FakeWebhookSource combines webhook streaming.
+type FakeWebhookSource interface {
+	source.WebhookSource
+	SimulateWebhook()
+}
+
+var _ source.WebhookSource = &unclosableWebhookSource{}
+
+// unclosableWebhookSource simulates a WebhookSource without close support.
+type unclosableWebhookSource struct {
+	// TODO: add everything needed to create the webhook
+	tb testing.TB
+
+	eventsData     []source.Data
+	streamFinished chan<- struct{}
+	stopChannel    chan struct{}
+	trigger        chan struct{}
 }
 
 // NewFakeEventSource returns a closable fake event source.
@@ -86,6 +106,65 @@ func (f *unclosableEventSource) StartEventStream(ctx context.Context, _ map[stri
 			return nil
 		}
 	}
+}
+
+// NewFakeUnclosableWebhookSource returns a WebhookSource without close capabilities.
+func NewFakeUnclosableWebhookSource(tb testing.TB, eventsData []source.Data, streamFinished chan<- struct{}) FakeWebhookSource {
+	tb.Helper()
+
+	return &unclosableWebhookSource{
+		tb:             tb,
+		eventsData:     eventsData,
+		streamFinished: streamFinished,
+		trigger:        make(chan struct{}, 1),
+	}
+}
+
+// SimulateWebhook triggers the execution of the webhook handler.
+func (f *unclosableWebhookSource) SimulateWebhook() {
+	f.trigger <- struct{}{}
+}
+
+// GetWebhook pushes queued events and blocks until Close is invoked or the context ends.
+func (f *unclosableWebhookSource) GetWebhook(ctx context.Context, _ map[string]source.Extra, results chan<- source.Data) (webhook source.Webhook, err error) {
+	// TODO: change logic in order to receive webhook parameters from fake source
+	f.tb.Helper()
+
+	handler := func(_ http.Header, _ []byte) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		for _, data := range f.eventsData {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				results <- data
+			}
+		}
+
+		f.streamFinished <- struct{}{}
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-f.stopChannel:
+				return nil
+			}
+		}
+	}
+
+	go func() {
+		<-f.trigger
+		_ = handler(nil, nil)
+	}()
+
+	return source.Webhook{
+		Method:  "POST",
+		Path:    "/webhook",
+		Handler: handler,
+	}, nil
 }
 
 // Close signals the stream to exit.
