@@ -37,6 +37,7 @@ var (
 		"azure":        "Microsoft Azure integration",
 		"azure-devops": "Microsoft Azure DevOps integration",
 		"gcp":          "Google Cloud Platform integration",
+		"console":      "Mia Platform Console integration",
 	}
 )
 
