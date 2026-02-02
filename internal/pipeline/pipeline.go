@@ -83,7 +83,8 @@ func (p *Pipeline) Start(ctx context.Context) error {
 				return err
 			}
 			log.Trace("registering webhook")
-			p.server.App().Add(webhook.Method, webhook.Path, server.FiberHandlerWrapper(webhook.Handler))
+			//nolint: contextcheck // webhook handler will use the context from the server
+			p.server.AddRoute(webhook.Method, webhook.Path, webhook.Handler)
 			log.Trace("registered webhook, starting server")
 			log.Trace("starting server")
 			return p.server.Start()
