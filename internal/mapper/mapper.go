@@ -302,11 +302,11 @@ func executeExtraMappings(data map[string]any, parentIdentifier string, extraMap
 	return output, nil
 }
 
-func enrichRelationshipSpec(spec map[string]any, parentIdentifier, apiVersion, resource string) map[string]any {
+func enrichRelationshipSpec(spec map[string]any, parentIdentifier, apiVersion, kind string) map[string]any {
 	// Inject targetRef
 	spec["targetRef"] = map[string]any{
 		"apiVersion": apiVersion,
-		"kind":       resource,
+		"kind":       kind,
 		"name":       parentIdentifier,
 	}
 
