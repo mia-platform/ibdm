@@ -4,16 +4,16 @@ useGitignore: true
 allowCompoundWords: true
 words:
   - anchore
-  - crds
   - gopath
   - gsrv
+  - healthz
   - ibdm
+  - itds
   - nolint
   - syft
   - tmpl
   - upserted
   - uuidv
-  - healthz
 ignoreWords:
   - acks
   - apiv
