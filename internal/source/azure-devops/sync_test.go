@@ -196,7 +196,7 @@ func testServer(t *testing.T) *httptest.Server {
 			return
 		case r.Method == http.MethodGet && r.RequestURI == "/_apis/teams?%24expandIdentity=true":
 			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set(continuationHeader, "123") //nolint:canonicalheader
+			w.Header().Set(continuationHeader, "123")
 			_, err := w.Write(teamsRawJSON1)
 			assert.NoError(t, err)
 			return

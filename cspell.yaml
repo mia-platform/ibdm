@@ -24,22 +24,25 @@ ignoreWords:
   - azidentity
   - azsystemevents
   - caarlos
+  - contoso
+  - diber
   - errln
+  - fabrikam
   - fakeazcore
   - goarch
   - goarm
   - gobin
+  - gofiber
   - golangci
   - gomod
   - goos
   - hclog
+  - nhttp
   - pubsubpb
   - stretchr
   - structpb
   - tlog
   - vtpm
-  - gofiber
-  - nhttp
 files:
   - "**/*.go"
   - "**/*.md"

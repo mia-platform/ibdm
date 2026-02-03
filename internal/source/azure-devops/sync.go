@@ -59,7 +59,7 @@ func syncResources(ctx context.Context, client *client, typesToFilter map[string
 				}
 			}
 
-			if nextLink := resp.Header.Get(continuationHeader); nextLink != "" { //nolint:canonicalheader
+			if nextLink := resp.Header.Get(continuationHeader); nextLink != "" {
 				queryParam.Set("continuationToken", nextLink)
 				continue
 			}

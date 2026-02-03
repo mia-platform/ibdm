@@ -25,7 +25,7 @@ func TestConnection(t *testing.T) {
 	assert.Equal(t, "pat", client.personalToken)
 }
 
-func TestValidation(t *testing.T) {
+func TestValidationSync(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
@@ -55,7 +55,41 @@ func TestValidation(t *testing.T) {
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
-			err := test.config.validate()
+			err := test.config.validateForSync()
+			if test.expectErr != nil {
+				assert.ErrorIs(t, err, test.expectErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidationWebhook(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		config    config
+		expectErr error
+	}{
+		"valid config": {
+			config: config{
+				WebhookUser:     "user",
+				WebhookPassword: "password",
+			},
+		},
+		"user without password": {
+			config: config{
+				WebhookUser: "user",
+			},
+			expectErr: ErrInvalidEnvVariable,
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+			err := test.config.validateForWebhook()
 			if test.expectErr != nil {
 				assert.ErrorIs(t, err, test.expectErr)
 			} else {

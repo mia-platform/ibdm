@@ -32,6 +32,7 @@ func TestCompletion(t *testing.T) {
 			args: []string{},
 			expectedCompletion: []string{
 				"azure\tMicrosoft Azure integration",
+				"azure-devops\tMicrosoft Azure DevOps integration",
 				"gcp\tGoogle Cloud Platform integration",
 				"console\tMia Platform Console integration",
 			},

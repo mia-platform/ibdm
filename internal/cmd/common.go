@@ -28,9 +28,10 @@ var (
 
 	// availableEventSources covers event-stream integration sources used for completion and help text.
 	availableEventSources = map[string]string{
-		"azure":   "Microsoft Azure integration",
-		"gcp":     "Google Cloud Platform integration",
-		"console": "Mia Platform Console integration",
+		"azure":        "Microsoft Azure integration",
+		"azure-devops": "Microsoft Azure DevOps integration",
+		"gcp":          "Google Cloud Platform integration",
+		"console":      "Mia Platform Console integration",
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{
