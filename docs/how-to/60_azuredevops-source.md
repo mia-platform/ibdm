@@ -28,6 +28,16 @@ In addition to other environment variables the Microsoft Azure Devops source req
 
 - `AZURE_DEVOPS_ORGANIZATION_URL`: the Microsoft Azure Devops organization url
 - `AZURE_DEVOPS_PERSONAL_TOKEN`: a personal access token of a user in the organization
+- `AZURE_DEVOPS_WEBHOOK_PATH`: the path where the webhook handler will be exposed, by default will be `/azure-devops/webhook`
+- `AZURE_DEVOPS_WEBHOOK_USER`: the optional user for webhook authorization
+- `AZURE_DEVOPS_WEBHOOK_PASSWORD`: the optional password for webhook authorization
+
+The first two variables are used if you start the integration in sync mode using the REST APIs.
+The other three are needed if you start the source for exposing a webhook for receiving events from
+Microsoft Azure DevOps.
+
+If you set `AZURE_DEVOPS_WEBHOOK_USER` you need to also set `AZURE_DEVOPS_WEBHOOK_PASSWORD` and their
+values must be the same set in the Azure DevOps dashboard during the webhook registration.
 
 For now the source can access and sync the following resource:
 
