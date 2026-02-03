@@ -204,8 +204,9 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 						Name:          extraOutput.Identifier,
 						Data:          extraOutput.Spec,
 					}
+					log.Trace("sending data", "type", extraOutput.Resource, "operation", data.Operation.String())
 					if err := p.destination.SendData(ctx, extraDataToSend); err != nil {
-						log.Error("error sending extra data to destination", "type", data.Type, "error", err)
+						log.Error("error sending extra data to destination", "type", extraOutput.Resource, "error", err)
 						continue
 					}
 				}
