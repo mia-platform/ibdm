@@ -13,12 +13,12 @@ mappings:
     configuration: "{{ .configuration | toJSON }}"
     lastUpdate: "{{ get \"committedDate\" .configuration (now) }}"
   extra:
-    - apiVersion: console.mia-platform.eu/v1alpha1
+    - apiVersion: mia-platform.eu/v1alpha1
       resource: relationships
       identifier: |-
         {{ printf "relationship--%s--%s--%s--dependency" .project._id .project._id .revision.name }}
       sourceRef:
         apiVersion: "console.mia-platform.eu/v1alpha1"
-        resource: "project"
+        kind: "projects"
         name: "{{ .project._id }}"
       type: "dependency"

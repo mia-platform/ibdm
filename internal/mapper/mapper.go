@@ -306,7 +306,7 @@ func enrichRelationshipSpec(spec map[string]any, parentIdentifier, apiVersion, r
 	// Inject targetRef
 	spec["targetRef"] = map[string]any{
 		"apiVersion": apiVersion,
-		"resource":   resource,
+		"kind":       resource,
 		"name":       parentIdentifier,
 	}
 
