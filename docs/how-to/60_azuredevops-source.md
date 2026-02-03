@@ -39,9 +39,13 @@ Microsoft Azure DevOps.
 If you set `AZURE_DEVOPS_WEBHOOK_USER` you need to also set `AZURE_DEVOPS_WEBHOOK_PASSWORD` and their
 values must be the same set in the Azure DevOps dashboard during the webhook registration.
 
-For now the source can access and sync the following resource:
+For now the source can access the following resources with the eventual webhook that can be registered for them:
 
-- [repositories](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories/list?view=azure-devops-rest-7.1&tabs=HTTP#gitrepository)
+- [repositories](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/repositories/list?view=azure-devops-rest-7.1&tabs=HTTP#gitrepository)  
+	webhook supported
+	- [`git.repo.created`](https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#repository-created)
+	- [`git.repo.renamed`](https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#repository-renamed)
+	- [`git.repo.deleted`](https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#repository-deleted)
 - [teams](https://learn.microsoft.com/en-us/rest/api/azure/devops/core/teams/get-all-teams?view=azure-devops-rest-7.1&tabs=HTTP#webapiteam)
 
 ## Authentication
