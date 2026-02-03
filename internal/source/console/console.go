@@ -128,10 +128,7 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 				return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
 			}
 
-			// Remove castFunctions from fastDataConfig to reduce payload size
-			if fdConfig, ok := configuration["fastDataConfig"].(map[string]any); ok {
-				fdConfig["castFunctions"] = nil
-			}
+			customRemoveFields(configuration)
 
 			configurationData := map[string]any{
 				"project": map[string]any{
@@ -158,6 +155,20 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 	}
 
 	return dataToSync, nil
+}
+
+func customRemoveFields(configuration map[string]any) {
+	// Remove castFunctions from fastDataConfig to reduce payload size
+	if fdConfig, ok := configuration["fastDataConfig"].(map[string]any); ok {
+		fdConfig["castFunctions"] = nil
+	}
+
+	// Remove castFunctions from fastDataConfig to reduce payload size
+	if mfpc, ok := configuration["microfrontendPluginsConfig"].(map[string]any); ok {
+		if bc, ok := mfpc["backofficeConfigurations"].(map[string]any); ok {
+			bc["services"] = nil
+		}
+	}
 }
 
 func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.Extra) ([]source.Data, error) {
@@ -315,10 +326,7 @@ func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionN
 		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
 	}
 
-	// Remove castFunctions from fastDataConfig to reduce payload size
-	if fdConfig, ok := configuration["fastDataConfig"].(map[string]any); ok {
-		fdConfig["castFunctions"] = nil
-	}
+	customRemoveFields(configuration)
 
 	configurationData := map[string]any{
 		"project": map[string]any{
