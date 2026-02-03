@@ -97,7 +97,10 @@ func New(identifierTemplate string, specTemplates map[string]string, extraTempla
 		parsingErrs = errors.Join(parsingErrs, err)
 	}
 
-	extraMappings := compileExtraMappings(extraTemplates, tmpl, &parsingErrs)
+	var extraMappings []ExtraMapping
+	if len(extraTemplates) > 0 {
+		extraMappings = compileExtraMappings(extraTemplates, tmpl, &parsingErrs)
+	}
 
 	if parsingErrs != nil {
 		return nil, NewParsingError(parsingErrs)
