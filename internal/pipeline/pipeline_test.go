@@ -15,6 +15,8 @@ import (
 	"github.com/mia-platform/ibdm/internal/destination"
 	fakedestination "github.com/mia-platform/ibdm/internal/destination/fake"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/server"
+	fakeserver "github.com/mia-platform/ibdm/internal/server/fake"
 	"github.com/mia-platform/ibdm/internal/source"
 	fakesource "github.com/mia-platform/ibdm/internal/source/fake"
 )
@@ -252,8 +254,7 @@ func TestStreamPipeline(t *testing.T) {
 }
 
 func TestStreamPipelineWebhook(t *testing.T) {
-	t.Setenv("HTTP_PORT", "0")
-
+	t.Parallel()
 	testCases := map[string]struct {
 		expectedData []*destination.Data
 		expectedErr  error
@@ -311,6 +312,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 
@@ -322,24 +324,24 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			pipeline, err := New(ctx, source, testMappers(t, extra), destination)
 			require.NoError(t, err)
 
+			fakeServer := fakeserver.NewFakeServer(t)
+			pipeline.serverCreator = func(_ context.Context) (server.Server, error) {
+				return fakeServer, nil
+			}
+
 			go func() {
-				defer close(syncChan)
-				err := pipeline.Start(ctx)
-				if test.expectedErr != nil {
-					assert.ErrorIs(t, err, test.expectedErr)
-					return
+				<-fakeServer.StartedServer()
+				assert.Len(t, fakeServer.RegisteredRoutes, 1)
+				source.SimulateWebhook()
+				select {
+				case <-syncChan:
+					assert.NoError(t, fakeServer.Stop())
+				case <-ctx.Done():
+					assert.Fail(t, "timeout waiting for pipeline to stop")
 				}
 			}()
 
-			source.SimulateWebhook()
-			<-syncChan
-			assert.NoError(t, pipeline.server.Stop())
-			select {
-			case <-syncChan:
-			case <-ctx.Done():
-				require.Fail(t, "timeout waiting for pipeline to stop")
-			}
-
+			assert.NoError(t, pipeline.Start(ctx))
 			assert.Equal(t, test.expectedData, destination.SentData)
 			// assert.Equal(t, test.expectedDeletion, destination.DeletedData)
 		})

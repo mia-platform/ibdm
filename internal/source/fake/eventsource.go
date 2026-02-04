@@ -128,7 +128,7 @@ func (f *unclosableWebhookSource) SimulateWebhook() {
 func (f *unclosableWebhookSource) GetWebhook(ctx context.Context, _ map[string]source.Extra, results chan<- source.Data) (webhook source.Webhook, err error) {
 	f.tb.Helper()
 
-	handler := func(_ http.Header, _ []byte) error {
+	handler := func(ctx context.Context, _ http.Header, _ []byte) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -155,7 +155,7 @@ func (f *unclosableWebhookSource) GetWebhook(ctx context.Context, _ map[string]s
 
 	go func() {
 		<-f.trigger
-		_ = handler(nil, nil)
+		_ = handler(ctx, nil, nil)
 	}()
 
 	return source.Webhook{

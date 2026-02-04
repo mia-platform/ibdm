@@ -31,37 +31,37 @@ type DataMapper struct {
 
 // Pipeline orchestrates the flow from a source through mappers into a destination.
 type Pipeline struct {
-	source      any
-	mappers     map[string]DataMapper
-	mapperTypes map[string]source.Extra
-	destination destination.Sender
-	server      *server.Server
+	source        any
+	mappers       map[string]DataMapper
+	mapperTypes   map[string]source.Extra
+	destination   destination.Sender
+	serverCreator func(ctx context.Context) (server.Server, error)
 }
 
 // New wires together the given source, mappers, and destination into a Pipeline.
 func New(ctx context.Context, src any, mappers map[string]DataMapper, destination destination.Sender) (*Pipeline, error) {
-	server, err := server.NewServer(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	mapperTypes := make(map[string]source.Extra, len(mappers))
 	for dataType, mapping := range mappers {
 		mapperTypes[dataType] = mapping.Extra
 	}
 
 	return &Pipeline{
-		source:      src,
-		mappers:     mappers,
-		mapperTypes: mapperTypes,
-		destination: destination,
-		server:      server,
+		source:        src,
+		mappers:       mappers,
+		mapperTypes:   mapperTypes,
+		destination:   destination,
+		serverCreator: server.NewServer,
 	}, nil
 }
 
 // Start begins streaming data from a source.EventSource or source.WebhookSource.
 func (p *Pipeline) Start(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
+
+	server, err := p.serverCreator(ctx)
+	if err != nil {
+		return err
+	}
 
 	streamSource, isStream := p.source.(source.EventSource)
 	webhookSource, isWebhook := p.source.(source.WebhookSource)
@@ -72,7 +72,7 @@ func (p *Pipeline) Start(ctx context.Context) error {
 		dataPipeline = func(ctx context.Context, channel chan<- source.Data) error {
 			// server start in different goroutine
 			log.Trace("starting server")
-			p.server.StartAsync(ctx)
+			server.StartAsync(ctx)
 			return streamSource.StartEventStream(ctx, p.mapperTypes, channel)
 		}
 	case isWebhook:
@@ -83,11 +83,10 @@ func (p *Pipeline) Start(ctx context.Context) error {
 				return err
 			}
 			log.Trace("registering webhook")
-			//nolint: contextcheck // webhook handler will use the context from the server
-			p.server.AddRoute(webhook.Method, webhook.Path, webhook.Handler)
+			server.AddRoute(webhook.Method, webhook.Path, webhook.Handler)
 			log.Trace("registered webhook, starting server")
 			log.Trace("starting server")
-			return p.server.Start()
+			return server.Start()
 		}
 	default:
 		return &unsupportedSourceError{
@@ -96,7 +95,7 @@ func (p *Pipeline) Start(ctx context.Context) error {
 	}
 
 	log.Trace("starting data pipeline")
-	err := p.runDataPipeline(ctx, dataPipeline)
+	err = p.runDataPipeline(ctx, dataPipeline)
 	log.Trace("event stream finished")
 
 	return err
