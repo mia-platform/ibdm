@@ -24,12 +24,13 @@ func TestRelationshipMapping(t *testing.T) {
 
 	// Extra mapping definition (mimicking parsed YAML)
 	extraDef := map[string]any{
-		"apiVersion": "resource.custom-platform/v1",
-		"resource":   "relationships",
-		"identifier": `{{ printf "relationship--%s--%s--dependency" .project._id .revision.name }}`,
+		"apiVersion":   "resource.custom-platform/v1",
+		"resource":     "relationships",
+		"deletePolicy": "cascade",
+		"identifier":   `{{ printf "relationship--%s--%s--dependency" .project._id .revision.name }}`,
 		"sourceRef": map[string]any{
 			"apiVersion": "resource.custom-platform/v1",
-			"resource":   "Projects",
+			"kind":       "Projects",
 			"name":       "{{ .project._id }}",
 		},
 		"type": "dependency",
@@ -56,8 +57,8 @@ func TestRelationshipMapping(t *testing.T) {
 
 	// Execute
 	output, extraOutputs, err := m.ApplyTemplates(input, mapper.ParentResourceInfo{
-		ParentAPIVersion: "resource.custom-platform/v1",
-		ParentResource:   "Configurations",
+		APIVersion: "resource.custom-platform/v1",
+		Resource:   "Configurations",
 	})
 	require.NoError(t, err)
 
@@ -77,11 +78,11 @@ func TestRelationshipMapping(t *testing.T) {
 
 	sourceRef, ok := spec["sourceRef"].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "Projects", sourceRef["resource"]) // "resource" should be renamed to "resource"
+	require.Equal(t, "Projects", sourceRef["kind"])
 	require.Equal(t, "projectabc", sourceRef["name"])
 
 	targetRef, ok := spec["targetRef"].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "Configurations", targetRef["resource"])
-	require.Equal(t, "projectabc--main", targetRef["name"]) // Matches parent identifier
+	require.Equal(t, "Configurations", targetRef["kind"])
+	require.Equal(t, "projectabc--main", targetRef["name"])
 }

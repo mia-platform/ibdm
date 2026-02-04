@@ -15,6 +15,7 @@ mappings:
   extra:
     - apiVersion: mia-platform.eu/v1alpha1
       resource: relationships
+      deletePolicy: "cascade"
       identifier: |-
         {{ printf "relationship--%s--%s--%s--dependency" .project._id .project._id .revision.name }}
       sourceRef:

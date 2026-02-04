@@ -25,11 +25,15 @@ type Mapper interface {
 	ApplyTemplates(input map[string]any, parentResourceInfo ParentResourceInfo) (output MappedData, extra []ExtraMappedData, err error)
 	// ApplyIdentifierTemplate applies only the identifier template to the given input data and returns
 	ApplyIdentifierTemplate(data map[string]any) (string, error)
+	// ApplyIdentifierExtraTemplate applies only the identifier extra template to the given input data and returns
+	ApplyIdentifierExtraTemplate(data map[string]any) ([]ExtraMappedData, error)
 }
 
 const (
 	maxIdentifierLength       = 253
 	extraRelationshipResource = "relationships"
+	deletePolicyCascade       = "cascade"
+	deletePolicyNone          = "none"
 )
 
 var (
@@ -38,6 +42,7 @@ var (
 
 	identifierRegex     = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 	validExtraResources = []string{extraRelationshipResource}
+	validDeletePolicies = []string{deletePolicyNone, deletePolicyCascade}
 )
 
 var _ Mapper = &internalMapper{}
@@ -46,6 +51,7 @@ var _ Mapper = &internalMapper{}
 type ExtraMapping struct {
 	APIVersion   string
 	Resource     string
+	DeletePolicy string
 	IDTemplate   *template.Template
 	BodyTemplate *template.Template
 }
@@ -65,16 +71,18 @@ type MappedData struct {
 
 // ExtraMappedData wraps the identifier and rendered spec produced by a Mapper.
 type ExtraMappedData struct {
-	APIVersion string
-	Resource   string
-	Identifier string
-	Spec       map[string]any
+	APIVersion   string
+	Resource     string
+	Identifier   string
+	DeletePolicy string
+	Spec         map[string]any
 }
 
 // ParentResourceInfo holds metadata about the parent resource for relationship extra mappings.
 type ParentResourceInfo struct {
-	ParentAPIVersion string
-	ParentResource   string
+	Identifier string
+	APIVersion string
+	Resource   string
 }
 
 // New constructs a Mapper using the provided identifier template and spec templates.
@@ -124,6 +132,15 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 			continue
 		}
 
+		deletePolicy, _ := extra["deletePolicy"].(string)
+		if len(deletePolicy) > 0 && !slices.Contains(validDeletePolicies, deletePolicy) {
+			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid delete policy: %s", deletePolicy))
+			continue
+		}
+		if deletePolicy == "" {
+			deletePolicy = deletePolicyNone
+		}
+
 		idStr, _ := extra["identifier"].(string)
 
 		idTmpl, err := tmpl.New("extra-id").Parse(idStr)
@@ -134,7 +151,7 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 
 		bodyMap := make(map[string]any, len(extra))
 		for k, v := range extra {
-			if k == "resource" || k == "identifier" || k == "apiVersion" {
+			if k == "resource" || k == "identifier" || k == "apiVersion" || k == "deletePolicy" {
 				continue
 			}
 			bodyMap[k] = v
@@ -155,6 +172,7 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 		extraMappings = append(extraMappings, ExtraMapping{
 			APIVersion:   apiVersion,
 			Resource:     resource,
+			DeletePolicy: deletePolicy,
 			IDTemplate:   idTmpl,
 			BodyTemplate: bodyTmpl,
 		})
@@ -174,7 +192,8 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 		return MappedData{}, nil, err
 	}
 
-	extraData, err := executeExtraMappings(data, identifier, m.extraMappings, parentResourceInfo)
+	parentResourceInfo.Identifier = identifier
+	extraData, err := executeExtraMappings(data, m.extraMappings, parentResourceInfo)
 	if err != nil {
 		return MappedData{}, nil, err
 	}
@@ -188,6 +207,123 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 // ApplyIdentifierTemplate implements Mapper.ApplyTemplates.
 func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, error) {
 	return executeIdentifierTemplate(m.idTemplate, data)
+}
+
+// ApplyIdentifierExtraTemplate implements Mapper.ApplyTemplates.
+func (m *internalMapper) ApplyIdentifierExtraTemplate(data map[string]any) ([]ExtraMappedData, error) {
+	if len(m.extraMappings) == 0 {
+		return nil, nil
+	}
+
+	output := make([]ExtraMappedData, 0, len(m.extraMappings))
+
+	for _, extraMapping := range m.extraMappings {
+		if extraMapping.DeletePolicy == deletePolicyNone {
+			continue
+		}
+
+		var idBuf strings.Builder
+		if err := extraMapping.IDTemplate.Execute(&idBuf, data); err != nil {
+			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+		}
+		identifier := idBuf.String()
+
+		output = append(output, ExtraMappedData{
+			APIVersion: extraMapping.APIVersion,
+			Resource:   extraMapping.Resource,
+			Identifier: identifier,
+		})
+	}
+
+	return output, nil
+}
+
+// executeIdentifierTemplate renders the identifier template with data and validates the result.
+func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (string, error) {
+	outputStrBuilder := new(strings.Builder)
+	err := tmpl.ExecuteTemplate(outputStrBuilder, "identifier", data)
+	generatedID := outputStrBuilder.String()
+
+	if !identifierRegex.MatchString(generatedID) || len(generatedID) > maxIdentifierLength {
+		return "", template.ExecError{
+			Name: "identifier",
+			Err:  fmt.Errorf("template: identifier: generated identifier '%s' is invalid; it can contain only lowercase alphanumeric characters, '-' or '.', must start and finish with an alphanumeric character and it can contain no more than %d characters", generatedID, maxIdentifierLength),
+		}
+	}
+
+	return generatedID, err
+}
+
+// executeTemplatesMap renders the spec template and converts it into a map.
+func executeTemplatesMap(templates *template.Template, data map[string]any) (map[string]any, error) {
+	output := make(map[string]any)
+	outputBuilder := new(bytes.Buffer)
+	err := templates.ExecuteTemplate(outputBuilder, "spec", data)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := yaml.Unmarshal(outputBuilder.Bytes(), output); err != nil {
+		return nil, fmt.Errorf("%w: %s", errParsingSpecOutput, err.Error())
+	}
+	return output, nil
+}
+
+// executeExtraMappings renders the pre-compiled extra templates.
+func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, parentResourceInfo ParentResourceInfo) ([]ExtraMappedData, error) {
+	output := make([]ExtraMappedData, 0, len(extraMappings))
+
+	for _, extraMapping := range extraMappings {
+		// Generate Identifier
+		var idBuf strings.Builder
+		if err := extraMapping.IDTemplate.Execute(&idBuf, data); err != nil {
+			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+		}
+		identifier := idBuf.String()
+
+		// Generate Body (Spec)
+		var bodyBuf bytes.Buffer
+		if err := extraMapping.BodyTemplate.Execute(&bodyBuf, data); err != nil {
+			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+		}
+
+		// Unmarshal the executed YAML back into a map
+		var spec map[string]any
+		if err := yaml.Unmarshal(bodyBuf.Bytes(), &spec); err != nil {
+			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+		}
+
+		// Handle Special Resources (Relationship)
+		if strings.EqualFold(extraMapping.Resource, extraRelationshipResource) {
+			spec = enrichRelationshipSpec(spec, parentResourceInfo)
+		}
+
+		output = append(output, ExtraMappedData{
+			APIVersion: extraMapping.APIVersion,
+			Resource:   extraMapping.Resource,
+			Identifier: identifier,
+			Spec:       spec,
+		})
+	}
+
+	return output, nil
+}
+
+func enrichRelationshipSpec(spec map[string]any, parentResourceInfo ParentResourceInfo) map[string]any {
+	// Inject targetRef
+	spec["targetRef"] = map[string]any{
+		"apiVersion": parentResourceInfo.APIVersion,
+		"kind":       parentResourceInfo.Resource,
+		"name":       parentResourceInfo.Identifier,
+	}
+
+	return spec
+}
+
+func IsExtraResourceValid(extraResource string) bool {
+	return slices.ContainsFunc(validExtraResources, func(s string) bool {
+		return strings.EqualFold(s, extraResource)
+	})
 }
 
 // templateFunctions exposes the custom helpers added to every mapping template.
@@ -232,92 +368,4 @@ func templateFunctions() template.FuncMap {
 		"uuidv6": functions.UUIDV6,
 		"uuidv7": functions.UUIDV7,
 	}
-}
-
-// executeIdentifierTemplate renders the identifier template with data and validates the result.
-func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (string, error) {
-	outputStrBuilder := new(strings.Builder)
-	err := tmpl.ExecuteTemplate(outputStrBuilder, "identifier", data)
-	generatedID := outputStrBuilder.String()
-
-	if !identifierRegex.MatchString(generatedID) || len(generatedID) > maxIdentifierLength {
-		return "", template.ExecError{
-			Name: "identifier",
-			Err:  fmt.Errorf("template: identifier: generated identifier '%s' is invalid; it can contain only lowercase alphanumeric characters, '-' or '.', must start and finish with an alphanumeric character and it can contain no more than %d characters", generatedID, maxIdentifierLength),
-		}
-	}
-
-	return generatedID, err
-}
-
-// executeTemplatesMap renders the spec template and converts it into a map.
-func executeTemplatesMap(templates *template.Template, data map[string]any) (map[string]any, error) {
-	output := make(map[string]any)
-	outputBuilder := new(bytes.Buffer)
-	err := templates.ExecuteTemplate(outputBuilder, "spec", data)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := yaml.Unmarshal(outputBuilder.Bytes(), output); err != nil {
-		return nil, fmt.Errorf("%w: %s", errParsingSpecOutput, err.Error())
-	}
-	return output, nil
-}
-
-// executeExtraMappings renders the pre-compiled extra templates.
-func executeExtraMappings(data map[string]any, parentIdentifier string, extraMappings []ExtraMapping, parentResourceInfo ParentResourceInfo) ([]ExtraMappedData, error) {
-	output := make([]ExtraMappedData, 0, len(extraMappings))
-
-	for _, mapping := range extraMappings {
-		// Generate Identifier
-		var idBuf strings.Builder
-		if err := mapping.IDTemplate.Execute(&idBuf, data); err != nil {
-			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
-		}
-		identifier := idBuf.String()
-
-		// Generate Body (Spec)
-		var bodyBuf bytes.Buffer
-		if err := mapping.BodyTemplate.Execute(&bodyBuf, data); err != nil {
-			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
-		}
-
-		// Unmarshal the executed YAML back into a map
-		var spec map[string]any
-		if err := yaml.Unmarshal(bodyBuf.Bytes(), &spec); err != nil {
-			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
-		}
-
-		// Handle Special Resources (Relationship)
-		if strings.EqualFold(mapping.Resource, extraRelationshipResource) {
-			spec = enrichRelationshipSpec(spec, parentIdentifier, parentResourceInfo.ParentAPIVersion, parentResourceInfo.ParentResource)
-		}
-
-		output = append(output, ExtraMappedData{
-			APIVersion: mapping.APIVersion,
-			Resource:   mapping.Resource,
-			Identifier: identifier,
-			Spec:       spec,
-		})
-	}
-
-	return output, nil
-}
-
-func enrichRelationshipSpec(spec map[string]any, parentIdentifier, apiVersion, kind string) map[string]any {
-	// Inject targetRef
-	spec["targetRef"] = map[string]any{
-		"apiVersion": apiVersion,
-		"kind":       kind,
-		"name":       parentIdentifier,
-	}
-
-	return spec
-}
-
-func IsExtraResourceValid(extraResource string) bool {
-	return slices.ContainsFunc(validExtraResources, func(s string) bool {
-		return strings.EqualFold(s, extraResource)
-	})
 }
