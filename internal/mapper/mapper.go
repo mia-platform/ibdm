@@ -293,10 +293,8 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
 		}
 
-		// Handle Special Resources (Relationship)
-		if strings.EqualFold(extraMapping.Resource, extraRelationshipResource) {
-			spec = enrichRelationshipSpec(spec, parentResourceInfo)
-		}
+		// Handle Special Resources
+		spec = enrichSpec(spec, parentResourceInfo, extraMapping.Resource)
 
 		output = append(output, ExtraMappedData{
 			APIVersion: extraMapping.APIVersion,
@@ -307,6 +305,14 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 	}
 
 	return output, nil
+}
+
+func enrichSpec(spec map[string]any, parentResourceInfo ParentResourceInfo, resource string) map[string]any {
+	if strings.EqualFold(resource, extraRelationshipResource) {
+		spec = enrichRelationshipSpec(spec, parentResourceInfo)
+	}
+
+	return spec
 }
 
 func enrichRelationshipSpec(spec map[string]any, parentResourceInfo ParentResourceInfo) map[string]any {
