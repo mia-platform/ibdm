@@ -123,48 +123,48 @@ func TestStreamPipeline(t *testing.T) {
 		expectedErr      error
 		useExtra         bool
 	}{
-		// "unsupported source error": {
-		// 	source: func(c chan<- struct{}) any {
-		// 		c <- struct{}{}
-		// 		return "not a valid source"
-		// 	},
-		// 	expectedErr: errors.ErrUnsupported,
-		// 	useExtra:    false,
-		// },
-		// "source return an error": {
-		// 	source: func(c chan<- struct{}) any {
-		// 		c <- struct{}{}
-		// 		return fakesource.NewFakeSourceWithError(t, assert.AnError)
-		// 	},
-		// 	expectedErr: assert.AnError,
-		// 	useExtra:    false,
-		// },
-		// "valid pipeline return mapped data": {
-		// 	source: func(c chan<- struct{}) any {
-		// 		return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
-		// 	},
-		// 	expectedData: []*destination.Data{
-		// 		{
-		// 			APIVersion: "v1",
-		// 			Resource:   "resource",
-		// 			Name:       "item1",
-		// 			Data: map[string]any{
-		// 				"field1": "value1",
-		// 				"field2": "value2",
-		// 			},
-		// 			OperationTime: "2024-06-01T12:00:00Z",
-		// 		},
-		// 	},
-		// 	expectedDeletion: []*destination.Data{
-		// 		{
-		// 			APIVersion:    "v2",
-		// 			Resource:      "resource2",
-		// 			Name:          "item2",
-		// 			OperationTime: "2024-06-01T12:00:00Z",
-		// 		},
-		// 	},
-		// 	useExtra: false,
-		// },
+		"unsupported source error": {
+			source: func(c chan<- struct{}) any {
+				c <- struct{}{}
+				return "not a valid source"
+			},
+			expectedErr: errors.ErrUnsupported,
+			useExtra:    false,
+		},
+		"source return an error": {
+			source: func(c chan<- struct{}) any {
+				c <- struct{}{}
+				return fakesource.NewFakeSourceWithError(t, assert.AnError)
+			},
+			expectedErr: assert.AnError,
+			useExtra:    false,
+		},
+		"valid pipeline return mapped data": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
+			},
+			expectedData: []*destination.Data{
+				{
+					APIVersion: "v1",
+					Resource:   "resource",
+					Name:       "item1",
+					Data: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v2",
+					Resource:      "resource2",
+					Name:          "item2",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			useExtra: false,
+		},
 		"valid pipeline return mapped data with extra mappings": {
 			source: func(c chan<- struct{}) any {
 				return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
