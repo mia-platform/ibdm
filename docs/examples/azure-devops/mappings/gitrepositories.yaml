@@ -1,0 +1,24 @@
+apiVersion: azuredevops.mia-platform.eu/v1alpha1
+resource: gitrepositories
+type: gitrepository
+syncable: true
+extra:
+  eventNames:
+  - git.repo.created
+  - git.repo.renamed
+  - git.repo.deleted
+mappings:
+  identifier: |-
+    {{ $id := get "id" .  "" -}}
+    {{- if not $id -}}
+      {{- $id = get "repositoryId" . -}}
+    {{- end -}}
+    {{- printf "%s-%s" .project.id $id | sha256sum }}
+  spec:
+    name: "{{ .name }}"
+    defaultBranch: "{{ get \"defaultBranch\" . \"\" | quote }}"
+    isDisabled: "{{ .isDisabled }}"
+    isAFork: "{{ get \"isFork\" . false }}"
+    isArchived: "{{ get \"isInMaintenance\" . false }}"
+    sshGitUrl: "{{ .sshUrl }}"
+    httpGitUrl: "{{ .remoteUrl }}"

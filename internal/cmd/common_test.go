@@ -17,6 +17,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/azure"
+	azuredevops "github.com/mia-platform/ibdm/internal/source/azure-devops"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 )
 
@@ -31,6 +32,7 @@ func TestCompletion(t *testing.T) {
 			args: []string{},
 			expectedCompletion: []string{
 				"azure\tMicrosoft Azure integration",
+				"azure-devops\tMicrosoft Azure DevOps integration",
 				"gcp\tGoogle Cloud Platform integration",
 				"console\tMia Platform Console integration",
 			},
@@ -72,6 +74,10 @@ func TestSourceFromName(t *testing.T) {
 		"azure integration": {
 			integrationName:    "azure",
 			expectedSourceType: (*azure.Source)(nil),
+		},
+		"azure devops integration": {
+			integrationName:    "azure-devops",
+			expectedSourceType: (*azuredevops.Source)(nil),
 		},
 		"gcp integration": {
 			integrationName:    "gcp",

@@ -217,7 +217,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 	return source.Webhook{
 		Method: http.MethodPost,
 		Path:   s.c.config.WebhookPath,
-		Handler: func(headers http.Header, body []byte) error {
+		Handler: func(ctx context.Context, headers http.Header, body []byte) error {
 			if !validateSignature(ctx, body, s.c.config.WebhookSecret, headers.Get(authHeaderName)) {
 				log.Error("webhook signature validation failed")
 				return ErrSignatureMismatch

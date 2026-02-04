@@ -16,10 +16,6 @@ import (
 )
 
 const (
-	forwardedHostHeaderKey = "x-forwarded-host"
-	forwardedForHeaderKey  = "x-forwarded-for"
-	requestIDHeaderName    = "x-request-id"
-
 	IncomingRequestMessage  = "incoming request"
 	RequestCompletedMessage = "request completed"
 )
@@ -67,7 +63,7 @@ func removePort(host string) string {
 }
 
 func getReqID(ctx *fiber.Ctx) string {
-	if requestID := ctx.Get(requestIDHeaderName, ""); requestID != "" {
+	if requestID := ctx.Get(fiber.HeaderXRequestID, ""); requestID != "" {
 		return requestID
 	}
 
@@ -109,7 +105,6 @@ func StatusCode(ctx *fiber.Ctx, err error) int {
 
 func logIncomingRequest(ctx *fiber.Ctx, logger Logger) {
 	logger.
-		WithName("incoming_request").
 		Trace(IncomingRequestMessage,
 			"http", http{
 				Request: &request{
@@ -121,16 +116,15 @@ func logIncomingRequest(ctx *fiber.Ctx, logger Logger) {
 			},
 			"url", url{Path: string(ctx.Request().URI().RequestURI())},
 			"host", host{
-				ForwardedHost: ctx.Get(forwardedHostHeaderKey, ""),
+				ForwardedHost: ctx.Get(fiber.HeaderXForwardedHost, ""),
 				Hostname:      removePort(string(ctx.Request().Host())),
-				IP:            ctx.Get(forwardedForHeaderKey, ""),
+				IP:            ctx.Get(fiber.HeaderXForwardedFor, ""),
 			},
 		)
 }
 
 func logRequestCompleted(ctx *fiber.Ctx, logger Logger, startTime time.Time, err error) {
 	logger.
-		WithName("request_completed").
 		Info(RequestCompletedMessage,
 			"http", http{
 				Request: &request{
@@ -169,16 +163,14 @@ func RequestMiddlewareLogger(appCtx context.Context, logger Logger, excludedPref
 		start := time.Now()
 
 		requestID := getReqID(fiberCtx)
-		loggerWithReqID := logger.WithName("request").WithName(requestID)
-
-		ctx := WithContext(appCtx, loggerWithReqID)
-		fiberCtx.SetUserContext(ctx)
-
+		loggerWithReqID := logger.WithName("server:request:" + requestID)
 		logIncomingRequest(fiberCtx, loggerWithReqID)
+
+		ctx := WithContext(appCtx, logger)
+		fiberCtx.SetUserContext(ctx)
 		err := fiberCtx.Next()
 
 		logRequestCompleted(fiberCtx, loggerWithReqID, start, err)
-
 		return err
 	}
 }

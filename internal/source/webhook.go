@@ -3,10 +3,15 @@
 
 package source
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+)
+
+type WebhookHandler func(ctx context.Context, headers http.Header, body []byte) error
 
 type Webhook struct {
 	Method  string
 	Path    string
-	Handler func(headers http.Header, body []byte) error
+	Handler WebhookHandler
 }

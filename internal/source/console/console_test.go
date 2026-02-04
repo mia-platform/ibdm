@@ -100,7 +100,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		headers.Add(
 			authHeaderName, signature,
 		)
-		err = webhook.Handler(headers, body)
+		err = webhook.Handler(ctx, headers, body)
 		require.NoError(t, err)
 
 		expectedEvent := event{
@@ -159,7 +159,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		headers.Add(
 			authHeaderName, "sha256="+signature,
 		)
-		err = webhook.Handler(headers, body)
+		err = webhook.Handler(ctx, headers, body)
 		require.NoError(t, err)
 
 		select {
@@ -200,7 +200,7 @@ func TestSource_GetWebhook(t *testing.T) {
 			authHeaderName, "sha256="+signature,
 		)
 
-		err = webhook.Handler(headers, body)
+		err = webhook.Handler(ctx, headers, body)
 		require.Error(t, err)
 	})
 }

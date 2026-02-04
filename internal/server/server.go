@@ -38,6 +38,7 @@ func NewServer(ctx context.Context) (*Server, error) {
 
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: cfg.DisableStartupMessage,
+		Immutable:             true, // ensure that accessing request body returns a copy that is valid after the request lifecycle (accessing body and headers in goroutines in the request handlers)
 	})
 	log := logger.FromContext(ctx)
 	app.Use(logger.RequestMiddlewareLogger(ctx, log, []string{"/-/"}))
@@ -50,8 +51,17 @@ func NewServer(ctx context.Context) (*Server, error) {
 	}, nil
 }
 
-func (s Server) App() *fiber.App {
-	return s.app
+func (s *Server) AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) {
+	s.app.Add(method, path, func(ctx *fiber.Ctx) error {
+		if err := handler(ctx.UserContext(), ctx.GetReqHeaders(), ctx.Body()); err != nil {
+			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"statusCode": http.StatusInternalServerError,
+				"error":      http.StatusText(http.StatusInternalServerError),
+				"message":    "error processing webhook message",
+			})
+		}
+		return ctx.SendStatus(http.StatusNoContent)
+	})
 }
 
 func (s *Server) Start() error {
@@ -68,22 +78,4 @@ func (s *Server) StartAsync(ctx context.Context) {
 			log.Error(err.Error())
 		}
 	}()
-}
-
-func FiberHandlerWrapper(handler func(http.Header, []byte) error) fiber.Handler {
-	return func(ctx *fiber.Ctx) error {
-		headers := make(http.Header)
-		ctx.Request().Header.VisitAll(func(key, value []byte) {
-			headers.Add(string(key), string(value))
-		})
-
-		if err := handler(headers, ctx.Body()); err != nil {
-			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"statusCode": http.StatusInternalServerError,
-				"error":      http.StatusText(http.StatusInternalServerError),
-				"message":    "error processing webhook message",
-			})
-		}
-		return ctx.SendStatus(http.StatusNoContent)
-	}
 }
