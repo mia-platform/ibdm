@@ -251,17 +251,15 @@ func TestStreamPipeline(t *testing.T) {
 	}
 }
 
-func TestStreamPipelineWebhook_NoExtra(t *testing.T) {
+func TestStreamPipelineWebhook(t *testing.T) {
+	t.Setenv("HTTP_PORT", "0")
+
 	testCases := map[string]struct {
-		source       func(chan<- struct{}) any
 		expectedData []*destination.Data
 		expectedErr  error
 		useExtra     bool
 	}{
 		"valid webhook pipeline return mapped data without extra mappings": {
-			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
-			},
 			expectedData: []*destination.Data{
 				{
 					APIVersion: "v1",
@@ -275,59 +273,7 @@ func TestStreamPipelineWebhook_NoExtra(t *testing.T) {
 				},
 			},
 		},
-	}
-
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-
-			destination := fakedestination.NewFakeDestination(t)
-			syncChan := make(chan struct{}, 1)
-			defer close(syncChan)
-
-			testSource := test.source(syncChan)
-			extra := getMappingsExtra(t, test.useExtra)
-			pipeline, err := New(ctx, testSource, testMappers(t, extra), destination)
-			require.NoError(t, err)
-
-			go func() {
-				err := pipeline.Start(ctx)
-				if test.expectedErr != nil {
-					assert.ErrorIs(t, err, test.expectedErr)
-					syncChan <- struct{}{}
-					return
-				}
-			}()
-
-			if src, ok := testSource.(fakesource.FakeWebhookSource); ok {
-				src.SimulateWebhook()
-			}
-
-			select {
-			case <-syncChan:
-			case <-time.After(2 * time.Second):
-				require.Fail(t, "timeout waiting for data")
-			}
-
-			assert.Equal(t, test.expectedData, destination.SentData)
-		})
-	}
-}
-
-func TestStreamPipelineWebhook_WithExtra(t *testing.T) {
-	// TODO: fix DATA RACE detected in CI and re-enable test
-	t.Skip("DATA RACE detected in CI, needs investigation")
-	testCases := map[string]struct {
-		source       func(chan<- struct{}) any
-		expectedData []*destination.Data
-		expectedErr  error
-		useExtra     bool
-	}{
 		"valid webhook pipeline return mapped data with extra mappings": {
-			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
-			},
 			expectedData: []*destination.Data{
 				{
 					APIVersion: "v1",
@@ -346,12 +292,12 @@ func TestStreamPipelineWebhook_WithExtra(t *testing.T) {
 					Data: map[string]any{
 						"sourceRef": map[string]any{
 							"apiVersion": "resource.custom-platform/v1",
-							"resource":   "resource1",
+							"kind":       "resource1",
 							"name":       "value2",
 						},
 						"targetRef": map[string]any{
 							"apiVersion": "v1",
-							"resource":   "resource",
+							"kind":       "resource",
 							"name":       "item1",
 						},
 						"type": "dependency",
@@ -365,38 +311,37 @@ func TestStreamPipelineWebhook_WithExtra(t *testing.T) {
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 
 			destination := fakedestination.NewFakeDestination(t)
-			syncChan := make(chan struct{}, 1)
-			defer close(syncChan)
+			syncChan := make(chan struct{})
 
-			testSource := test.source(syncChan)
+			source := fakesource.NewFakeUnclosableWebhookSource(t, []source.Data{type1, brokenType, unknownType, type2}, syncChan)
 			extra := getMappingsExtra(t, test.useExtra)
-			pipeline, err := New(ctx, testSource, testMappers(t, extra), destination)
+			pipeline, err := New(ctx, source, testMappers(t, extra), destination)
 			require.NoError(t, err)
 
 			go func() {
+				defer close(syncChan)
 				err := pipeline.Start(ctx)
 				if test.expectedErr != nil {
 					assert.ErrorIs(t, err, test.expectedErr)
-					syncChan <- struct{}{}
 					return
 				}
 			}()
 
-			if src, ok := testSource.(fakesource.FakeWebhookSource); ok {
-				src.SimulateWebhook()
-			}
-
+			source.SimulateWebhook()
+			<-syncChan
+			assert.NoError(t, pipeline.server.Stop())
 			select {
 			case <-syncChan:
-			case <-time.After(2 * time.Second):
-				require.Fail(t, "timeout waiting for data")
+			case <-ctx.Done():
+				require.Fail(t, "timeout waiting for pipeline to stop")
 			}
 
 			assert.Equal(t, test.expectedData, destination.SentData)
+			// assert.Equal(t, test.expectedDeletion, destination.DeletedData)
 		})
 	}
 }

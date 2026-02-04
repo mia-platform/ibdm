@@ -46,7 +46,6 @@ var _ source.WebhookSource = &unclosableWebhookSource{}
 
 // unclosableWebhookSource simulates a WebhookSource without close support.
 type unclosableWebhookSource struct {
-	// TODO: add everything needed to create the webhook
 	tb testing.TB
 
 	eventsData     []source.Data
@@ -127,7 +126,6 @@ func (f *unclosableWebhookSource) SimulateWebhook() {
 
 // GetWebhook pushes queued events and blocks until Close is invoked or the context ends.
 func (f *unclosableWebhookSource) GetWebhook(ctx context.Context, _ map[string]source.Extra, results chan<- source.Data) (webhook source.Webhook, err error) {
-	// TODO: change logic in order to receive webhook parameters from fake source
 	f.tb.Helper()
 
 	handler := func(_ http.Header, _ []byte) error {

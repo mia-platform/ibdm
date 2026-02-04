@@ -71,6 +71,13 @@ func (s *Server) Start() error {
 	return nil
 }
 
+func (s *Server) Stop() error {
+	if err := s.app.Shutdown(); err != nil {
+		return fmt.Errorf("%w: %w", ErrServerShutdown, err)
+	}
+	return nil
+}
+
 func (s *Server) StartAsync(ctx context.Context) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	go func() {
