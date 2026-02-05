@@ -36,7 +36,7 @@ var (
 		Time: testTime,
 	}
 
-	type1_d = source.Data{
+	type1D = source.Data{
 		Type:      "type1",
 		Operation: source.DataOperationDelete,
 		Values: map[string]any{
@@ -243,7 +243,7 @@ func TestStreamPipeline(t *testing.T) {
 		},
 		"valid pipeline return deletion with extra mappings delete cascade": {
 			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeEventSource(t, []source.Data{type1_d, deleteExtra}, c)
+				return fakesource.NewFakeEventSource(t, []source.Data{type1D, deleteExtra}, c)
 			},
 			expectedData: nil,
 			expectedDeletion: []*destination.Data{
@@ -413,7 +413,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		"valid webhook pipeline return deletion with extra mappings delete cascade": {
 			source: func(c chan<- struct{}) any {
 				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
-					dataChan <- type1_d
+					dataChan <- type1D
 					dataChan <- deleteExtra
 					close(c)
 					return nil
