@@ -6,6 +6,7 @@ package pipeline
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -256,11 +257,19 @@ func TestStreamPipeline(t *testing.T) {
 func TestStreamPipelineWebhook(t *testing.T) {
 	t.Parallel()
 	testCases := map[string]struct {
+		source       func(c chan<- struct{}) any
 		expectedData []*destination.Data
 		expectedErr  error
 		useExtra     bool
 	}{
 		"valid webhook pipeline return mapped data without extra mappings": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+					dataChan <- type1
+					close(c)
+					return nil
+				})
+			},
 			expectedData: []*destination.Data{
 				{
 					APIVersion: "v1",
@@ -275,6 +284,13 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			},
 		},
 		"valid webhook pipeline return mapped data with extra mappings": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+					dataChan <- type1
+					close(c)
+					return nil
+				})
+			},
 			expectedData: []*destination.Data{
 				{
 					APIVersion: "v1",
@@ -317,22 +333,22 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			defer cancel()
 
 			destination := fakedestination.NewFakeDestination(t)
-			syncChan := make(chan struct{})
 
-			source := fakesource.NewFakeUnclosableWebhookSource(t, []source.Data{type1, brokenType, unknownType, type2}, syncChan)
+			syncChan := make(chan struct{})
+			source := test.source(syncChan)
+
 			extra := getMappingsExtra(t, test.useExtra)
 			pipeline, err := New(ctx, source, testMappers(t, extra), destination)
 			require.NoError(t, err)
 
-			fakeServer := fakeserver.NewFakeServer(t)
+			fakeServer := fakeserver.NewFakeServer(t, http.MethodPost, "/webhook")
 			pipeline.serverCreator = func(_ context.Context) (server.Server, error) {
 				return fakeServer, nil
 			}
 
 			go func() {
 				<-fakeServer.StartedServer()
-				assert.Len(t, fakeServer.RegisteredRoutes, 1)
-				source.SimulateWebhook()
+				assert.NoError(t, fakeServer.CallRegisterWebhook(ctx))
 				select {
 				case <-syncChan:
 					assert.NoError(t, fakeServer.Stop())

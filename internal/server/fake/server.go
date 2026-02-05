@@ -6,7 +6,11 @@ package fake
 import (
 	"context"
 	"net/http"
+	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/server"
 )
@@ -20,29 +24,39 @@ type Route struct {
 }
 
 type Server struct {
-	tb               testing.TB
-	RegisteredRoutes []Route
+	tb                testing.TB
+	expectedMethod    string
+	expectedPath      string
+	handler           func(context.Context, http.Header, []byte) error
+	alreadyRegistered bool
 
 	startedChan chan struct{}
 	closedChan  chan struct{}
+
+	once sync.Once
 }
 
-func NewFakeServer(tb testing.TB) *Server {
+func NewFakeServer(tb testing.TB, expectedMethod, expectedPath string) *Server {
 	tb.Helper()
 
 	return &Server{
-		tb:          tb,
-		startedChan: make(chan struct{}),
-		closedChan:  make(chan struct{}),
+		tb:             tb,
+		expectedMethod: expectedMethod,
+		expectedPath:   expectedPath,
+		startedChan:    make(chan struct{}),
+		closedChan:     make(chan struct{}),
 	}
 }
 
 func (s *Server) AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) {
 	s.tb.Helper()
-	s.RegisteredRoutes = append(s.RegisteredRoutes, Route{
-		Method:  method,
-		Path:    path,
-		Handler: handler,
+	require.False(s.tb, s.alreadyRegistered)
+	assert.Equal(s.tb, s.expectedMethod, method)
+	assert.Equal(s.tb, s.expectedPath, path)
+	s.handler = handler
+
+	s.once.Do(func() {
+		s.alreadyRegistered = true
 	})
 }
 
@@ -59,9 +73,16 @@ func (s *Server) Stop() error {
 	return nil
 }
 
+func (s *Server) CallRegisterWebhook(ctx context.Context) error {
+	s.tb.Helper()
+	require.True(s.tb, s.alreadyRegistered)
+
+	return s.handler(ctx, nil, nil)
+}
+
 func (s *Server) StartAsync(_ context.Context) {
 	s.tb.Helper()
-	<-s.closedChan
+	close(s.startedChan)
 }
 
 func (s *Server) StartedServer() <-chan struct{} {
