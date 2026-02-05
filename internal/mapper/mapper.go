@@ -24,9 +24,7 @@ type Mapper interface {
 	// ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
 	ApplyTemplates(input map[string]any, parentItemInfo ParentItemInfo) (output MappedData, extra []ExtraMappedData, err error)
 	// ApplyIdentifierTemplate applies only the identifier template to the given input data and returns
-	ApplyIdentifierTemplate(data map[string]any) (string, error)
-	// ApplyIdentifierExtraTemplate applies only the identifier extra template to the given input data and returns
-	ApplyIdentifierExtraTemplate(data map[string]any) ([]ExtraMappedData, error)
+	ApplyIdentifierTemplate(data map[string]any) (string, []ExtraMappedData, error)
 }
 
 const (
@@ -204,17 +202,17 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 }
 
 // ApplyIdentifierTemplate implements Mapper.ApplyTemplates.
-func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, error) {
-	return executeIdentifierTemplate(m.idTemplate, data)
-}
-
-// ApplyIdentifierExtraTemplate implements Mapper.ApplyTemplates.
-func (m *internalMapper) ApplyIdentifierExtraTemplate(data map[string]any) ([]ExtraMappedData, error) {
-	if len(m.extraMappings) == 0 {
-		return nil, nil
+func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, []ExtraMappedData, error) {
+	identifier, err := executeIdentifierTemplate(m.idTemplate, data)
+	if err != nil {
+		return identifier, nil, err
 	}
 
-	output := make([]ExtraMappedData, 0, len(m.extraMappings))
+	if len(m.extraMappings) == 0 {
+		return identifier, nil, nil
+	}
+
+	extras := make([]ExtraMappedData, 0, len(m.extraMappings))
 
 	for _, extraMapping := range m.extraMappings {
 		if extraMapping.DeletePolicy == deletePolicyNone {
@@ -223,18 +221,18 @@ func (m *internalMapper) ApplyIdentifierExtraTemplate(data map[string]any) ([]Ex
 
 		var idBuf strings.Builder
 		if err := extraMapping.IDTemplate.Execute(&idBuf, data); err != nil {
-			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+			return identifier, nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
 		}
-		identifier := idBuf.String()
+		extraIdentifier := idBuf.String()
 
-		output = append(output, ExtraMappedData{
+		extras = append(extras, ExtraMappedData{
 			APIVersion: extraMapping.APIVersion,
 			ItemFamily: extraMapping.ItemFamily,
-			Identifier: identifier,
+			Identifier: extraIdentifier,
 		})
 	}
 
-	return output, nil
+	return identifier, extras, nil
 }
 
 // executeIdentifierTemplate renders the identifier template with data and validates the result.

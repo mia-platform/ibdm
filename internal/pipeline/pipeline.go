@@ -197,7 +197,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 				}
 				p.upsertExtraMappedData(ctx, data, extra)
 			case source.DataOperationDelete:
-				identifier, err := dataMapper.Mapper.ApplyIdentifierTemplate(data.Values)
+				identifier, extra, err := dataMapper.Mapper.ApplyIdentifierTemplate(data.Values)
 				dataToSend.Name = identifier
 				if err != nil {
 					log.Error("error applying mapper templates", "type", data.Type, "error", err)
@@ -207,7 +207,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 					log.Error("error deleting data from destination", "type", data.Type, "error", err)
 					continue
 				}
-				p.deleteExtraMappedData(ctx, data, dataMapper)
+				p.deleteExtraMappedData(ctx, data, extra)
 			}
 
 			log.Trace("data sent", "type", data.Type, "operation", data.Operation.String())
@@ -233,15 +233,11 @@ func (p *Pipeline) upsertExtraMappedData(ctx context.Context, data source.Data, 
 	}
 }
 
-func (p *Pipeline) deleteExtraMappedData(ctx context.Context, data source.Data, dataMapper DataMapper) {
+func (p *Pipeline) deleteExtraMappedData(ctx context.Context, data source.Data, extra []mapper.ExtraMappedData) {
 	log := logger.FromContext(ctx).WithName(loggerName)
-	extraIdentifiers, err := dataMapper.Mapper.ApplyIdentifierExtraTemplate(data.Values)
-	if err != nil {
-		log.Error("error applying extra identifier templates", "type", data.Type, "error", err)
-		return
-	}
-	if len(extraIdentifiers) > 0 {
-		for _, extraIdentifier := range extraIdentifiers {
+
+	if len(extra) > 0 {
+		for _, extraIdentifier := range extra {
 			extraDataToDelete := &destination.Data{
 				APIVersion:    extraIdentifier.APIVersion,
 				ItemFamily:    extraIdentifier.ItemFamily,

@@ -335,7 +335,7 @@ func TestIdentifierOnly(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			output, err := test.mapper.ApplyIdentifierTemplate(test.input)
+			output, _, err := test.mapper.ApplyIdentifierTemplate(test.input)
 			if test.expectedError {
 				var expectedError template.ExecError
 				assert.Empty(t, output)
