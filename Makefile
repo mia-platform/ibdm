@@ -31,34 +31,26 @@ SHELL:= /usr/bin/env bash
 .SUFFIXES:
 
 ## Set all variables
-ifeq ($(origin PROJECT_DIR),undefined)
-PROJECT_DIR:= $(abspath $(shell pwd -P))
-endif
-
-ifeq ($(origin OUTPUT_DIR),undefined)
-OUTPUT_DIR:= $(PROJECT_DIR)/bin
-endif
-
 ifeq ($(origin RELEASE_DIR),undefined)
 RELEASE_DIR:= release
 endif
 
 ifeq ($(origin TOOLS_DIR),undefined)
-TOOLS_DIR:= $(PROJECT_DIR)/tools
+TOOLS_DIR:= tools
 endif
 
 ifeq ($(origin TOOLS_BIN),undefined)
 TOOLS_BIN:= $(TOOLS_DIR)/bin
 endif
 
-ifeq ($(origin BUILD_OUTPUT),undefined)
-BUILD_OUTPUT:= bin
+ifeq ($(origin BUILD_DIR),undefined)
+BUILD_DIR:= bin
 endif
 
 # Set here the name of the package you want to build
 CMD_NAME:= ibdm
 BUILD_PATH:= .
-CONFORMANCE_TEST_PATH:= $(PROJECT_DIR)/tests/e2e
+CONFORMANCE_TEST_PATH:= tests/e2e
 
 # enable modules
 GO111MODULE:= on

@@ -38,11 +38,11 @@
 				]
 			},
 			"extensions": [
-				"redhat.vscode-yaml",
-				"timonwong.shellcheck",
-				"editorconfig.editorconfig",
 				"davidanson.vscode-markdownlint",
-				"streetsidesoftware.code-spell-checker"
+				"editorconfig.editorconfig",
+				"redhat.vscode-yaml",
+				"streetsidesoftware.code-spell-checker",
+				"timonwong.shellcheck"
 			]
 		},
 		"codespaces": {

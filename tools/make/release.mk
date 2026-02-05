@@ -44,9 +44,9 @@ $(BUILD_TARGETS): $(RELEASE_DIR)/% :
 	$(eval OS:= $(shell tr '[:upper:]' '[:lower:]' <<< $(word 2,$(PARTS))))
 	$(eval ARCH:= $(firstword $(subst ., ,$(lastword $(PARTS)))))
 	$(eval ARCH:= $(subst aarch64,arm64,$(subst x86_64,amd64,$(ARCH))))
-	$(MAKE) $(BUILD_OUTPUT)/$(OS)/$(ARCH)/$(CMD)
+	$(MAKE) $(BUILD_DIR)/$(OS)/$(ARCH)/$(CMD)
 	$(info Copying binary for $* to release dir...)
-	cp -r $(BUILD_OUTPUT)/$(OS)/$(ARCH)/$(CMD) $@
+	cp -r $(BUILD_DIR)/$(OS)/$(ARCH)/$(CMD) $@
 
 $(RELEASE_DIR)/checksums.txt: $(RELEASE_DIR)/$(CMD_NAME)*
 	$(info Generating checksums for release binaries...)
@@ -58,11 +58,7 @@ $(RELEASE_DIR)/%.sbom.json: $(RELEASE_DIR)/% $(SYFT_PATH)
 
 $(RELEASE_DIR)/%.sigstore.json: $(RELEASE_DIR)/% $(COSIGN_PATH)
 	$(info Signing $* with cosign...)
-ifdef COSIGN_PRIVATE_KEY
- 	$(COSIGN_PATH) sign-blob $< --key $(COSIGN_PRIVATE_KEY) --bundle $@ --yes
-else
-	$(COSIGN_PATH) sign-blob $< --key cosign.key --tlog-upload=false --use-signing-config=false --bundle $@ --yes
-endif
+	$(COSIGN_PATH) sign-blob $< --key $(COSIGN_PRIVATE_KEY) --bundle $@ --yes
 
 $(RELEASE_DIR)/default-itds-mappings.tar.gz: docs/examples/*
 	$(info Creating the default ItemTypeDefinitions and mappings tarball...)

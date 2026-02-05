@@ -31,7 +31,7 @@ clean: clean/bin
 .PHONY: clean/bin
 clean/bin:
 	$(info Clean artifacts files...)
-	rm -fr $(OUTPUT_DIR)
+	rm -fr $(BUILD_DIR)
 
 clean: clean/release
 .PHONY: clean/release

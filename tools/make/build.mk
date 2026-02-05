@@ -15,9 +15,6 @@
 
 ##@ Go Builds Goals
 
-.PHONY: build
-build:
-
 BUILD_DATE:= $(shell date -u "+%Y-%m-%d")
 GO_LDFLAGS+= -s -w
 ENABLE_CGO_BUILD?=0
@@ -29,7 +26,7 @@ endif
 
 SOURCE=$(shell find . -iname "*.go")
 
-$(BUILD_OUTPUT)/%: $(SOURCE)
+$(BUILD_DIR)/%: $(SOURCE)
 	$(eval OS:= $(word 1,$(subst /, ,$(*D))))
 	$(eval ARCH:= $(word 2,$(subst /, ,$(*D))))
 	$(eval ARM:= $(word 3,$(subst /, ,$(*D))))
@@ -40,4 +37,4 @@ $(BUILD_OUTPUT)/%: $(SOURCE)
 		-ldflags "$(GO_LDFLAGS)" -o $@ $(BUILD_PATH)
 
 .PHONY: build
-build: $(BUILD_OUTPUT)/$(GOOS)/$(GOARCH)/$(if $(GOARM),/v$(GOARM)/,)$(CMD_NAME)$(if $(filter windows,$(GOOS)),.exe,)
+build: $(BUILD_DIR)/$(GOOS)/$(GOARCH)/$(if $(GOARM),/v$(GOARM)/,)$(CMD_NAME)$(if $(filter windows,$(GOOS)),.exe,)
