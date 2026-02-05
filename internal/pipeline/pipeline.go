@@ -31,37 +31,37 @@ type DataMapper struct {
 
 // Pipeline orchestrates the flow from a source through mappers into a destination.
 type Pipeline struct {
-	source      any
-	mappers     map[string]DataMapper
-	mapperTypes map[string]source.Extra
-	destination destination.Sender
-	server      *server.Server
+	source        any
+	mappers       map[string]DataMapper
+	mapperTypes   map[string]source.Extra
+	destination   destination.Sender
+	serverCreator func(ctx context.Context) (server.Server, error)
 }
 
 // New wires together the given source, mappers, and destination into a Pipeline.
 func New(ctx context.Context, src any, mappers map[string]DataMapper, destination destination.Sender) (*Pipeline, error) {
-	server, err := server.NewServer(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	mapperTypes := make(map[string]source.Extra, len(mappers))
 	for dataType, mapping := range mappers {
 		mapperTypes[dataType] = mapping.Extra
 	}
 
 	return &Pipeline{
-		source:      src,
-		mappers:     mappers,
-		mapperTypes: mapperTypes,
-		destination: destination,
-		server:      server,
+		source:        src,
+		mappers:       mappers,
+		mapperTypes:   mapperTypes,
+		destination:   destination,
+		serverCreator: server.NewServer,
 	}, nil
 }
 
 // Start begins streaming data from a source.EventSource or source.WebhookSource.
 func (p *Pipeline) Start(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
+
+	server, err := p.serverCreator(ctx)
+	if err != nil {
+		return err
+	}
 
 	streamSource, isStream := p.source.(source.EventSource)
 	webhookSource, isWebhook := p.source.(source.WebhookSource)
@@ -72,7 +72,7 @@ func (p *Pipeline) Start(ctx context.Context) error {
 		dataPipeline = func(ctx context.Context, channel chan<- source.Data) error {
 			// server start in different goroutine
 			log.Trace("starting server")
-			p.server.StartAsync(ctx)
+			server.StartAsync(ctx)
 			return streamSource.StartEventStream(ctx, p.mapperTypes, channel)
 		}
 	case isWebhook:
@@ -83,11 +83,10 @@ func (p *Pipeline) Start(ctx context.Context) error {
 				return err
 			}
 			log.Trace("registering webhook")
-			//nolint: contextcheck // webhook handler will use the context from the server
-			p.server.AddRoute(webhook.Method, webhook.Path, webhook.Handler)
+			server.AddRoute(webhook.Method, webhook.Path, webhook.Handler)
 			log.Trace("registered webhook, starting server")
 			log.Trace("starting server")
-			return p.server.Start()
+			return server.Start()
 		}
 	default:
 		return &unsupportedSourceError{
@@ -96,7 +95,7 @@ func (p *Pipeline) Start(ctx context.Context) error {
 	}
 
 	log.Trace("starting data pipeline")
-	err := p.runDataPipeline(ctx, dataPipeline)
+	err = p.runDataPipeline(ctx, dataPipeline)
 	log.Trace("event stream finished")
 
 	return err
@@ -167,7 +166,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 			if !ok {
 				return
 			}
-			mapper, found := p.mappers[data.Type]
+			dataMapper, found := p.mappers[data.Type]
 			if !found {
 				log.Debug("data type not mapped, skipping", "type", data.Type)
 				continue
@@ -175,13 +174,17 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 
 			log.Trace("sending data", "type", data.Type, "operation", data.Operation.String())
 			dataToSend := &destination.Data{
-				APIVersion:    mapper.APIVersion,
-				Resource:      mapper.Resource,
+				APIVersion:    dataMapper.APIVersion,
+				Resource:      dataMapper.Resource,
 				OperationTime: data.Timestamp(),
+			}
+			parentResourceInfo := mapper.ParentResourceInfo{
+				APIVersion: dataMapper.APIVersion,
+				Resource:   dataMapper.Resource,
 			}
 			switch data.Operation {
 			case source.DataOperationUpsert:
-				output, err := mapper.Mapper.ApplyTemplates(data.Values)
+				output, extra, err := dataMapper.Mapper.ApplyTemplates(data.Values, parentResourceInfo)
 				if err != nil {
 					log.Error("error applying mapper templates", "type", data.Type, "error", err)
 					continue
@@ -192,8 +195,9 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 					log.Error("error sending data to destination", "type", data.Type, "error", err)
 					continue
 				}
+				p.upsertExtraMappedData(ctx, data, extra)
 			case source.DataOperationDelete:
-				identifier, err := mapper.Mapper.ApplyIdentifierTemplate(data.Values)
+				identifier, err := dataMapper.Mapper.ApplyIdentifierTemplate(data.Values)
 				dataToSend.Name = identifier
 				if err != nil {
 					log.Error("error applying mapper templates", "type", data.Type, "error", err)
@@ -203,9 +207,52 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 					log.Error("error deleting data from destination", "type", data.Type, "error", err)
 					continue
 				}
+				p.deleteExtraMappedData(ctx, data, dataMapper)
 			}
 
 			log.Trace("data sent", "type", data.Type, "operation", data.Operation.String())
+		}
+	}
+}
+
+func (p *Pipeline) upsertExtraMappedData(ctx context.Context, data source.Data, extra []mapper.ExtraMappedData) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+	for _, extraOutput := range extra {
+		extraDataToSend := &destination.Data{
+			APIVersion:    extraOutput.APIVersion,
+			Resource:      extraOutput.Resource,
+			OperationTime: data.Timestamp(),
+			Name:          extraOutput.Identifier,
+			Data:          extraOutput.Spec,
+		}
+		log.Trace("sending data", "type", extraOutput.Resource, "operation", data.Operation.String())
+		if err := p.destination.SendData(ctx, extraDataToSend); err != nil {
+			log.Error("error sending extra data to destination", "type", extraOutput.Resource, "error", err)
+			continue
+		}
+	}
+}
+
+func (p *Pipeline) deleteExtraMappedData(ctx context.Context, data source.Data, dataMapper DataMapper) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+	extraIdentifiers, err := dataMapper.Mapper.ApplyIdentifierExtraTemplate(data.Values)
+	if err != nil {
+		log.Error("error applying extra identifier templates", "type", data.Type, "error", err)
+		return
+	}
+	if len(extraIdentifiers) > 0 {
+		for _, extraIdentifier := range extraIdentifiers {
+			extraDataToDelete := &destination.Data{
+				APIVersion:    extraIdentifier.APIVersion,
+				Resource:      extraIdentifier.Resource,
+				OperationTime: data.Timestamp(),
+				Name:          extraIdentifier.Identifier,
+			}
+			log.Trace("sending data", "type", extraDataToDelete.Resource, "operation", data.Operation.String())
+			if err := p.destination.DeleteData(ctx, extraDataToDelete); err != nil {
+				log.Error("error deleting extra data from destination", "type", extraDataToDelete.Resource, "error", err)
+				continue
+			}
 		}
 	}
 }

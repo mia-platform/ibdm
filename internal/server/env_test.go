@@ -27,19 +27,19 @@ func TestLoadValidateEnvironmentVariables(t *testing.T) {
 	t.Parallel()
 	t.Run("Environment variables validation", func(t *testing.T) {
 		t.Parallel()
-		envVars := &Config{HTTPPort: -1}
+		envVars := &config{HTTPPort: -1}
 		err := validateEnvironmentVariables(envVars)
 		require.Error(t, err)
 	})
 	t.Run("Environment variables validation", func(t *testing.T) {
 		t.Parallel()
-		envVars := &Config{HTTPPort: 655350}
+		envVars := &config{HTTPPort: 655350}
 		err := validateEnvironmentVariables(envVars)
 		require.Error(t, err)
 	})
 	t.Run("Environment variables validation", func(t *testing.T) {
 		t.Parallel()
-		envVars := &Config{HTTPPort: 3000}
+		envVars := &config{HTTPPort: 3000}
 		err := validateEnvironmentVariables(envVars)
 		require.NoError(t, err)
 	})

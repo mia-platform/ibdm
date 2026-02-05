@@ -20,9 +20,17 @@ const (
 	loggerName  = "ibdm:server"
 )
 
-type Server struct {
+type Server interface {
+	AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error)
+	Start() error
+	Stop() error
+	StartAsync(ctx context.Context)
+}
+
+type impServer struct {
+	config
+
 	app *fiber.App
-	cfg Config
 }
 
 var (
@@ -30,7 +38,7 @@ var (
 	ErrServerShutdown = errors.New("server shutdown error")
 )
 
-func NewServer(ctx context.Context) (*Server, error) {
+func NewServer(ctx context.Context) (Server, error) {
 	cfg, err := LoadServerConfig()
 	if err != nil {
 		return nil, err
@@ -45,13 +53,13 @@ func NewServer(ctx context.Context) (*Server, error) {
 
 	statusRoutes(app, serviceName, info.Version)
 
-	return &Server{
-		app: app,
-		cfg: *cfg,
+	return &impServer{
+		app:    app,
+		config: *cfg,
 	}, nil
 }
 
-func (s *Server) AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) {
+func (s *impServer) AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) {
 	s.app.Add(method, path, func(ctx *fiber.Ctx) error {
 		if err := handler(ctx.UserContext(), ctx.GetReqHeaders(), ctx.Body()); err != nil {
 			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
@@ -64,14 +72,21 @@ func (s *Server) AddRoute(method string, path string, handler func(ctx context.C
 	})
 }
 
-func (s *Server) Start() error {
-	if err := s.app.Listen(fmt.Sprintf("%s:%d", s.cfg.HTTPHost, s.cfg.HTTPPort)); err != nil {
+func (s *impServer) Start() error {
+	if err := s.app.Listen(fmt.Sprintf("%s:%d", s.HTTPHost, s.HTTPPort)); err != nil {
 		return fmt.Errorf("%w: %w", ErrServerListen, err)
 	}
 	return nil
 }
 
-func (s *Server) StartAsync(ctx context.Context) {
+func (s *impServer) Stop() error {
+	if err := s.app.Shutdown(); err != nil {
+		return fmt.Errorf("%w: %w", ErrServerShutdown, err)
+	}
+	return nil
+}
+
+func (s *impServer) StartAsync(ctx context.Context) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	go func() {
 		if err := s.Start(); err != nil {

@@ -6,6 +6,7 @@ package pipeline
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -15,15 +16,29 @@ import (
 	"github.com/mia-platform/ibdm/internal/destination"
 	fakedestination "github.com/mia-platform/ibdm/internal/destination/fake"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/server"
+	fakeserver "github.com/mia-platform/ibdm/internal/server/fake"
 	"github.com/mia-platform/ibdm/internal/source"
 	fakesource "github.com/mia-platform/ibdm/internal/source/fake"
 )
 
 var (
 	testTime = time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
-	type1    = source.Data{
+
+	type1 = source.Data{
 		Type:      "type1",
 		Operation: source.DataOperationUpsert,
+		Values: map[string]any{
+			"id":     "item1",
+			"field1": "value1",
+			"field2": "value2",
+		},
+		Time: testTime,
+	}
+
+	type1D = source.Data{
+		Type:      "type1",
+		Operation: source.DataOperationDelete,
 		Values: map[string]any{
 			"id":     "item1",
 			"field1": "value1",
@@ -40,6 +55,7 @@ var (
 		},
 		Time: testTime,
 	}
+
 	brokenType = source.Data{
 		Type:      "type1",
 		Operation: source.DataOperationUpsert,
@@ -59,9 +75,18 @@ var (
 		},
 		Time: testTime,
 	}
+
+	deleteExtra = source.Data{
+		Type:      "relationships",
+		Operation: source.DataOperationDelete,
+		Values: map[string]any{
+			"identifier": "relationship--value1--value2--dependency",
+		},
+		Time: testTime,
+	}
 )
 
-func testMappers(tb testing.TB) map[string]DataMapper {
+func testMappers(tb testing.TB, extra []map[string]any) map[string]DataMapper {
 	tb.Helper()
 
 	return map[string]DataMapper{
@@ -69,7 +94,7 @@ func testMappers(tb testing.TB) map[string]DataMapper {
 			mapper, err := mapper.New("{{ .id }}", map[string]string{
 				"field1": "{{ .field1 }}",
 				"field2": "{{ .field2 }}",
-			})
+			}, extra)
 			require.NoError(tb, err)
 			return DataMapper{
 				APIVersion: "v1",
@@ -80,7 +105,7 @@ func testMappers(tb testing.TB) map[string]DataMapper {
 		"type2": func() DataMapper {
 			mapper, err := mapper.New("{{ .identifier }}", map[string]string{
 				"attributeA": "{{ .attributeA }}",
-			})
+			}, extra)
 			require.NoError(tb, err)
 			return DataMapper{
 				APIVersion: "v2",
@@ -91,6 +116,33 @@ func testMappers(tb testing.TB) map[string]DataMapper {
 	}
 }
 
+func getMappingsExtra(tb testing.TB, returnExtra bool, deletePolicy string) []map[string]any {
+	tb.Helper()
+
+	if !returnExtra {
+		return nil
+	}
+
+	if deletePolicy != "" && deletePolicy != "none" && deletePolicy != "cascade" {
+		deletePolicy = "none"
+	}
+
+	extraDef := map[string]any{
+		"apiVersion":   "relationships/v1",
+		"resource":     "relationships",
+		"deletePolicy": deletePolicy,
+		"identifier":   `{{ printf "relationship--%s--%s--dependency" .field1 .field2 }}`,
+		"sourceRef": map[string]any{
+			"apiVersion": "resource.custom-platform/v1",
+			"kind":       "resource1",
+			"name":       "{{ .field2 }}",
+		},
+		"type": "dependency",
+	}
+
+	return []map[string]any{extraDef}
+}
+
 func TestStreamPipeline(t *testing.T) {
 	t.Parallel()
 
@@ -99,6 +151,8 @@ func TestStreamPipeline(t *testing.T) {
 		expectedData     []*destination.Data
 		expectedDeletion []*destination.Data
 		expectedErr      error
+		useExtra         bool
+		deletePolicy     string
 	}{
 		"unsupported source error": {
 			source: func(c chan<- struct{}) any {
@@ -106,6 +160,7 @@ func TestStreamPipeline(t *testing.T) {
 				return "not a valid source"
 			},
 			expectedErr: errors.ErrUnsupported,
+			useExtra:    false,
 		},
 		"source return an error": {
 			source: func(c chan<- struct{}) any {
@@ -113,6 +168,7 @@ func TestStreamPipeline(t *testing.T) {
 				return fakesource.NewFakeSourceWithError(t, assert.AnError)
 			},
 			expectedErr: assert.AnError,
+			useExtra:    false,
 		},
 		"valid pipeline return mapped data": {
 			source: func(c chan<- struct{}) any {
@@ -138,6 +194,74 @@ func TestStreamPipeline(t *testing.T) {
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
 			},
+			useExtra: false,
+		},
+		"valid pipeline return mapped data with extra mappings": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
+			},
+			expectedData: []*destination.Data{
+				{
+					APIVersion: "v1",
+					Resource:   "resource",
+					Name:       "item1",
+					Data: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion: "relationships/v1",
+					Resource:   "relationships",
+					Name:       "relationship--value1--value2--dependency",
+					Data: map[string]any{
+						"sourceRef": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"kind":       "resource1",
+							"name":       "value2",
+						},
+						"targetRef": map[string]any{
+							"apiVersion": "v1",
+							"kind":       "resource",
+							"name":       "item1",
+						},
+						"type": "dependency",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v2",
+					Resource:      "resource2",
+					Name:          "item2",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			useExtra: true,
+		},
+		"valid pipeline return deletion with extra mappings delete cascade": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeEventSource(t, []source.Data{type1D, deleteExtra}, c)
+			},
+			expectedData: nil,
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v1",
+					Resource:      "resource",
+					Name:          "item1",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion:    "relationships/v1",
+					Resource:      "relationships",
+					Name:          "relationship--value1--value2--dependency",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			useExtra:     true,
+			deletePolicy: "cascade",
 		},
 	}
 
@@ -151,7 +275,8 @@ func TestStreamPipeline(t *testing.T) {
 			defer close(syncChan)
 
 			testSource := test.source(syncChan)
-			pipeline, err := New(ctx, testSource, testMappers(t), destination)
+			extra := getMappingsExtra(t, test.useExtra, test.deletePolicy)
+			pipeline, err := New(ctx, testSource, testMappers(t, extra), destination)
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
@@ -173,6 +298,194 @@ func TestStreamPipeline(t *testing.T) {
 			pipeline.Stop(ctx, 1*time.Second)
 
 			<-syncChan
+			assert.Equal(t, test.expectedData, destination.SentData)
+			assert.Equal(t, test.expectedDeletion, destination.DeletedData)
+		})
+	}
+}
+
+func TestStreamPipelineWebhook(t *testing.T) {
+	t.Parallel()
+	testCases := map[string]struct {
+		source           func(c chan<- struct{}) any
+		expectedData     []*destination.Data
+		expectedDeletion []*destination.Data
+		expectedErr      error
+		useExtra         bool
+		deletePolicy     string
+	}{
+		"unsupported source error": {
+			source: func(c chan<- struct{}) any {
+				close(c)
+				return "not a valid source"
+			},
+			expectedErr: errors.ErrUnsupported,
+			useExtra:    false,
+		},
+		"source return an error": {
+			source: func(c chan<- struct{}) any {
+				close(c)
+				return fakesource.NewFakeWebhookSourceWithError(t, assert.AnError)
+			},
+			expectedErr: assert.AnError,
+			useExtra:    false,
+		},
+		"valid webhook pipeline return mapped data without extra mappings": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+					dataChan <- type1
+					dataChan <- type2
+					close(c)
+					return nil
+				})
+			},
+			expectedData: []*destination.Data{
+				{
+					APIVersion: "v1",
+					Resource:   "resource",
+					Name:       "item1",
+					Data: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v2",
+					Resource:      "resource2",
+					Name:          "item2",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+		},
+		"valid webhook pipeline return mapped data with extra mappings": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+					dataChan <- type1
+					dataChan <- type2
+					close(c)
+					return nil
+				})
+			},
+			expectedData: []*destination.Data{
+				{
+					APIVersion: "v1",
+					Resource:   "resource",
+					Name:       "item1",
+					Data: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion: "relationships/v1",
+					Resource:   "relationships",
+					Name:       "relationship--value1--value2--dependency",
+					Data: map[string]any{
+						"sourceRef": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"kind":       "resource1",
+							"name":       "value2",
+						},
+						"targetRef": map[string]any{
+							"apiVersion": "v1",
+							"kind":       "resource",
+							"name":       "item1",
+						},
+						"type": "dependency",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v2",
+					Resource:      "resource2",
+					Name:          "item2",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			useExtra: true,
+		},
+		"valid webhook pipeline return deletion with extra mappings delete cascade": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+					dataChan <- type1D
+					dataChan <- deleteExtra
+					close(c)
+					return nil
+				})
+			},
+			expectedData: nil,
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v1",
+					Resource:      "resource",
+					Name:          "item1",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion:    "relationships/v1",
+					Resource:      "relationships",
+					Name:          "relationship--value1--value2--dependency",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			useExtra:     true,
+			deletePolicy: "cascade",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			defer cancel()
+
+			destination := fakedestination.NewFakeDestination(t)
+
+			syncChan := make(chan struct{})
+			source := test.source(syncChan)
+
+			extra := getMappingsExtra(t, test.useExtra, test.deletePolicy)
+			pipeline, err := New(ctx, source, testMappers(t, extra), destination)
+			require.NoError(t, err)
+
+			fakeServer := fakeserver.NewFakeServer(t, http.MethodPost, "/webhook")
+			pipeline.serverCreator = func(_ context.Context) (server.Server, error) {
+				return fakeServer, nil
+			}
+
+			go func() {
+				<-fakeServer.StartedServer()
+				err = fakeServer.CallRegisterWebhook(ctx)
+				if test.expectedErr != nil {
+					assert.ErrorIs(t, err, test.expectedErr)
+					assert.Empty(t, destination.SentData)
+					assert.Empty(t, destination.DeletedData)
+					return
+				}
+				assert.NoError(t, err)
+				select {
+				case <-syncChan:
+					assert.NoError(t, fakeServer.Stop())
+				case <-ctx.Done():
+					assert.Fail(t, "timeout waiting for pipeline to stop")
+				}
+			}()
+
+			err = pipeline.Start(ctx)
+			if test.expectedErr != nil {
+				assert.ErrorIs(t, err, test.expectedErr)
+				assert.Empty(t, destination.SentData)
+				assert.Empty(t, destination.DeletedData)
+				return
+			}
+
+			assert.NoError(t, err)
 			assert.Equal(t, test.expectedData, destination.SentData)
 			assert.Equal(t, test.expectedDeletion, destination.DeletedData)
 		})
@@ -291,7 +604,7 @@ func TestSyncPipeline(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			destination := fakedestination.NewFakeDestination(t)
-			pipeline, err := New(ctx, test.source, testMappers(t), destination)
+			pipeline, err := New(ctx, test.source, testMappers(t, nil), destination)
 			require.NoError(t, err)
 
 			defer cancel()

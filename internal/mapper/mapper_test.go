@@ -19,7 +19,7 @@ func TestNewMapper(t *testing.T) {
 		mapper, err := New("{{ .name }}", map[string]string{
 			"key":      "name",
 			"otherKey": "{{ .otherKey | trim }}",
-		})
+		}, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, mapper)
 
@@ -34,7 +34,7 @@ func TestNewMapper(t *testing.T) {
 		mapper, err := New("{{ .name }}", map[string]string{
 			"key":      "name",
 			"otherKey": "{{ .otherKey | unknownFunc }}",
-		})
+		}, nil)
 		assert.Nil(t, mapper)
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, errTemplateParsing)
@@ -51,7 +51,7 @@ func TestNewMapper(t *testing.T) {
 		mapper, err := New("{{ .name | unknownFunc }}", map[string]string{
 			"key":      "name",
 			"otherKey": "{{ .otherKey | unknownFunc }}",
-		})
+		}, nil)
 		assert.Nil(t, mapper)
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, errTemplateParsing)
@@ -82,7 +82,7 @@ func TestMapper(t *testing.T) {
 					"nested":        "{{ .otherKey | toJSON }}",
 					"array":         "{{ .array | toJSON }}",
 					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -113,7 +113,7 @@ func TestMapper(t *testing.T) {
 			mapper: func() Mapper {
 				m, err := New("{{ .id }}", map[string]string{
 					"key": "name",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -132,7 +132,7 @@ func TestMapper(t *testing.T) {
 			mapper: func() Mapper {
 				m, err := New("{{ .name }}-{{ .missingField }}", map[string]string{
 					"key": "name",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -146,7 +146,7 @@ func TestMapper(t *testing.T) {
 				m, err := New("{{ .name }}", map[string]string{
 					"key":      "name",
 					"otherKey": "{{ .otherKey.value }}",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -159,7 +159,7 @@ func TestMapper(t *testing.T) {
 			mapper: func() Mapper {
 				m, err := New("{{ .name }}_invalid", map[string]string{
 					"key": "name",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -172,7 +172,7 @@ func TestMapper(t *testing.T) {
 			mapper: func() Mapper {
 				m, err := New("{{ .name }}", map[string]string{
 					"key": "name",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -185,7 +185,7 @@ func TestMapper(t *testing.T) {
 			mapper: func() Mapper {
 				m, err := New("{{ .name }}", map[string]string{
 					"key": `{{ pick .objects "key" "thirdKey" | toJSON }}`,
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -212,7 +212,7 @@ func TestMapper(t *testing.T) {
 				m, err := New("{{ .name }}", map[string]string{
 					"key":       `{{ get "missingKey" . "defaultValue" }}`,
 					"nestedKey": `{{ get "nestedKey" .otherKey "defaultValue" }}`,
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -236,7 +236,7 @@ func TestMapper(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			output, err := test.mapper.ApplyTemplates(test.input)
+			output, _, err := test.mapper.ApplyTemplates(test.input, ParentResourceInfo{})
 			if test.expectedError {
 				var expectedError template.ExecError
 				assert.Empty(t, output)
@@ -268,7 +268,7 @@ func TestIdentifierOnly(t *testing.T) {
 					"nested":        "{{ .otherKey | toJSON }}",
 					"array":         "{{ .array | toJSON }}",
 					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -281,7 +281,7 @@ func TestIdentifierOnly(t *testing.T) {
 			mapper: func() Mapper {
 				m, err := New("{{ .id }}", map[string]string{
 					"key": "name",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -294,7 +294,7 @@ func TestIdentifierOnly(t *testing.T) {
 			mapper: func() Mapper {
 				m, err := New("{{ .name }}-{{ .missingField }}", map[string]string{
 					"key": "name",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -307,7 +307,7 @@ func TestIdentifierOnly(t *testing.T) {
 			mapper: func() Mapper {
 				m, err := New("{{ .name }}_invalid", map[string]string{
 					"key": "name",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),
@@ -320,7 +320,7 @@ func TestIdentifierOnly(t *testing.T) {
 			mapper: func() Mapper {
 				m, err := New("{{ .name }}", map[string]string{
 					"key": "name",
-				})
+				}, nil)
 				require.NoError(t, err)
 				return m
 			}(),

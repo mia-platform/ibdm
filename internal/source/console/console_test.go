@@ -4,6 +4,7 @@
 package console
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -61,6 +62,8 @@ func TestSource_GetWebhook(t *testing.T) {
 	t.Run("successfully creates webhook and processes events", func(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
 
 		s := Source{
 			c: &webhookClient{
@@ -111,12 +114,14 @@ func TestSource_GetWebhook(t *testing.T) {
 			},
 		}
 
+	loop:
 		select {
 		case data := <-results:
 			require.Equal(t, expectedEvent.GetResource(), data.Type)
 			require.Equal(t, expectedEvent.Operation(), data.Operation)
 			require.Equal(t, expectedEvent.Payload, data.Values)
-		case <-time.After(1 * time.Second):
+			break loop
+		case <-ctx.Done():
 			t.Fatal("Timeout waiting for message processing: expected data in channel")
 		}
 	})

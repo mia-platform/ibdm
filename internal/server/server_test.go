@@ -9,109 +9,103 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewApp(t *testing.T) {
-	t.Run("successfully creates app with valid config", func(t *testing.T) {
-		ctx := t.Context()
-		t.Setenv("HTTP_PORT", "3000")
+func TestNewServer(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
 
-		srv, err := NewServer(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, srv)
+	srvInterface, err := NewServer(ctx)
+	srv, ok := srvInterface.(*impServer)
+	require.True(t, ok)
 
-		require.NotNil(t, srv.app)
+	require.NoError(t, err)
+	require.NotNil(t, srv)
 
-		time.Sleep(1 * time.Second)
-		request := httptest.NewRequest(http.MethodGet, "/-/healthz", nil)
-		response, err := srv.app.Test(request)
-		require.NoError(t, err)
+	require.NotNil(t, srv.app)
+	require.True(t, srv.app.Config().Immutable)
 
-		defer response.Body.Close()
-		require.Equal(t, http.StatusOK, response.StatusCode)
-		defer srv.app.Shutdown()
-	})
+	request := httptest.NewRequest(http.MethodGet, "/-/healthz", nil)
+	response, err := srv.app.Test(request)
+	require.NoError(t, err)
+
+	defer response.Body.Close()
+	require.Equal(t, http.StatusOK, response.StatusCode)
 }
 
 func TestStartServer(t *testing.T) {
-	t.Run("starts and stops the server successfully", func(t *testing.T) {
-		ctx := t.Context()
-		t.Setenv("HTTP_PORT", "3001")
+	srv := &impServer{
+		app: fiber.New(fiber.Config{DisableStartupMessage: true, Immutable: true}),
+		config: config{
+			HTTPHost: "127.0.0.1",
+			HTTPPort: 0,
+		},
+	}
 
-		srv, err := NewServer(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, srv)
-
-		errChan := make(chan error, 1)
-		go func() {
-			err := srv.Start()
-			errChan <- err
-		}()
-
-		time.Sleep(1 * time.Second)
-		request := httptest.NewRequest(http.MethodGet, "/-/healthz", nil)
-		response, err := srv.app.Test(request)
-		require.NoError(t, err)
-
-		defer response.Body.Close()
-		require.Equal(t, http.StatusOK, response.StatusCode)
-
-		err = srv.app.Shutdown()
-		require.NoError(t, err)
-		err = <-errChan
-		require.NoError(t, err)
+	syncChan := make(chan struct{})
+	srv.app.Hooks().OnListen(func(ln fiber.ListenData) error {
+		t.Logf("Server is listening on %s:%s", ln.Host, ln.Port)
+		close(syncChan)
+		return nil
 	})
+
+	errChan := make(chan error)
+	defer close(errChan)
+	go func() {
+		err := srv.Start()
+		errChan <- err
+	}()
+
+	<-syncChan
+	require.NoError(t, srv.Stop())
+	err := <-errChan
+	require.NoError(t, err)
 }
 
 func TestStartAsyncServer(t *testing.T) {
-	t.Run("starts the server asynchronously", func(t *testing.T) {
-		ctx := t.Context()
-		t.Setenv("HTTP_PORT", "3002")
+	srv := &impServer{
+		app: fiber.New(fiber.Config{DisableStartupMessage: true, Immutable: true}),
+		config: config{
+			HTTPHost: "127.0.0.1",
+			HTTPPort: 0,
+		},
+	}
 
-		srv, err := NewServer(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, srv)
-
-		srv.StartAsync(ctx)
-
-		time.Sleep(1 * time.Second)
-		request := httptest.NewRequest(http.MethodGet, "/-/healthz", nil)
-		response, err := srv.app.Test(request)
-		require.NoError(t, err)
-
-		defer response.Body.Close()
-		require.Equal(t, http.StatusOK, response.StatusCode)
-
-		err = srv.app.Shutdown()
-		require.NoError(t, err)
+	syncChan := make(chan struct{})
+	srv.app.Hooks().OnListen(func(ln fiber.ListenData) error {
+		t.Logf("Server is listening on %s:%s", ln.Host, ln.Port)
+		close(syncChan)
+		return nil
 	})
+
+	srv.StartAsync(t.Context())
+	<-syncChan
+	require.NoError(t, srv.Stop())
 }
 
 func TestFiberHandlerWrapper(t *testing.T) {
-	t.Run("wraps handler and processes request body", func(t *testing.T) {
-		t.Setenv("HTTP_PORT", "3003")
+	t.Parallel()
+	srv := &impServer{
+		app: fiber.New(fiber.Config{DisableStartupMessage: true, Immutable: true}),
+	}
 
-		srv, err := NewServer(t.Context())
-		require.NoError(t, err)
+	processed := false
+	handler := func(_ context.Context, headers http.Header, body []byte) error {
+		processed = true
+		require.Equal(t, "test body", string(body))
+		return nil
+	}
 
-		processed := false
-		handler := func(_ context.Context, headers http.Header, body []byte) error {
-			processed = true
-			require.Equal(t, "test body", string(body))
-			return nil
-		}
+	request := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader("test body"))
 
-		request := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader("test body"))
+	srv.AddRoute(http.MethodPost, "/test", handler)
+	response, err := srv.app.Test(request)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, response.StatusCode)
+	require.True(t, processed)
 
-		srv.AddRoute(http.MethodPost, "/test", handler)
-		response, err := srv.app.Test(request)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusNoContent, response.StatusCode)
-		require.True(t, processed)
-
-		defer response.Body.Close()
-	})
+	defer response.Body.Close()
 }
