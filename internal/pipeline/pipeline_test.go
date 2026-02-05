@@ -241,7 +241,7 @@ func TestStreamPipeline(t *testing.T) {
 			},
 			useExtra: true,
 		},
-		"valid pipeline return mapped data with extra mappings delete cascade": {
+		"valid pipeline return deletion with extra mappings delete cascade": {
 			source: func(c chan<- struct{}) any {
 				return fakesource.NewFakeEventSource(t, []source.Data{type1_d, deleteExtra}, c)
 			},
@@ -409,6 +409,33 @@ func TestStreamPipelineWebhook(t *testing.T) {
 				},
 			},
 			useExtra: true,
+		},
+		"valid webhook pipeline return deletion with extra mappings delete cascade": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+					dataChan <- type1_d
+					dataChan <- deleteExtra
+					close(c)
+					return nil
+				})
+			},
+			expectedData: nil,
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v1",
+					Resource:      "resource",
+					Name:          "item1",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion:    "relationships/v1",
+					Resource:      "relationships",
+					Name:          "relationship--value1--value2--dependency",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			useExtra:     true,
+			deletePolicy: "cascade",
 		},
 	}
 
