@@ -6,7 +6,7 @@ package logger
 import (
 	"bytes"
 	"encoding/json"
-	nhttp "net/http"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -33,50 +33,50 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 			expectedLogLines: 2,
 			loggerLevel:      TRACE,
 			path:             "/foo",
-			method:           nhttp.MethodGet,
+			method:           http.MethodGet,
 			userAgent:        "test-agent",
 			host:             "example.com",
-			statusCode:       nhttp.StatusOK,
+			statusCode:       http.StatusOK,
 		},
 		"skips excluded paths": {
 			excludedPrefixes: []string{"/health"},
 			expectedLogLines: 0,
 			loggerLevel:      TRACE,
 			path:             "/health",
-			method:           nhttp.MethodGet,
+			method:           http.MethodGet,
 			userAgent:        "test-agent",
 			host:             "example.com",
-			statusCode:       nhttp.StatusOK,
+			statusCode:       http.StatusOK,
 		},
 		"skips incoming request log due to logger level": {
 			excludedPrefixes: []string{},
 			expectedLogLines: 1,
 			loggerLevel:      INFO,
 			path:             "/foo",
-			method:           nhttp.MethodGet,
+			method:           http.MethodGet,
 			userAgent:        "test-agent",
 			host:             "example.com",
-			statusCode:       nhttp.StatusOK,
+			statusCode:       http.StatusOK,
 		},
 		"skips all logs due to excluded path and logger level": {
 			excludedPrefixes: []string{"/foo"},
 			expectedLogLines: 0,
 			loggerLevel:      INFO,
 			path:             "/foo",
-			method:           nhttp.MethodGet,
+			method:           http.MethodGet,
 			userAgent:        "test-agent",
 			host:             "example.com",
-			statusCode:       nhttp.StatusOK,
+			statusCode:       http.StatusOK,
 		},
 		"method POST logs incoming and completed requests": {
 			excludedPrefixes: []string{},
 			expectedLogLines: 2,
 			loggerLevel:      TRACE,
 			path:             "/bar",
-			method:           nhttp.MethodPost,
+			method:           http.MethodPost,
 			userAgent:        "test-agent",
 			host:             "example.com",
-			statusCode:       nhttp.StatusOK,
+			statusCode:       http.StatusOK,
 		},
 	}
 

@@ -4,6 +4,7 @@ useGitignore: true
 allowCompoundWords: true
 words:
   - anchore
+  - buildx
   - gopath
   - gsrv
   - healthz
@@ -11,6 +12,7 @@ words:
   - itds
   - nolint
   - syft
+  - sysdig
   - tmpl
   - upserted
   - uuidv
@@ -37,14 +39,17 @@ ignoreWords:
   - gomod
   - goos
   - hclog
-  - nhttp
   - pubsubpb
   - stretchr
   - structpb
+  - sysdiglabs
   - tlog
   - vtpm
 files:
   - "**/*.go"
   - "**/*.md"
   - "**/*.mk"
+  - ".devcontainer/devcontainer.json"
+  - ".github/*.yml"
+  - ".github/**/*.yaml"
   - Makefile

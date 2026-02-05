@@ -164,8 +164,8 @@ func customRemoveFields(configuration map[string]any) {
 	}
 
 	// Remove castFunctions from fastDataConfig to reduce payload size
-	if mfpc, ok := configuration["microfrontendPluginsConfig"].(map[string]any); ok {
-		if bc, ok := mfpc["backofficeConfigurations"].(map[string]any); ok {
+	if plugin, ok := configuration["microfrontendPluginsConfig"].(map[string]any); ok {
+		if bc, ok := plugin["backofficeConfigurations"].(map[string]any); ok {
 			bc["services"] = nil
 		}
 	}

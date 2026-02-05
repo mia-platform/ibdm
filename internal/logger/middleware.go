@@ -20,8 +20,8 @@ const (
 	RequestCompletedMessage = "request completed"
 )
 
-// http is the struct of the log formatter.
-type http struct {
+// httpCall is the struct of the log formatter.
+type httpCall struct {
 	Request  *request  `json:"request,omitempty"`
 	Response *response `json:"response,omitempty"`
 }
@@ -106,7 +106,7 @@ func StatusCode(ctx *fiber.Ctx, err error) int {
 func logIncomingRequest(ctx *fiber.Ctx, logger Logger) {
 	logger.
 		Trace(IncomingRequestMessage,
-			"http", http{
+			"http", httpCall{
 				Request: &request{
 					Method: ctx.Method(),
 					UserAgent: userAgent{
@@ -126,7 +126,7 @@ func logIncomingRequest(ctx *fiber.Ctx, logger Logger) {
 func logRequestCompleted(ctx *fiber.Ctx, logger Logger, startTime time.Time, err error) {
 	logger.
 		Info(RequestCompletedMessage,
-			"http", http{
+			"http", httpCall{
 				Request: &request{
 					Method: ctx.Method(),
 					UserAgent: userAgent{
