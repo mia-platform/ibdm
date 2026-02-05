@@ -263,6 +263,22 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		expectedErr      error
 		useExtra         bool
 	}{
+		"unsupported source error": {
+			source: func(c chan<- struct{}) any {
+				close(c)
+				return "not a valid source"
+			},
+			expectedErr: errors.ErrUnsupported,
+			useExtra:    false,
+		},
+		"source return an error": {
+			source: func(c chan<- struct{}) any {
+				close(c)
+				return fakesource.NewFakeWebhookSourceWithError(t, assert.AnError)
+			},
+			expectedErr: assert.AnError,
+			useExtra:    false,
+		},
 		"valid webhook pipeline return mapped data without extra mappings": {
 			source: func(c chan<- struct{}) any {
 				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
@@ -367,7 +383,14 @@ func TestStreamPipelineWebhook(t *testing.T) {
 
 			go func() {
 				<-fakeServer.StartedServer()
-				assert.NoError(t, fakeServer.CallRegisterWebhook(ctx))
+				err = fakeServer.CallRegisterWebhook(ctx)
+				if test.expectedErr != nil {
+					assert.ErrorIs(t, err, test.expectedErr)
+					assert.Empty(t, destination.SentData)
+					assert.Empty(t, destination.DeletedData)
+					return
+				}
+				assert.NoError(t, err)
 				select {
 				case <-syncChan:
 					assert.NoError(t, fakeServer.Stop())
@@ -376,7 +399,15 @@ func TestStreamPipelineWebhook(t *testing.T) {
 				}
 			}()
 
-			assert.NoError(t, pipeline.Start(ctx))
+			err = pipeline.Start(ctx)
+			if test.expectedErr != nil {
+				assert.ErrorIs(t, err, test.expectedErr)
+				assert.Empty(t, destination.SentData)
+				assert.Empty(t, destination.DeletedData)
+				return
+			}
+
+			assert.NoError(t, err)
 			assert.Equal(t, test.expectedData, destination.SentData)
 			assert.Equal(t, test.expectedDeletion, destination.DeletedData)
 		})

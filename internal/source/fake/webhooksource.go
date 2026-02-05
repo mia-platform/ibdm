@@ -45,3 +45,26 @@ func (f *unclosableWebhookSource) GetWebhook(ctx context.Context, typesToFilter 
 		},
 	}, nil
 }
+
+var _ source.WebhookSource = &errorWebhookSource{}
+
+type errorWebhookSource struct {
+	tb  testing.TB
+	err error
+}
+
+// NewFakeWebhookSourceWithError returns a WebhookSource that always fails.
+func NewFakeWebhookSourceWithError(tb testing.TB, err error) source.WebhookSource {
+	tb.Helper()
+
+	return &errorWebhookSource{
+		tb:  tb,
+		err: err,
+	}
+}
+
+// GetWebhook returns the configured error.
+func (e *errorWebhookSource) GetWebhook(_ context.Context, _ map[string]source.Extra, _ chan<- source.Data) (source.Webhook, error) {
+	e.tb.Helper()
+	return source.Webhook{}, e.err
+}
