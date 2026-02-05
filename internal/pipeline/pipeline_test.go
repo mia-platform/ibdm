@@ -257,15 +257,17 @@ func TestStreamPipeline(t *testing.T) {
 func TestStreamPipelineWebhook(t *testing.T) {
 	t.Parallel()
 	testCases := map[string]struct {
-		source       func(c chan<- struct{}) any
-		expectedData []*destination.Data
-		expectedErr  error
-		useExtra     bool
+		source           func(c chan<- struct{}) any
+		expectedData     []*destination.Data
+		expectedDeletion []*destination.Data
+		expectedErr      error
+		useExtra         bool
 	}{
 		"valid webhook pipeline return mapped data without extra mappings": {
 			source: func(c chan<- struct{}) any {
 				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
 					dataChan <- type1
+					dataChan <- type2
 					close(c)
 					return nil
 				})
@@ -282,11 +284,20 @@ func TestStreamPipelineWebhook(t *testing.T) {
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
 			},
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v2",
+					Resource:      "resource2",
+					Name:          "item2",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
 		},
 		"valid webhook pipeline return mapped data with extra mappings": {
 			source: func(c chan<- struct{}) any {
 				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
 					dataChan <- type1
+					dataChan <- type2
 					close(c)
 					return nil
 				})
@@ -319,6 +330,14 @@ func TestStreamPipelineWebhook(t *testing.T) {
 						},
 						"type": "dependency",
 					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v2",
+					Resource:      "resource2",
+					Name:          "item2",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
 			},
@@ -359,7 +378,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 
 			assert.NoError(t, pipeline.Start(ctx))
 			assert.Equal(t, test.expectedData, destination.SentData)
-			// assert.Equal(t, test.expectedDeletion, destination.DeletedData)
+			assert.Equal(t, test.expectedDeletion, destination.DeletedData)
 		})
 	}
 }
