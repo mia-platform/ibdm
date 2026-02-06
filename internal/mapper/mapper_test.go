@@ -16,7 +16,7 @@ func TestNewMapper(t *testing.T) {
 
 	t.Run("new mapper from valid templates", func(t *testing.T) {
 		t.Parallel()
-		mapper, err := New("{{ .name }}", map[string]string{
+		mapper, err := New("{{ .name }}", nil, map[string]string{
 			"key":      "name",
 			"otherKey": "{{ .otherKey | trim }}",
 		}, nil)
@@ -31,7 +31,7 @@ func TestNewMapper(t *testing.T) {
 
 	t.Run("return error when one template is broken", func(t *testing.T) {
 		t.Parallel()
-		mapper, err := New("{{ .name }}", map[string]string{
+		mapper, err := New("{{ .name }}", nil, map[string]string{
 			"key":      "name",
 			"otherKey": "{{ .otherKey | unknownFunc }}",
 		}, nil)
@@ -48,7 +48,7 @@ func TestNewMapper(t *testing.T) {
 
 	t.Run("return error when one or more template is broken", func(t *testing.T) {
 		t.Parallel()
-		mapper, err := New("{{ .name | unknownFunc }}", map[string]string{
+		mapper, err := New("{{ .name | unknownFunc }}", nil, map[string]string{
 			"key":      "name",
 			"otherKey": "{{ .otherKey | unknownFunc }}",
 		}, nil)
@@ -75,7 +75,7 @@ func TestMapper(t *testing.T) {
 	}{
 		"simple mapping": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}", map[string]string{
+				m, err := New("{{ .name }}", nil, map[string]string{
 					"key":           "name",
 					"string":        "{{ .name }}",
 					"otherKey":      "{{ .otherKey.value }}",
@@ -96,6 +96,7 @@ func TestMapper(t *testing.T) {
 			},
 			expected: MappedData{
 				Identifier: "example",
+				Metadata:   map[string]any{},
 				Spec: map[string]any{
 					"key":      "name",
 					"string":   "example",
@@ -111,7 +112,7 @@ func TestMapper(t *testing.T) {
 		},
 		"always casting identifier to a string": {
 			mapper: func() Mapper {
-				m, err := New("{{ .id }}", map[string]string{
+				m, err := New("{{ .id }}", nil, map[string]string{
 					"key": "name",
 				}, nil)
 				require.NoError(t, err)
@@ -123,6 +124,7 @@ func TestMapper(t *testing.T) {
 			},
 			expected: MappedData{
 				Identifier: "12345",
+				Metadata:   map[string]any{},
 				Spec: map[string]any{
 					"key": "name",
 				},
@@ -130,7 +132,7 @@ func TestMapper(t *testing.T) {
 		},
 		"identifier mapping with missing fields": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}-{{ .missingField }}", map[string]string{
+				m, err := New("{{ .name }}-{{ .missingField }}", nil, map[string]string{
 					"key": "name",
 				}, nil)
 				require.NoError(t, err)
@@ -143,7 +145,7 @@ func TestMapper(t *testing.T) {
 		},
 		"spec mapping with missing fields": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}", map[string]string{
+				m, err := New("{{ .name }}", nil, map[string]string{
 					"key":      "name",
 					"otherKey": "{{ .otherKey.value }}",
 				}, nil)
@@ -157,7 +159,7 @@ func TestMapper(t *testing.T) {
 		},
 		"identifier with invalid characters": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}_invalid", map[string]string{
+				m, err := New("{{ .name }}_invalid", nil, map[string]string{
 					"key": "name",
 				}, nil)
 				require.NoError(t, err)
@@ -170,7 +172,7 @@ func TestMapper(t *testing.T) {
 		},
 		"identifier too long": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}", map[string]string{
+				m, err := New("{{ .name }}", nil, map[string]string{
 					"key": "name",
 				}, nil)
 				require.NoError(t, err)
@@ -183,7 +185,7 @@ func TestMapper(t *testing.T) {
 		},
 		"create string array from object array": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}", map[string]string{
+				m, err := New("{{ .name }}", nil, map[string]string{
 					"key": `{{ pick .objects "key" "thirdKey" | toJSON }}`,
 				}, nil)
 				require.NoError(t, err)
@@ -199,6 +201,7 @@ func TestMapper(t *testing.T) {
 			},
 			expected: MappedData{
 				Identifier: "example",
+				Metadata:   map[string]any{},
 				Spec: map[string]any{
 					"key": map[string]any{
 						"key":      "value1",
@@ -209,7 +212,7 @@ func TestMapper(t *testing.T) {
 		},
 		"use get value from missing key": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}", map[string]string{
+				m, err := New("{{ .name }}", nil, map[string]string{
 					"key":       `{{ get "missingKey" . "defaultValue" }}`,
 					"nestedKey": `{{ get "nestedKey" .otherKey "defaultValue" }}`,
 				}, nil)
@@ -224,6 +227,7 @@ func TestMapper(t *testing.T) {
 			},
 			expected: MappedData{
 				Identifier: "example",
+				Metadata:   map[string]any{},
 				Spec: map[string]any{
 					"key":       "defaultValue",
 					"nestedKey": "nestedValue",
@@ -261,7 +265,7 @@ func TestIdentifierOnly(t *testing.T) {
 	}{
 		"simple mapping": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}", map[string]string{
+				m, err := New("{{ .name }}", nil, map[string]string{
 					"key":           "name",
 					"string":        "{{ .name }}",
 					"otherKey":      "{{ .otherKey.value }}",
@@ -279,7 +283,7 @@ func TestIdentifierOnly(t *testing.T) {
 		},
 		"always casting identifier to a string": {
 			mapper: func() Mapper {
-				m, err := New("{{ .id }}", map[string]string{
+				m, err := New("{{ .id }}", nil, map[string]string{
 					"key": "name",
 				}, nil)
 				require.NoError(t, err)
@@ -292,7 +296,7 @@ func TestIdentifierOnly(t *testing.T) {
 		},
 		"identifier mapping with missing fields": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}-{{ .missingField }}", map[string]string{
+				m, err := New("{{ .name }}-{{ .missingField }}", nil, map[string]string{
 					"key": "name",
 				}, nil)
 				require.NoError(t, err)
@@ -305,7 +309,7 @@ func TestIdentifierOnly(t *testing.T) {
 		},
 		"identifier with invalid characters": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}_invalid", map[string]string{
+				m, err := New("{{ .name }}_invalid", nil, map[string]string{
 					"key": "name",
 				}, nil)
 				require.NoError(t, err)
@@ -318,7 +322,7 @@ func TestIdentifierOnly(t *testing.T) {
 		},
 		"identifier too long": {
 			mapper: func() Mapper {
-				m, err := New("{{ .name }}", map[string]string{
+				m, err := New("{{ .name }}", nil, map[string]string{
 					"key": "name",
 				}, nil)
 				require.NoError(t, err)

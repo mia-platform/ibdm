@@ -42,6 +42,8 @@ func TestNewWriterDestination(t *testing.T) {
 	ItemFamily: family
 	Item Name: id-1
 	Timestamp: 2020-01-01T00:00:00Z
+	Metadata: null
+
 	Spec: {
 		"array": [
 			"a",
