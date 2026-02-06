@@ -203,11 +203,11 @@ func TestLoadMappers(t *testing.T) {
 			expectedMappers: map[string]pipeline.DataMapper{
 				"valid": {
 					APIVersion: "v1",
-					Resource:   "resource",
+					ItemFamily: "family",
 				},
 				"mapper-type": {
 					APIVersion: "v1",
-					Resource:   "resource",
+					ItemFamily: "family",
 				},
 			},
 		},
@@ -219,7 +219,7 @@ func TestLoadMappers(t *testing.T) {
 			expectedMappers: map[string]pipeline.DataMapper{
 				"mapper-type": {
 					APIVersion: "v1",
-					Resource:   "resource",
+					ItemFamily: "family",
 				},
 			},
 		},
@@ -253,7 +253,7 @@ func TestLoadMappers(t *testing.T) {
 				expectedMapper, exists := test.expectedMappers[name]
 				require.True(t, exists, "mapper %q not expected", name)
 				assert.Equal(t, expectedMapper.APIVersion, mapper.APIVersion)
-				assert.Equal(t, expectedMapper.Resource, mapper.Resource)
+				assert.Equal(t, expectedMapper.ItemFamily, mapper.ItemFamily)
 				assert.NotNil(t, mapper.Mapper)
 			}
 		})

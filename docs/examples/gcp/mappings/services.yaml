@@ -1,5 +1,5 @@
 apiVersion: gcp.mia-platform.eu/v1alpha1
-resource: services
+itemFamily: services
 type: run.googleapis.com/Service
 syncable: true
 mappings:

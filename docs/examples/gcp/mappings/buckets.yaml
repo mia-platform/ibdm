@@ -1,5 +1,5 @@
 apiVersion: gcp.mia-platform.eu/v1alpha1
-resource: buckets
+itemFamily: buckets
 type: storage.googleapis.com/Bucket
 syncable: true
 mappings:

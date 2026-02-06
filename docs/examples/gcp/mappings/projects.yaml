@@ -1,5 +1,5 @@
 apiVersion: gcp.mia-platform.eu/v1alpha1
-resource: projects
+itemFamily: projects
 type: cloudresourcemanager.googleapis.com/Project
 syncable: true
 mappings:

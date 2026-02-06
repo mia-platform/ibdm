@@ -1,5 +1,5 @@
 apiVersion: console.mia-platform.eu/v1alpha1
-resource: projects
+itemFamily: projects
 type: project
 syncable: true
 mappings:

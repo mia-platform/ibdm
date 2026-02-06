@@ -1,5 +1,5 @@
 apiVersion: azure.mia-platform.eu/v1alpha1
-resource: virtualnetworks
+itemFamily: virtualnetworks
 type: Microsoft.Network/virtualNetworks
 extra:
   apiVersion: "2025-03-01"

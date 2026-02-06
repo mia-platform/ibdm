@@ -8,16 +8,16 @@ import (
 	"encoding/json"
 )
 
-// Sender delivers resource mutations to a destination, supporting upsert and delete flows.
+// Sender delivers item mutations to a destination, supporting upsert and delete flows.
 type Sender interface {
 	SendData(ctx context.Context, data *Data) error
 	DeleteData(ctx context.Context, data *Data) error
 }
 
-// Data bundles the resource metadata and payload shipped to a destination.
+// Data bundles the item metadata and payload shipped to a destination.
 type Data struct {
 	APIVersion    string         `json:"apiVersion"`
-	Resource      string         `json:"resource"`
+	ItemFamily    string         `json:"itemFamily"`
 	Name          string         `json:"name"`
 	Data          map[string]any `json:"data,omitempty"`
 	OperationTime string         `json:"operationTime,omitempty"`

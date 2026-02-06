@@ -1,5 +1,5 @@
 apiVersion: azuredevops.mia-platform.eu/v1alpha1
-resource: teams
+itemFamily: teams
 type: team
 syncable: true
 mappings:

@@ -1,6 +1,6 @@
 type: yaml
 apiVersion: group/v1
-resource: configs
+itemFamily: configs
 syncable: true
 mappings:
   identifier: "{{ .name }}"

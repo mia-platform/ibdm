@@ -24,7 +24,7 @@ type dataPipeline = func(ctx context.Context, channel chan<- source.Data) error
 // DataMapper couples a mapper with the metadata needed to build destination payloads.
 type DataMapper struct {
 	APIVersion string
-	Resource   string
+	ItemFamily string
 	Extra      source.Extra
 	Mapper     mapper.Mapper
 }
@@ -175,12 +175,12 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 			log.Trace("sending data", "type", data.Type, "operation", data.Operation.String())
 			dataToSend := &destination.Data{
 				APIVersion:    dataMapper.APIVersion,
-				Resource:      dataMapper.Resource,
+				ItemFamily:    dataMapper.ItemFamily,
 				OperationTime: data.Timestamp(),
 			}
-			parentResourceInfo := mapper.ParentResourceInfo{
+			parentResourceInfo := mapper.ParentItemInfo{
 				APIVersion: dataMapper.APIVersion,
-				Resource:   dataMapper.Resource,
+				ItemFamily: dataMapper.ItemFamily,
 			}
 			switch data.Operation {
 			case source.DataOperationUpsert:
@@ -220,14 +220,14 @@ func (p *Pipeline) upsertExtraMappedData(ctx context.Context, data source.Data, 
 	for _, extraOutput := range extra {
 		extraDataToSend := &destination.Data{
 			APIVersion:    extraOutput.APIVersion,
-			Resource:      extraOutput.Resource,
+			ItemFamily:    extraOutput.ItemFamily,
 			OperationTime: data.Timestamp(),
 			Name:          extraOutput.Identifier,
 			Data:          extraOutput.Spec,
 		}
-		log.Trace("sending data", "type", extraOutput.Resource, "operation", data.Operation.String())
+		log.Trace("sending data", "type", extraOutput.ItemFamily, "operation", data.Operation.String())
 		if err := p.destination.SendData(ctx, extraDataToSend); err != nil {
-			log.Error("error sending extra data to destination", "type", extraOutput.Resource, "error", err)
+			log.Error("error sending extra data to destination", "type", extraOutput.ItemFamily, "error", err)
 			continue
 		}
 	}
@@ -244,13 +244,13 @@ func (p *Pipeline) deleteExtraMappedData(ctx context.Context, data source.Data, 
 		for _, extraIdentifier := range extraIdentifiers {
 			extraDataToDelete := &destination.Data{
 				APIVersion:    extraIdentifier.APIVersion,
-				Resource:      extraIdentifier.Resource,
+				ItemFamily:    extraIdentifier.ItemFamily,
 				OperationTime: data.Timestamp(),
 				Name:          extraIdentifier.Identifier,
 			}
-			log.Trace("sending data", "type", extraDataToDelete.Resource, "operation", data.Operation.String())
+			log.Trace("sending data", "type", extraDataToDelete.ItemFamily, "operation", data.Operation.String())
 			if err := p.destination.DeleteData(ctx, extraDataToDelete); err != nil {
-				log.Error("error deleting extra data from destination", "type", extraDataToDelete.Resource, "error", err)
+				log.Error("error deleting extra data from destination", "type", extraDataToDelete.ItemFamily, "error", err)
 				continue
 			}
 		}

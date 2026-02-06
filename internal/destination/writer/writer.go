@@ -35,8 +35,8 @@ func (d *writerDestination) SendData(_ context.Context, data *destination.Data) 
 
 	builder.WriteString("Send data:\n")
 	builder.WriteString("\tAPIVersion: " + data.APIVersion + "\n")
-	builder.WriteString("\tResource: " + data.Resource + "\n")
-	builder.WriteString("\tResource Name: " + data.Name + "\n")
+	builder.WriteString("\tItemFamily: " + data.ItemFamily + "\n")
+	builder.WriteString("\tItem Name: " + data.Name + "\n")
 	builder.WriteString("\tTimestamp: " + data.OperationTime + "\n")
 	builder.WriteString("\tSpec: ")
 
@@ -56,8 +56,8 @@ func (d *writerDestination) DeleteData(_ context.Context, data *destination.Data
 	builder := new(strings.Builder)
 	builder.WriteString("Delete data:\n")
 	builder.WriteString("\tAPIVersion: " + data.APIVersion + "\n")
-	builder.WriteString("\tResource: " + data.Resource + "\n")
-	builder.WriteString("\tResource Name: " + data.Name + "\n")
+	builder.WriteString("\tItemFamily: " + data.ItemFamily + "\n")
+	builder.WriteString("\tItem Name: " + data.Name + "\n")
 	builder.WriteString("\tTimestamp: " + data.OperationTime + "\n")
 	builder.WriteString("\n")
 

@@ -1,6 +1,6 @@
 type: valid
 apiVersion: v1
-resource: resource
+itemFamily: family
 mappings:
   identifier: "{{ .id }}"
   spec:
@@ -8,7 +8,7 @@ mappings:
 ---
 type: mapper-type
 apiVersion: v1
-resource: resource
+itemFamily: family
 syncable: true
 mappings:
   identifier: "{{ .id }}"

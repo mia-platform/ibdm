@@ -236,7 +236,7 @@ func TestMapper(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			output, _, err := test.mapper.ApplyTemplates(test.input, ParentResourceInfo{})
+			output, _, err := test.mapper.ApplyTemplates(test.input, ParentItemInfo{})
 			if test.expectedError {
 				var expectedError template.ExecError
 				assert.Empty(t, output)

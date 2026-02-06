@@ -1,5 +1,5 @@
 apiVersion: azure.mia-platform.eu/v1alpha1
-resource: postgresqldbs
+itemFamily: postgresqldbs
 type: Microsoft.DBforPostgreSQL/flexibleServers
 extra:
   apiVersion: "2025-08-01"

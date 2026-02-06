@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: containerapps.azure.mia-platform.eu
 spec:
@@ -22,13 +22,13 @@ spec:
             type: object
             properties:
               name:
-                description: The name of the resource.
+                description: The name of the item.
                 type: string
               location:
-                description: Location of the resource.
+                description: Location of the item.
                 type: string
               provisioningState:
-                description: The provisioning state of the resource.
+                description: The provisioning state of the item.
                 type: string
               runningStatus:
                 description: The running status of the container app.

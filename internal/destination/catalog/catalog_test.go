@@ -144,7 +144,7 @@ func TestSendData(t *testing.T) {
 			endpoint: "/valid-endpoint",
 			data: &destination.Data{
 				APIVersion: "v1",
-				Resource:   "resources",
+				ItemFamily: "family",
 				Name:       "test-data",
 				Data: map[string]any{
 					"key": "value",
@@ -152,7 +152,7 @@ func TestSendData(t *testing.T) {
 			},
 			expectedBody: map[string]any{
 				"apiVersion": "v1",
-				"resource":   "resources",
+				"itemFamily": "family",
 				"name":       "test-data",
 				"operation":  "upsert",
 				"data": map[string]any{
@@ -270,12 +270,12 @@ func TestDeleteData(t *testing.T) {
 			endpoint: "/valid-endpoint",
 			data: &destination.Data{
 				APIVersion: "v1",
-				Resource:   "resources",
+				ItemFamily: "family",
 				Name:       "test-data",
 			},
 			expectedBody: map[string]any{
 				"apiVersion": "v1",
-				"resource":   "resources",
+				"itemFamily": "family",
 				"name":       "test-data",
 				"operation":  "delete",
 			},

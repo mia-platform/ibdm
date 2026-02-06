@@ -1,5 +1,5 @@
 apiVersion: gcp.mia-platform.eu/v1alpha1
-resource: clusters
+itemFamily: clusters
 type: container.googleapis.com/Cluster
 syncable: true
 mappings:

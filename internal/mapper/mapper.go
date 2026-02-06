@@ -22,7 +22,7 @@ import (
 // Template strings are evaluated using Go's text/template engine.
 type Mapper interface {
 	// ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
-	ApplyTemplates(input map[string]any, parentResourceInfo ParentResourceInfo) (output MappedData, extra []ExtraMappedData, err error)
+	ApplyTemplates(input map[string]any, parentItemInfo ParentItemInfo) (output MappedData, extra []ExtraMappedData, err error)
 	// ApplyIdentifierTemplate applies only the identifier template to the given input data and returns
 	ApplyIdentifierTemplate(data map[string]any) (string, error)
 	// ApplyIdentifierExtraTemplate applies only the identifier extra template to the given input data and returns
@@ -30,27 +30,27 @@ type Mapper interface {
 }
 
 const (
-	maxIdentifierLength       = 253
-	extraRelationshipResource = "relationships"
-	deletePolicyCascade       = "cascade"
-	deletePolicyNone          = "none"
+	maxIdentifierLength     = 253
+	extraRelationshipFamily = "relationships"
+	deletePolicyCascade     = "cascade"
+	deletePolicyNone        = "none"
 )
 
 var (
 	errParsingSpecOutput = errors.New("error during casting to valid object")
 	errParsingExtra      = errors.New("error parsing extra templates")
 
-	identifierRegex     = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
-	validExtraResources = []string{extraRelationshipResource}
-	validDeletePolicies = []string{deletePolicyNone, deletePolicyCascade}
+	identifierRegex        = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
+	validExtraItemFamilies = []string{extraRelationshipFamily}
+	validDeletePolicies    = []string{deletePolicyNone, deletePolicyCascade}
 )
 
 var _ Mapper = &internalMapper{}
 
-// ExtraMapping defines a pre-compiled template for an extra resource.
+// ExtraMapping defines a pre-compiled template for an extra item.
 type ExtraMapping struct {
 	APIVersion   string
-	Resource     string
+	ItemFamily   string
 	DeletePolicy string
 	IDTemplate   *template.Template
 	BodyTemplate *template.Template
@@ -72,17 +72,17 @@ type MappedData struct {
 // ExtraMappedData wraps the identifier and rendered spec produced by a Mapper.
 type ExtraMappedData struct {
 	APIVersion   string
-	Resource     string
+	ItemFamily   string
 	Identifier   string
 	DeletePolicy string
 	Spec         map[string]any
 }
 
-// ParentResourceInfo holds metadata about the parent resource for relationship extra mappings.
-type ParentResourceInfo struct {
+// ParentItemInfo holds metadata about the parent item for relationship extra mappings.
+type ParentItemInfo struct {
 	Identifier string
 	APIVersion string
-	Resource   string
+	ItemFamily string
 }
 
 // New constructs a Mapper using the provided identifier template and spec templates.
@@ -125,10 +125,9 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 	extraMappings := make([]ExtraMapping, 0, len(extraTemplates))
 	for _, extra := range extraTemplates {
 		apiVersion, _ := extra["apiVersion"].(string)
-		resource, _ := extra["resource"].(string)
-		ok := IsExtraResourceValid(resource)
-		if !ok {
-			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid extra resource: %s", resource))
+		family, _ := extra["itemFamily"].(string)
+		if !IsExtraItemFamilyValid(family) {
+			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid extra item family: %s", family))
 			continue
 		}
 
@@ -151,7 +150,7 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 
 		bodyMap := make(map[string]any, len(extra))
 		for k, v := range extra {
-			if k == "resource" || k == "identifier" || k == "apiVersion" || k == "deletePolicy" {
+			if k == "itemFamily" || k == "identifier" || k == "apiVersion" || k == "deletePolicy" {
 				continue
 			}
 			bodyMap[k] = v
@@ -171,7 +170,7 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 
 		extraMappings = append(extraMappings, ExtraMapping{
 			APIVersion:   apiVersion,
-			Resource:     resource,
+			ItemFamily:   family,
 			DeletePolicy: deletePolicy,
 			IDTemplate:   idTmpl,
 			BodyTemplate: bodyTmpl,
@@ -181,7 +180,7 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 }
 
 // ApplyTemplates implements Mapper.ApplyTemplates.
-func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo ParentResourceInfo) (MappedData, []ExtraMappedData, error) {
+func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo ParentItemInfo) (MappedData, []ExtraMappedData, error) {
 	identifier, err := executeIdentifierTemplate(m.idTemplate, data)
 	if err != nil {
 		return MappedData{}, nil, err
@@ -230,7 +229,7 @@ func (m *internalMapper) ApplyIdentifierExtraTemplate(data map[string]any) ([]Ex
 
 		output = append(output, ExtraMappedData{
 			APIVersion: extraMapping.APIVersion,
-			Resource:   extraMapping.Resource,
+			ItemFamily: extraMapping.ItemFamily,
 			Identifier: identifier,
 		})
 	}
@@ -270,7 +269,7 @@ func executeTemplatesMap(templates *template.Template, data map[string]any) (map
 }
 
 // executeExtraMappings renders the pre-compiled extra templates.
-func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, parentResourceInfo ParentResourceInfo) ([]ExtraMappedData, error) {
+func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, parentResourceInfo ParentItemInfo) ([]ExtraMappedData, error) {
 	output := make([]ExtraMappedData, 0, len(extraMappings))
 
 	for _, extraMapping := range extraMappings {
@@ -294,11 +293,11 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 		}
 
 		// Handle Special Resources
-		spec = enrichSpec(spec, parentResourceInfo, extraMapping.Resource)
+		spec = enrichSpec(spec, parentResourceInfo, extraMapping.ItemFamily)
 
 		output = append(output, ExtraMappedData{
 			APIVersion: extraMapping.APIVersion,
-			Resource:   extraMapping.Resource,
+			ItemFamily: extraMapping.ItemFamily,
 			Identifier: identifier,
 			Spec:       spec,
 		})
@@ -307,28 +306,28 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 	return output, nil
 }
 
-func enrichSpec(spec map[string]any, parentResourceInfo ParentResourceInfo, resource string) map[string]any {
-	if strings.EqualFold(resource, extraRelationshipResource) {
+func enrichSpec(spec map[string]any, parentResourceInfo ParentItemInfo, itemFamily string) map[string]any {
+	if strings.EqualFold(itemFamily, extraRelationshipFamily) {
 		spec = enrichRelationshipSpec(spec, parentResourceInfo)
 	}
 
 	return spec
 }
 
-func enrichRelationshipSpec(spec map[string]any, parentResourceInfo ParentResourceInfo) map[string]any {
+func enrichRelationshipSpec(spec map[string]any, parentResourceInfo ParentItemInfo) map[string]any {
 	// Inject targetRef
 	spec["targetRef"] = map[string]any{
 		"apiVersion": parentResourceInfo.APIVersion,
-		"kind":       parentResourceInfo.Resource,
+		"family":     parentResourceInfo.ItemFamily,
 		"name":       parentResourceInfo.Identifier,
 	}
 
 	return spec
 }
 
-func IsExtraResourceValid(extraResource string) bool {
-	return slices.ContainsFunc(validExtraResources, func(s string) bool {
-		return strings.EqualFold(s, extraResource)
+func IsExtraItemFamilyValid(itemFamily string) bool {
+	return slices.ContainsFunc(validExtraItemFamilies, func(s string) bool {
+		return strings.EqualFold(s, itemFamily)
 	})
 }
 

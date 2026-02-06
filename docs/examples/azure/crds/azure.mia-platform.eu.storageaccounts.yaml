@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: storageaccounts.azure.mia-platform.eu
 spec:
@@ -22,10 +22,10 @@ spec:
             type: object
             properties:
               name:
-                description: The name of the resource.
+                description: The name of the item.
                 type: string
               provisioningState:
-                description: The provisioning state of the resource.
+                description: The provisioning state of the item.
                 type: string
               allowBlobPublicAccess:
                 description: Indicates whether data in the storage account may be accessed publicly.
@@ -37,16 +37,16 @@ spec:
                 description: Indicates whether Hierarchical Namespace is enabled for the storage account.
                 type: boolean
               primaryLocation:
-                description: The primary location of the resource.
+                description: The primary location of the item.
                 type: string
               statusOfPrimaryLocation:
-                description: The status of the primary location of the resource.
+                description: The status of the primary location of the item.
                 type: string
               secondaryLocation:
-                description: The secondary location of the resource if available.
+                description: The secondary location of the item if available.
                 type: string
               statusOfSecondaryLocation:
-                description: The status of the secondary location of the resource if available.
+                description: The status of the secondary location of the item if available.
                 type: string
               tags:
                 description: User-provided tags in key-value pairs.

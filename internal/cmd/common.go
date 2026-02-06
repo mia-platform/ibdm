@@ -165,7 +165,7 @@ func loadMappers(paths []string, syncOnly bool) (map[string]pipeline.DataMapper,
 
 		typedMappers[mapping.Type] = pipeline.DataMapper{
 			APIVersion: mapping.APIVersion,
-			Resource:   mapping.Resource,
+			ItemFamily: mapping.ItemFamily,
 			Mapper:     mapper,
 			Extra:      mapping.Extra,
 		}
