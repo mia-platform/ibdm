@@ -51,6 +51,8 @@ jobs:
       with:
         parallel: true
         flag-name: run-${{ join(matrix.*, '-') }}
+        format: golang
+        files: coverage.txt
 
   upload-coverage:
     needs: test
