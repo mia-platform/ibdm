@@ -24,33 +24,43 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               location:
                 description: Location of the item.
                 type: string
+                title: Azure Location
               provisioningState:
                 description: The provisioning state of the item.
                 type: string
+                title: Provisioning State
               runningStatus:
                 description: The running status of the container app.
                 type: string
+                title: Container Runnin Status
               fqdn:
                 description: The fully qualified domain name of the container app.
                 type: string
+                title: Container Fully Qualified Domain Name
               external:
                 description: Indicates if the container app is externally accessible.
                 type: boolean
+                title: Container Is Exposed Externally
               targetPort:
                 description: The target port of the container app.
                 type: integer
+                title: Container Target Port
               minReplicas:
                 description: The minimum number of replicas for the container app.
                 type: integer
+                title: Minimum Replicas
               maxReplicas:
                 description: The maximum number of replicas for the container app.
                 type: integer
+                title: Maximum Replicas
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true

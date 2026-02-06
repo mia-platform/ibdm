@@ -24,24 +24,31 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               location:
                 description: Location of the item.
                 type: string
+                title: Azure Location
               provisioningState:
                 description: The provisioning state of the item.
                 type: string
+                title: Provisioning State
               vmSize:
                 description: The size of the virtual machine.
                 type: string
+                title: VM Size
               osType:
                 description: The operating system type.
                 type: string
+                title: OS Type
               osVersion:
                 description: The operating system version.
                 type: string
+                title: OS Version
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true

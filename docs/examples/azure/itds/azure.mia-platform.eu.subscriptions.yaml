@@ -24,15 +24,19 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               displayName:
                 description: A custom namme for the subscription.
                 type: string
+                title: Display Name
               state:
                 description: The current state of the subscription.
                 type: string
+                title: Subscription State
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true

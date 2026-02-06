@@ -24,21 +24,27 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               location:
                 description: Location of the item.
                 type: string
+                title: Azure Location
               provisioningState:
                 description: The provisioning state of the item.
                 type: string
+                title: Provisioning State
               kind:
                 description: The kind of the cognitive account item.
                 type: string
+                title: Cognitive Account Kind
               endpoint:
                 description: The endpoint of the cognitive account.
                 type: string
+                title: Account Endpoint
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true

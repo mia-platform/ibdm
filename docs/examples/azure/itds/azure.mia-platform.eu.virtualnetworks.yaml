@@ -24,35 +24,44 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               location:
                 description: Location of the item.
                 type: string
+                title: Azure Location
               provisioningState:
                 description: The provisioning state of the item.
                 type: string
+                title: Provisioning State
               addressPrefixes:
                 description: The address prefixes of the virtual network.
                 type: array
+                title: Netowork Address Prefixes
                 items:
                   type: string
               subnets:
                 description: The subnets of the virtual network.
                 type: array
+                title: Subnets
                 items:
                   type: object
                   properties:
                     name:
                       description: The name of the subnet.
                       type: string
+                      title: Subnet Name
                     addressPrefix:
                       description: The address prefix of the subnet.
                       type: string
+                      title: Subnet Address Prefix
                     provisioningState:
                       description: The provisioning state of the subnet.
                       type: string
+                      title: Subnet Provisioning State
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true

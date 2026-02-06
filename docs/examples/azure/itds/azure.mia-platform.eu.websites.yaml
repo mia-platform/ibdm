@@ -24,30 +24,39 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               location:
                 description: Location of the item.
                 type: string
+                title: Azure Location
               state:
                 description: The state of the item.
                 type: string
+                title: Service State
               kind:
                 description: The kind of the item, for example if it is an app or a function.
                 type: string
+                title: App Service Kind
               enabled:
                 description: Indicates whether the website is enabled.
                 type: boolean
+                title: Enabled
               availabilityState:
                 description: The availability state of the website.
                 type: string
+                title: Availability State
               defaultHostname:
                 description: The default hostname of the website.
                 type: string
+                title: Default Hostname
               serverFarmId:
                 description: The ID of the App Service Plan associated with the website.
                 type: string
+                title: App Service Plan
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title:  tags
                 additionalProperties:
                   type: string
     served: true

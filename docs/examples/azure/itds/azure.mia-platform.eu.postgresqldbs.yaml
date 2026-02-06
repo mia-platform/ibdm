@@ -24,27 +24,35 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               location:
                 description: Location of the item.
                 type: string
+                title: Azure Location
               state:
                 description: The state of the db.
                 type: string
+                title: DB State
               version:
                 description: The major version of the server.
                 type: string
+                title: PostgreSQL Major Version
               minorVersion:
                 description: The minor version of the server.
                 type: string
+                title: PostgreSQL Minor Version
               fullyQualifiedDomainName:
                 description: The fully qualified domain name of the server.
                 type: string
+                title: DB Fully Qualified Domain Name
               publicNetworkAccess:
                 description: Whether public network access is allowed for this server.
                 type: string
+                title: Public Access Enabled
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true

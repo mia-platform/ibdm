@@ -24,55 +24,71 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               location:
                 description: Location of the item.
                 type: string
+                title: Azure Location
               provisioningState:
                 description: The provisioning state of the item.
                 type: string
+                title: Provisioning State
               currentKubernetesVersion:
                 description: The current Kubernetes version of the cluster.
                 type: string
+                title: Current Kubernetes API-Server Version
               supportPlan:
                 description: The support plan of the cluster.
                 type: string
+                title: AKS Support Plan
               publicNetworkAccess:
                 description: Indicates whether public network access is enabled or disabled.
                 type: string
+                title: API-Server Public Network Access
               disableLocalAccounts:
                 description: Indicates whether local accounts are disabled.
                 type: boolean
+                title: Local Accounts Disabled
               dnsPrefix:
                 description: The DNS prefix for the cluster.
                 type: string
+                title: Cluster DNS Prefix
               fqdn:
                 description: The fully qualified domain name for the api-server of the cluster.
                 type: string
+                title: API-Server Fully Qualified Domain Name
               enableRBAC:
                 description: Indicates whether RBAC is enabled for the cluster.
                 type: boolean
+                title: RBAC Enabled
               skuTier:
                 description: The SKU tier of the cluster.
                 type: string
+                title: AKS SKU Tier
               podCidrs:
                 description: The pod CIDRs for the cluster.
                 type: array
+                title: Cluster Pods CIDRs
                 items:
                   type: string
               serviceCidrs:
                 description: The service CIDRs for the cluster.
                 type: array
+                title: Cluster Services CIDRs
                 items:
                   type: string
               networkPlugin:
                 description: The network plugin used by the cluster.
                 type: string
+                title: AKS Network Plugin
               outboundType:
                 description: The outbound type of the cluster.
                 type: string
+                title: Cluster Outbound Type
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true
