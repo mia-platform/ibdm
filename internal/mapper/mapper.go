@@ -41,6 +41,7 @@ var (
 	identifierRegex        = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 	validExtraItemFamilies = []string{extraRelationshipFamily}
 	validDeletePolicies    = []string{deletePolicyNone, deletePolicyCascade}
+	validMetadata          = []string{"annotations", "creationTimestamp", "description", "labels", "links", "name", "namespace", "tags", "title", "uid"}
 )
 
 var _ Mapper = &internalMapper{}
@@ -94,16 +95,7 @@ func New(identifierTemplate string, metadataTemplates, specTemplates map[string]
 		parsingErrs = err
 	}
 
-	metadataTemplateString := new(strings.Builder)
-	metadataTemplateString.WriteString("---\n")
-	for key, value := range metadataTemplates {
-		metadataTemplateString.WriteString(key + ": " + value + "\n")
-	}
-
-	metadataTemplate, err := tmpl.New("metadata").Parse(metadataTemplateString.String())
-	if err != nil {
-		parsingErrs = errors.Join(parsingErrs, err)
-	}
+	metadataTemplate := compileMetadataTemplates(metadataTemplates, tmpl, &parsingErrs)
 
 	specTemplateString := new(strings.Builder)
 	specTemplateString.WriteString("---\n")
@@ -131,6 +123,24 @@ func New(identifierTemplate string, metadataTemplates, specTemplates map[string]
 		specTemplate:     specTemplate,
 		extraMappings:    extraMappings,
 	}, nil
+}
+
+func compileMetadataTemplates(metadataTemplates map[string]string, tmpl *template.Template, parsingErrs *error) *template.Template {
+	metadataTemplateString := new(strings.Builder)
+	metadataTemplateString.WriteString("---\n")
+	for key, value := range metadataTemplates {
+		if !slices.Contains(validMetadata, key) {
+			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid metadata field: %s", key))
+			continue
+		}
+		metadataTemplateString.WriteString(key + ": " + value + "\n")
+	}
+
+	metadataTemplate, err := tmpl.New("metadata").Parse(metadataTemplateString.String())
+	if err != nil {
+		*parsingErrs = errors.Join(*parsingErrs, err)
+	}
+	return metadataTemplate
 }
 
 func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Template, parsingErrs *error) []ExtraMapping {
