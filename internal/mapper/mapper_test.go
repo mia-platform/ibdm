@@ -48,10 +48,18 @@ func TestNewMapper(t *testing.T) {
 
 	t.Run("return error when one or more template is broken", func(t *testing.T) {
 		t.Parallel()
-		mapper, err := New("{{ .name | unknownFunc }}", nil, map[string]string{
-			"key":      "name",
-			"otherKey": "{{ .otherKey | unknownFunc }}",
-		}, nil)
+		mapper, err := New("{{ .name | unknownFunc }}",
+			map[string]string{
+				"key": "name",
+			},
+			map[string]string{
+				"key":      "name",
+				"otherKey": "{{ .otherKey | unknownFunc }}",
+			},
+			[]map[string]any{{
+				"key":      "name",
+				"otherKey": "{{ .otherKey | unknownFunc }}",
+			}})
 		assert.Nil(t, mapper)
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, errTemplateParsing)
@@ -61,6 +69,30 @@ func TestNewMapper(t *testing.T) {
 		joinedErrors, ok := targetError.Unwrap().(interface{ Unwrap() []error })
 		require.True(t, ok)
 		require.Len(t, joinedErrors.Unwrap(), 2)
+	})
+
+	t.Run("invalid extra mappings templates", func(t *testing.T) {
+		t.Parallel()
+		mapper, err := New("{{ .name }}", nil,
+			map[string]string{
+				"key":      "name",
+				"otherKey": "{{ .otherKey | trim }}",
+			},
+			[]map[string]any{{
+				"apiVersion":   "v1",
+				"resource":     "relationships",
+				"deletePolicy": "recursive",
+				"spec":         "{{ .otherKey | unknownFunc }}",
+			}})
+		assert.Nil(t, mapper)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, errTemplateParsing)
+
+		var targetError *ParsingError
+		assert.ErrorAs(t, err, &targetError)
+		joinedErrors, ok := targetError.Unwrap().(interface{ Unwrap() []error })
+		require.True(t, ok)
+		require.Len(t, joinedErrors.Unwrap(), 1)
 	})
 }
 
@@ -234,6 +266,62 @@ func TestMapper(t *testing.T) {
 				},
 			},
 		},
+		"simple mapping with metadata": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}",
+					map[string]string{
+						"uid":         "name",
+						"name":        "{{ .name }}",
+						"labels":      "{{ .otherKey.value }}",
+						"links":       "{{ .otherKey | toJSON }}",
+						"annotations": "{{ .array | toJSON }}",
+						"title":       "{{ .name }}-{{ .otherKey.value }}",
+					},
+					map[string]string{
+						"key":           "name",
+						"string":        "{{ .name }}",
+						"otherKey":      "{{ .otherKey.value }}",
+						"nested":        "{{ .otherKey | toJSON }}",
+						"array":         "{{ .array | toJSON }}",
+						"combinedField": "{{ .name }}-{{ .otherKey.value }}",
+					}, nil)
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+				"otherKey": map[string]any{
+					"string": "example",
+					"value":  42,
+				},
+				"array": []int{1, 2, 3},
+			},
+			expected: MappedData{
+				Identifier: "example",
+				Metadata: map[string]any{
+					"uid":    "name",
+					"name":   "example",
+					"labels": 42,
+					"links": map[string]any{
+						"string": "example",
+						"value":  42,
+					},
+					"annotations": []any{1, 2, 3},
+					"title":       "example-42",
+				},
+				Spec: map[string]any{
+					"key":      "name",
+					"string":   "example",
+					"otherKey": 42,
+					"nested": map[string]any{
+						"string": "example",
+						"value":  42,
+					},
+					"array":         []any{1, 2, 3},
+					"combinedField": "example-42",
+				},
+			},
+		},
 	}
 
 	for testName, test := range testCases {
@@ -261,6 +349,7 @@ func TestIdentifierOnly(t *testing.T) {
 		mapper        Mapper
 		input         map[string]any
 		expected      string
+		expectedExtra string
 		expectedError bool
 	}{
 		"simple mapping": {
@@ -333,13 +422,62 @@ func TestIdentifierOnly(t *testing.T) {
 			},
 			expectedError: true,
 		},
+		"simple mapping with extraMappings deletePolicy none": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", nil, map[string]string{
+					"key":           "name",
+					"string":        "{{ .name }}",
+					"otherKey":      "{{ .otherKey.value }}",
+					"nested":        "{{ .otherKey | toJSON }}",
+					"array":         "{{ .array | toJSON }}",
+					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
+				},
+					[]map[string]any{{
+						"apiVersion":   "v1",
+						"resource":     "relationships",
+						"deletePolicy": "none",
+						"identifier":   "{{ .name }}",
+					}})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+			},
+			expected: "example",
+		},
+		"simple mapping with extraMappings deletePolicy cascade": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", nil, map[string]string{
+					"key":           "name",
+					"string":        "{{ .name }}",
+					"otherKey":      "{{ .otherKey.value }}",
+					"nested":        "{{ .otherKey | toJSON }}",
+					"array":         "{{ .array | toJSON }}",
+					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
+				},
+					[]map[string]any{{
+						"apiVersion":   "v1",
+						"resource":     "relationships",
+						"deletePolicy": "cascade",
+						"identifier":   "{{ .name }}-relationship",
+					}})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+			},
+			expected:      "example",
+			expectedExtra: "example-relationship",
+		},
 	}
 
 	for testName, test := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			output, _, err := test.mapper.ApplyIdentifierTemplate(test.input)
+			output, extraOutput, err := test.mapper.ApplyIdentifierTemplate(test.input)
 			if test.expectedError {
 				var expectedError template.ExecError
 				assert.Empty(t, output)
@@ -349,6 +487,9 @@ func TestIdentifierOnly(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, test.expected, output)
+			if test.expectedExtra != "" {
+				assert.Equal(t, test.expectedExtra, extraOutput[0].Identifier)
+			}
 		})
 	}
 }
