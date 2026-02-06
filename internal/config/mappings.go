@@ -31,6 +31,7 @@ type MappingConfig struct {
 // Mappings holds the identifier and specification templates for mapping rules.
 type Mappings struct {
 	Identifier string            `json:"identifier" yaml:"identifier"`
+	Metadata   map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Spec       map[string]string `json:"spec" yaml:"spec"`
 	Extra      []map[string]any  `json:"extra,omitempty" yaml:"extra,omitempty"`
 }

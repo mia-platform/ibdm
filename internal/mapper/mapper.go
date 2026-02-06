@@ -56,14 +56,16 @@ type ExtraMapping struct {
 
 // internalMapper is the default Mapper implementation backed by text/template.
 type internalMapper struct {
-	idTemplate    *template.Template
-	specTemplate  *template.Template
-	extraMappings []ExtraMapping
+	idTemplate       *template.Template
+	metadataTemplate *template.Template
+	specTemplate     *template.Template
+	extraMappings    []ExtraMapping
 }
 
 // MappedData wraps the identifier and rendered spec produced by a Mapper.
 type MappedData struct {
 	Identifier string
+	Metadata   map[string]any
 	Spec       map[string]any
 }
 
@@ -84,12 +86,23 @@ type ParentItemInfo struct {
 }
 
 // New constructs a Mapper using the provided identifier template and spec templates.
-func New(identifierTemplate string, specTemplates map[string]string, extraTemplates []map[string]any) (Mapper, error) {
+func New(identifierTemplate string, metadataTemplates, specTemplates map[string]string, extraTemplates []map[string]any) (Mapper, error) {
 	var parsingErrs error
 	tmpl := template.New("main").Option("missingkey=error").Funcs(templateFunctions())
 	idTemplate, err := tmpl.New("identifier").Parse(identifierTemplate)
 	if err != nil {
 		parsingErrs = err
+	}
+
+	metadataTemplateString := new(strings.Builder)
+	metadataTemplateString.WriteString("---\n")
+	for key, value := range metadataTemplates {
+		metadataTemplateString.WriteString(key + ": " + value + "\n")
+	}
+
+	metadataTemplate, err := tmpl.New("metadata").Parse(metadataTemplateString.String())
+	if err != nil {
+		parsingErrs = errors.Join(parsingErrs, err)
 	}
 
 	specTemplateString := new(strings.Builder)
@@ -113,9 +126,10 @@ func New(identifierTemplate string, specTemplates map[string]string, extraTempla
 	}
 
 	return &internalMapper{
-		idTemplate:    idTemplate,
-		specTemplate:  specTemplate,
-		extraMappings: extraMappings,
+		idTemplate:       idTemplate,
+		metadataTemplate: metadataTemplate,
+		specTemplate:     specTemplate,
+		extraMappings:    extraMappings,
 	}, nil
 }
 
@@ -184,7 +198,12 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 		return MappedData{}, nil, err
 	}
 
-	specData, err := executeTemplatesMap(m.specTemplate, data)
+	metadataData, err := executeTemplatesMap(m.metadataTemplate, "metadata", data)
+	if err != nil {
+		return MappedData{}, nil, err
+	}
+
+	specData, err := executeTemplatesMap(m.specTemplate, "spec", data)
 	if err != nil {
 		return MappedData{}, nil, err
 	}
@@ -197,6 +216,7 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 
 	return MappedData{
 		Identifier: identifier,
+		Metadata:   metadataData,
 		Spec:       specData,
 	}, extraData, nil
 }
@@ -252,10 +272,10 @@ func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (st
 }
 
 // executeTemplatesMap renders the spec template and converts it into a map.
-func executeTemplatesMap(templates *template.Template, data map[string]any) (map[string]any, error) {
+func executeTemplatesMap(templates *template.Template, templateName string, data map[string]any) (map[string]any, error) {
 	output := make(map[string]any)
 	outputBuilder := new(bytes.Buffer)
-	err := templates.ExecuteTemplate(outputBuilder, "spec", data)
+	err := templates.ExecuteTemplate(outputBuilder, templateName, data)
 	if err != nil {
 		return nil, err
 	}

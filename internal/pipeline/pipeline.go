@@ -190,6 +190,7 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 					continue
 				}
 				dataToSend.Name = output.Identifier
+				dataToSend.Metadata = output.Metadata
 				dataToSend.Data = output.Spec
 				if err := p.destination.SendData(ctx, dataToSend); err != nil {
 					log.Error("error sending data to destination", "type", data.Type, "error", err)

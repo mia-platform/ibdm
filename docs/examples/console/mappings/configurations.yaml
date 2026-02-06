@@ -5,6 +5,9 @@ syncable: true
 mappings:
   identifier: |-
     {{ printf "%s-%s" .project._id .revision.name }}
+  metadata:
+    name: "{{ printf \"%s-%s\" .project._id .revision.name }}"
+    title: "{{ printf \"%s %s\" .project.name .revision.name }}"
   spec:
     projectUniqueId: "{{ .project._id }}"
     projectId: "{{ get \"projectId\" .project \"\" | quote }}"
