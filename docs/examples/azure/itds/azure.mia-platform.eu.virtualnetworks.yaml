@@ -36,7 +36,7 @@ spec:
               addressPrefixes:
                 description: The address prefixes of the virtual network.
                 type: array
-                title: Netowork Address Prefixes
+                title: Network Address Prefixes
                 items:
                   type: string
               subnets:

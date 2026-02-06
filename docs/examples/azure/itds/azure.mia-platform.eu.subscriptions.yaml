@@ -26,7 +26,7 @@ spec:
                 type: string
                 title: Name
               displayName:
-                description: A custom namme for the subscription.
+                description: A custom name for the subscription.
                 type: string
                 title: Display Name
               state:

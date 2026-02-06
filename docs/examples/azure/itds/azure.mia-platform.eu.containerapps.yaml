@@ -36,7 +36,7 @@ spec:
               runningStatus:
                 description: The running status of the container app.
                 type: string
-                title: Container Runnin Status
+                title: Container Running Status
               fqdn:
                 description: The fully qualified domain name of the container app.
                 type: string
