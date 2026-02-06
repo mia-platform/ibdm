@@ -9,7 +9,7 @@ spec:
   names:
     kind: Subscription
     plural: subscriptions
-    singular: subscription
+    displayPlural: Subscriptions
   scope: Organization
   versions:
   - deprecated: false

@@ -9,7 +9,7 @@ spec:
   names:
     kind: StorageAccount
     plural: storageaccounts
-    singular: storageaccount
+    displayPlural: StorageAccounts
   scope: Organization
   versions:
   - deprecated: false

@@ -9,7 +9,7 @@ spec:
   names:
     kind: WebSite
     plural: websites
-    singular: website
+    displayPlural: WebSites
   scope: Organization
   versions:
   - deprecated: false

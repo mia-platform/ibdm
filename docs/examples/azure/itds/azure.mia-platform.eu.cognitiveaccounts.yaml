@@ -9,7 +9,7 @@ spec:
   names:
     kind: CognitiveAccount
     plural: cognitiveaccounts
-    singular: cognitiveaccount
+    displayPlural: CognitiveAccounts
   scope: Organization
   versions:
   - deprecated: false

@@ -9,7 +9,7 @@ spec:
   names:
     kind: VirtualNetwork
     plural: virtualnetworks
-    singular: virtualnetwork
+    displayPlural: VirtualNetworks
   scope: Organization
   versions:
   - deprecated: false

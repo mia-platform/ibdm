@@ -9,7 +9,7 @@ spec:
   names:
     kind: VirtualMachine
     plural: virtualmachines
-    singular: virtualmachine
+    displayPlural: VirtualMachines
   scope: Organization
   versions:
   - deprecated: false

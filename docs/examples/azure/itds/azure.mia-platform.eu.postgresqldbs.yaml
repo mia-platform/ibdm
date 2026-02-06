@@ -9,7 +9,7 @@ spec:
   names:
     kind: PostgreSQLDB
     plural: postgresqldbs
-    singular: postgresqldb
+    displayPlural: PostgreSQLDBs
   scope: Organization
   versions:
   - deprecated: false

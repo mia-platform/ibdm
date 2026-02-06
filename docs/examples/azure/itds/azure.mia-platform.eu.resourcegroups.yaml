@@ -9,7 +9,7 @@ spec:
   names:
     kind: ResourceGroup
     plural: resourcegroups
-    singular: resourcegroup
+    displayPlural: ResourceGroups
   scope: Organization
   versions:
   - deprecated: false

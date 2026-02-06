@@ -9,7 +9,7 @@ spec:
   names:
     kind: ManagedCluster
     plural: managedclusters
-    singular: managedcluster
+    displayPlural: ManagedClusters
   scope: Organization
   versions:
   - deprecated: false

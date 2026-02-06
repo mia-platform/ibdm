@@ -9,7 +9,7 @@ spec:
   names:
     kind: ContainerApp
     plural: containerapps
-    singular: containerapp
+    displayPlural: ContainerApps
   scope: Organization
   versions:
   - deprecated: false
