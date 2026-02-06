@@ -24,84 +24,114 @@ spec:
               name:
                 description: The cluster name
                 type: string
+                title: Name
               description:
                 description: Human-readable description of the cluster
                 type: string
+                title: Description
               autopilot:
                 description: Whether the cluster is an Autopilot one
                 type: boolean
+                title: Autopilot Enabled
               apiServerVersion:
                 description: The current kubernetes version of the cluster API server
                 type: string
+                title: Current API-Server Version
               network:
                 description: Network resource the cluster uses
                 type: string
+                title: GCP Network
               subnetwork:
                 description: Subnetwork resource the cluster uses
                 type: string
+                title: GCP Subnetwork
               podsIpv4Cidr:
                 description: The IP address range for the pods in this cluster
                 type: string
+                title: Cluster Pods CIDR
               servicesIpv4Cidr:
                 description: The IP address range for the services in this cluster
                 type: string
+                title: Cluster Services CIDR
               clusterEndpoints:
                 description: Configuration of the cluster's API server endpoints
                 type: object
+                title: API-Server Endpoints
                 properties:
                   dnsEndpointConfig:
                     description: configuration for the DNS endpoint of the api server
                     type: object
+                    title: DNS Endpoint
                     properties:
                       allowExternalTraffic:
                         type: boolean
+                        title: Allow External Traffic
                       enableK8sCertsViaDns:
                         type: boolean
+                        title: Enable Kubernetes Certificates via DNS
                       enableK8sTokensViaDns:
                         type: boolean
+                        title: Enable Kubernetes Tokens via DNS
                       endpoint:
                         type: string
+                        title: Endpoint
                   ipEndpointsConfig:
                     description: configuration for the IP endpoint of the api server
                     type: object
+                    title: IP Endpoint
                     properties:
                       authorizedNetworksConfig:
                         type: object
+                        title: Authorized Networks
                         properties:
                           cidrBlocks:
                             type: array
+                            title: CIDR Blocks
                             items:
                               type: object
                               properties:
                                 cidrBlock:
+                                  title: CIDR
                                   type: string
                                 displayName:
+                                  title: Name
                                   type: string
                           enabled:
                             type: boolean
+                            title: Authorized Networks Enabled
                           gcpPublicCidrsAccessEnabled:
                             type: boolean
+                            title: GCP Public CIDRs Access Enabled
                           privateEndpointEnforcementEnabled:
                             type: boolean
+                            title: Private Endpoint Enabled
                       enablePublicEndpoint:
                         type: boolean
+                        title: Enable Public Endpoint
                       enabled:
                         type: boolean
+                        title: IP Endpoint Enabled
                       globalAccess:
                         type: boolean
+                        title: Global Access Enabled
                       privateEndpoint:
                         type: string
+                        title: Private IP Endpoint
                       publicEndpoint:
+                        title: Public IP Endpoint
                         type: string
               status:
                 description: Cluster status (possible options can be PROVISIONING, RUNNING, etc.)
                 type: string
+                title: Cluster Status
               location:
                 description: Primary location for the cluster
                 type: string
+                title: Cluster GCP Location
               labels:
                 description: User-provided labels in key-value pairs.
                 type: object
+                title: Labels
                 additionalProperties:
                   type: string
     served: true

@@ -9,7 +9,7 @@ spec:
   names:
     kind: Project
     plural: projects
-    singular: project
+    displayPlural: Projects
   scope: Organization
   versions:
   - deprecated: false
@@ -24,22 +24,28 @@ spec:
               projectId:
                 description: The project ID used to identify the project in GCP
                 type: string
+                title: ID
               name:
                 description: The user visible name for the project.
                 type: string
+                title: Name
               parent:
                 description: The parent resource identifier (for example, 'folders/{folder_id}' or 'organizations/{org_id}')
                 type: string
+                title: Parent Resource
               state:
                 description: Current lifecycle state of the project. Possible values are 'state_unspecified', 'active', or 'delete_requested'.
                 type: string
+                title: Project State
               createTime:
                 description: RFC 3339 timestamp for when the project was created
                 type: string
                 format: date-time
+                title: Creation Date
               labels:
                 description: User-provided labels in key-value pairs.
                 type: object
+                title: Labels
                 additionalProperties:
                   type: string
     served: true

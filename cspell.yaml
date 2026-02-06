@@ -11,6 +11,8 @@ words:
   - ibdm
   - itds
   - nolint
+  - postgresqldb
+  - postgresqldbs
   - syft
   - sysdig
   - tmpl
@@ -51,4 +53,5 @@ files:
   - ".devcontainer/devcontainer.json"
   - ".github/*.yml"
   - ".github/**/*.yaml"
+  - "docs/examples/**/*.yaml"
   - Makefile
