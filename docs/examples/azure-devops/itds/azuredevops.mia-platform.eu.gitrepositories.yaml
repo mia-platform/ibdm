@@ -9,7 +9,7 @@ spec:
   names:
     kind: GitRepository
     plural: gitrepositories
-    singular: gitrepository
+    displayPlural: GitRepositories
   scope: Organization
   versions:
   - deprecated: false
@@ -24,23 +24,30 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               defaultBranch:
                 description: The default branch of the repository.
                 type: string
+                title: Default Branch Name
               isDisabled:
                 description: Whether the repository is disabled.
                 type: boolean
+                title: Repo Disabled
               isAFork:
                 description: Whether the repository is a fork.
                 type: boolean
+                title: Forked Repo
               isArchived:
                 description: Whether the repository is archived.
                 type: boolean
+                title: Archived Repo
               sshGitUrl:
                 description: The SSH URL of the repository.
                 type: string
+                title: SSH Git URL
               httpGitUrl:
                 description: The HTTP URL of the repository.
                 type: string
+                title: HTTP Git URL
     served: true
     storage: true

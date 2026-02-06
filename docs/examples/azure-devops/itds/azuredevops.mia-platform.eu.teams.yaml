@@ -9,7 +9,7 @@ spec:
   names:
     kind: Team
     plural: teams
-    singular: team
+    displayPlural: Teams
   scope: Organization
   versions:
   - deprecated: false
@@ -24,11 +24,14 @@ spec:
               name:
                 description: The name of the item.
                 type: string
+                title: Name
               projectName:
                 description: The name of the project the team belongs to.
                 type: string
+                title: Project Name
               description:
                 description: The description of the team.
                 type: string
+                title: Description
     served: true
     storage: true
