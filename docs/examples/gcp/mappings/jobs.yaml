@@ -6,6 +6,8 @@ mappings:
   identifier: |-
     {{ $components := trimPrefix "//run.googleapis.com/" .name | split "/" -}}
     {{- printf "%s-%s" (index $components 1) (index $components 5) }}
+  metadata:
+    title: "{{ .resource.data.metadata.name }}"
   spec:
     apiVersion: "{{ .resource.data.apiVersion }}"
     kind: "{{ .resource.data.kind }}"
