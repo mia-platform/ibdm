@@ -6,6 +6,8 @@ extra:
 syncable: true
 mappings:
   identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ .name }}"
   spec:
     name: "{{ .name }}"
     location: "{{ .location | lower }}"

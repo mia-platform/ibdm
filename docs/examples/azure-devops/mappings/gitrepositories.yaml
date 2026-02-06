@@ -14,6 +14,8 @@ mappings:
       {{- $id = get "repositoryId" . -}}
     {{- end -}}
     {{- printf "%s-%s" .project.id $id | sha256sum }}
+  metadata:
+    title: "{{ .name }}"
   spec:
     name: "{{ .name }}"
     defaultBranch: "{{ get \"defaultBranch\" . \"\" | quote }}"
