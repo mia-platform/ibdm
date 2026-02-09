@@ -149,10 +149,8 @@ spec:
                     type: string
                 links:
                   description: The list of links associated with the project.
-                  type: array
-                  items:
-                    type: object
-                    additionalProperties: true
+                  type: object
+                  additionalProperties: true
                 logicalScopeLayers:
                   description: The logical scope layers associated with the project.
                   type: array
