@@ -471,6 +471,30 @@ func TestIdentifierOnly(t *testing.T) {
 			expected:      "example",
 			expectedExtra: "example-relationship",
 		},
+		"simple mapping with extraMappings with wrong identifier": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", nil, map[string]string{
+					"key":           "name",
+					"string":        "{{ .name }}",
+					"otherKey":      "{{ .otherKey.value }}",
+					"nested":        "{{ .otherKey | toJSON }}",
+					"array":         "{{ .array | toJSON }}",
+					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
+				},
+					[]map[string]any{{
+						"apiVersion":   "v1",
+						"resource":     "relationships",
+						"deletePolicy": "cascade",
+						"identifier":   "{{ .name }}_invalid",
+					}})
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+			},
+			expectedError: true,
+		},
 	}
 
 	for testName, test := range testCases {

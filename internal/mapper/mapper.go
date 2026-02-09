@@ -204,7 +204,7 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 
 // ApplyTemplates implements Mapper.ApplyTemplates.
 func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo ParentItemInfo) (MappedData, []ExtraMappedData, error) {
-	identifier, err := executeIdentifierTemplate(m.idTemplate, data)
+	identifier, err := executeIdentifierTemplate(m.idTemplate, "identifier", data)
 	if err != nil {
 		return MappedData{}, nil, err
 	}
@@ -234,7 +234,7 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 
 // ApplyIdentifierTemplate implements Mapper.ApplyTemplates.
 func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, []ExtraMappedData, error) {
-	identifier, err := executeIdentifierTemplate(m.idTemplate, data)
+	identifier, err := executeIdentifierTemplate(m.idTemplate, "identifier", data)
 	if err != nil {
 		return identifier, nil, err
 	}
@@ -250,11 +250,10 @@ func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, [
 			continue
 		}
 
-		var idBuf strings.Builder
-		if err := extraMapping.IDTemplate.Execute(&idBuf, data); err != nil {
-			return identifier, nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+		extraIdentifier, err := executeIdentifierTemplate(extraMapping.IDTemplate, "extra-id", data)
+		if err != nil {
+			return "", nil, err
 		}
-		extraIdentifier := idBuf.String()
 
 		extras = append(extras, ExtraMappedData{
 			APIVersion: extraMapping.APIVersion,
@@ -267,15 +266,15 @@ func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, [
 }
 
 // executeIdentifierTemplate renders the identifier template with data and validates the result.
-func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (string, error) {
+func executeIdentifierTemplate(tmpl *template.Template, name string, data map[string]any) (string, error) {
 	outputStrBuilder := new(strings.Builder)
-	err := tmpl.ExecuteTemplate(outputStrBuilder, "identifier", data)
+	err := tmpl.ExecuteTemplate(outputStrBuilder, name, data)
 	generatedID := outputStrBuilder.String()
 
 	if !identifierRegex.MatchString(generatedID) || len(generatedID) > maxIdentifierLength {
 		return "", template.ExecError{
-			Name: "identifier",
-			Err:  fmt.Errorf("template: identifier: generated identifier '%s' is invalid; it can contain only lowercase alphanumeric characters, '-' or '.', must start and finish with an alphanumeric character and it can contain no more than %d characters", generatedID, maxIdentifierLength),
+			Name: name,
+			Err:  fmt.Errorf("template: %s: generated identifier '%s' is invalid; it can contain only lowercase alphanumeric characters, '-' or '.', must start and finish with an alphanumeric character and it can contain no more than %d characters", name, generatedID, maxIdentifierLength),
 		}
 	}
 
@@ -303,11 +302,10 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 
 	for _, extraMapping := range extraMappings {
 		// Generate Identifier
-		var idBuf strings.Builder
-		if err := extraMapping.IDTemplate.Execute(&idBuf, data); err != nil {
+		identifier, err := executeIdentifierTemplate(extraMapping.IDTemplate, "extra-id", data)
+		if err != nil {
 			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
 		}
-		identifier := idBuf.String()
 
 		// Generate Body (Spec)
 		var bodyBuf bytes.Buffer
