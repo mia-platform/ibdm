@@ -9,7 +9,7 @@ spec:
   names:
     kind: Project
     plural: projects
-    singular: project
+    displayPlural: Projects
   scope: Organization
   versions:
     - deprecated: false
