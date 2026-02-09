@@ -129,6 +129,7 @@ func compileMetadataTemplates(metadataTemplates map[string]string, tmpl *templat
 	metadataTemplateString := new(strings.Builder)
 	metadataTemplateString.WriteString("---\n")
 	for key, value := range metadataTemplates {
+		// TODO: use a different approach for validating metadata fields, an idea could be to create a schema to validate the whole mapping file structure
 		if !slices.Contains(validMetadata, key) {
 			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid metadata field: %s", key))
 			continue
