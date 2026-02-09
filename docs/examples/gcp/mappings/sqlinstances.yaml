@@ -1,5 +1,5 @@
 apiVersion: gcp.mia-platform.eu/v1alpha1
-resource: sqlinstances
+itemFamily: sqlinstances
 type: sqladmin.googleapis.com/Instance
 syncable: true
 mappings:

@@ -1,6 +1,6 @@
 type: valid
 apiVersion: v1
-resource: resource
+itemFamily: family
 mappings:
   identifier: "{{ .id }}"
   spec:

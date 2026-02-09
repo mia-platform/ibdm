@@ -1,5 +1,5 @@
 apiVersion: gcp.mia-platform.eu/v1alpha1
-resource: jobs
+itemFamily: jobs
 type: run.googleapis.com/Job
 syncable: true
 mappings:

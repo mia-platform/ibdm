@@ -1,5 +1,5 @@
 apiVersion: gcp.mia-platform.eu/v1alpha1
-resource: firewallrules
+itemFamily: firewallrules
 type: compute.googleapis.com/Firewall
 syncable: true
 mappings:

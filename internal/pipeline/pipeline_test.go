@@ -98,7 +98,7 @@ func testMappers(tb testing.TB, extra []map[string]any) map[string]DataMapper {
 			require.NoError(tb, err)
 			return DataMapper{
 				APIVersion: "v1",
-				Resource:   "resource",
+				ItemFamily: "family",
 				Mapper:     mapper,
 			}
 		}(),
@@ -109,7 +109,7 @@ func testMappers(tb testing.TB, extra []map[string]any) map[string]DataMapper {
 			require.NoError(tb, err)
 			return DataMapper{
 				APIVersion: "v2",
-				Resource:   "resource2",
+				ItemFamily: "family2",
 				Mapper:     mapper,
 			}
 		}(),
@@ -129,12 +129,12 @@ func getMappingsExtra(tb testing.TB, returnExtra bool, deletePolicy string) []ma
 
 	extraDef := map[string]any{
 		"apiVersion":   "relationships/v1",
-		"resource":     "relationships",
+		"itemFamily":   "relationships",
 		"deletePolicy": deletePolicy,
 		"identifier":   `{{ printf "relationship--%s--%s--dependency" .field1 .field2 }}`,
 		"sourceRef": map[string]any{
 			"apiVersion": "resource.custom-platform/v1",
-			"kind":       "resource1",
+			"family":     "family1",
 			"name":       "{{ .field2 }}",
 		},
 		"type": "dependency",
@@ -177,7 +177,7 @@ func TestStreamPipeline(t *testing.T) {
 			expectedData: []*destination.Data{
 				{
 					APIVersion: "v1",
-					Resource:   "resource",
+					ItemFamily: "family",
 					Name:       "item1",
 					Data: map[string]any{
 						"field1": "value1",
@@ -189,7 +189,7 @@ func TestStreamPipeline(t *testing.T) {
 			expectedDeletion: []*destination.Data{
 				{
 					APIVersion:    "v2",
-					Resource:      "resource2",
+					ItemFamily:    "family2",
 					Name:          "item2",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -203,7 +203,7 @@ func TestStreamPipeline(t *testing.T) {
 			expectedData: []*destination.Data{
 				{
 					APIVersion: "v1",
-					Resource:   "resource",
+					ItemFamily: "family",
 					Name:       "item1",
 					Data: map[string]any{
 						"field1": "value1",
@@ -213,17 +213,17 @@ func TestStreamPipeline(t *testing.T) {
 				},
 				{
 					APIVersion: "relationships/v1",
-					Resource:   "relationships",
+					ItemFamily: "relationships",
 					Name:       "relationship--value1--value2--dependency",
 					Data: map[string]any{
 						"sourceRef": map[string]any{
 							"apiVersion": "resource.custom-platform/v1",
-							"kind":       "resource1",
+							"family":     "family1",
 							"name":       "value2",
 						},
 						"targetRef": map[string]any{
 							"apiVersion": "v1",
-							"kind":       "resource",
+							"family":     "family",
 							"name":       "item1",
 						},
 						"type": "dependency",
@@ -234,7 +234,7 @@ func TestStreamPipeline(t *testing.T) {
 			expectedDeletion: []*destination.Data{
 				{
 					APIVersion:    "v2",
-					Resource:      "resource2",
+					ItemFamily:    "family2",
 					Name:          "item2",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -249,13 +249,13 @@ func TestStreamPipeline(t *testing.T) {
 			expectedDeletion: []*destination.Data{
 				{
 					APIVersion:    "v1",
-					Resource:      "resource",
+					ItemFamily:    "family",
 					Name:          "item1",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
 				{
 					APIVersion:    "relationships/v1",
-					Resource:      "relationships",
+					ItemFamily:    "relationships",
 					Name:          "relationship--value1--value2--dependency",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -342,7 +342,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			expectedData: []*destination.Data{
 				{
 					APIVersion: "v1",
-					Resource:   "resource",
+					ItemFamily: "family",
 					Name:       "item1",
 					Data: map[string]any{
 						"field1": "value1",
@@ -354,7 +354,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			expectedDeletion: []*destination.Data{
 				{
 					APIVersion:    "v2",
-					Resource:      "resource2",
+					ItemFamily:    "family2",
 					Name:          "item2",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -372,7 +372,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			expectedData: []*destination.Data{
 				{
 					APIVersion: "v1",
-					Resource:   "resource",
+					ItemFamily: "family",
 					Name:       "item1",
 					Data: map[string]any{
 						"field1": "value1",
@@ -382,17 +382,17 @@ func TestStreamPipelineWebhook(t *testing.T) {
 				},
 				{
 					APIVersion: "relationships/v1",
-					Resource:   "relationships",
+					ItemFamily: "relationships",
 					Name:       "relationship--value1--value2--dependency",
 					Data: map[string]any{
 						"sourceRef": map[string]any{
 							"apiVersion": "resource.custom-platform/v1",
-							"kind":       "resource1",
+							"family":     "family1",
 							"name":       "value2",
 						},
 						"targetRef": map[string]any{
 							"apiVersion": "v1",
-							"kind":       "resource",
+							"family":     "family",
 							"name":       "item1",
 						},
 						"type": "dependency",
@@ -403,7 +403,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			expectedDeletion: []*destination.Data{
 				{
 					APIVersion:    "v2",
-					Resource:      "resource2",
+					ItemFamily:    "family2",
 					Name:          "item2",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -423,13 +423,13 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			expectedDeletion: []*destination.Data{
 				{
 					APIVersion:    "v1",
-					Resource:      "resource",
+					ItemFamily:    "family",
 					Name:          "item1",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
 				{
 					APIVersion:    "relationships/v1",
-					Resource:      "relationships",
+					ItemFamily:    "relationships",
 					Name:          "relationship--value1--value2--dependency",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -579,7 +579,7 @@ func TestSyncPipeline(t *testing.T) {
 			expectedData: []*destination.Data{
 				{
 					APIVersion: "v1",
-					Resource:   "resource",
+					ItemFamily: "family",
 					Name:       "item1",
 					Data: map[string]any{
 						"field1": "value1",
@@ -591,7 +591,7 @@ func TestSyncPipeline(t *testing.T) {
 			expectedDeletion: []*destination.Data{
 				{
 					APIVersion:    "v2",
-					Resource:      "resource2",
+					ItemFamily:    "family2",
 					Name:          "item2",
 					OperationTime: "2024-06-01T12:00:00Z",
 				},

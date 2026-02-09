@@ -1,5 +1,5 @@
 apiVersion: azure.mia-platform.eu/v1alpha1
-resource: containerapps
+itemFamily: containerapps
 type: Microsoft.App/containerApps
 extra:
   apiVersion: "2025-07-01"

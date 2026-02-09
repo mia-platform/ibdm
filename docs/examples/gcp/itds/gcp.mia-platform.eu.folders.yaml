@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: folders.gcp.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: Folder
     plural: folders
-    singular: folder
+    displayPlural: Folders
   scope: Organization
   versions:
   - deprecated: false
@@ -24,22 +24,28 @@ spec:
               name:
                 description: The folder id used to identify the folder in GCP
                 type: string
+                title: ID
               displayName:
                 description: The user visible name for the project.
                 type: string
+                title: Name
               parent:
                 description: The parent resource identifier (for example, 'folders/{folder_id}' or 'organizations/{org_id}')
                 type: string
+                title: Parent Resource
               state:
                 description: Current lifecycle state of the folder. Possible values are 'state_unspecified', 'active', or 'delete_requested'.
                 type: string
+                title: Folder State
               createTime:
                 description: RFC 3339 timestamp for when the folder was created
                 type: string
                 format: date-time
+                title: Creation Time
               labels:
                 description: User-provided labels in key-value pairs.
                 type: object
+                title: Labels
                 additionalProperties:
                   type: string
     served: true

@@ -1,5 +1,5 @@
 apiVersion: azure.mia-platform.eu/v1alpha1
-resource: resourcegroups
+itemFamily: resourcegroups
 type: Microsoft.Resources/resourceGroups
 extra:
   apiVersion: "2021-04-01"

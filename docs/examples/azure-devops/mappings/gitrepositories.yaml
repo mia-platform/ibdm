@@ -1,5 +1,5 @@
 apiVersion: azuredevops.mia-platform.eu/v1alpha1
-resource: gitrepositories
+itemFamily: gitrepositories
 type: gitrepository
 syncable: true
 extra:

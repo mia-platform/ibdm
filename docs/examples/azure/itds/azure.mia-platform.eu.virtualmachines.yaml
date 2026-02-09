@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: virtualmachines.azure.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: VirtualMachine
     plural: virtualmachines
-    singular: virtualmachine
+    displayPlural: VirtualMachines
   scope: Organization
   versions:
   - deprecated: false
@@ -22,26 +22,33 @@ spec:
             type: object
             properties:
               name:
-                description: The name of the resource.
+                description: The name of the item.
                 type: string
+                title: Name
               location:
-                description: Location of the resource.
+                description: Location of the item.
                 type: string
+                title: Azure Location
               provisioningState:
-                description: The provisioning state of the resource.
+                description: The provisioning state of the item.
                 type: string
+                title: Provisioning State
               vmSize:
                 description: The size of the virtual machine.
                 type: string
+                title: VM Size
               osType:
                 description: The operating system type.
                 type: string
+                title: OS Type
               osVersion:
                 description: The operating system version.
                 type: string
+                title: OS Version
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true

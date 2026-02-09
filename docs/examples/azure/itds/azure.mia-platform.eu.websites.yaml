@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: websites.azure.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: WebSite
     plural: websites
-    singular: website
+    displayPlural: WebSites
   scope: Organization
   versions:
   - deprecated: false
@@ -22,32 +22,41 @@ spec:
             type: object
             properties:
               name:
-                description: The name of the resource.
+                description: The name of the item.
                 type: string
+                title: Name
               location:
-                description: Location of the resource.
+                description: Location of the item.
                 type: string
+                title: Azure Location
               state:
-                description: The state of the resource.
+                description: The state of the item.
                 type: string
+                title: Service State
               kind:
-                description: The kind of the resource, for example if it is an app or a function.
+                description: The kind of the item, for example if it is an app or a function.
                 type: string
+                title: App Service Kind
               enabled:
                 description: Indicates whether the website is enabled.
                 type: boolean
+                title: Enabled
               availabilityState:
                 description: The availability state of the website.
                 type: string
+                title: Availability State
               defaultHostname:
                 description: The default hostname of the website.
                 type: string
+                title: Default Hostname
               serverFarmId:
                 description: The ID of the App Service Plan associated with the website.
                 type: string
+                title: App Service Plan
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title:  tags
                 additionalProperties:
                   type: string
     served: true

@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: networks.gcp.mia-platform.eu
 spec:
@@ -24,32 +24,41 @@ spec:
               name:
                 description: The name of the network
                 type: string
+                title: Name
               description:
                 description: Human-readable description of the network
                 type: string
+                title: Description
               mtu:
                 description: Maximum transmission unit in bytes
                 type: integer
+                title: MTU (bytes)
               routingMode:
                 description: Routing mode for the network, possible values are 'regional', or 'global'
                 type: string
+                title: Routing Mode
               location:
                 description: Location of the network. It will always be 'global' for GCP networks.
                 type: string
+                title: GCP Location
             autoCreateSubnetworks:
               description: Whether the subnets of the network are created automatically by GCP.
               type: boolean
+              title: Auto Created Subnetworks
             subnetworks:
               description: List of subnetworks associated with the network.
               type: array
+              title: Subnetworks
               items:
                 type: object
                 properties:
                   name:
                     description: Name of the subnetwork.
                     type: string
+                    title: Subnetwork Name
                   region:
                     description: Region of the subnetwork.
                     type: string
+                    title: Subnetwork GCP Location
     served: true
     storage: true

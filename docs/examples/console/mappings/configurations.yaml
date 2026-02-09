@@ -1,5 +1,5 @@
 apiVersion: console.mia-platform.eu/v1alpha1
-resource: configurations
+itemFamily: configurations
 type: configuration
 syncable: true
 mappings:
@@ -14,7 +14,7 @@ mappings:
     lastUpdate: "{{ get \"committedDate\" .configuration (now) }}"
   extra:
     - apiVersion: mia-platform.eu/v1alpha1
-      resource: relationships
+      itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
         {{ printf "relationship--%s--%s--%s--dependency" .project._id .project._id .revision.name }}

@@ -1,5 +1,5 @@
 apiVersion: azure.mia-platform.eu/v1alpha1
-resource: websites
+itemFamily: websites
 type: Microsoft.Web/sites
 extra:
   apiVersion: "2025-03-01"

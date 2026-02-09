@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: services.gcp.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: Service
     plural: services
-    singular: service
+    displayPlural: Services
   scope: Organization
   versions:
   - deprecated: false
@@ -22,40 +22,52 @@ spec:
             type: object
             properties:
               apiVersion:
-                description: API version of the resource
+                description: API version of the item
                 type: string
+                title: API Version
               kind:
-                description: The resource kind
+                description: The item kind
                 type: string
+                title: Kind
               name:
                 description: The name of the Service
                 type: string
+                title: Name
               traffic:
                 description: Traffic routing configuration for the Service
                 type: array
+                title: Network Traffic Configuration
                 items:
                   type: object
                   properties:
                     latestRevision:
                       type: boolean
+                      title: Latest Revision
                     percent:
                       type: integer
+                      title: Percentage
                     revisionName:
                       type: string
+                      title: Revision Name
               url:
                 description: URL of the Service
                 type: string
+                title: Service Endpoint
               serviceAccountName:
                 description: The email of the IAM service account associated with the Service
                 type: string
+                title: Service Account Name
               latestCreatedRevisionName:
                 description: Name of the latest created revision
                 type: string
+                title: Latest Created Revision Name
               latestReadyRevisionName:
                 description: Name of the latest ready revision
                 type: string
+                title: Latest Ready Revision Name
               location:
                 description: Region where the service is deployed
                 type: string
+                title: GCP Location
     served: true
     storage: true

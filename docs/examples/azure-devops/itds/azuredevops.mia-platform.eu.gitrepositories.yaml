@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: gitrepositories.azuredevops.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: GitRepository
     plural: gitrepositories
-    singular: gitrepository
+    displayPlural: GitRepositories
   scope: Organization
   versions:
   - deprecated: false
@@ -22,25 +22,32 @@ spec:
             type: object
             properties:
               name:
-                description: The name of the resource.
+                description: The name of the item.
                 type: string
+                title: Name
               defaultBranch:
                 description: The default branch of the repository.
                 type: string
+                title: Default Branch Name
               isDisabled:
                 description: Whether the repository is disabled.
                 type: boolean
+                title: Repo Disabled
               isAFork:
                 description: Whether the repository is a fork.
                 type: boolean
+                title: Forked Repo
               isArchived:
                 description: Whether the repository is archived.
                 type: boolean
+                title: Archived Repo
               sshGitUrl:
                 description: The SSH URL of the repository.
                 type: string
+                title: SSH Git URL
               httpGitUrl:
                 description: The HTTP URL of the repository.
                 type: string
+                title: HTTP Git URL
     served: true
     storage: true

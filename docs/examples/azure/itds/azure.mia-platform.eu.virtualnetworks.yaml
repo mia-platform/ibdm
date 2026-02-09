@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: virtualnetworks.azure.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: VirtualNetwork
     plural: virtualnetworks
-    singular: virtualnetwork
+    displayPlural: VirtualNetworks
   scope: Organization
   versions:
   - deprecated: false
@@ -22,37 +22,46 @@ spec:
             type: object
             properties:
               name:
-                description: The name of the resource.
+                description: The name of the item.
                 type: string
+                title: Name
               location:
-                description: Location of the resource.
+                description: Location of the item.
                 type: string
+                title: Azure Location
               provisioningState:
-                description: The provisioning state of the resource.
+                description: The provisioning state of the item.
                 type: string
+                title: Provisioning State
               addressPrefixes:
                 description: The address prefixes of the virtual network.
                 type: array
+                title: Network Address Prefixes
                 items:
                   type: string
               subnets:
                 description: The subnets of the virtual network.
                 type: array
+                title: Subnets
                 items:
                   type: object
                   properties:
                     name:
                       description: The name of the subnet.
                       type: string
+                      title: Subnet Name
                     addressPrefix:
                       description: The address prefix of the subnet.
                       type: string
+                      title: Subnet Address Prefix
                     provisioningState:
                       description: The provisioning state of the subnet.
                       type: string
+                      title: Subnet Provisioning State
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true

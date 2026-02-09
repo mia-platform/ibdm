@@ -1,4 +1,4 @@
 apiVersion: "group/v1"
-resource: "configs"
+itemFamily: "configs"
 type: invalid
 syncable: "syncable"

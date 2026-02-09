@@ -1,6 +1,6 @@
 {
 	"apiVersion": "group/v1",
-	"resource": "configs",
+	"itemFamily": "configs",
 	"type": "json",
 	"syncable": true,
 	"mappings": {

@@ -1,5 +1,5 @@
 apiVersion: gcp.mia-platform.eu/v1alpha1
-resource: virtualmachines
+itemFamily: virtualmachines
 type: compute.googleapis.com/Instance
 syncable: true
 mappings:

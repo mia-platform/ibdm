@@ -1,5 +1,5 @@
 apiVersion: azure.mia-platform.eu/v1alpha1
-resource: storageaccounts
+itemFamily: storageaccounts
 type: Microsoft.Storage/storageAccounts
 extra:
   apiVersion: "2025-06-01"

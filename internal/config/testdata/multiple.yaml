@@ -1,5 +1,5 @@
 apiVersion: group/v1
-resource: configs
+itemFamily: configs
 type: first
 syncable: true
 mappings:
@@ -9,7 +9,7 @@ mappings:
     fieldB: "{{ .spec.fieldB }}"
 ---
 apiVersion: group/v1
-resource: configs
+itemFamily: configs
 type: second
 syncable: true
 mappings:
@@ -20,7 +20,7 @@ mappings:
 ---
 ---
 apiVersion: group/v1
-resource: configs
+itemFamily: configs
 type: third
 extra:
   apiVersion: 2025-01-04-preview

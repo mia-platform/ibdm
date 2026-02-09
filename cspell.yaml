@@ -11,6 +11,8 @@ words:
   - ibdm
   - itds
   - nolint
+  - postgresqldb
+  - postgresqldbs
   - syft
   - sysdig
   - tmpl
@@ -43,7 +45,6 @@ ignoreWords:
   - stretchr
   - structpb
   - sysdiglabs
-  - tlog
   - vtpm
 files:
   - "**/*.go"
@@ -52,4 +53,5 @@ files:
   - ".devcontainer/devcontainer.json"
   - ".github/*.yml"
   - ".github/**/*.yaml"
+  - "docs/examples/**/*.yaml"
   - Makefile

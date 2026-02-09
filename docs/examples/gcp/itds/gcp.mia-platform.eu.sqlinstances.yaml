@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: sqlinstances.gcp.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: SQLInstance
     plural: sqlinstances
-    singular: sqlinstance
+    displayPlural: SQLInstances
   scope: Organization
   versions:
   - deprecated: false
@@ -24,87 +24,117 @@ spec:
               name:
                 description: The name of the Cloud SQL instance
                 type: string
+                title: DB Name
               region:
                 description: Region where the instance is located
                 type: string
+                title: GCP Location
               location:
                 description: The GCP zone of the region where the primary instance is located
                 type: string
+                title: Primary GCP Location
               dataDiskSizeGb:
                 description: Instance data disk size in GB
                 type: string
+                title: Data Disk Size (GB)
               dataDiskType:
                 description: The type of data disk, possible values are 'ssd', or 'hdd'.
                 type: string
+                title: Data Disk Type
               storageAutoResize:
                 description: Whether storage auto resize is enabled
                 type: boolean
+                title: Storage Auto Resize
               storageAutoResizeLimit:
                 description: The maximum size to which storage capacity can be automatically increased. The default value is 0, which specifies that there is no limit.
                 type: integer
+                title: Storage Auto Resize Limit (GB)
               installedVersion:
                 description: The installed database patch/version
                 type: string
+                title: DB Version
               availabilityType:
                 description: The availability type of the instance, possible values are 'zonal' and 'regional'.
                 type: string
+                title: Availability Type
               serviceAccount:
                 description: The service account email address assigned to the instance
                 type: string
+                title: Service Account Name
               deletionProtectionEnabled:
                 description: Whether the deletion protection is enabled
                 type: boolean
+                title: Deletion Protection Enabled
               state:
                 description: Instance current state
                 type: string
+                title: DB State
               connection:
                 description: Connection settings for the instance
                 type: object
+                title: Connection Settings
                 properties:
                   requireSSL:
                     type: boolean
+                    title: Require SSL
                   sslMode:
                     type: string
+                    title: SSL Mode
                   serverCAMode:
                     type: string
+                    title: CA Mode
                   serverCertificateRotationMode:
                     type: string
+                    title: Server Certificate Rotation Mode
                   ipv4Enabled:
                     type: boolean
+                    title: IPv4 Enabled
                   authorizedNetworks:
                     type: array
+                    title: Authorized Networks
                     items:
                       type: object
                       properties:
                         name:
                           type: string
+                          title: Name
                         value:
                           type: string
+                          title: CIDR Range
                   dns:
                     type: string
+                    title: DNS
                   dnsNames:
                     type: array
+                    title: DNS Names
                     items:
                       type: object
                       properties:
                         connectionType:
                           type: string
+                          title: Connection Type
                         dnsScope:
                           type: string
+                          title: DNS Scope
                         name:
                           type: string
+                          title: Name
                   ipAddresses:
                     type: array
+                    title: IP Addresses
                     items:
                       type: object
                       properties:
                         type:
                           type: string
+                          title: Type
                         ipAddress:
                           type: string
+                          title: Address
               labels:
                 description: User labels assigned to the instance
                 type: object
+                title: Labels
                 additionalProperties:
                   type: string
     served: true

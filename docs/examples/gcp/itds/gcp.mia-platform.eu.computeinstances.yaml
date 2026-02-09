@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: computeinstances.gcp.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: ComputeInstance
     plural: computeinstances
-    singular: computeinstance
+    displayPlural: ComputeInstances
   scope: Organization
   versions:
   - deprecated: false
@@ -24,87 +24,115 @@ spec:
               name:
                 description: The GCP compute instance name
                 type: string
+                title: Name
               description:
                 description: Human-readable description
                 type: string
+                title: Description
               cpuPlatform:
                 description: The CPU platform string
                 type: string
+                title: CPU Platform
               location:
                 description: The region zone where the instance is deployed
                 type: string
+                title: GCP Location
               status:
                 description: Current status of the instance, possible values are 'provisioning', 'staging', 'running', 'stopping', 'suspending', 'suspended', or 'terminated'
                 type: string
+                title: VM Status
               deletionProtection:
                 description: Whether the instance deletion protection is enabled
                 type: boolean
+                title: Deletion Protection Enabled
               integrityMonitoringEnabled:
                 description: Whether integrity monitoring is enabled
                 type: boolean
+                title: Integrity Monitoring Enabled
               secureBootEnabled:
                 description: Whether secure boot is enabled
                 type: boolean
+                title: Secure Boot Enabled
               vtpmEnabled:
                 description: Whether vTPM is enabled
                 type: boolean
+                title: vTPM Enabled
               confidentialInstanceConfigEnabled:
                 description: Whether confidential instance config is enabled
                 type: boolean
+                title: Confidential Instance Config Enabled
               lastStart:
                 description: RFC 3339 timestamp for the last start time
                 type: string
                 format: date-time
+                title: VM Last Start Time
               machineType:
                 description: The machine type of the instance
                 type: string
+                title: Virtual Machine Type
               instancesIPs:
                 description: List of the instance IPs. One or more IPs can be attached to the instance
                 type: array
+                title: Instance IPs
                 items:
                   type: string
               disks:
                 description: Instance disks details
                 type: array
+                title: Instance Disks
                 items:
                   type: object
                   properties:
                     architecture:
                       type: string
+                      title: Disk Architecture
                     autoDelete:
                       type: boolean
+                      title: Auto Delete Enabled
                     boot:
                       type: boolean
+                      title: Boot Disk
                     deviceName:
                       type: string
+                      title: Disk Device Name
                     diskSizeGb:
                       type: string
+                      title: Disk Size (GB)
                     mode:
                       type: string
+                      title: Disk Mode
                     type:
                       type: string
+                      title: Disk Type
               network:
                 description: Instance network details
                 type: array
+                title: Virtual Machine Network
                 items:
                   type: object
                   properties:
                     name:
                       type: string
+                      title: GCP Network Name
                     network:
                       type: string
+                      title: GCP Network URL
                     networkIP:
                       type: string
+                      title: Network IP
                     subnetwork:
                       type: string
+                      title: GCP Subnetwork URL
               labels:
                 description: User-provided labels in key-value pairs.
                 type: object
+                title: Labels
                 additionalProperties:
                   type: string
               tags:
                 description: Network tags attached to the instance
                 type: array
+                title: Network Tags
                 items:
                   type: string
     served: true

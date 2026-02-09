@@ -1,15 +1,15 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
-  name: subscriptions.azure.mia-platform.eu
+  name: resourcegroups.azure.mia-platform.eu
 spec:
   group: azure.mia-platform.eu
   names:
-    kind: Subscription
-    plural: subscriptions
-    singular: subscription
+    kind: ResourceGroup
+    plural: resourcegroups
+    displayPlural: ResourceGroups
   scope: Organization
   versions:
   - deprecated: false
@@ -22,17 +22,21 @@ spec:
             type: object
             properties:
               name:
-                description: The name of the resource.
+                description: The name of the item.
                 type: string
-              displayName:
-                description: A custom namme for the subscription.
+                title: Name
+              location:
+                description: Location of the item.
                 type: string
-              state:
-                description: The current state of the subscription.
+                title: Azure Location
+              provisioningState:
+                description: The provisioning state of the item.
                 type: string
+                title: Provisioning State
               tags:
                 description: User-provided tags in key-value pairs.
                 type: object
+                title: Tags
                 additionalProperties:
                   type: string
     served: true

@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: jobs.gcp.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: Job
     plural: jobs
-    singular: job
+    displayPlural: Jobs
   scope: Organization
   versions:
   - deprecated: false
@@ -22,47 +22,61 @@ spec:
             type: object
             properties:
               apiVersion:
-                description: API version of the resource
+                description: API version of the item
                 type: string
+                title: API Version
               kind:
-                description: The resource kind
+                description: The item kind
                 type: string
+                title: Kind
               name:
-                description: The name of the Job resource
+                description: The name of the Job item
                 type: string
+                title: Name
               image:
                 description: The main container image used for the Job
                 type: string
-              latestExectuion:
+                title: Container Image
+              latestExecution:
                 description: Details of the latest execution of the Job
                 type: object
+                title: Latest Job Execution
                 properties:
                   name:
                     description: The name of the executed job
                     type: string
+                    title: Name
                   creationTimeStamp:
                     description: Start time of the execution
                     type: string
+                    title: Creation Date
                   completionTimestamp:
                     description: End time of the execution
                     type: string
+                    title: Completion Date
                   completionStatus:
                     description: Status of the execution
                     type: string
+                    title: Completion Status
               maxRetries:
                 description: Maximum number of retries for failed executions
                 type: integer
+                title: Max Retries
               parallelism:
                 description: Number of parallel executions allowed. If set to 0, there is no limit
                 type: integer
+                title: Parallelism
               serviceAccountName:
                 description: The service account email to run the Job
                 type: string
+                title: Service Account Name
               timeoutSeconds:
                 description: Maximum execution time in seconds before task termination
                 type: integer
+                title: Job Timeout (seconds)
               location:
-                description: Location/region for the Job resource
+                description: Location/region for the Job item
                 type: string
+                title: GCP Location
     served: true
     storage: true

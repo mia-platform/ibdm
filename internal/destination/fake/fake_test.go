@@ -20,7 +20,7 @@ func TestFakeDestination(t *testing.T) {
 
 	data := &destination.Data{
 		APIVersion: "version",
-		Resource:   "resource",
+		ItemFamily: "family",
 		Name:       "id1",
 		Data:       map[string]any{"key": "value"},
 	}
@@ -30,7 +30,7 @@ func TestFakeDestination(t *testing.T) {
 
 	deleteData := &destination.Data{
 		APIVersion: "version",
-		Resource:   "resource",
+		ItemFamily: "family",
 		Name:       "id1",
 	}
 	assert.NoError(t, fakeDestination.DeleteData(t.Context(), deleteData))

@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/miaplatform.eu.v1alpha1.CustomResourceDefinition.json
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
 ---
 apiVersion: mia-platform.eu/v1alpha1
-kind: CustomResourceDefinition
+kind: ItemTypeDefinition
 metadata:
   name: teams.azuredevops.mia-platform.eu
 spec:
@@ -9,7 +9,7 @@ spec:
   names:
     kind: Team
     plural: teams
-    singular: team
+    displayPlural: Teams
   scope: Organization
   versions:
   - deprecated: false
@@ -22,13 +22,16 @@ spec:
             type: object
             properties:
               name:
-                description: The name of the resource.
+                description: The name of the item.
                 type: string
+                title: Name
               projectName:
                 description: The name of the project the team belongs to.
                 type: string
+                title: Project Name
               description:
                 description: The description of the team.
                 type: string
+                title: Description
     served: true
     storage: true

@@ -21,22 +21,22 @@ func TestCustomMarshaling(t *testing.T) {
 		"SendData marshals": {
 			input: Data{
 				APIVersion: "v1",
-				Resource:   "testResource",
+				ItemFamily: "testResource",
 				Name:       "testName",
 				Data: map[string]any{
 					"key": "value",
 				},
 			},
-			expected: `{"apiVersion":"v1","resource":"testResource","name":"testName","data":{"key":"value"},"operation":"upsert"}`,
+			expected: `{"apiVersion":"v1","itemFamily":"testResource","name":"testName","data":{"key":"value"},"operation":"upsert"}`,
 		},
 		"DeleteData marshals": {
 			input: Data{
 				APIVersion: "v1",
-				Resource:   "testResource",
+				ItemFamily: "testResource",
 				Name:       "testName",
 				Data:       nil,
 			},
-			expected: `{"apiVersion":"v1","resource":"testResource","name":"testName","operation":"delete"}`,
+			expected: `{"apiVersion":"v1","itemFamily":"testResource","name":"testName","operation":"delete"}`,
 		},
 	}
 

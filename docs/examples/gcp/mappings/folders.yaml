@@ -1,5 +1,5 @@
 apiVersion: gcp.mia-platform.eu/v1alpha1
-resource: folders
+itemFamily: folders
 type: cloudresourcemanager.googleapis.com/Folder
 syncable: true
 mappings:
