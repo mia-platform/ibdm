@@ -80,7 +80,7 @@ func TestNewMapper(t *testing.T) {
 			},
 			[]map[string]any{{
 				"apiVersion":   "v1",
-				"resource":     "relationships",
+				"itemFamily":   "relationships",
 				"deletePolicy": "recursive",
 				"spec":         "{{ .otherKey | unknownFunc }}",
 			}})
@@ -434,7 +434,7 @@ func TestIdentifierOnly(t *testing.T) {
 				},
 					[]map[string]any{{
 						"apiVersion":   "v1",
-						"resource":     "relationships",
+						"itemFamily":   "relationships",
 						"deletePolicy": "none",
 						"identifier":   "{{ .name }}",
 					}})
@@ -458,7 +458,7 @@ func TestIdentifierOnly(t *testing.T) {
 				},
 					[]map[string]any{{
 						"apiVersion":   "v1",
-						"resource":     "relationships",
+						"itemFamily":   "relationships",
 						"deletePolicy": "cascade",
 						"identifier":   "{{ .name }}-relationship",
 					}})
@@ -483,7 +483,7 @@ func TestIdentifierOnly(t *testing.T) {
 				},
 					[]map[string]any{{
 						"apiVersion":   "v1",
-						"resource":     "relationships",
+						"itemFamily":   "relationships",
 						"deletePolicy": "cascade",
 						"identifier":   "{{ .name }}_invalid",
 					}})
