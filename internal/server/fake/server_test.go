@@ -45,7 +45,7 @@ func TestStartAndStop(t *testing.T) {
 	}()
 
 	<-server.StartedServer()
-	require.NoError(t, server.Stop())
+	require.NoError(t, server.Stop(t.Context()))
 	<-server.StoppedServer()
 }
 
@@ -84,7 +84,7 @@ func TestStartAsyncSignalsStarted(t *testing.T) {
 	defer cancel()
 
 	server := NewFakeServer(t, http.MethodGet, "/health")
-	server.StartAsync(ctx)
+	errChan := server.StartAsync()
 
 loop:
 	for {
@@ -96,4 +96,9 @@ loop:
 			return
 		}
 	}
+
+	server.Stop(t.Context())
+	<-server.StoppedServer()
+	err := <-errChan
+	assert.NoError(t, err)
 }

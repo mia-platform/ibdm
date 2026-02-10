@@ -72,7 +72,14 @@ func (p *Pipeline) Start(ctx context.Context) error {
 		dataPipeline = func(ctx context.Context, channel chan<- source.Data) error {
 			// server start in different goroutine
 			log.Trace("starting server")
-			server.StartAsync(ctx)
+			errChannel := server.StartAsync()
+			go func() {
+				if err := <-errChannel; err != nil {
+					log.Error("server closed", "error", err)
+					return
+				}
+				log.Trace("server closed")
+			}()
 			return streamSource.StartEventStream(ctx, p.mapperTypes, channel)
 		}
 	case isWebhook:

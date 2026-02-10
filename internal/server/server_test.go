@@ -11,11 +11,11 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewServer(t *testing.T) {
-	t.Parallel()
 	ctx := t.Context()
 
 	srvInterface, err := NewServer(ctx)
@@ -41,7 +41,7 @@ func TestStartServer(t *testing.T) {
 		app: fiber.New(fiber.Config{DisableStartupMessage: true, Immutable: true}),
 		config: config{
 			HTTPHost: "127.0.0.1",
-			HTTPPort: 0,
+			HTTPPort: 3001,
 		},
 	}
 
@@ -52,17 +52,16 @@ func TestStartServer(t *testing.T) {
 		return nil
 	})
 
-	errChan := make(chan error)
-	defer close(errChan)
+	stoppedChan := make(chan struct{})
 	go func() {
-		err := srv.Start()
-		errChan <- err
+		<-syncChan
+		assert.NoError(t, srv.Stop(t.Context()))
+		close(stoppedChan)
 	}()
 
-	<-syncChan
-	require.NoError(t, srv.Stop())
-	err := <-errChan
-	require.NoError(t, err)
+	err := srv.Start()
+	assert.NoError(t, err)
+	<-stoppedChan
 }
 
 func TestStartAsyncServer(t *testing.T) {
@@ -70,7 +69,7 @@ func TestStartAsyncServer(t *testing.T) {
 		app: fiber.New(fiber.Config{DisableStartupMessage: true, Immutable: true}),
 		config: config{
 			HTTPHost: "127.0.0.1",
-			HTTPPort: 0,
+			HTTPPort: 3002,
 		},
 	}
 
@@ -81,13 +80,20 @@ func TestStartAsyncServer(t *testing.T) {
 		return nil
 	})
 
-	srv.StartAsync(t.Context())
-	<-syncChan
-	require.NoError(t, srv.Stop())
+	stoppedChan := make(chan struct{})
+	go func() {
+		<-syncChan
+		assert.NoError(t, srv.Stop(t.Context()))
+		close(stoppedChan)
+	}()
+
+	errChan := srv.StartAsync()
+	err := <-errChan
+	require.NoError(t, err)
+	<-stoppedChan
 }
 
 func TestFiberHandlerWrapper(t *testing.T) {
-	t.Parallel()
 	srv := &impServer{
 		app: fiber.New(fiber.Config{DisableStartupMessage: true, Immutable: true}),
 	}

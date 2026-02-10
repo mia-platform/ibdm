@@ -475,7 +475,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 				assert.NoError(t, err)
 				select {
 				case <-syncChan:
-					assert.NoError(t, fakeServer.Stop())
+					assert.NoError(t, fakeServer.Stop(ctx))
 				case <-ctx.Done():
 					assert.Fail(t, "timeout waiting for pipeline to stop")
 				}

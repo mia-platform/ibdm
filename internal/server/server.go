@@ -17,14 +17,13 @@ import (
 
 const (
 	serviceName = "ibdm"
-	loggerName  = "ibdm:server"
 )
 
 type Server interface {
 	AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error)
 	Start() error
-	Stop() error
-	StartAsync(ctx context.Context)
+	Stop(context.Context) error
+	StartAsync() <-chan error
 }
 
 type impServer struct {
@@ -79,18 +78,20 @@ func (s *impServer) Start() error {
 	return nil
 }
 
-func (s *impServer) Stop() error {
-	if err := s.app.Shutdown(); err != nil {
+func (s *impServer) Stop(ctx context.Context) error {
+	if err := s.app.ShutdownWithContext(ctx); err != nil {
 		return fmt.Errorf("%w: %w", ErrServerShutdown, err)
 	}
 	return nil
 }
 
-func (s *impServer) StartAsync(ctx context.Context) {
-	log := logger.FromContext(ctx).WithName(loggerName)
+func (s *impServer) StartAsync() <-chan error {
+	errorChan := make(chan error)
 	go func() {
-		if err := s.Start(); err != nil {
-			log.Error(err.Error())
-		}
+		err := s.Start()
+		errorChan <- err
+		close(errorChan)
 	}()
+
+	return errorChan
 }

@@ -67,7 +67,7 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) Stop() error {
+func (s *Server) Stop(_ context.Context) error {
 	s.tb.Helper()
 	close(s.closedChan)
 	return nil
@@ -80,9 +80,17 @@ func (s *Server) CallRegisterWebhook(ctx context.Context) error {
 	return s.handler(ctx, nil, nil)
 }
 
-func (s *Server) StartAsync(_ context.Context) {
+func (s *Server) StartAsync() <-chan error {
 	s.tb.Helper()
+	errorChan := make(chan error)
+	go func() {
+		<-s.closedChan
+		errorChan <- nil
+		close(errorChan)
+	}()
+
 	close(s.startedChan)
+	return errorChan
 }
 
 func (s *Server) StartedServer() <-chan struct{} {
