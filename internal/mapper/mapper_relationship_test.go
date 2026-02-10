@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
 )
 
@@ -36,7 +37,7 @@ func TestRelationshipMapping(t *testing.T) {
 		"type": "dependency",
 	}
 
-	extras := []map[string]any{extraDef}
+	extras := []config.Extra{extraDef}
 
 	identifierTemplate := `{{ printf "%s--%s" .project._id .revision.name }}`
 
