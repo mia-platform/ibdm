@@ -91,7 +91,7 @@ func testMappers(tb testing.TB, extra []map[string]any) map[string]DataMapper {
 
 	return map[string]DataMapper{
 		"type1": func() DataMapper {
-			mapper, err := mapper.New("{{ .id }}", map[string]string{
+			mapper, err := mapper.New("{{ .id }}", nil, map[string]string{
 				"field1": "{{ .field1 }}",
 				"field2": "{{ .field2 }}",
 			}, extra)
@@ -103,7 +103,7 @@ func testMappers(tb testing.TB, extra []map[string]any) map[string]DataMapper {
 			}
 		}(),
 		"type2": func() DataMapper {
-			mapper, err := mapper.New("{{ .identifier }}", map[string]string{
+			mapper, err := mapper.New("{{ .identifier }}", nil, map[string]string{
 				"attributeA": "{{ .attributeA }}",
 			}, extra)
 			require.NoError(tb, err)
@@ -179,6 +179,7 @@ func TestStreamPipeline(t *testing.T) {
 					APIVersion: "v1",
 					ItemFamily: "family",
 					Name:       "item1",
+					Metadata:   map[string]any{},
 					Data: map[string]any{
 						"field1": "value1",
 						"field2": "value2",
@@ -205,6 +206,7 @@ func TestStreamPipeline(t *testing.T) {
 					APIVersion: "v1",
 					ItemFamily: "family",
 					Name:       "item1",
+					Metadata:   map[string]any{},
 					Data: map[string]any{
 						"field1": "value1",
 						"field2": "value2",
@@ -344,6 +346,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 					APIVersion: "v1",
 					ItemFamily: "family",
 					Name:       "item1",
+					Metadata:   map[string]any{},
 					Data: map[string]any{
 						"field1": "value1",
 						"field2": "value2",
@@ -374,6 +377,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 					APIVersion: "v1",
 					ItemFamily: "family",
 					Name:       "item1",
+					Metadata:   map[string]any{},
 					Data: map[string]any{
 						"field1": "value1",
 						"field2": "value2",
@@ -581,6 +585,7 @@ func TestSyncPipeline(t *testing.T) {
 					APIVersion: "v1",
 					ItemFamily: "family",
 					Name:       "item1",
+					Metadata:   map[string]any{},
 					Data: map[string]any{
 						"field1": "value1",
 						"field2": "value2",

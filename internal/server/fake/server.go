@@ -89,3 +89,8 @@ func (s *Server) StartedServer() <-chan struct{} {
 	s.tb.Helper()
 	return s.startedChan
 }
+
+func (s *Server) StoppedServer() <-chan struct{} {
+	s.tb.Helper()
+	return s.closedChan
+}

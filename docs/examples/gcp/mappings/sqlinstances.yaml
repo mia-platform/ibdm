@@ -6,6 +6,8 @@ mappings:
   identifier: |-
     {{ $components := trimPrefix "//cloudsql.googleapis.com/" .name | split "/" -}}
     {{- printf "%s-%s" (index $components 1) (index $components 3) }}
+  metadata:
+    title: "{{ .resource.data.name }}"
   spec:
     name: "{{ .resource.data.name }}"
     region: "{{ .resource.data.region }}"

@@ -40,7 +40,7 @@ func TestRelationshipMapping(t *testing.T) {
 
 	identifierTemplate := `{{ printf "%s--%s" .project._id .revision.name }}`
 
-	m, err := mapper.New(identifierTemplate, mappings, extras)
+	m, err := mapper.New(identifierTemplate, nil, mappings, extras)
 	require.NoError(t, err)
 
 	// Sample Input Data

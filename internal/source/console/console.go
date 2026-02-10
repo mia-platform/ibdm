@@ -134,6 +134,7 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 				"project": map[string]any{
 					"_id":       project["_id"],
 					"projectId": project["projectId"],
+					"name":      project["name"],
 					"tenantId":  project["tenantId"],
 				},
 				"revision": map[string]any{
@@ -320,6 +321,12 @@ func configurationEventChain(ctx context.Context, event event, cs *service.Conso
 func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionName string, cs *service.ConsoleService) (map[string]any, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
+	log.Trace("fetching full project", "_id", projectID)
+	project, err := cs.GetProject(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+	}
+
 	log.Trace("fetching configuration for project", "_id", projectID, "revisionName", revisionName)
 	configuration, err := cs.GetConfiguration(ctx, projectID, revisionName)
 	if err != nil {
@@ -330,8 +337,10 @@ func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionN
 
 	configurationData := map[string]any{
 		"project": map[string]any{
-			"_id":      projectID,
-			"tenantId": tenantID,
+			"_id":       projectID,
+			"projectId": project["projectId"],
+			"name":      project["name"],
+			"tenantId":  tenantID,
 		},
 		"revision": map[string]any{
 			"name": revisionName,

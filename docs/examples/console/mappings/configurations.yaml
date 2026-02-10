@@ -5,6 +5,8 @@ syncable: true
 mappings:
   identifier: |-
     {{ printf "%s-%s" .project._id .revision.name }}
+  metadata:
+    title: "{{ printf \"%s %s\" .project.name .revision.name }}"
   spec:
     projectUniqueId: "{{ .project._id }}"
     projectId: "{{ get \"projectId\" .project \"\" | quote }}"
@@ -17,9 +19,9 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ printf "relationship--%s--%s--%s--dependency" .project._id .project._id .revision.name }}
+        {{ printf "relationship-%s-%s-%s-dependency" .project._id .project._id .revision.name }}
       sourceRef:
         apiVersion: "console.mia-platform.eu/v1alpha1"
-        kind: "projects"
+        family: "projects"
         name: "{{ .project._id }}"
       type: "dependency"

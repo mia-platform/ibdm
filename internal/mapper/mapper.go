@@ -24,9 +24,7 @@ type Mapper interface {
 	// ApplyTemplates applies the mapper templates to the given input data and returns the mapped output.
 	ApplyTemplates(input map[string]any, parentItemInfo ParentItemInfo) (output MappedData, extra []ExtraMappedData, err error)
 	// ApplyIdentifierTemplate applies only the identifier template to the given input data and returns
-	ApplyIdentifierTemplate(data map[string]any) (string, error)
-	// ApplyIdentifierExtraTemplate applies only the identifier extra template to the given input data and returns
-	ApplyIdentifierExtraTemplate(data map[string]any) ([]ExtraMappedData, error)
+	ApplyIdentifierTemplate(data map[string]any) (string, []ExtraMappedData, error)
 }
 
 const (
@@ -43,6 +41,7 @@ var (
 	identifierRegex        = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 	validExtraItemFamilies = []string{extraRelationshipFamily}
 	validDeletePolicies    = []string{deletePolicyNone, deletePolicyCascade}
+	validMetadata          = []string{"annotations", "creationTimestamp", "description", "labels", "links", "name", "namespace", "tags", "title", "uid"}
 )
 
 var _ Mapper = &internalMapper{}
@@ -58,14 +57,16 @@ type ExtraMapping struct {
 
 // internalMapper is the default Mapper implementation backed by text/template.
 type internalMapper struct {
-	idTemplate    *template.Template
-	specTemplate  *template.Template
-	extraMappings []ExtraMapping
+	idTemplate       *template.Template
+	metadataTemplate *template.Template
+	specTemplate     *template.Template
+	extraMappings    []ExtraMapping
 }
 
 // MappedData wraps the identifier and rendered spec produced by a Mapper.
 type MappedData struct {
 	Identifier string
+	Metadata   map[string]any
 	Spec       map[string]any
 }
 
@@ -86,13 +87,15 @@ type ParentItemInfo struct {
 }
 
 // New constructs a Mapper using the provided identifier template and spec templates.
-func New(identifierTemplate string, specTemplates map[string]string, extraTemplates []map[string]any) (Mapper, error) {
+func New(identifierTemplate string, metadataTemplates, specTemplates map[string]string, extraTemplates []map[string]any) (Mapper, error) {
 	var parsingErrs error
 	tmpl := template.New("main").Option("missingkey=error").Funcs(templateFunctions())
 	idTemplate, err := tmpl.New("identifier").Parse(identifierTemplate)
 	if err != nil {
 		parsingErrs = err
 	}
+
+	metadataTemplate := compileMetadataTemplates(metadataTemplates, tmpl, &parsingErrs)
 
 	specTemplateString := new(strings.Builder)
 	specTemplateString.WriteString("---\n")
@@ -115,10 +118,30 @@ func New(identifierTemplate string, specTemplates map[string]string, extraTempla
 	}
 
 	return &internalMapper{
-		idTemplate:    idTemplate,
-		specTemplate:  specTemplate,
-		extraMappings: extraMappings,
+		idTemplate:       idTemplate,
+		metadataTemplate: metadataTemplate,
+		specTemplate:     specTemplate,
+		extraMappings:    extraMappings,
 	}, nil
+}
+
+func compileMetadataTemplates(metadataTemplates map[string]string, tmpl *template.Template, parsingErrs *error) *template.Template {
+	metadataTemplateString := new(strings.Builder)
+	metadataTemplateString.WriteString("---\n")
+	for key, value := range metadataTemplates {
+		// TODO: use a different approach for validating metadata fields, an idea could be to create a schema to validate the whole mapping file structure
+		if !slices.Contains(validMetadata, key) {
+			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid metadata field: %s", key))
+			continue
+		}
+		metadataTemplateString.WriteString(key + ": " + value + "\n")
+	}
+
+	metadataTemplate, err := tmpl.New("metadata").Parse(metadataTemplateString.String())
+	if err != nil {
+		*parsingErrs = errors.Join(*parsingErrs, err)
+	}
+	return metadataTemplate
 }
 
 func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Template, parsingErrs *error) []ExtraMapping {
@@ -181,12 +204,17 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 
 // ApplyTemplates implements Mapper.ApplyTemplates.
 func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo ParentItemInfo) (MappedData, []ExtraMappedData, error) {
-	identifier, err := executeIdentifierTemplate(m.idTemplate, data)
+	identifier, err := executeIdentifierTemplate(m.idTemplate, "identifier", data)
 	if err != nil {
 		return MappedData{}, nil, err
 	}
 
-	specData, err := executeTemplatesMap(m.specTemplate, data)
+	metadataData, err := executeTemplatesMap(m.metadataTemplate, "metadata", data)
+	if err != nil {
+		return MappedData{}, nil, err
+	}
+
+	specData, err := executeTemplatesMap(m.specTemplate, "spec", data)
 	if err != nil {
 		return MappedData{}, nil, err
 	}
@@ -199,54 +227,54 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 
 	return MappedData{
 		Identifier: identifier,
+		Metadata:   metadataData,
 		Spec:       specData,
 	}, extraData, nil
 }
 
 // ApplyIdentifierTemplate implements Mapper.ApplyTemplates.
-func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, error) {
-	return executeIdentifierTemplate(m.idTemplate, data)
-}
-
-// ApplyIdentifierExtraTemplate implements Mapper.ApplyTemplates.
-func (m *internalMapper) ApplyIdentifierExtraTemplate(data map[string]any) ([]ExtraMappedData, error) {
-	if len(m.extraMappings) == 0 {
-		return nil, nil
+func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, []ExtraMappedData, error) {
+	identifier, err := executeIdentifierTemplate(m.idTemplate, "identifier", data)
+	if err != nil {
+		return identifier, nil, err
 	}
 
-	output := make([]ExtraMappedData, 0, len(m.extraMappings))
+	if len(m.extraMappings) == 0 {
+		return identifier, nil, nil
+	}
+
+	extras := make([]ExtraMappedData, 0, len(m.extraMappings))
 
 	for _, extraMapping := range m.extraMappings {
 		if extraMapping.DeletePolicy == deletePolicyNone {
 			continue
 		}
 
-		var idBuf strings.Builder
-		if err := extraMapping.IDTemplate.Execute(&idBuf, data); err != nil {
-			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+		extraIdentifier, err := executeIdentifierTemplate(extraMapping.IDTemplate, "extra-id", data)
+		if err != nil {
+			return "", nil, err
 		}
-		identifier := idBuf.String()
 
-		output = append(output, ExtraMappedData{
+		extras = append(extras, ExtraMappedData{
 			APIVersion: extraMapping.APIVersion,
 			ItemFamily: extraMapping.ItemFamily,
-			Identifier: identifier,
+			Identifier: extraIdentifier,
 		})
 	}
 
-	return output, nil
+	return identifier, extras, nil
 }
 
 // executeIdentifierTemplate renders the identifier template with data and validates the result.
-func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (string, error) {
+func executeIdentifierTemplate(tmpl *template.Template, name string, data map[string]any) (string, error) {
 	outputStrBuilder := new(strings.Builder)
-	err := tmpl.ExecuteTemplate(outputStrBuilder, "identifier", data)
+	err := tmpl.ExecuteTemplate(outputStrBuilder, name, data)
 	generatedID := outputStrBuilder.String()
 
 	if !identifierRegex.MatchString(generatedID) || len(generatedID) > maxIdentifierLength {
 		return "", template.ExecError{
-			Name: "identifier",
-			Err:  fmt.Errorf("template: identifier: generated identifier '%s' is invalid; it can contain only lowercase alphanumeric characters, '-' or '.', must start and finish with an alphanumeric character and it can contain no more than %d characters", generatedID, maxIdentifierLength),
+			Name: name,
+			Err:  fmt.Errorf("template: %s: generated identifier '%s' is invalid; it can contain only lowercase alphanumeric characters, '-' or '.', must start and finish with an alphanumeric character and it can contain no more than %d characters", name, generatedID, maxIdentifierLength),
 		}
 	}
 
@@ -254,10 +282,10 @@ func executeIdentifierTemplate(tmpl *template.Template, data map[string]any) (st
 }
 
 // executeTemplatesMap renders the spec template and converts it into a map.
-func executeTemplatesMap(templates *template.Template, data map[string]any) (map[string]any, error) {
+func executeTemplatesMap(templates *template.Template, templateName string, data map[string]any) (map[string]any, error) {
 	output := make(map[string]any)
 	outputBuilder := new(bytes.Buffer)
-	err := templates.ExecuteTemplate(outputBuilder, "spec", data)
+	err := templates.ExecuteTemplate(outputBuilder, templateName, data)
 	if err != nil {
 		return nil, err
 	}
@@ -274,11 +302,10 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 
 	for _, extraMapping := range extraMappings {
 		// Generate Identifier
-		var idBuf strings.Builder
-		if err := extraMapping.IDTemplate.Execute(&idBuf, data); err != nil {
+		identifier, err := executeIdentifierTemplate(extraMapping.IDTemplate, "extra-id", data)
+		if err != nil {
 			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
 		}
-		identifier := idBuf.String()
 
 		// Generate Body (Spec)
 		var bodyBuf bytes.Buffer

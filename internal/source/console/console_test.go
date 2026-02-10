@@ -227,11 +227,20 @@ func Test_DoChain(t *testing.T) {
 				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/projects/p1/revisions/r1/configuration" {
+				switch r.URL.Path {
+				case "/projects/p1":
+					json.NewEncoder(w).Encode(map[string]any{
+						"_id":       "p1",
+						"projectId": "projectId",
+						"name":      "name",
+						"tenantId":  "",
+					})
+				case "/projects/p1/revisions/r1/configuration":
+					json.NewEncoder(w).Encode(map[string]any{"key": "value"})
+				default:
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
-				json.NewEncoder(w).Encode(map[string]any{"key": "value"})
 			},
 			expectedData: []source.Data{
 				{
@@ -239,8 +248,10 @@ func Test_DoChain(t *testing.T) {
 					Operation: source.DataOperationUpsert,
 					Values: map[string]any{
 						"project": map[string]any{
-							"_id":      "p1",
-							"tenantId": "",
+							"_id":       "p1",
+							"projectId": "projectId",
+							"name":      "name",
+							"tenantId":  "",
 						},
 						"revision": map[string]any{
 							"name": "r1",
@@ -348,6 +359,7 @@ func TestSource_listAssets(t *testing.T) {
 		project1 := map[string]any{
 			"_id":       "p1",
 			"projectId": "project-1",
+			"name":      "name",
 			"tenantId":  "tenant-1",
 		}
 
@@ -360,6 +372,8 @@ func TestSource_listAssets(t *testing.T) {
 			switch r.URL.Path {
 			case "/projects/":
 				json.NewEncoder(w).Encode([]map[string]any{project1})
+			case "/projects/p1":
+				json.NewEncoder(w).Encode(project1)
 			case "/projects/p1/revisions":
 				json.NewEncoder(w).Encode([]map[string]any{revision1})
 			case "/projects/p1/revisions/r1/configuration":
@@ -400,6 +414,7 @@ func TestSource_listAssets(t *testing.T) {
 			"project": map[string]any{
 				"_id":       "p1",
 				"projectId": "project-1",
+				"name":      "name",
 				"tenantId":  "tenant-1",
 			},
 		}
@@ -414,6 +429,7 @@ func TestSource_listAssets(t *testing.T) {
 			"project": map[string]any{
 				"_id":       "p1",
 				"projectId": "project-1",
+				"name":      "name",
 				"tenantId":  "tenant-1",
 			},
 			"revision": map[string]any{

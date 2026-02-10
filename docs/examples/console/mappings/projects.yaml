@@ -5,6 +5,8 @@ syncable: true
 mappings:
   identifier: |-
     {{ printf "%s" .project._id }}
+  metadata:
+    title: "{{ printf \"%s\" .project.name }}"
   spec:
     projectUniqueId: "{{ .project._id }}"
     projectId: "{{ .project.projectId }}"
@@ -27,7 +29,7 @@ mappings:
     flavor: "{{ get \"flavor\" .project \"\" | quote }}"
     info: "{{ get \"info\" .project (object) | toJSON }}"
     imagePullSecretNames: "{{ get \"imagePullSecretNames\" .project (list) | toJSON }}"
-    links: "{{ get \"links\" .project (list) | toJSON }}"
+    links: "{{ get \"links\" .project (object) | toJSON }}"
     logicalScopeLayers: "{{ get \"logicalScopeLayers\" .project (list) | toJSON }}"
     originalTemplate: "{{ get \"originalTemplate\" .project (object) | toJSON }}"
     pipelines: "{{ get \"pipelines\" .project (object) | toJSON }}"

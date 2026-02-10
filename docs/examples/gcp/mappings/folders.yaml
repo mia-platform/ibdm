@@ -7,6 +7,8 @@ mappings:
     {{ $name := .name -}}
     {{- $name = trimPrefix "//cloudresourcemanager.googleapis.com/" $name -}}
     {{- replace "/" "-" $name }}
+  metadata:
+    title: "{{ .resource.data.name }}"
   spec:
     name: "{{ .resource.data.name }}"
     displayName: "{{ .resource.data.displayName }}"

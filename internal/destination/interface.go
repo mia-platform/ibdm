@@ -19,6 +19,7 @@ type Data struct {
 	APIVersion    string         `json:"apiVersion"`
 	ItemFamily    string         `json:"itemFamily"`
 	Name          string         `json:"name"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 	Data          map[string]any `json:"data,omitempty"`
 	OperationTime string         `json:"operationTime,omitempty"`
 }

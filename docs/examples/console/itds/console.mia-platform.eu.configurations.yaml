@@ -9,7 +9,7 @@ spec:
   names:
     kind: Configuration
     plural: configurations
-    singular: configuration
+    displayPlural: Configurations
   scope: Organization
   versions:
     - deprecated: false
