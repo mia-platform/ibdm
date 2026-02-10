@@ -22,6 +22,6 @@ mappings:
         {{ printf "relationship-%s-%s-%s-dependency" .project._id .project._id .revision.name }}
       sourceRef:
         apiVersion: "console.mia-platform.eu/v1alpha1"
-        kind: "projects"
+        family: "projects"
         name: "{{ .project._id }}"
       type: "dependency"
