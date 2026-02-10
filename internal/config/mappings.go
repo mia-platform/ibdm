@@ -82,11 +82,11 @@ func validateExtra(original map[string]any) (map[string]any, error) {
 	errorsList := []string{}
 
 	if original["apiVersion"].(string) == "" {
-		errorsList = append(errorsList, "unknown field 'apiVersion' in extra mapping")
+		errorsList = append(errorsList, "missing field 'apiVersion' in extra mapping")
 	}
 
 	if original["itemFamily"].(string) == "" {
-		errorsList = append(errorsList, "unknown field 'itemFamily' in extra mapping")
+		errorsList = append(errorsList, "missing field 'itemFamily' in extra mapping")
 	}
 
 	if original["deletePolicy"].(string) != "" &&
@@ -100,11 +100,11 @@ func validateExtra(original map[string]any) (map[string]any, error) {
 	}
 
 	if original["identifier"].(string) == "" {
-		errorsList = append(errorsList, "unknown field 'identifier' in extra mapping")
+		errorsList = append(errorsList, "missing field 'identifier' in extra mapping")
 	}
 
 	if original["type"].(string) == "" {
-		errorsList = append(errorsList, "unknown field 'type' in extra mapping")
+		errorsList = append(errorsList, "missing field 'type' in extra mapping")
 	}
 
 	if len(errorsList) > 0 {
