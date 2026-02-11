@@ -37,7 +37,8 @@ var (
 	errParsingSpecOutput = errors.New("error during casting to valid object")
 	errParsingExtra      = errors.New("error parsing extra templates")
 
-	identifierRegex        = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
+	identifierRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
+	// TODO: remove validation logic from mapper and move it to config/mappings
 	validExtraItemFamilies = []string{extraRelationshipFamily}
 	validMetadata          = []string{"annotations", "creationTimestamp", "description", "labels", "links", "name", "namespace", "tags", "title", "uid"}
 )

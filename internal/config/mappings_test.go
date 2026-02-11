@@ -115,7 +115,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 			expectedError: ErrParsing,
 		},
 		"valid yaml file with metadata mapping": {
-			path: filepath.Join("testdata", "metadata.yaml"),
+			path: filepath.Join("testdata", "metadatamapping.yaml"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
 					Type:       "yaml",

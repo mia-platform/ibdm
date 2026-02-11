@@ -74,8 +74,6 @@ func (mm *MetadataMapping) UnmarshalYAML(value *yaml.Node) error {
 
 	mm.applyValues(original)
 
-	fmt.Printf("\noriginal YAML in MetadataMapping: %+v\n\n", *mm)
-
 	return nil
 }
 
@@ -89,12 +87,10 @@ func (e *Extra) UnmarshalYAML(value *yaml.Node) error {
 		return err
 	}
 
-	fmt.Printf("\noriginal YAML in Extra before validation: %+v\n\n", extraMap)
 	extraMap, err := validateExtra(extraMap)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\noriginal YAML in Extra after validation: %+v\n\n", extraMap)
 
 	*e = extraMap
 	return nil
@@ -102,7 +98,7 @@ func (e *Extra) UnmarshalYAML(value *yaml.Node) error {
 
 func validateExtra(extraMap map[string]any) (map[string]any, error) {
 	errorsList := []string{}
-	requiredExtraFields := []string{"apiVersion", "itemFamily", "deletePolicy", "identifier", "sourceRef", "type"}
+	requiredExtraFields := []string{"apiVersion", "itemFamily", "deletePolicy", "identifier", "type"}
 
 	for _, key := range requiredExtraFields {
 		if value, ok := extraMap[key].(string); !ok || value == "" {
