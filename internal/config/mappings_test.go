@@ -114,6 +114,70 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path:          filepath.Join("testdata", "invalid.yaml"),
 			expectedError: ErrParsing,
 		},
+		"valid yaml file with metadata mapping": {
+			path: filepath.Join("testdata", "metadata.yaml"),
+			expectedMappingConfigs: []*MappingConfig{
+				{
+					Type:       "yaml",
+					APIVersion: "group/v1",
+					ItemFamily: "configs",
+					Syncable:   true,
+					Mappings: Mappings{
+						Identifier: "{{ .name }}",
+						Metadata: MetadataMapping{
+							"annotations":       "{{ printf \"%s\" .name }}",
+							"creationTimestamp": "{{ printf \"%s\" .name }}",
+							"description":       "{{ printf \"%s\" .name }}",
+							"labels":            "{{ printf \"%s\" .name }}",
+							"links":             "{{ printf \"%s\" .name }}",
+							"name":              "{{ printf \"%s\" .name }}",
+							"namespace":         "{{ printf \"%s\" .name }}",
+							"tags":              "{{ printf \"%s\" .name }}",
+							"title":             "{{ printf \"%s\" .name }}",
+							"uid":               "{{ printf \"%s\" .name }}",
+						},
+						Spec: map[string]string{
+							"key":      "{{ .value }}",
+							"otherKey": "{{ .otherValue | functionName }}",
+						},
+					},
+				},
+			},
+		},
+		"valid yaml file with extra mapping": {
+			path: filepath.Join("testdata", "extra.yaml"),
+			expectedMappingConfigs: []*MappingConfig{
+				{
+					Type:       "yaml",
+					APIVersion: "group/v1",
+					ItemFamily: "configs",
+					Syncable:   true,
+					Mappings: Mappings{
+						Identifier: "{{ .name }}",
+						Spec: map[string]string{
+							"key":      "{{ .value }}",
+							"otherKey": "{{ .otherValue | functionName }}",
+						},
+						Extra: []Extra{
+							{
+								"apiVersion":   "group/v1",
+								"itemFamily":   "relationships",
+								"identifier":   `extra1`,
+								"deletePolicy": "none",
+								"sourceRef": map[string]any{
+									"extraKey": "{{ .extraValue }}",
+								},
+								"type": "dependency",
+							},
+						},
+					},
+				},
+			},
+		},
+		"wrong extra file return error": {
+			path:          filepath.Join("testdata", "wrongextra.yaml"),
+			expectedError: ErrParsing,
+		},
 	}
 
 	for name, test := range testCases {

@@ -37,81 +37,90 @@ type MappingConfig struct {
 // Mappings holds the identifier and specification templates for mapping rules.
 type Mappings struct {
 	Identifier string            `json:"identifier" yaml:"identifier"`
-	Metadata   map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Metadata   MetadataMapping   `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Spec       map[string]string `json:"spec" yaml:"spec"`
 	Extra      []Extra           `json:"extra,omitempty" yaml:"extra,omitempty"`
 }
 
-type Extra map[string]any
+type MetadataMapping map[string]string
 
-// UnmarshalJSON for special handling of the 'extra' field in mapping configurations.
-// It validates the presence and correctness of required fields.
-func (e *Extra) UnmarshalJSON(b []byte) error {
-	var original map[string]any
-	if err := json.Unmarshal(b, &original); err != nil {
-		return err
-	}
+type MetadataTemplate struct {
+	Annotations       string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	CreationTimestamp string `json:"creationTimestamp,omitempty" yaml:"creationTimestamp,omitempty"`
+	Description       string `json:"description,omitempty" yaml:"description,omitempty"`
+	Labels            string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Links             string `json:"links,omitempty" yaml:"links,omitempty"`
+	Name              string `json:"name,omitempty" yaml:"name,omitempty"`
+	Namespace         string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+	Tags              string `json:"tags,omitempty" yaml:"tags,omitempty"`
+	Title             string `json:"title,omitempty" yaml:"title,omitempty"`
+	UID               string `json:"uid,omitempty" yaml:"uid,omitempty"`
+}
 
-	original, err := validateExtra(original)
-	if err != nil {
-		return err
-	}
-
-	*e = original
-	return nil
+func (mm *MetadataMapping) applyValues(original MetadataTemplate) {
+	raw, _ := json.Marshal(original)
+	var mappings MetadataMapping
+	json.Unmarshal(raw, &mappings)
+	*mm = mappings
 }
 
 // UnmarshalYAML for special handling of the 'extra' field in mapping configurations.
 // It validates the presence and correctness of required fields.
-func (e *Extra) UnmarshalYAML(value *yaml.Node) error {
-	var original map[string]any
+func (mm *MetadataMapping) UnmarshalYAML(value *yaml.Node) error {
+	var original MetadataTemplate
 	if err := value.Decode(&original); err != nil {
 		return err
 	}
 
-	original, err := validateExtra(original)
-	if err != nil {
-		return err
-	}
+	mm.applyValues(original)
 
-	*e = original
+	fmt.Printf("\noriginal YAML in MetadataMapping: %+v\n\n", *mm)
+
 	return nil
 }
 
-func validateExtra(original map[string]any) (map[string]any, error) {
+type Extra map[string]any
+
+// UnmarshalYAML for special handling of the 'extra' field in mapping configurations.
+// It validates the presence and correctness of required fields.
+func (e *Extra) UnmarshalYAML(value *yaml.Node) error {
+	var extraMap map[string]any
+	if err := value.Decode(&extraMap); err != nil {
+		return err
+	}
+
+	fmt.Printf("\noriginal YAML in Extra before validation: %+v\n\n", extraMap)
+	extraMap, err := validateExtra(extraMap)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\noriginal YAML in Extra after validation: %+v\n\n", extraMap)
+
+	*e = extraMap
+	return nil
+}
+
+func validateExtra(extraMap map[string]any) (map[string]any, error) {
 	errorsList := []string{}
+	requiredExtraFields := []string{"apiVersion", "itemFamily", "deletePolicy", "identifier", "sourceRef", "type"}
 
-	if original["apiVersion"].(string) == "" {
-		errorsList = append(errorsList, "missing field 'apiVersion' in extra mapping")
+	for _, key := range requiredExtraFields {
+		if value, ok := extraMap[key].(string); !ok || value == "" {
+			errorsList = append(errorsList, fmt.Sprintf("missing field '%s' in extra mapping", key))
+		}
 	}
 
-	if original["itemFamily"].(string) == "" {
-		errorsList = append(errorsList, "missing field 'itemFamily' in extra mapping")
-	}
-
-	if original["deletePolicy"].(string) != "" &&
-		original["deletePolicy"].(string) != DeletePolicyNone &&
-		original["deletePolicy"].(string) != DeletePolicyCascade {
+	if deletePolicy, ok := extraMap["deletePolicy"].(string); !ok || ok &&
+		deletePolicy != DeletePolicyNone &&
+		deletePolicy != DeletePolicyCascade {
 		errorsList = append(errorsList, "unknown value 'deletePolicy' in extra mapping")
-	}
-
-	if original["deletePolicy"].(string) != "" {
-		original["deletePolicy"] = DeletePolicyNone
-	}
-
-	if original["identifier"].(string) == "" {
-		errorsList = append(errorsList, "missing field 'identifier' in extra mapping")
-	}
-
-	if original["type"].(string) == "" {
-		errorsList = append(errorsList, "missing field 'type' in extra mapping")
 	}
 
 	if len(errorsList) > 0 {
 		return nil, fmt.Errorf("invalid extra mapping: %s", strings.Join(errorsList, "; "))
 	}
 
-	return original, nil
+	return extraMap, nil
 }
 
 // NewMappingConfigsFromPath parses the file or directory at path and returns any mapping

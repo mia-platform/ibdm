@@ -1,0 +1,20 @@
+type: yaml
+apiVersion: group/v1
+itemFamily: configs
+syncable: true
+mappings:
+  identifier: "{{ .name }}"
+  metadata:
+    annotations: "{{ printf \"%s\" .name }}"
+    creationTimestamp: "{{ printf \"%s\" .name }}"
+    description: "{{ printf \"%s\" .name }}"
+    labels: "{{ printf \"%s\" .name }}"
+    links: "{{ printf \"%s\" .name }}"
+    name: "{{ printf \"%s\" .name }}"
+    namespace: "{{ printf \"%s\" .name }}"
+    tags: "{{ printf \"%s\" .name }}"
+    title: "{{ printf \"%s\" .name }}"
+    uid: "{{ printf \"%s\" .name }}"
+  spec:
+    key: "{{ .value }}"
+    otherKey: "{{ .otherValue | functionName }}"
