@@ -1,0 +1,24 @@
+apiVersion: console.mia-platform.eu/v1alpha1
+itemFamily: revisions
+type: revision
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s" .revision.name }}
+  metadata:
+    title: "{{ printf \"%s %s\" .project.name .revision.name }}"
+    labels: |-
+      {{ $labels := object "mia-platform.eu/part-of-project" .project._id -}}
+      {{- $labels | toJSON }}
+  spec: {}
+  extra:
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ printf "relationship-%s-%s-dependency" .project._id .revision.name }}
+      sourceRef:
+        apiVersion: "console.mia-platform.eu/v1alpha1"
+        family: "projects"
+        name: "{{ .project._id }}"
+      type: "dependency"
