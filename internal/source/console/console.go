@@ -27,6 +27,8 @@ const (
 	authHeaderName        = "X-Mia-Signature"
 	configurationResource = "configuration"
 	projectResource       = "project"
+	revisionResource      = "revision"
+	serviceResource       = "service"
 )
 
 var (
@@ -36,6 +38,8 @@ var (
 	ErrSignatureMismatch    = errors.New("webhook signature mismatch")
 	ErrRetrievingAssets     = errors.New("error retrieving assets")
 	ErrWebhookSecretMissing = errors.New("webhook secret not configured")
+
+	configurationSubResources = []string{revisionResource, serviceResource}
 )
 
 type webhookClient struct {
@@ -101,11 +105,10 @@ func (s *Source) listProjects(ctx context.Context) ([]source.Data, error) {
 	return dataToSync, nil
 }
 
-func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) {
+func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	dataToSync := []source.Data{}
-	var configurationList []map[string]any
+	dataToSync := make([]source.Data, 0)
 	projectList, err := s.cs.GetProjects(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
@@ -130,29 +133,52 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 
 			customRemoveFields(configuration)
 
-			configurationData := map[string]any{
-				"project": map[string]any{
-					"_id":       project["_id"],
-					"projectId": project["projectId"],
-					"name":      project["name"],
-					"tenantId":  project["tenantId"],
-				},
-				"revision": map[string]any{
-					"name": revision["name"],
-				},
-				"configuration": configuration,
+			for _, typeString := range subtypes {
+				switch typeString {
+				case revisionResource:
+					dataToSync = append(dataToSync, source.Data{
+						Type:      revisionResource,
+						Operation: source.DataOperationUpsert,
+						Time:      time.Now(),
+						Values: map[string]any{
+							"project": map[string]any{
+								"_id":       project["_id"],
+								"projectId": project["projectId"],
+								"name":      project["name"],
+								"tenantId":  project["tenantId"],
+							},
+							"revision": map[string]any{
+								"name": revision["name"],
+							},
+						},
+					})
+				case serviceResource:
+					if revision["name"].(string) != project["defaultBranch"].(string) {
+						continue
+					}
+
+					for _, service := range configuration["services"].(map[string]any) {
+						dataToSync = append(dataToSync, source.Data{
+							Type:      serviceResource,
+							Operation: source.DataOperationUpsert,
+							Time:      time.Now(),
+							Values: map[string]any{
+								"project": map[string]any{
+									"_id":       project["_id"],
+									"projectId": project["projectId"],
+									"name":      project["name"],
+									"tenantId":  project["tenantId"],
+								},
+								"revision": map[string]any{
+									"name": revision["name"],
+								},
+								"service": service.(map[string]any),
+							},
+						})
+					}
+				}
 			}
-			configurationList = append(configurationList, configurationData)
 		}
-	}
-	for _, fullConfiguration := range configurationList {
-		data := source.Data{
-			Type:      configurationResource,
-			Operation: source.DataOperationUpsert,
-			Values:    fullConfiguration,
-			Time:      time.Now(),
-		}
-		dataToSync = append(dataToSync, data)
 	}
 
 	return dataToSync, nil
@@ -175,30 +201,39 @@ func customRemoveFields(configuration map[string]any) {
 func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.Extra) ([]source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	dataToSync := []source.Data{}
-	typesToSyncSlice := slices.Sorted(maps.Keys(typesToSync))
+	dataToSync := make([]source.Data, 0)
+	typesToSyncSlice := make([]string, 0)
+	configurationsTypes := make([]string, 0)
+	for typeString := range typesToSync {
+		if slices.Contains(configurationSubResources, typeString) {
+			configurationsTypes = append(configurationsTypes, typeString)
+		} else {
+			typesToSyncSlice = append(typesToSyncSlice, typeString)
+		}
+	}
 
-	if slices.Contains(typesToSyncSlice, "project") {
-		log.Trace("fetching projects from console")
+	for _, typeString := range typesToSyncSlice {
+		log.Trace("fetching " + typeString + " from console")
 		projectsData, err := s.listProjects(ctx)
-		log.Trace("fetching projects from console done")
 		if err != nil {
 			return nil, err
 		}
 		dataToSync = append(dataToSync, projectsData...)
+		log.Trace("fetching " + typeString + " from console done")
 	}
 
-	if slices.Contains(typesToSyncSlice, "configuration") {
-		log.Trace("fetching configurations from console")
-		configurationsData, err := s.listConfigurations(ctx)
-		log.Trace("fetching configurations from console done")
-		if err != nil {
-			return nil, err
-		}
-		dataToSync = append(dataToSync, configurationsData...)
+	if len(configurationsTypes) == 0 {
+		return dataToSync, nil
 	}
 
-	return dataToSync, nil
+	log.Trace("fetching configurations from console")
+	configurationsData, err := s.listConfigurations(ctx, configurationsTypes)
+	log.Trace("fetching configurations from console done")
+	if err != nil {
+		return nil, err
+	}
+
+	return append(dataToSync, configurationsData...), nil
 }
 
 func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
