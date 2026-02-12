@@ -29,8 +29,7 @@ type Mapper interface {
 }
 
 const (
-	maxIdentifierLength     = 253
-	extraRelationshipFamily = "relationships"
+	maxIdentifierLength = 253
 )
 
 var (
@@ -38,9 +37,6 @@ var (
 	errParsingExtra      = errors.New("error parsing extra templates")
 
 	identifierRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
-	// TODO: remove validation logic from mapper and move it to config/mappings
-	validExtraItemFamilies = []string{extraRelationshipFamily}
-	validMetadata          = []string{"annotations", "creationTimestamp", "description", "labels", "links", "name", "namespace", "tags", "title", "uid"}
 )
 
 var _ Mapper = &internalMapper{}
@@ -96,16 +92,7 @@ func New(identifierTemplate string, metadataTemplates, specTemplates map[string]
 
 	metadataTemplate := compileMetadataTemplates(metadataTemplates, tmpl, &parsingErrs)
 
-	specTemplateString := new(strings.Builder)
-	specTemplateString.WriteString("---\n")
-	for key, value := range specTemplates {
-		specTemplateString.WriteString(key + ": " + value + "\n")
-	}
-
-	specTemplate, err := tmpl.New("spec").Parse(specTemplateString.String())
-	if err != nil {
-		parsingErrs = errors.Join(parsingErrs, err)
-	}
+	specTemplate := compileSpecTemplates(specTemplates, tmpl, &parsingErrs)
 
 	var extraMappings []ExtraMapping
 	if len(extraTemplates) > 0 {
@@ -128,11 +115,6 @@ func compileMetadataTemplates(metadataTemplates map[string]string, tmpl *templat
 	metadataTemplateString := new(strings.Builder)
 	metadataTemplateString.WriteString("---\n")
 	for key, value := range metadataTemplates {
-		// TODO: use a different approach for validating metadata fields, an idea could be to create a schema to validate the whole mapping file structure
-		if !slices.Contains(validMetadata, key) {
-			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid metadata field: %s", key))
-			continue
-		}
 		metadataTemplateString.WriteString(key + ": " + value + "\n")
 	}
 
@@ -143,18 +125,26 @@ func compileMetadataTemplates(metadataTemplates map[string]string, tmpl *templat
 	return metadataTemplate
 }
 
+func compileSpecTemplates(specTemplates map[string]string, tmpl *template.Template, parsingErrs *error) *template.Template {
+	specTemplateString := new(strings.Builder)
+	specTemplateString.WriteString("---\n")
+	for key, value := range specTemplates {
+		specTemplateString.WriteString(key + ": " + value + "\n")
+	}
+
+	specTemplate, err := tmpl.New("spec").Parse(specTemplateString.String())
+	if err != nil {
+		*parsingErrs = errors.Join(*parsingErrs, err)
+	}
+	return specTemplate
+}
+
 func compileExtraMappings(extraTemplates []config.Extra, tmpl *template.Template, parsingErrs *error) []ExtraMapping {
 	extraMappings := make([]ExtraMapping, 0, len(extraTemplates))
 	for _, extra := range extraTemplates {
 		apiVersion, _ := extra["apiVersion"].(string)
 		family, _ := extra["itemFamily"].(string)
-		if !IsExtraItemFamilyValid(family) {
-			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid extra item family: %s", family))
-			continue
-		}
-
 		deletePolicy, _ := extra["deletePolicy"].(string)
-
 		idStr, _ := extra["identifier"].(string)
 
 		idTmpl, err := tmpl.New("extra-id").Parse(idStr)
@@ -165,7 +155,7 @@ func compileExtraMappings(extraTemplates []config.Extra, tmpl *template.Template
 
 		bodyMap := make(map[string]any, len(extra))
 		for k, v := range extra {
-			if k == "itemFamily" || k == "identifier" || k == "apiVersion" || k == "deletePolicy" {
+			if slices.Contains(config.RequiredExtraFields, k) {
 				continue
 			}
 			bodyMap[k] = v
@@ -326,7 +316,7 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 }
 
 func enrichSpec(spec map[string]any, parentResourceInfo ParentItemInfo, itemFamily string) map[string]any {
-	if strings.EqualFold(itemFamily, extraRelationshipFamily) {
+	if strings.EqualFold(itemFamily, config.ExtraRelationshipFamily) {
 		spec = enrichRelationshipSpec(spec, parentResourceInfo)
 	}
 
@@ -342,12 +332,6 @@ func enrichRelationshipSpec(spec map[string]any, parentResourceInfo ParentItemIn
 	}
 
 	return spec
-}
-
-func IsExtraItemFamilyValid(itemFamily string) bool {
-	return slices.ContainsFunc(validExtraItemFamilies, func(s string) bool {
-		return strings.EqualFold(s, itemFamily)
-	})
 }
 
 // templateFunctions exposes the custom helpers added to every mapping template.

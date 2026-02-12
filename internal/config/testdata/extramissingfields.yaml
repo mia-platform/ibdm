@@ -4,8 +4,12 @@ itemFamily: configs
 syncable: true
 mappings:
   identifier: "{{ .name }}"
-  metadata:
-    notMetadata: "{{ .name }}"
   spec:
     key: "{{ .value }}"
     otherKey: "{{ .otherValue | functionName }}"
+  extra:
+    - apiVersion: group/v1
+      itemFamily: relationships
+      deletePolicy: "none"
+      identifier: "extra1"
+      type: "dependency"
