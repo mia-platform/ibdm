@@ -13,11 +13,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/source"
 	"github.com/mia-platform/ibdm/internal/source/console/service"
 )
+
+var (
+	testTime = time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)
+)
+
+func init() {
+	timeSource = func() time.Time {
+		return testTime
+	}
+}
 
 func TestSource_NewSource(t *testing.T) {
 	t.Run("fails when CONSOLE_WEBHOOK_PATH is missing", func(t *testing.T) {
@@ -367,6 +378,26 @@ func TestSource_listAssets(t *testing.T) {
 			"name": "r1",
 		}
 
+		expectedData := []source.Data{
+			{
+				Type:      projectResource,
+				Operation: source.DataOperationUpsert,
+				Time:      testTime,
+				Values: map[string]any{
+					"project": project1,
+				},
+			},
+			{
+				Type:      revisionResource,
+				Operation: source.DataOperationUpsert,
+				Time:      testTime,
+				Values: map[string]any{
+					"project":  project1,
+					"revision": revision1,
+				},
+			},
+		}
+
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			switch r.URL.Path {
@@ -397,52 +428,13 @@ func TestSource_listAssets(t *testing.T) {
 		require.NoError(t, err)
 
 		typesToSync := map[string]source.Extra{
-			"project":       {},
-			"configuration": {},
+			projectResource:  {},
+			revisionResource: {},
 		}
 
 		data, err := s.listAssets(ctx, typesToSync)
 		require.NoError(t, err)
-		require.Len(t, data, 2)
-
-		projectData := data[0]
-		require.Equal(t, "project", projectData.Type)
-		require.Equal(t, source.DataOperationUpsert, projectData.Operation)
-		require.WithinDuration(t, time.Now(), projectData.Time, 5*time.Second)
-
-		expectedProjectValues := map[string]any{
-			"project": map[string]any{
-				"_id":       "p1",
-				"projectId": "project-1",
-				"name":      "name",
-				"tenantId":  "tenant-1",
-			},
-		}
-		require.Equal(t, expectedProjectValues, projectData.Values)
-
-		configData := data[1]
-		require.Equal(t, "configuration", configData.Type)
-		require.Equal(t, source.DataOperationUpsert, configData.Operation)
-		require.WithinDuration(t, time.Now(), configData.Time, 5*time.Second)
-
-		expectedConfigValues := map[string]any{
-			"project": map[string]any{
-				"_id":       "p1",
-				"projectId": "project-1",
-				"name":      "name",
-				"tenantId":  "tenant-1",
-			},
-			"revision": map[string]any{
-				"name": "r1",
-			},
-			"configuration": map[string]any{
-				"key": "value",
-				"fastDataConfig": map[string]any{
-					"castFunctions": nil,
-				},
-			},
-		}
-		require.Equal(t, expectedConfigValues, configData.Values)
+		assert.Equal(t, expectedData, data)
 	})
 
 	t.Run("returns error when GetProjects fails", func(t *testing.T) {
@@ -458,7 +450,7 @@ func TestSource_listAssets(t *testing.T) {
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		typesToSync := map[string]source.Extra{"project": {}}
+		typesToSync := map[string]source.Extra{projectResource: {}}
 
 		_, err = s.listAssets(ctx, typesToSync)
 		require.ErrorIs(t, err, ErrRetrievingAssets)
@@ -484,7 +476,7 @@ func TestSource_listAssets(t *testing.T) {
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		typesToSync := map[string]source.Extra{"configuration": {}}
+		typesToSync := map[string]source.Extra{revisionResource: {}}
 
 		_, err = s.listAssets(ctx, typesToSync)
 		require.ErrorIs(t, err, ErrRetrievingAssets)
@@ -513,7 +505,7 @@ func TestSource_listAssets(t *testing.T) {
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		typesToSync := map[string]source.Extra{"configuration": {}}
+		typesToSync := map[string]source.Extra{serviceResource: {}}
 
 		_, err = s.listAssets(ctx, typesToSync)
 		require.ErrorIs(t, err, ErrRetrievingAssets)

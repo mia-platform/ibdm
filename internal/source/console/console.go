@@ -39,7 +39,8 @@ var (
 	ErrRetrievingAssets     = errors.New("error retrieving assets")
 	ErrWebhookSecretMissing = errors.New("webhook secret not configured")
 
-	configurationSubResources = []string{revisionResource, serviceResource}
+	configurationChainTypes = []string{projectResource, revisionResource, serviceResource}
+	timeSource              = time.Now
 )
 
 type webhookClient struct {
@@ -57,12 +58,12 @@ type Source struct {
 func NewSource() (*Source, error) {
 	consoleClient, err := newConsoleClient()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrSourceCreation, err.Error())
+		return nil, fmt.Errorf("%w: %w", ErrSourceCreation, err)
 	}
 
 	consoleService, err := service.NewConsoleService()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrSourceCreation, err.Error())
+		return nil, fmt.Errorf("%w: %w", ErrSourceCreation, err)
 	}
 
 	return &Source{
@@ -82,27 +83,39 @@ func newConsoleClient() (*webhookClient, error) {
 	}, nil
 }
 
-func (s *Source) listProjects(ctx context.Context) ([]source.Data, error) {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+	dataToSync, err := s.listAssets(ctx, typesToSync)
+	if err != nil {
+		return err
+	}
+
+	for _, data := range dataToSync {
+		results <- data
+	}
+
+	return nil
+}
+
+func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.Extra) ([]source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	dataToSync := []source.Data{}
-	projectList, err := s.cs.GetProjects(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
-	}
-	log.Trace("fetched projects", "count", len(projectList))
-
-	for _, project := range projectList {
-		data := source.Data{
-			Type:      "project",
-			Operation: source.DataOperationUpsert,
-			Values:    map[string]any{"project": project},
-			Time:      time.Now(),
+	confChainDataString := make([]string, 0)
+	for _, confChainType := range configurationChainTypes {
+		if _, found := typesToSync[confChainType]; found {
+			confChainDataString = append(confChainDataString, confChainType)
+			continue
 		}
-		dataToSync = append(dataToSync, data)
 	}
 
-	return dataToSync, nil
+	if len(confChainDataString) == 0 {
+		log.Debug("no known types found, end early")
+		return []source.Data{}, nil
+	}
+
+	log.Trace("fetching resources needed for configuration chain started", "types", confChainDataString)
+	configurationsData, err := s.listConfigurations(ctx, confChainDataString)
+	log.Trace("fetching resources needed for configuration chain done", "types", confChainDataString)
+	return configurationsData, err
 }
 
 func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]source.Data, error) {
@@ -110,13 +123,24 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 
 	dataToSync := make([]source.Data, 0)
 	projectList, err := s.cs.GetProjects(ctx)
+	syncProjects := slices.Contains(subtypes, projectResource)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+		return nil, fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 	}
+
 	log.Trace("fetched projects", "count", len(projectList))
 	for _, project := range projectList {
-		log.Trace("fetching revisions for project", "_id", project["_id"], "projectId", project["projectId"])
+		if syncProjects {
+			data := source.Data{
+				Type:      projectResource,
+				Operation: source.DataOperationUpsert,
+				Time:      timeSource(),
+				Values:    map[string]any{"project": project},
+			}
+			dataToSync = append(dataToSync, data)
+		}
 
+		log.Trace("fetching revisions for project", "_id", project["_id"], "projectId", project["projectId"])
 		revisions, err := s.cs.GetRevisions(ctx, project["_id"].(string))
 		if err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
@@ -139,7 +163,7 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 					dataToSync = append(dataToSync, source.Data{
 						Type:      revisionResource,
 						Operation: source.DataOperationUpsert,
-						Time:      time.Now(),
+						Time:      timeSource(),
 						Values: map[string]any{
 							"project": map[string]any{
 								"_id":       project["_id"],
@@ -161,7 +185,7 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 						dataToSync = append(dataToSync, source.Data{
 							Type:      serviceResource,
 							Operation: source.DataOperationUpsert,
-							Time:      time.Now(),
+							Time:      timeSource(),
 							Values: map[string]any{
 								"project": map[string]any{
 									"_id":       project["_id"],
@@ -196,55 +220,6 @@ func customRemoveFields(configuration map[string]any) {
 			bc["services"] = nil
 		}
 	}
-}
-
-func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.Extra) ([]source.Data, error) {
-	log := logger.FromContext(ctx).WithName(loggerName)
-
-	dataToSync := make([]source.Data, 0)
-	typesToSyncSlice := make([]string, 0)
-	configurationsTypes := make([]string, 0)
-	for typeString := range typesToSync {
-		if slices.Contains(configurationSubResources, typeString) {
-			configurationsTypes = append(configurationsTypes, typeString)
-		} else {
-			typesToSyncSlice = append(typesToSyncSlice, typeString)
-		}
-	}
-
-	for _, typeString := range typesToSyncSlice {
-		log.Trace("fetching " + typeString + " from console")
-		projectsData, err := s.listProjects(ctx)
-		if err != nil {
-			return nil, err
-		}
-		dataToSync = append(dataToSync, projectsData...)
-		log.Trace("fetching " + typeString + " from console done")
-	}
-
-	if len(configurationsTypes) == 0 {
-		return dataToSync, nil
-	}
-
-	log.Trace("fetching configurations from console")
-	configurationsData, err := s.listConfigurations(ctx, configurationsTypes)
-	log.Trace("fetching configurations from console done")
-	if err != nil {
-		return nil, err
-	}
-
-	return append(dataToSync, configurationsData...), nil
-}
-
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
-	dataToSync, err := s.listAssets(ctx, typesToSync)
-	if err != nil {
-		return err
-	}
-	for _, data := range dataToSync {
-		results <- data
-	}
-	return nil
 }
 
 func (s *Source) validateWebhookSecret() error {
