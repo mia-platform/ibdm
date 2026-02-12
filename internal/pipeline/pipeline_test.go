@@ -155,49 +155,49 @@ func TestStreamPipeline(t *testing.T) {
 		useExtra         bool
 		deletePolicy     string
 	}{
-		// "unsupported source error": {
-		// 	source: func(c chan<- struct{}) any {
-		// 		c <- struct{}{}
-		// 		return "not a valid source"
-		// 	},
-		// 	expectedErr: errors.ErrUnsupported,
-		// 	useExtra:    false,
-		// },
-		// "source return an error": {
-		// 	source: func(c chan<- struct{}) any {
-		// 		c <- struct{}{}
-		// 		return fakesource.NewFakeSourceWithError(t, assert.AnError)
-		// 	},
-		// 	expectedErr: assert.AnError,
-		// 	useExtra:    false,
-		// },
-		// "valid pipeline return mapped data": {
-		// 	source: func(c chan<- struct{}) any {
-		// 		return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
-		// 	},
-		// 	expectedData: []*destination.Data{
-		// 		{
-		// 			APIVersion: "v1",
-		// 			ItemFamily: "family",
-		// 			Name:       "item1",
-		// 			Metadata:   map[string]any{},
-		// 			Data: map[string]any{
-		// 				"field1": "value1",
-		// 				"field2": "value2",
-		// 			},
-		// 			OperationTime: "2024-06-01T12:00:00Z",
-		// 		},
-		// 	},
-		// 	expectedDeletion: []*destination.Data{
-		// 		{
-		// 			APIVersion:    "v2",
-		// 			ItemFamily:    "family2",
-		// 			Name:          "item2",
-		// 			OperationTime: "2024-06-01T12:00:00Z",
-		// 		},
-		// 	},
-		// 	useExtra: false,
-		// },
+		"unsupported source error": {
+			source: func(c chan<- struct{}) any {
+				c <- struct{}{}
+				return "not a valid source"
+			},
+			expectedErr: errors.ErrUnsupported,
+			useExtra:    false,
+		},
+		"source return an error": {
+			source: func(c chan<- struct{}) any {
+				c <- struct{}{}
+				return fakesource.NewFakeSourceWithError(t, assert.AnError)
+			},
+			expectedErr: assert.AnError,
+			useExtra:    false,
+		},
+		"valid pipeline return mapped data": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
+			},
+			expectedData: []*destination.Data{
+				{
+					APIVersion: "v1",
+					ItemFamily: "family",
+					Name:       "item1",
+					Metadata:   map[string]any{},
+					Data: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v2",
+					ItemFamily:    "family2",
+					Name:          "item2",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			useExtra: false,
+		},
 		"valid pipeline return mapped data with extra mappings": {
 			source: func(c chan<- struct{}) any {
 				return fakesource.NewFakeEventSource(t, []source.Data{type1, brokenType, unknownType, type2}, c)
@@ -244,28 +244,28 @@ func TestStreamPipeline(t *testing.T) {
 			},
 			useExtra: true,
 		},
-		// "valid pipeline return deletion with extra mappings delete cascade": {
-		// 	source: func(c chan<- struct{}) any {
-		// 		return fakesource.NewFakeEventSource(t, []source.Data{type1D, deleteExtra}, c)
-		// 	},
-		// 	expectedData: nil,
-		// 	expectedDeletion: []*destination.Data{
-		// 		{
-		// 			APIVersion:    "v1",
-		// 			ItemFamily:    "family",
-		// 			Name:          "item1",
-		// 			OperationTime: "2024-06-01T12:00:00Z",
-		// 		},
-		// 		{
-		// 			APIVersion:    "relationships/v1",
-		// 			ItemFamily:    "relationships",
-		// 			Name:          "relationship--value1--value2--dependency",
-		// 			OperationTime: "2024-06-01T12:00:00Z",
-		// 		},
-		// 	},
-		// 	useExtra:     true,
-		// 	deletePolicy: "cascade",
-		// },
+		"valid pipeline return deletion with extra mappings delete cascade": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeEventSource(t, []source.Data{type1D, deleteExtra}, c)
+			},
+			expectedData: nil,
+			expectedDeletion: []*destination.Data{
+				{
+					APIVersion:    "v1",
+					ItemFamily:    "family",
+					Name:          "item1",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion:    "relationships/v1",
+					ItemFamily:    "relationships",
+					Name:          "relationship--value1--value2--dependency",
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			useExtra:     true,
+			deletePolicy: "cascade",
+		},
 	}
 
 	for name, test := range testCases {
