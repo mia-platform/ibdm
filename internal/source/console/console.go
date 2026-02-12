@@ -118,6 +118,7 @@ func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.E
 	return configurationsData, err
 }
 
+//nolint:gocyclo
 func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
@@ -182,6 +183,17 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 					}
 
 					for _, service := range configuration["services"].(map[string]any) {
+						svc := service.(map[string]any)
+						svcType, typeFound := svc["type"]
+						advanced, advancedFound := svc["advanced"]
+						if !typeFound || !advancedFound {
+							continue
+						}
+
+						if svcType.(string) != "custom" || advanced.(bool) {
+							continue
+						}
+
 						dataToSync = append(dataToSync, source.Data{
 							Type:      serviceResource,
 							Operation: source.DataOperationUpsert,
@@ -196,7 +208,7 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 								"revision": map[string]any{
 									"name": revision["name"],
 								},
-								"service": service.(map[string]any),
+								"service": svc,
 							},
 						})
 					}
@@ -220,13 +232,6 @@ func customRemoveFields(configuration map[string]any) {
 			bc["services"] = nil
 		}
 	}
-}
-
-func (s *Source) validateWebhookSecret() error {
-	if s.c.config.WebhookSecret == "" {
-		return ErrWebhookSecretMissing
-	}
-	return nil
 }
 
 func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
@@ -266,6 +271,13 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 			return nil
 		},
 	}, nil
+}
+
+func (s *Source) validateWebhookSecret() error {
+	if s.c.config.WebhookSecret == "" {
+		return ErrWebhookSecretMissing
+	}
+	return nil
 }
 
 func doChain(ctx context.Context, event event, channel chan<- source.Data, cs *service.ConsoleService) error {

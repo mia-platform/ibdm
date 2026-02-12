@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -377,6 +378,16 @@ func TestSource_listAssets(t *testing.T) {
 		revision1 := map[string]any{
 			"name": "r1",
 		}
+		service1 := map[string]any{
+			"name":     "service-1",
+			"type":     "custom",
+			"advanced": false,
+		}
+
+		service2 := map[string]any{
+			"name":     "service-2",
+			"advanced": true,
+		}
 
 		expectedData := []source.Data{
 			{
@@ -384,7 +395,13 @@ func TestSource_listAssets(t *testing.T) {
 				Operation: source.DataOperationUpsert,
 				Time:      testTime,
 				Values: map[string]any{
-					"project": project1,
+					"project": map[string]any{
+						"_id":           "p1",
+						"projectId":     "project-1",
+						"name":          "name",
+						"tenantId":      "tenant-1",
+						"defaultBranch": "r1",
+					},
 				},
 			},
 			{
@@ -396,15 +413,25 @@ func TestSource_listAssets(t *testing.T) {
 					"revision": revision1,
 				},
 			},
+			{
+				Type:      serviceResource,
+				Operation: source.DataOperationUpsert,
+				Time:      testTime,
+				Values: map[string]any{
+					"project":  project1,
+					"revision": revision1,
+					"service":  service1,
+				},
+			},
 		}
 
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			switch r.URL.Path {
 			case "/projects/":
-				json.NewEncoder(w).Encode([]map[string]any{project1})
-			case "/projects/p1":
-				json.NewEncoder(w).Encode(project1)
+				projectResponse := maps.Clone(project1)
+				projectResponse["defaultBranch"] = "r1"
+				json.NewEncoder(w).Encode([]map[string]any{projectResponse})
 			case "/projects/p1/revisions":
 				json.NewEncoder(w).Encode([]map[string]any{revision1})
 			case "/projects/p1/revisions/r1/configuration":
@@ -412,6 +439,10 @@ func TestSource_listAssets(t *testing.T) {
 					"key": "value",
 					"fastDataConfig": map[string]any{
 						"castFunctions": "some-code",
+					},
+					"services": map[string]any{
+						"service-1": service1,
+						"service-2": service2,
 					},
 				})
 			default:
@@ -430,6 +461,7 @@ func TestSource_listAssets(t *testing.T) {
 		typesToSync := map[string]source.Extra{
 			projectResource:  {},
 			revisionResource: {},
+			serviceResource:  {},
 		}
 
 		data, err := s.listAssets(ctx, typesToSync)
