@@ -1,0 +1,39 @@
+apiVersion: console.mia-platform.eu/v1alpha1
+itemFamily: services
+type: service
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s-%s-%s" .project._id .revision.name .service.name }}
+  metadata:
+    title: "{{ printf \"%s\" .service.name }}"
+    labels: |-
+      {{ $labels := object "mia-platform.eu/part-of-project" .project._id -}}
+      {{- $labels | toJSON }}
+  spec:
+    projectUniqueId: "{{ .project._id }}"
+    projectId: "{{ get \"projectId\" .project \"\" | quote }}"
+    tenantId: "{{ .project.tenantId }}"
+    revisionName: "{{ .revision.name }}"
+    configuration: "{{ .service | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ printf "relationship-%s-%s-dependency" .project._id .revision.name }}
+      sourceRef:
+        apiVersion: "console.mia-platform.eu/v1alpha1"
+        family: "projects"
+        name: "{{ .project._id }}"
+      type: "dependency"
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ printf "relationship-%s-%s-dependency" .project._id .revision.name }}
+      sourceRef:
+        apiVersion: "console.mia-platform.eu/v1alpha1"
+        family: "revisions"
+        name: "{{ .revision.name }}"
+      type: "dependency"
