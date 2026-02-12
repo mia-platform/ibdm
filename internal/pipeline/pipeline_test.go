@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/destination"
 	fakedestination "github.com/mia-platform/ibdm/internal/destination/fake"
 	"github.com/mia-platform/ibdm/internal/mapper"
@@ -86,7 +87,7 @@ var (
 	}
 )
 
-func testMappers(tb testing.TB, extra []map[string]any) map[string]DataMapper {
+func testMappers(tb testing.TB, extra []config.Extra) map[string]DataMapper {
 	tb.Helper()
 
 	return map[string]DataMapper{
@@ -116,18 +117,18 @@ func testMappers(tb testing.TB, extra []map[string]any) map[string]DataMapper {
 	}
 }
 
-func getMappingsExtra(tb testing.TB, returnExtra bool, deletePolicy string) []map[string]any {
+func getMappingsExtra(tb testing.TB, returnExtra bool, deletePolicy string) []config.Extra {
 	tb.Helper()
 
 	if !returnExtra {
 		return nil
 	}
 
-	if deletePolicy != "" && deletePolicy != "none" && deletePolicy != "cascade" {
+	if deletePolicy == "" && deletePolicy != "none" && deletePolicy != "cascade" {
 		deletePolicy = "none"
 	}
 
-	extraDef := map[string]any{
+	extraDef := config.Extra{
 		"apiVersion":   "relationships/v1",
 		"itemFamily":   "relationships",
 		"deletePolicy": deletePolicy,
@@ -140,7 +141,7 @@ func getMappingsExtra(tb testing.TB, returnExtra bool, deletePolicy string) []ma
 		"type": "dependency",
 	}
 
-	return []map[string]any{extraDef}
+	return []config.Extra{extraDef}
 }
 
 func TestStreamPipeline(t *testing.T) {

@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mia-platform/ibdm/internal/config"
 )
 
 func TestNewMapper(t *testing.T) {
@@ -56,7 +58,7 @@ func TestNewMapper(t *testing.T) {
 				"key":      "name",
 				"otherKey": "{{ .otherKey | unknownFunc }}",
 			},
-			[]map[string]any{{
+			[]config.Extra{{
 				"key":      "name",
 				"otherKey": "{{ .otherKey | unknownFunc }}",
 			}})
@@ -78,7 +80,7 @@ func TestNewMapper(t *testing.T) {
 				"key":      "name",
 				"otherKey": "{{ .otherKey | trim }}",
 			},
-			[]map[string]any{{
+			[]config.Extra{{
 				"apiVersion":   "v1",
 				"itemFamily":   "relationships",
 				"deletePolicy": "recursive",
@@ -432,7 +434,7 @@ func TestIdentifierOnly(t *testing.T) {
 					"array":         "{{ .array | toJSON }}",
 					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
 				},
-					[]map[string]any{{
+					[]config.Extra{{
 						"apiVersion":   "v1",
 						"itemFamily":   "relationships",
 						"deletePolicy": "none",
@@ -456,7 +458,7 @@ func TestIdentifierOnly(t *testing.T) {
 					"array":         "{{ .array | toJSON }}",
 					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
 				},
-					[]map[string]any{{
+					[]config.Extra{{
 						"apiVersion":   "v1",
 						"itemFamily":   "relationships",
 						"deletePolicy": "cascade",
@@ -481,7 +483,7 @@ func TestIdentifierOnly(t *testing.T) {
 					"array":         "{{ .array | toJSON }}",
 					"combinedField": "{{ .name }}-{{ .otherKey.value }}",
 				},
-					[]map[string]any{{
+					[]config.Extra{{
 						"apiVersion":   "v1",
 						"itemFamily":   "relationships",
 						"deletePolicy": "cascade",

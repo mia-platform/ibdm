@@ -14,6 +14,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper/functions"
 )
 
@@ -28,20 +29,14 @@ type Mapper interface {
 }
 
 const (
-	maxIdentifierLength     = 253
-	extraRelationshipFamily = "relationships"
-	deletePolicyCascade     = "cascade"
-	deletePolicyNone        = "none"
+	maxIdentifierLength = 253
 )
 
 var (
 	errParsingSpecOutput = errors.New("error during casting to valid object")
 	errParsingExtra      = errors.New("error parsing extra templates")
 
-	identifierRegex        = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
-	validExtraItemFamilies = []string{extraRelationshipFamily}
-	validDeletePolicies    = []string{deletePolicyNone, deletePolicyCascade}
-	validMetadata          = []string{"annotations", "creationTimestamp", "description", "labels", "links", "name", "namespace", "tags", "title", "uid"}
+	identifierRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 )
 
 var _ Mapper = &internalMapper{}
@@ -87,7 +82,7 @@ type ParentItemInfo struct {
 }
 
 // New constructs a Mapper using the provided identifier template and spec templates.
-func New(identifierTemplate string, metadataTemplates, specTemplates map[string]string, extraTemplates []map[string]any) (Mapper, error) {
+func New(identifierTemplate string, metadataTemplates, specTemplates map[string]string, extraTemplates []config.Extra) (Mapper, error) {
 	var parsingErrs error
 	tmpl := template.New("main").Option("missingkey=error").Funcs(templateFunctions())
 	idTemplate, err := tmpl.New("identifier").Parse(identifierTemplate)
@@ -97,16 +92,7 @@ func New(identifierTemplate string, metadataTemplates, specTemplates map[string]
 
 	metadataTemplate := compileMetadataTemplates(metadataTemplates, tmpl, &parsingErrs)
 
-	specTemplateString := new(strings.Builder)
-	specTemplateString.WriteString("---\n")
-	for key, value := range specTemplates {
-		specTemplateString.WriteString(key + ": " + value + "\n")
-	}
-
-	specTemplate, err := tmpl.New("spec").Parse(specTemplateString.String())
-	if err != nil {
-		parsingErrs = errors.Join(parsingErrs, err)
-	}
+	specTemplate := compileSpecTemplates(specTemplates, tmpl, &parsingErrs)
 
 	var extraMappings []ExtraMapping
 	if len(extraTemplates) > 0 {
@@ -129,11 +115,6 @@ func compileMetadataTemplates(metadataTemplates map[string]string, tmpl *templat
 	metadataTemplateString := new(strings.Builder)
 	metadataTemplateString.WriteString("---\n")
 	for key, value := range metadataTemplates {
-		// TODO: use a different approach for validating metadata fields, an idea could be to create a schema to validate the whole mapping file structure
-		if !slices.Contains(validMetadata, key) {
-			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid metadata field: %s", key))
-			continue
-		}
 		metadataTemplateString.WriteString(key + ": " + value + "\n")
 	}
 
@@ -144,25 +125,26 @@ func compileMetadataTemplates(metadataTemplates map[string]string, tmpl *templat
 	return metadataTemplate
 }
 
-func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Template, parsingErrs *error) []ExtraMapping {
+func compileSpecTemplates(specTemplates map[string]string, tmpl *template.Template, parsingErrs *error) *template.Template {
+	specTemplateString := new(strings.Builder)
+	specTemplateString.WriteString("---\n")
+	for key, value := range specTemplates {
+		specTemplateString.WriteString(key + ": " + value + "\n")
+	}
+
+	specTemplate, err := tmpl.New("spec").Parse(specTemplateString.String())
+	if err != nil {
+		*parsingErrs = errors.Join(*parsingErrs, err)
+	}
+	return specTemplate
+}
+
+func compileExtraMappings(extraTemplates []config.Extra, tmpl *template.Template, parsingErrs *error) []ExtraMapping {
 	extraMappings := make([]ExtraMapping, 0, len(extraTemplates))
 	for _, extra := range extraTemplates {
 		apiVersion, _ := extra["apiVersion"].(string)
 		family, _ := extra["itemFamily"].(string)
-		if !IsExtraItemFamilyValid(family) {
-			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid extra item family: %s", family))
-			continue
-		}
-
 		deletePolicy, _ := extra["deletePolicy"].(string)
-		if len(deletePolicy) > 0 && !slices.Contains(validDeletePolicies, deletePolicy) {
-			*parsingErrs = errors.Join(*parsingErrs, fmt.Errorf("invalid delete policy: %s", deletePolicy))
-			continue
-		}
-		if deletePolicy == "" {
-			deletePolicy = deletePolicyNone
-		}
-
 		idStr, _ := extra["identifier"].(string)
 
 		idTmpl, err := tmpl.New("extra-id").Parse(idStr)
@@ -173,7 +155,7 @@ func compileExtraMappings(extraTemplates []map[string]any, tmpl *template.Templa
 
 		bodyMap := make(map[string]any, len(extra))
 		for k, v := range extra {
-			if k == "itemFamily" || k == "identifier" || k == "apiVersion" || k == "deletePolicy" {
+			if slices.Contains(config.RequiredExtraFields, k) {
 				continue
 			}
 			bodyMap[k] = v
@@ -246,7 +228,7 @@ func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, [
 	extras := make([]ExtraMappedData, 0, len(m.extraMappings))
 
 	for _, extraMapping := range m.extraMappings {
-		if extraMapping.DeletePolicy == deletePolicyNone {
+		if extraMapping.DeletePolicy == config.DeletePolicyNone {
 			continue
 		}
 
@@ -334,7 +316,7 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 }
 
 func enrichSpec(spec map[string]any, parentResourceInfo ParentItemInfo, itemFamily string) map[string]any {
-	if strings.EqualFold(itemFamily, extraRelationshipFamily) {
+	if strings.EqualFold(itemFamily, config.ExtraRelationshipFamily) {
 		spec = enrichRelationshipSpec(spec, parentResourceInfo)
 	}
 
@@ -350,12 +332,6 @@ func enrichRelationshipSpec(spec map[string]any, parentResourceInfo ParentItemIn
 	}
 
 	return spec
-}
-
-func IsExtraItemFamilyValid(itemFamily string) bool {
-	return slices.ContainsFunc(validExtraItemFamilies, func(s string) bool {
-		return strings.EqualFold(s, itemFamily)
-	})
 }
 
 // templateFunctions exposes the custom helpers added to every mapping template.

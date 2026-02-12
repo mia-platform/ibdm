@@ -4,6 +4,7 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,9 +14,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	DeletePolicyCascade = "cascade"
+	DeletePolicyNone    = "none"
+
+	ExtraRelationshipFamily = "relationships"
+)
+
 var (
 	// ErrParsing reports failures that occur while decoding mapping files.
 	ErrParsing = errors.New("error parsing")
+
+	RequiredExtraFields = []string{"apiVersion", "itemFamily", "deletePolicy", "identifier"}
 )
 
 // MappingConfig holds the configuration for mapping rules.
@@ -31,9 +41,96 @@ type MappingConfig struct {
 // Mappings holds the identifier and specification templates for mapping rules.
 type Mappings struct {
 	Identifier string            `json:"identifier" yaml:"identifier"`
-	Metadata   map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Metadata   MetadataMapping   `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Spec       map[string]string `json:"spec" yaml:"spec"`
-	Extra      []map[string]any  `json:"extra,omitempty" yaml:"extra,omitempty"`
+	Extra      []Extra           `json:"extra,omitempty" yaml:"extra,omitempty"`
+}
+
+type MetadataMapping map[string]string
+
+type MetadataTemplate struct {
+	Annotations       string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	CreationTimestamp string `json:"creationTimestamp,omitempty" yaml:"creationTimestamp,omitempty"`
+	Description       string `json:"description,omitempty" yaml:"description,omitempty"`
+	Labels            string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Links             string `json:"links,omitempty" yaml:"links,omitempty"`
+	Name              string `json:"name,omitempty" yaml:"name,omitempty"`
+	Namespace         string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+	Tags              string `json:"tags,omitempty" yaml:"tags,omitempty"`
+	Title             string `json:"title,omitempty" yaml:"title,omitempty"`
+	UID               string `json:"uid,omitempty" yaml:"uid,omitempty"`
+}
+
+// UnmarshalYAML for special handling of the 'extra' field in mapping configurations.
+// It validates the presence and correctness of required fields.
+func (mm *MetadataMapping) UnmarshalYAML(value *yaml.Node) error {
+	var original MetadataTemplate
+	if err := value.Decode(&original); err != nil {
+		return err
+	}
+
+	raw, _ := json.Marshal(original)
+
+	var mappings MetadataMapping
+	_ = json.Unmarshal(raw, &mappings)
+	*mm = mappings
+
+	return nil
+}
+
+type Extra map[string]any
+
+func validateExtra(extraMap map[string]any) (map[string]any, error) {
+	errorsList := []string{}
+
+	for _, key := range RequiredExtraFields {
+		if value, ok := extraMap[key].(string); !ok || value == "" {
+			errorsList = append(errorsList, fmt.Sprintf("missing field '%s' in extra mapping", key))
+		}
+	}
+
+	if deletePolicy, ok := extraMap["deletePolicy"].(string); !ok || ok &&
+		deletePolicy != DeletePolicyNone &&
+		deletePolicy != DeletePolicyCascade {
+		errorsList = append(errorsList, "unknown value 'deletePolicy' in extra mapping")
+	}
+
+	itemFamily, ok := extraMap["itemFamily"].(string)
+
+	if !ok || ok &&
+		itemFamily != ExtraRelationshipFamily {
+		errorsList = append(errorsList, "unknown value 'itemFamily' in extra mapping")
+	}
+
+	if itemFamily == ExtraRelationshipFamily {
+		_, ok := extraMap["sourceRef"].(map[string]any)
+		if !ok {
+			errorsList = append(errorsList, "missing or invalid 'sourceRef' for relationship extra mapping")
+		}
+	}
+
+	if len(errorsList) > 0 {
+		return nil, fmt.Errorf("invalid extra mapping: %s", strings.Join(errorsList, "; "))
+	}
+
+	return extraMap, nil
+}
+
+// UnmarshalYAML for special handling of the 'extra' field in mapping configurations.
+// It validates the presence and correctness of required fields.
+func (e *Extra) UnmarshalYAML(value *yaml.Node) error {
+	var extraMap map[string]any
+	if err := value.Decode(&extraMap); err != nil {
+		return err
+	}
+
+	extraMap, err := validateExtra(extraMap)
+	if err != nil {
+		return err
+	}
+
+	*e = extraMap
+	return nil
 }
 
 // NewMappingConfigsFromPath parses the file or directory at path and returns any mapping

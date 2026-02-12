@@ -1,0 +1,11 @@
+type: yaml
+apiVersion: group/v1
+itemFamily: configs
+syncable: true
+mappings:
+  identifier: "{{ .name }}"
+  metadata:
+    notMetadata: "{{ .name }}"
+  spec:
+    key: "{{ .value }}"
+    otherKey: "{{ .otherValue | functionName }}"
