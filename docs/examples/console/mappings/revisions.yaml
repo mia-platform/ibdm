@@ -4,9 +4,9 @@ type: revision
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s" .revision.name }}
+    {{ printf "%s-%s" .project._id .revision.name }}
   metadata:
-    title: "{{ printf \"%s %s\" .project.name .revision.name }}"
+    title: "{{ printf \"%s\" .revision.name }}"
     labels: |-
       {{ $labels := object "mia-platform.eu/part-of-project" .project._id -}}
       {{- $labels | toJSON }}
