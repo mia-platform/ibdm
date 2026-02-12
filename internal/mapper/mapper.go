@@ -147,7 +147,14 @@ func compileExtraMappings(extraTemplates []config.Extra, tmpl *template.Template
 		deletePolicy, _ := extra["deletePolicy"].(string)
 		idStr, _ := extra["identifier"].(string)
 
-		idTmpl, err := tmpl.New("extra-id").Parse(idStr)
+		// Clone the base template set to avoid name collisions across extras.
+		extraTmpl, err := tmpl.Clone()
+		if err != nil {
+			*parsingErrs = errors.Join(*parsingErrs, err)
+			continue
+		}
+
+		idTmpl, err := extraTmpl.New("extra-id").Parse(idStr)
 		if err != nil {
 			*parsingErrs = errors.Join(*parsingErrs, err)
 			continue
@@ -167,7 +174,7 @@ func compileExtraMappings(extraTemplates []config.Extra, tmpl *template.Template
 			continue
 		}
 
-		bodyTmpl, err := tmpl.New("extra-body").Parse(string(bodyBytes))
+		bodyTmpl, err := extraTmpl.New("extra-body").Parse(string(bodyBytes))
 		if err != nil {
 			*parsingErrs = errors.Join(*parsingErrs, err)
 			continue
