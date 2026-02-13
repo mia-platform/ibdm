@@ -223,6 +223,7 @@ func buildProjectData(project map[string]any) map[string]any {
 		"projectId": project["projectId"],
 		"name":      project["name"],
 		"tenantId":  project["tenantId"],
+		"info":      project["info"],
 	}
 }
 

@@ -211,6 +211,9 @@ func Test_DoChain(t *testing.T) {
 						"name":          "name",
 						"defaultBranch": "r1",
 						"tenantId":      "",
+						"info": map[string]any{
+							"teamContact": "contact",
+						},
 					})
 				case "/projects/p1/revisions/r1/configuration":
 					json.NewEncoder(w).Encode(map[string]any{
@@ -239,6 +242,9 @@ func Test_DoChain(t *testing.T) {
 							"projectId": "projectId",
 							"name":      "name",
 							"tenantId":  "",
+							"info": map[string]any{
+								"teamContact": "contact",
+							},
 						},
 						"revision": map[string]any{
 							"name": "r1",
@@ -255,6 +261,87 @@ func Test_DoChain(t *testing.T) {
 							"projectId": "projectId",
 							"name":      "name",
 							"tenantId":  "",
+							"info": map[string]any{
+								"teamContact": "contact",
+							},
+						},
+						"revision": map[string]any{
+							"name": "r1",
+						},
+						"service": map[string]any{
+							"name":     "service-1",
+							"type":     "custom",
+							"advanced": false,
+						},
+					},
+				},
+			},
+		},
+		"configuration event no project info": {
+			event: event{
+				EventName:      "configuration_created",
+				EventTimestamp: 1672531200000, // 2023-01-01 00:00:00 UTC
+				Payload: map[string]any{
+					"projectId":    "p1",
+					"revisionName": "r1",
+				},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/projects/p1":
+					json.NewEncoder(w).Encode(map[string]any{
+						"_id":           "p1",
+						"projectId":     "projectId",
+						"name":          "name",
+						"defaultBranch": "r1",
+						"tenantId":      "",
+						"info":          nil,
+					})
+				case "/projects/p1/revisions/r1/configuration":
+					json.NewEncoder(w).Encode(map[string]any{
+						"key": "value",
+						"services": map[string]any{
+							"service-1": map[string]any{
+								"name":     "service-1",
+								"type":     "custom",
+								"advanced": false,
+							},
+						},
+					})
+				default:
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+			},
+			expectedData: []source.Data{
+				{
+					Type:      revisionResource,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Unix(1672531200, 0),
+					Values: map[string]any{
+						"project": map[string]any{
+							"_id":       "p1",
+							"projectId": "projectId",
+							"name":      "name",
+							"tenantId":  "",
+							"info":      nil,
+						},
+						"revision": map[string]any{
+							"name": "r1",
+						},
+					},
+				},
+				{
+					Type:      serviceResource,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Unix(1672531200, 0),
+					Values: map[string]any{
+						"project": map[string]any{
+							"_id":       "p1",
+							"projectId": "projectId",
+							"name":      "name",
+							"tenantId":  "",
+							"info":      nil,
 						},
 						"revision": map[string]any{
 							"name": "r1",
@@ -373,6 +460,9 @@ func TestSource_listAssets(t *testing.T) {
 			"projectId": "project-1",
 			"name":      "name",
 			"tenantId":  "tenant-1",
+			"info": map[string]any{
+				"teamContact": "contact",
+			},
 		}
 
 		revision1 := map[string]any{
@@ -401,6 +491,9 @@ func TestSource_listAssets(t *testing.T) {
 						"name":          "name",
 						"tenantId":      "tenant-1",
 						"defaultBranch": "r1",
+						"info": map[string]any{
+							"teamContact": "contact",
+						},
 					},
 				},
 			},
