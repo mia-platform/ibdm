@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: revisions.console.mia-platform.eu
+spec:
+  group: console.mia-platform.eu
+  names:
+    kind: Revision
+    plural: revisions
+    displayPlural: Revisions
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                additionalProperties: false
+      served: true
+      storage: true

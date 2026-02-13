@@ -2,15 +2,21 @@ version: "0.2"
 language: en,en-GB,en-US
 useGitignore: true
 allowCompoundWords: true
+ignoreRegExpList:
+  - "import\\s*\\((.|[\r\n])*?\\)"
+  - "import\\s*.*\".*?\""
+  - "//\\s*go:generate.*"
+  - "//\\s*nolint:.*"
 words:
   - anchore
   - buildx
-  - gopath
-  - gsrv
+  - contoso
+  - diber
+  - fabrikam
+  - golangci
   - healthz
   - ibdm
   - itds
-  - nolint
   - postgresqldb
   - postgresqldbs
   - syft
@@ -27,22 +33,15 @@ ignoreWords:
   - azeventhubs
   - azidentity
   - azsystemevents
-  - caarlos
-  - contoso
-  - diber
   - errln
-  - fabrikam
   - fakeazcore
   - goarch
   - goarm
   - gobin
-  - gofiber
-  - golangci
   - gomod
-  - goos
+  - gopath
   - hclog
   - pubsubpb
-  - stretchr
   - structpb
   - sysdiglabs
   - vtpm

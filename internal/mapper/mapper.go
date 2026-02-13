@@ -43,11 +43,12 @@ var _ Mapper = &internalMapper{}
 
 // ExtraMapping defines a pre-compiled template for an extra item.
 type ExtraMapping struct {
-	APIVersion   string
-	ItemFamily   string
-	DeletePolicy string
-	IDTemplate   *template.Template
-	BodyTemplate *template.Template
+	APIVersion       string
+	ItemFamily       string
+	DeletePolicy     string
+	CreateIfTemplate *template.Template
+	IDTemplate       *template.Template
+	BodyTemplate     *template.Template
 }
 
 // internalMapper is the default Mapper implementation backed by text/template.
@@ -67,11 +68,10 @@ type MappedData struct {
 
 // ExtraMappedData wraps the identifier and rendered spec produced by a Mapper.
 type ExtraMappedData struct {
-	APIVersion   string
-	ItemFamily   string
-	Identifier   string
-	DeletePolicy string
-	Spec         map[string]any
+	APIVersion string
+	ItemFamily string
+	Identifier string
+	Spec       map[string]any
 }
 
 // ParentItemInfo holds metadata about the parent item for relationship extra mappings.
@@ -142,12 +142,29 @@ func compileSpecTemplates(specTemplates map[string]string, tmpl *template.Templa
 func compileExtraMappings(extraTemplates []config.Extra, tmpl *template.Template, parsingErrs *error) []ExtraMapping {
 	extraMappings := make([]ExtraMapping, 0, len(extraTemplates))
 	for _, extra := range extraTemplates {
+		// Clone the base template set to avoid name collisions across extras.
+		extraTmpl, err := tmpl.Clone()
+		if err != nil {
+			*parsingErrs = errors.Join(*parsingErrs, err)
+			continue
+		}
+
 		apiVersion, _ := extra["apiVersion"].(string)
 		family, _ := extra["itemFamily"].(string)
 		deletePolicy, _ := extra["deletePolicy"].(string)
 		idStr, _ := extra["identifier"].(string)
+		createIfStr, ok := extra["createIf"].(string)
 
-		idTmpl, err := tmpl.New("extra-id").Parse(idStr)
+		var createIfTmpl *template.Template
+		if ok && strings.TrimSpace(createIfStr) != "" {
+			createIfTmpl, err = extraTmpl.New("extra-createIf").Parse(createIfStr)
+			if err != nil {
+				*parsingErrs = errors.Join(*parsingErrs, err)
+				continue
+			}
+		}
+
+		idTmpl, err := extraTmpl.New("extra-id").Parse(idStr)
 		if err != nil {
 			*parsingErrs = errors.Join(*parsingErrs, err)
 			continue
@@ -155,7 +172,7 @@ func compileExtraMappings(extraTemplates []config.Extra, tmpl *template.Template
 
 		bodyMap := make(map[string]any, len(extra))
 		for k, v := range extra {
-			if slices.Contains(config.RequiredExtraFields, k) {
+			if slices.Contains(config.RequiredExtraFields, k) || k == "createIf" {
 				continue
 			}
 			bodyMap[k] = v
@@ -167,18 +184,19 @@ func compileExtraMappings(extraTemplates []config.Extra, tmpl *template.Template
 			continue
 		}
 
-		bodyTmpl, err := tmpl.New("extra-body").Parse(string(bodyBytes))
+		bodyTmpl, err := extraTmpl.New("extra-body").Parse(string(bodyBytes))
 		if err != nil {
 			*parsingErrs = errors.Join(*parsingErrs, err)
 			continue
 		}
 
 		extraMappings = append(extraMappings, ExtraMapping{
-			APIVersion:   apiVersion,
-			ItemFamily:   family,
-			DeletePolicy: deletePolicy,
-			IDTemplate:   idTmpl,
-			BodyTemplate: bodyTmpl,
+			APIVersion:       apiVersion,
+			ItemFamily:       family,
+			DeletePolicy:     deletePolicy,
+			CreateIfTemplate: createIfTmpl,
+			IDTemplate:       idTmpl,
+			BodyTemplate:     bodyTmpl,
 		})
 	}
 	return extraMappings
@@ -278,11 +296,37 @@ func executeTemplatesMap(templates *template.Template, templateName string, data
 	return output, nil
 }
 
+func executeExtraCreateIfTemplate(data map[string]any, extraMapping ExtraMapping) (bool, error) {
+	// Generate CreateIf
+	var createIfBuf bytes.Buffer
+	if err := extraMapping.CreateIfTemplate.Execute(&createIfBuf, data); err != nil {
+		return false, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+	}
+
+	// Unmarshal the executed YAML back into a map
+	var createIf bool
+	if err := yaml.Unmarshal(createIfBuf.Bytes(), &createIf); err != nil {
+		return false, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+	}
+	return createIf, nil
+}
+
 // executeExtraMappings renders the pre-compiled extra templates.
 func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, parentResourceInfo ParentItemInfo) ([]ExtraMappedData, error) {
 	output := make([]ExtraMappedData, 0, len(extraMappings))
 
 	for _, extraMapping := range extraMappings {
+		if extraMapping.CreateIfTemplate != nil {
+			createIf, err := executeExtraCreateIfTemplate(data, extraMapping)
+			if err != nil {
+				return nil, err
+			}
+
+			if !createIf {
+				continue
+			}
+		}
+
 		// Generate Identifier
 		identifier, err := executeIdentifierTemplate(extraMapping.IDTemplate, "extra-id", data)
 		if err != nil {

@@ -11,10 +11,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mia-platform/ibdm/internal/logger"
@@ -27,6 +27,8 @@ const (
 	authHeaderName        = "X-Mia-Signature"
 	configurationResource = "configuration"
 	projectResource       = "project"
+	revisionResource      = "revision"
+	serviceResource       = "service"
 )
 
 var (
@@ -36,8 +38,14 @@ var (
 	ErrSignatureMismatch    = errors.New("webhook signature mismatch")
 	ErrRetrievingAssets     = errors.New("error retrieving assets")
 	ErrWebhookSecretMissing = errors.New("webhook secret not configured")
+
+	configurationChainTypes       = []string{projectResource, revisionResource, serviceResource}
+	configurationChainTypesStream = []string{revisionResource, serviceResource}
+	timeSource                    = time.Now
 )
 
+// webhookClient wraps the webhook configuration needed to receive and
+// validate incoming Console webhook requests.
 type webhookClient struct {
 	config webhookConfig
 }
@@ -45,75 +53,116 @@ type webhookClient struct {
 var _ source.WebhookSource = &Source{}
 var _ source.SyncableSource = &Source{}
 
+// Source implements [source.WebhookSource] and [source.SyncableSource] for the
+// Mia Platform Console. It can both poll all assets via the Console API and
+// receive real-time mutations through a signed webhook.
 type Source struct {
 	c  *webhookClient
 	cs *service.ConsoleService
+
+	syncLock sync.Mutex
 }
 
+// NewSource constructs a [Source] by reading its configuration from environment
+// variables and initialising the underlying Console API client. It returns
+// [ErrSourceCreation] if either the webhook config or the API client cannot be
+// created.
 func NewSource() (*Source, error) {
-	consoleClient, err := newConsoleClient()
+	config, err := loadConfigFromEnv()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrSourceCreation, err.Error())
+		return nil, fmt.Errorf("%w: %w", ErrSourceCreation, err)
 	}
 
-	consoleService, err := service.NewConsoleService()
+	cs, err := service.NewConsoleService()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrSourceCreation, err.Error())
+		return nil, fmt.Errorf("%w: %w", ErrSourceCreation, err)
 	}
 
 	return &Source{
-		c:  consoleClient,
-		cs: consoleService,
+		c:  &webhookClient{config: *config},
+		cs: cs,
 	}, nil
 }
 
-func newConsoleClient() (*webhookClient, error) {
-	config, err := loadConfigFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	return &webhookClient{
-		config: *config,
-	}, nil
-}
-
-func (s *Source) listProjects(ctx context.Context) ([]source.Data, error) {
+// StartSyncProcess performs a full synchronisation of the requested resource
+// types by listing all matching assets from the Console API and sending them to
+// results. It blocks until every item has been written to the channel.
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
-
-	dataToSync := []source.Data{}
-	projectList, err := s.cs.GetProjects(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+	if !s.syncLock.TryLock() {
+		log.Debug("sync process already running")
+		return nil
 	}
-	log.Trace("fetched projects", "count", len(projectList))
 
-	for _, project := range projectList {
-		data := source.Data{
-			Type:      "project",
-			Operation: source.DataOperationUpsert,
-			Values:    map[string]any{"project": project},
-			Time:      time.Now(),
+	dataToSync, err := s.listAssets(ctx, typesToSync)
+	if err != nil {
+		return err
+	}
+
+	for _, data := range dataToSync {
+		results <- data
+	}
+
+	return nil
+}
+
+// filterTypes returns the subset of candidates that are present as keys in
+// types, preserving the original ordering of candidates.
+func filterTypes(candidates []string, types map[string]source.Extra) []string {
+	var result []string
+	for _, t := range candidates {
+		if _, ok := types[t]; ok {
+			result = append(result, t)
 		}
-		dataToSync = append(dataToSync, data)
 	}
-
-	return dataToSync, nil
+	return result
 }
 
-func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) {
+// listAssets resolves the requested typesToSync against the known configuration
+// chain types and delegates to listConfigurations. It returns early with an
+// empty slice when none of the requested types are relevant.
+func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.Extra) ([]source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	dataToSync := []source.Data{}
-	var configurationList []map[string]any
-	projectList, err := s.cs.GetProjects(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+	subtypes := filterTypes(configurationChainTypes, typesToSync)
+	if len(subtypes) == 0 {
+		log.Debug("no known types found, end early")
+		return []source.Data{}, nil
 	}
-	log.Trace("fetched projects", "count", len(projectList))
-	for _, project := range projectList {
-		log.Trace("fetching revisions for project", "_id", project["_id"], "projectId", project["projectId"])
 
+	log.Trace("fetching resources needed for configuration chain started", "types", subtypes)
+	data, err := s.listConfigurations(ctx, subtypes)
+	log.Trace("fetching resources needed for configuration chain done", "types", subtypes)
+	return data, err
+}
+
+// listConfigurations fetches all projects from the Console API and, for each
+// project, retrieves its revisions and configurations. It emits [source.Data]
+// entries for every requested subtype (project, revision, service). Services
+// are only emitted for the project's default branch.
+func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]source.Data, error) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	syncProjects := slices.Contains(subtypes, projectResource)
+	projects, err := s.cs.GetProjects(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+	}
+
+	var result []source.Data
+	log.Trace("fetched projects", "count", len(projects))
+
+	for _, project := range projects {
+		if syncProjects {
+			result = append(result, source.Data{
+				Type:      projectResource,
+				Operation: source.DataOperationUpsert,
+				Time:      timeSource(),
+				Values:    map[string]any{"project": project},
+			})
+		}
+
+		log.Trace("fetching revisions for project", "_id", project["_id"], "projectId", project["projectId"])
 		revisions, err := s.cs.GetRevisions(ctx, project["_id"].(string))
 		if err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
@@ -121,50 +170,44 @@ func (s *Source) listConfigurations(ctx context.Context) ([]source.Data, error) 
 		log.Trace("fetched revisions", "count", len(revisions), "_id", project["_id"], "projectId", project["projectId"])
 
 		for _, revision := range revisions {
-			log.Trace("fetching configuration for project", "_id", project["_id"], "projectId", project["projectId"], "revisionName", revision["name"])
+			revName := revision["name"].(string)
+			log.Trace("fetching configuration for project", "_id", project["_id"], "projectId", project["projectId"], "revisionName", revName)
 
-			configuration, err := s.cs.GetConfiguration(ctx, project["_id"].(string), revision["name"].(string))
+			configuration, err := s.cs.GetConfiguration(ctx, project["_id"].(string), revName)
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
 			}
 
 			customRemoveFields(configuration)
 
-			configurationData := map[string]any{
-				"project": map[string]any{
-					"_id":       project["_id"],
-					"projectId": project["projectId"],
-					"name":      project["name"],
-					"tenantId":  project["tenantId"],
-				},
-				"revision": map[string]any{
-					"name": revision["name"],
-				},
-				"configuration": configuration,
+			for _, typeString := range subtypes {
+				switch typeString {
+				case revisionResource:
+					result = append(result, createRevisionData(project, revName, timeSource()))
+				case serviceResource:
+					if revName != project["defaultBranch"].(string) {
+						continue
+					}
+					for _, svc := range configuration["services"].(map[string]any) {
+						svcMap := svc.(map[string]any)
+						if isServiceValid(svcMap) {
+							result = append(result, createServiceData(project, revName, svcMap, timeSource()))
+						}
+					}
+				}
 			}
-			configurationList = append(configurationList, configurationData)
 		}
-	}
-	for _, fullConfiguration := range configurationList {
-		data := source.Data{
-			Type:      configurationResource,
-			Operation: source.DataOperationUpsert,
-			Values:    fullConfiguration,
-			Time:      time.Now(),
-		}
-		dataToSync = append(dataToSync, data)
 	}
 
-	return dataToSync, nil
+	return result, nil
 }
 
+// customRemoveFields strips heavy or irrelevant fields from a raw
+// configuration map in-place to reduce downstream payload size.
 func customRemoveFields(configuration map[string]any) {
-	// Remove castFunctions from fastDataConfig to reduce payload size
 	if fdConfig, ok := configuration["fastDataConfig"].(map[string]any); ok {
 		fdConfig["castFunctions"] = nil
 	}
-
-	// Remove castFunctions from fastDataConfig to reduce payload size
 	if plugin, ok := configuration["microfrontendPluginsConfig"].(map[string]any); ok {
 		if bc, ok := plugin["backofficeConfigurations"].(map[string]any); ok {
 			bc["services"] = nil
@@ -172,58 +215,79 @@ func customRemoveFields(configuration map[string]any) {
 	}
 }
 
-func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.Extra) ([]source.Data, error) {
-	log := logger.FromContext(ctx).WithName(loggerName)
-
-	dataToSync := []source.Data{}
-	typesToSyncSlice := slices.Sorted(maps.Keys(typesToSync))
-
-	if slices.Contains(typesToSyncSlice, "project") {
-		log.Trace("fetching projects from console")
-		projectsData, err := s.listProjects(ctx)
-		log.Trace("fetching projects from console done")
-		if err != nil {
-			return nil, err
-		}
-		dataToSync = append(dataToSync, projectsData...)
+// buildProjectData returns a normalised project map containing only the
+// canonical identifier fields (_id, projectId, name, tenantId).
+func buildProjectData(project map[string]any) map[string]any {
+	return map[string]any{
+		"_id":       project["_id"],
+		"projectId": project["projectId"],
+		"name":      project["name"],
+		"tenantId":  project["tenantId"],
+		"info":      project["info"],
 	}
-
-	if slices.Contains(typesToSyncSlice, "configuration") {
-		log.Trace("fetching configurations from console")
-		configurationsData, err := s.listConfigurations(ctx)
-		log.Trace("fetching configurations from console done")
-		if err != nil {
-			return nil, err
-		}
-		dataToSync = append(dataToSync, configurationsData...)
-	}
-
-	return dataToSync, nil
 }
 
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
-	dataToSync, err := s.listAssets(ctx, typesToSync)
-	if err != nil {
-		return err
-	}
-	for _, data := range dataToSync {
-		results <- data
-	}
-	return nil
+// buildRevisionData returns a minimal revision map keyed by "name".
+func buildRevisionData(revisionName string) map[string]any {
+	return map[string]any{"name": revisionName}
 }
 
-func (s *Source) validateWebhookSecret() error {
-	if s.c.config.WebhookSecret == "" {
-		return ErrWebhookSecretMissing
-	}
-	return nil
+// isServiceValid reports whether svc qualifies for synchronisation. A service
+// is valid when its type is "custom" and it is not marked as advanced.
+func isServiceValid(svc map[string]any) bool {
+	svcType, typeFound := svc["type"]
+	advanced, advancedFound := svc["advanced"]
+	return typeFound && advancedFound && svcType.(string) == "custom" && !advanced.(bool)
 }
 
+// createRevisionData assembles a [source.Data] upsert entry for a revision,
+// embedding the normalised project and revision maps.
+func createRevisionData(project map[string]any, revisionName string, t time.Time) source.Data {
+	return source.Data{
+		Type:      revisionResource,
+		Operation: source.DataOperationUpsert,
+		Time:      t,
+		Values: map[string]any{
+			"project":  buildProjectData(project),
+			"revision": buildRevisionData(revisionName),
+		},
+	}
+}
+
+// createServiceData assembles a [source.Data] upsert entry for a service,
+// embedding the normalised project, revision and service maps.
+func createServiceData(project map[string]any, revisionName string, svc map[string]any, t time.Time) source.Data {
+	return source.Data{
+		Type:      serviceResource,
+		Operation: source.DataOperationUpsert,
+		Time:      t,
+		Values: map[string]any{
+			"project":  buildProjectData(project),
+			"revision": buildRevisionData(revisionName),
+			"service":  svc,
+		},
+	}
+}
+
+// GetWebhook returns a [source.Webhook] that validates incoming Console
+// webhook requests against a shared secret and dispatches matching events to
+// results asynchronously. It returns [ErrWebhookSecretMissing] when no secret
+// is configured.
 func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	if err := s.validateWebhookSecret(); err != nil {
-		return source.Webhook{}, err
+	if s.c.config.WebhookSecret == "" {
+		return source.Webhook{}, ErrWebhookSecretMissing
+	}
+
+	var webhookTypes []string
+	for t := range typesToStream {
+		switch t {
+		case projectResource:
+			webhookTypes = append(webhookTypes, t)
+		case revisionResource, serviceResource:
+			webhookTypes = append(webhookTypes, configurationResource)
+		}
 	}
 
 	return source.Webhook{
@@ -235,21 +299,21 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 				return ErrSignatureMismatch
 			}
 
-			var event event
-			if err := json.Unmarshal(body, &event); err != nil {
+			var ev event
+			if err := json.Unmarshal(body, &ev); err != nil {
 				log.Error(ErrUnmarshalingEvent.Error(), "body", string(body), "error", err.Error())
 				return fmt.Errorf("%w: %s", ErrUnmarshalingEvent, err.Error())
 			}
 
-			if !event.IsTypeIn(slices.Sorted(maps.Keys(typesToStream))) {
-				log.Debug("ignoring event with unlisted type", "eventName ", event.EventName, "resource", event.GetResource())
+			if !ev.IsTypeIn(webhookTypes) {
+				log.Debug("ignoring event with unlisted type", "eventName ", ev.EventName, "resource", ev.GetResource())
 				return nil
 			}
 
-			log.Trace("received event", "type", event.EventName, "resource", event.GetResource(), "payload", event.Payload, "timestamp", event.UnixEventTimestamp())
+			log.Trace("received event", "type", ev.EventName, "resource", ev.GetResource(), "payload", ev.Payload, "timestamp", ev.UnixEventTimestamp())
 
 			go func(ctx context.Context) {
-				if err := doChain(ctx, event, results, s.cs); err != nil {
+				if err := s.handleEvent(ctx, ev, typesToStream, results); err != nil {
 					log.Error("error processing event chain", "error", err.Error())
 				}
 			}(ctx)
@@ -258,99 +322,80 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 	}, nil
 }
 
-func doChain(ctx context.Context, event event, channel chan<- source.Data, cs *service.ConsoleService) error {
-	var data *source.Data
-	var err error
-	switch event.GetResource() {
+// handleEvent routes an incoming event to the appropriate processing path.
+// Configuration events are expanded via configurationEventChain; all other
+// events are forwarded to channel as-is.
+func (s *Source) handleEvent(ctx context.Context, ev event, types map[string]source.Extra, channel chan<- source.Data) error {
+	switch ev.GetResource() {
 	case configurationResource:
-		data, err = configurationEventChain(ctx, event, cs)
-	case projectResource:
-		data = defaultEventChain(event)
+		subtypes := filterTypes(configurationChainTypesStream, types)
+		if err := s.configurationEventChain(ctx, ev, subtypes, channel); err != nil {
+			return fmt.Errorf("%w: %w", ErrEventChainProcessing, err)
+		}
 	default:
-		data = defaultEventChain(event)
+		channel <- source.Data{
+			Type:      ev.GetResource(),
+			Operation: ev.Operation(),
+			Values:    ev.Payload,
+			Time:      ev.UnixEventTimestamp(),
+		}
 	}
-	if err != nil {
-		return fmt.Errorf("%w: %s", ErrEventChainProcessing, err.Error())
-	}
-	channel <- *data
 	return nil
 }
 
-func defaultEventChain(event event) *source.Data {
-	return &source.Data{
-		Type:      event.GetResource(),
-		Operation: event.Operation(),
-		Values:    event.Payload,
-		Time:      event.UnixEventTimestamp(),
-	}
-}
-
-func configurationEventChain(ctx context.Context, event event, cs *service.ConsoleService) (*source.Data, error) {
+// configurationEventChain enriches a configuration webhook event by fetching
+// the full project from the Console API and emitting revision and/or service
+// data entries to channel based on the requested types.
+func (s *Source) configurationEventChain(ctx context.Context, ev event, types []string, channel chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	var projectID, revisionName, tenantID string
-	var ok bool
-	if event.Payload == nil {
-		return nil, errors.New("configuration event payload is nil")
+	if ev.Payload == nil {
+		return errors.New("configuration event payload is nil")
 	}
-	if projectID, ok = event.Payload["projectId"].(string); !ok {
-		return nil, errors.New("configuration event payload missing projectId")
+	projectID, ok := ev.Payload["projectId"].(string)
+	if !ok {
+		return errors.New("configuration event payload missing projectId")
 	}
-	if revisionName, ok = event.Payload["revisionName"].(string); !ok {
-		return nil, errors.New("configuration event payload missing revisionName")
+	revisionName, ok := ev.Payload["revisionName"].(string)
+	if !ok {
+		return errors.New("configuration event payload missing revisionName")
 	}
-	if tenantID, ok = event.Payload["tenantId"].(string); !ok {
-		log.Error("configuration event payload missing tenantId")
-	}
-
-	configuration, err := getProjectConfiguration(ctx, tenantID, projectID, revisionName, cs)
-	if err != nil {
-		return nil, err
-	}
-
-	data := source.Data{
-		Type:      configurationResource,
-		Operation: source.DataOperationUpsert,
-		Values:    configuration,
-		Time:      event.UnixEventTimestamp(),
-	}
-
-	return &data, nil
-}
-
-func getProjectConfiguration(ctx context.Context, tenantID, projectID, revisionName string, cs *service.ConsoleService) (map[string]any, error) {
-	log := logger.FromContext(ctx).WithName(loggerName)
 
 	log.Trace("fetching full project", "_id", projectID)
-	project, err := cs.GetProject(ctx, projectID)
+	project, err := s.cs.GetProject(ctx, projectID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+		return fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
 	}
 
-	log.Trace("fetching configuration for project", "_id", projectID, "revisionName", revisionName)
-	configuration, err := cs.GetConfiguration(ctx, projectID, revisionName)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+	for _, t := range types {
+		switch t {
+		case revisionResource:
+			channel <- createRevisionData(project, revisionName, ev.UnixEventTimestamp())
+		case serviceResource:
+			if revisionName != project["defaultBranch"].(string) {
+				continue
+			}
+
+			configuration, err := s.cs.GetConfiguration(ctx, projectID, revisionName)
+			if err != nil {
+				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+			}
+
+			for _, svc := range configuration["services"].(map[string]any) {
+				svcMap := svc.(map[string]any)
+				if isServiceValid(svcMap) {
+					channel <- createServiceData(project, revisionName, svcMap, ev.UnixEventTimestamp())
+				}
+			}
+		}
 	}
 
-	customRemoveFields(configuration)
-
-	configurationData := map[string]any{
-		"project": map[string]any{
-			"_id":       projectID,
-			"projectId": project["projectId"],
-			"name":      project["name"],
-			"tenantId":  tenantID,
-		},
-		"revision": map[string]any{
-			"name": revisionName,
-		},
-		"configuration": configuration,
-	}
-
-	return configurationData, nil
+	return nil
 }
 
+// validateSignature verifies a Console webhook request by computing
+// SHA-256(body || secret) and comparing the result with the hex-encoded
+// signature from then header (with an optional "sha256=" prefix stripped).
 func validateSignature(ctx context.Context, body []byte, secret, signatureHeader string) bool {
 	log := logger.FromContext(ctx).WithName(loggerName)
 

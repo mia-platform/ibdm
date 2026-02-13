@@ -53,12 +53,12 @@ func newFakeAssetClient(t *testing.T, fakeAssets []*assetpb.Asset) (*asset.Clien
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	gsrv := grpc.NewServer()
-	assetpb.RegisterAssetServiceServer(gsrv, fakeSrv)
+	srv := grpc.NewServer()
+	assetpb.RegisterAssetServiceServer(srv, fakeSrv)
 	fakeServerAddr := l.Addr().String()
 	go func() {
-		if err := gsrv.Serve(l); err != nil {
-			gsrv.Stop()
+		if err := srv.Serve(l); err != nil {
+			srv.Stop()
 			t.Logf("server listener failed: %v", err)
 			panic(err)
 		}
@@ -73,13 +73,13 @@ func newFakeAssetClient(t *testing.T, fakeAssets []*assetpb.Asset) (*asset.Clien
 	)
 
 	if err != nil {
-		gsrv.Stop()
+		srv.Stop()
 		t.Fatalf("failed to create fake asset client: %v", err)
 	}
 
 	return client, func() {
 		_ = client.Close()
-		gsrv.Stop()
+		srv.Stop()
 		_ = l.Close()
 	}
 }

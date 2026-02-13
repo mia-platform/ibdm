@@ -105,6 +105,7 @@ func TestMapper(t *testing.T) {
 		mapper        Mapper
 		input         map[string]any
 		expected      MappedData
+		expectedExtra []ExtraMappedData
 		expectedError bool
 	}{
 		"simple mapping": {
@@ -324,13 +325,168 @@ func TestMapper(t *testing.T) {
 				},
 			},
 		},
+		"simple mapping with metadata and extras": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}",
+					map[string]string{
+						"uid":         "name",
+						"name":        "{{ .name }}",
+						"labels":      "{{ .otherKey.value }}",
+						"links":       "{{ .otherKey | toJSON }}",
+						"annotations": "{{ .array | toJSON }}",
+						"title":       "{{ .name }}-{{ .otherKey.value }}",
+					},
+					map[string]string{
+						"key":           "name",
+						"string":        "{{ .name }}",
+						"otherKey":      "{{ .otherKey.value }}",
+						"nested":        "{{ .otherKey | toJSON }}",
+						"array":         "{{ .array | toJSON }}",
+						"combinedField": "{{ .name }}-{{ .otherKey.value }}",
+					},
+					[]config.Extra{
+						{
+							"apiVersion":   "api/v1",
+							"itemFamily":   "relationships",
+							"deletePolicy": "cascade",
+							"identifier":   "{{ .name }}",
+							"sourceRef": map[string]any{
+								"apiVersion": "resource.custom-platform/v1",
+								"family":     "family1",
+								"name":       "{{ .otherKey.value }}",
+							},
+							"type": map[string]any{
+								"apiVersion": "resource.custom-platform/v1",
+								"family":     "family1",
+								"name":       "{{ .otherKey.value }}",
+							},
+						},
+						{
+							"apiVersion":   "api/v1",
+							"itemFamily":   "relationships",
+							"deletePolicy": "cascade",
+							"createIf":     "{{ false }}",
+							"identifier":   "{{ .name }}",
+							"sourceRef": map[string]any{
+								"apiVersion": "resource.custom-platform/v1",
+								"family":     "family1",
+								"name":       "{{ .otherKey.value }}",
+							},
+							"type": map[string]any{
+								"apiVersion": "resource.custom-platform/v1",
+								"family":     "family1",
+								"name":       "{{ .otherKey.value }}",
+							},
+						},
+						{
+							"apiVersion":   "api/v1",
+							"itemFamily":   "relationships",
+							"deletePolicy": "cascade",
+							"createIf":     "{{ eq .otherKey.string \"example\" }}",
+							"identifier":   "{{ .name }}-create",
+							"sourceRef": map[string]any{
+								"apiVersion": "resource.custom-platform/v1",
+								"family":     "family1",
+								"name":       "{{ .otherKey.value }}",
+							},
+							"type": map[string]any{
+								"apiVersion": "resource.custom-platform/v1",
+								"family":     "family1",
+								"name":       "{{ .otherKey.value }}",
+							},
+						},
+					},
+				)
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+				"otherKey": map[string]any{
+					"string": "example",
+					"value":  42,
+				},
+				"array": []int{1, 2, 3},
+			},
+			expected: MappedData{
+				Identifier: "example",
+				Metadata: map[string]any{
+					"uid":    "name",
+					"name":   "example",
+					"labels": 42,
+					"links": map[string]any{
+						"string": "example",
+						"value":  42,
+					},
+					"annotations": []any{1, 2, 3},
+					"title":       "example-42",
+				},
+				Spec: map[string]any{
+					"key":      "name",
+					"string":   "example",
+					"otherKey": 42,
+					"nested": map[string]any{
+						"string": "example",
+						"value":  42,
+					},
+					"array":         []any{1, 2, 3},
+					"combinedField": "example-42",
+				},
+			},
+			expectedExtra: []ExtraMappedData{
+				{
+					APIVersion: "api/v1",
+					ItemFamily: "relationships",
+					Identifier: "example",
+					Spec: map[string]any{
+						"sourceRef": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"family":     "family1",
+							"name":       "42",
+						},
+						"targetRef": map[string]any{
+							"apiVersion": "",
+							"family":     "",
+							"name":       "example",
+						},
+						"type": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"family":     "family1",
+							"name":       "42",
+						},
+					},
+				},
+				{
+					APIVersion: "api/v1",
+					ItemFamily: "relationships",
+					Identifier: "example-create",
+					Spec: map[string]any{
+						"sourceRef": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"family":     "family1",
+							"name":       "42",
+						},
+						"targetRef": map[string]any{
+							"apiVersion": "",
+							"family":     "",
+							"name":       "example",
+						},
+						"type": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"family":     "family1",
+							"name":       "42",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for testName, test := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			output, _, err := test.mapper.ApplyTemplates(test.input, ParentItemInfo{})
+			output, extras, err := test.mapper.ApplyTemplates(test.input, ParentItemInfo{})
 			if test.expectedError {
 				var expectedError template.ExecError
 				assert.Empty(t, output)
@@ -340,6 +496,10 @@ func TestMapper(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, test.expected, output)
+			if len(test.expectedExtra) > 0 {
+				assert.NoError(t, err)
+				assert.Equal(t, test.expectedExtra, extras)
+			}
 		})
 	}
 }

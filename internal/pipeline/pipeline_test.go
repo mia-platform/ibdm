@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -117,7 +118,28 @@ func testMappers(tb testing.TB, extra []config.Extra) map[string]DataMapper {
 	}
 }
 
-func getMappingsExtra(tb testing.TB, returnExtra bool, deletePolicy string) []config.Extra {
+func getExtra(tb testing.TB, deletePolicy string, id int) config.Extra {
+	tb.Helper()
+
+	idString := ""
+	if id > 0 {
+		idString = "-" + strconv.Itoa(id)
+	}
+	return config.Extra{
+		"apiVersion":   "relationships/v1",
+		"itemFamily":   "relationships",
+		"deletePolicy": deletePolicy,
+		"identifier":   `{{ printf "relationship--%s--%s--dependency` + idString + `" .field1 .field2 }}`,
+		"sourceRef": map[string]any{
+			"apiVersion": "resource.custom-platform/v1",
+			"family":     "family1",
+			"name":       "{{ .field2 }}" + idString,
+		},
+		"type": "dependency",
+	}
+}
+
+func getMappingsExtra(tb testing.TB, returnExtra bool, deletePolicy string, extrasLen int) []config.Extra {
 	tb.Helper()
 
 	if !returnExtra {
@@ -128,20 +150,12 @@ func getMappingsExtra(tb testing.TB, returnExtra bool, deletePolicy string) []co
 		deletePolicy = "none"
 	}
 
-	extraDef := config.Extra{
-		"apiVersion":   "relationships/v1",
-		"itemFamily":   "relationships",
-		"deletePolicy": deletePolicy,
-		"identifier":   `{{ printf "relationship--%s--%s--dependency" .field1 .field2 }}`,
-		"sourceRef": map[string]any{
-			"apiVersion": "resource.custom-platform/v1",
-			"family":     "family1",
-			"name":       "{{ .field2 }}",
-		},
-		"type": "dependency",
+	extras := make([]config.Extra, extrasLen)
+	for i := range extrasLen {
+		extras[i] = getExtra(tb, deletePolicy, i)
 	}
 
-	return []config.Extra{extraDef}
+	return extras
 }
 
 func TestStreamPipeline(t *testing.T) {
@@ -153,6 +167,7 @@ func TestStreamPipeline(t *testing.T) {
 		expectedDeletion []*destination.Data
 		expectedErr      error
 		useExtra         bool
+		numExtras        int
 		deletePolicy     string
 	}{
 		"unsupported source error": {
@@ -266,6 +281,65 @@ func TestStreamPipeline(t *testing.T) {
 			useExtra:     true,
 			deletePolicy: "cascade",
 		},
+		"valid pipeline return mapped data with multiple extra mappings": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeEventSource(t, []source.Data{type1}, c)
+			},
+			expectedData: []*destination.Data{
+				{
+					APIVersion: "v1",
+					ItemFamily: "family",
+					Name:       "item1",
+					Metadata:   map[string]any{},
+					Data: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion: "relationships/v1",
+					ItemFamily: "relationships",
+					Name:       "relationship--value1--value2--dependency",
+					Data: map[string]any{
+						"sourceRef": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"family":     "family1",
+							"name":       "value2",
+						},
+						"targetRef": map[string]any{
+							"apiVersion": "v1",
+							"family":     "family",
+							"name":       "item1",
+						},
+						"type": "dependency",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion: "relationships/v1",
+					ItemFamily: "relationships",
+					Name:       "relationship--value1--value2--dependency-1",
+					Data: map[string]any{
+						"sourceRef": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"family":     "family1",
+							"name":       "value2-1",
+						},
+						"targetRef": map[string]any{
+							"apiVersion": "v1",
+							"family":     "family",
+							"name":       "item1",
+						},
+						"type": "dependency",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			expectedDeletion: nil,
+			useExtra:         true,
+			numExtras:        2,
+		},
 	}
 
 	for name, test := range testCases {
@@ -278,7 +352,11 @@ func TestStreamPipeline(t *testing.T) {
 			defer close(syncChan)
 
 			testSource := test.source(syncChan)
-			extra := getMappingsExtra(t, test.useExtra, test.deletePolicy)
+			numExtras := 1
+			if test.numExtras > 0 {
+				numExtras = test.numExtras
+			}
+			extra := getMappingsExtra(t, test.useExtra, test.deletePolicy, numExtras)
 			pipeline, err := New(ctx, testSource, testMappers(t, extra), destination)
 			require.NoError(t, err)
 
@@ -315,6 +393,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		expectedDeletion []*destination.Data
 		expectedErr      error
 		useExtra         bool
+		numExtras        int
 		deletePolicy     string
 	}{
 		"unsupported source error": {
@@ -442,6 +521,69 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			useExtra:     true,
 			deletePolicy: "cascade",
 		},
+		"valid webhook pipeline return mapped data with multiple extra mappings": {
+			source: func(c chan<- struct{}) any {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+					dataChan <- type1
+					close(c)
+					return nil
+				})
+			},
+			expectedData: []*destination.Data{
+				{
+					APIVersion: "v1",
+					ItemFamily: "family",
+					Name:       "item1",
+					Metadata:   map[string]any{},
+					Data: map[string]any{
+						"field1": "value1",
+						"field2": "value2",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion: "relationships/v1",
+					ItemFamily: "relationships",
+					Name:       "relationship--value1--value2--dependency",
+					Data: map[string]any{
+						"sourceRef": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"family":     "family1",
+							"name":       "value2",
+						},
+						"targetRef": map[string]any{
+							"apiVersion": "v1",
+							"family":     "family",
+							"name":       "item1",
+						},
+						"type": "dependency",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				{
+					APIVersion: "relationships/v1",
+					ItemFamily: "relationships",
+					Name:       "relationship--value1--value2--dependency-1",
+					Data: map[string]any{
+						"sourceRef": map[string]any{
+							"apiVersion": "resource.custom-platform/v1",
+							"family":     "family1",
+							"name":       "value2-1",
+						},
+						"targetRef": map[string]any{
+							"apiVersion": "v1",
+							"family":     "family",
+							"name":       "item1",
+						},
+						"type": "dependency",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+			},
+			expectedDeletion: nil,
+			useExtra:         true,
+			numExtras:        2,
+		},
 	}
 
 	for name, test := range testCases {
@@ -455,7 +597,11 @@ func TestStreamPipelineWebhook(t *testing.T) {
 			syncChan := make(chan struct{})
 			source := test.source(syncChan)
 
-			extra := getMappingsExtra(t, test.useExtra, test.deletePolicy)
+			numExtras := 1
+			if test.numExtras > 0 {
+				numExtras = test.numExtras
+			}
+			extra := getMappingsExtra(t, test.useExtra, test.deletePolicy, numExtras)
 			pipeline, err := New(ctx, source, testMappers(t, extra), destination)
 			require.NoError(t, err)
 
