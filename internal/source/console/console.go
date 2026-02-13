@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mia-platform/ibdm/internal/logger"
@@ -58,6 +59,8 @@ var _ source.SyncableSource = &Source{}
 type Source struct {
 	c  *webhookClient
 	cs *service.ConsoleService
+
+	syncLock sync.Mutex
 }
 
 // NewSource constructs a [Source] by reading its configuration from environment
@@ -85,6 +88,12 @@ func NewSource() (*Source, error) {
 // types by listing all matching assets from the Console API and sending them to
 // results. It blocks until every item has been written to the channel.
 func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+	log := logger.FromContext(ctx).WithName(loggerName)
+	if !s.syncLock.TryLock() {
+		log.Debug("sync process already running")
+		return nil
+	}
+
 	dataToSync, err := s.listAssets(ctx, typesToSync)
 	if err != nil {
 		return err
