@@ -37,3 +37,26 @@ mappings:
         family: "revisions"
         name:  "{{ printf \"%s-%s\" .project._id .revision.name }}"
       type: "dependency"
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info nil) -}}
+        {{- if $teamContact -}}
+          true
+        {{- else -}}
+          false
+        {{- end }}
+      identifier: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info "") -}}
+        {{- printf "relationship-%s-%s-%s-%s-ownership" $teamContact .project._id .revision.name .service.name | sha256sum}}
+      sourceRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "users"
+        name:  |-
+          {{ $info := (get "info" .project (object)) -}}
+          {{- $teamContact := (get "teamContact" $info "") -}}
+          {{- $teamContact | sha256sum }}
+      type: "ownership"
