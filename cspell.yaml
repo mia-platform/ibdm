@@ -36,7 +36,6 @@ ignoreWords:
   - goarch
   - goarm
   - gobin
-  - gocyclo
   - gofiber
   - golangci
   - gomod
