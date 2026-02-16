@@ -21,7 +21,7 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ printf "relationship-%s-%s-%s-%s-dependency" .project._id .project._id .revision.name .service.name }}
+        {{ printf "relationship-%s-%s-%s-%s-dependency" .project._id .project._id .revision.name .service.name | sha256sum }}
       sourceRef:
         apiVersion: "console.mia-platform.eu/v1alpha1"
         family: "projects"
@@ -34,7 +34,7 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ printf "relationship-%s-%s-%s-%s-%s-dependency" .project._id .revision.name .project._id .revision.name .service.name }}
+        {{ printf "relationship-%s-%s-%s-%s-%s-dependency" .project._id .revision.name .project._id .revision.name .service.name | sha256sum }}
       sourceRef:
         apiVersion: "console.mia-platform.eu/v1alpha1"
         family: "revisions"
