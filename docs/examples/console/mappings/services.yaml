@@ -26,7 +26,10 @@ mappings:
         apiVersion: "console.mia-platform.eu/v1alpha1"
         family: "projects"
         name: "{{ .project._id }}"
-      type: "dependency"
+      typeRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "relationship-types"
+        name: "dependency.mia-platform.eu"
     - apiVersion: mia-platform.eu/v1alpha1
       itemFamily: relationships
       deletePolicy: "cascade"
@@ -36,7 +39,10 @@ mappings:
         apiVersion: "console.mia-platform.eu/v1alpha1"
         family: "revisions"
         name:  "{{ printf \"%s-%s\" .project._id .revision.name }}"
-      type: "dependency"
+      typeRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "relationship-types"
+        name: "dependency.mia-platform.eu"
     - apiVersion: mia-platform.eu/v1alpha1
       itemFamily: relationships
       deletePolicy: "cascade"
@@ -59,4 +65,7 @@ mappings:
           {{ $info := (get "info" .project (object)) -}}
           {{- $teamContact := (get "teamContact" $info "") -}}
           {{- $teamContact | sha256sum }}
-      type: "ownership"
+      typeRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "relationship-types"
+        name: "ownership.mia-platform.eu"

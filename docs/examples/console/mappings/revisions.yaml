@@ -21,4 +21,7 @@ mappings:
         apiVersion: "console.mia-platform.eu/v1alpha1"
         family: "projects"
         name: "{{ .project._id }}"
-      type: "dependency"
+      typeRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "relationship-types"
+        name: "dependency.mia-platform.eu"
