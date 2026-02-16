@@ -36,7 +36,7 @@ RELEASE_DIR:= release
 endif
 
 ifeq ($(origin TOOLS_DIR),undefined)
-TOOLS_DIR:= tools
+TOOLS_DIR:= $(PWD)/tools
 endif
 
 ifeq ($(origin TOOLS_BIN),undefined)

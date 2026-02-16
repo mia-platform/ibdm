@@ -8,16 +8,38 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/source"
 	"github.com/mia-platform/ibdm/internal/source/console/service"
 )
+
+var (
+	testTime = time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)
+)
+
+func init() {
+	timeSource = func() time.Time {
+		return testTime
+	}
+}
+
+func signedHeaders(body []byte, secret, sigPrefix string) http.Header {
+	hasher := sha256.New()
+	hasher.Write(body)
+	hasher.Write([]byte(secret))
+	sig := sigPrefix + hex.EncodeToString(hasher.Sum(nil))
+	h := http.Header{}
+	h.Add(authHeaderName, sig)
+	return h
+}
 
 func TestSource_NewSource(t *testing.T) {
 	t.Run("fails when CONSOLE_WEBHOOK_PATH is missing", func(t *testing.T) {
@@ -59,155 +81,109 @@ func TestSource_GetWebhook(t *testing.T) {
 		require.Equal(t, source.Webhook{}, webhook)
 	})
 
-	t.Run("successfully creates webhook and processes events", func(t *testing.T) {
-		t.Parallel()
-		ctx := t.Context()
-		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		defer cancel()
-
-		s := Source{
-			c: &webhookClient{
-				config: webhookConfig{
-					WebhookPath:   "/webhook",
-					WebhookSecret: "secret",
+	handlerTests := map[string]struct {
+		typesToStream    map[string]source.Extra
+		rawBody          []byte
+		eventPayload     map[string]any
+		signaturePrefix  string
+		expectHandlerErr bool
+		expectedData     *source.Data
+	}{
+		"successfully creates webhook and processes events": {
+			typesToStream: map[string]source.Extra{"project": {}},
+			eventPayload: map[string]any{
+				"eventName": "project_created",
+				"payload": map[string]any{
+					"name": "test-project",
+					"key":  "value",
 				},
 			},
-		}
-
-		results := make(chan source.Data, 1)
-		typesToStream := map[string]source.Extra{"project": {}}
-
-		webhook, err := s.GetWebhook(ctx, typesToStream, results)
-		require.NoError(t, err)
-
-		require.Equal(t, "/webhook", webhook.Path)
-		require.Equal(t, http.MethodPost, webhook.Method)
-		require.NotNil(t, webhook.Handler)
-
-		payload := map[string]any{
-			"eventName": "project_created",
-			"payload": map[string]any{
-				"name": "test-project",
-				"key":  "value",
-			},
-		}
-		body, err := json.Marshal(payload)
-		require.NoError(t, err)
-
-		hasher := sha256.New()
-		hasher.Write(body)
-		hasher.Write([]byte("secret"))
-		signature := hex.EncodeToString(hasher.Sum(nil))
-
-		headers := http.Header{}
-		headers.Add(
-			authHeaderName, signature,
-		)
-		err = webhook.Handler(ctx, headers, body)
-		require.NoError(t, err)
-
-		expectedEvent := event{
-			EventName: "project_created",
-			Payload: map[string]any{
-				"name": "test-project",
-				"key":  "value",
-			},
-		}
-
-	loop:
-		select {
-		case data := <-results:
-			require.Equal(t, expectedEvent.GetResource(), data.Type)
-			require.Equal(t, expectedEvent.Operation(), data.Operation)
-			require.Equal(t, expectedEvent.Payload, data.Values)
-			break loop
-		case <-ctx.Done():
-			t.Fatal("Timeout waiting for message processing: expected data in channel")
-		}
-	})
-
-	t.Run("ignores events not in typesToStream", func(t *testing.T) {
-		t.Parallel()
-		ctx := t.Context()
-
-		s := Source{
-			c: &webhookClient{
-				config: webhookConfig{
-					WebhookPath:   "/webhook",
-					WebhookSecret: "secret",
+			expectedData: &source.Data{
+				Type:      "project",
+				Operation: source.DataOperationUpsert,
+				Values: map[string]any{
+					"name": "test-project",
+					"key":  "value",
 				},
 			},
-		}
-
-		results := make(chan source.Data, 1)
-		typesToStream := map[string]source.Extra{"project": {}}
-
-		webhook, err := s.GetWebhook(ctx, typesToStream, results)
-		require.NoError(t, err)
-
-		payload := map[string]any{
-			"eventName": "order_created",
-			"payload": map[string]any{
-				"name": "test-order",
-				"key":  "value",
-			},
-		}
-		body, err := json.Marshal(payload)
-		require.NoError(t, err)
-
-		hasher := sha256.New()
-		hasher.Write(body)
-		hasher.Write([]byte("secret"))
-		signature := hex.EncodeToString(hasher.Sum(nil))
-
-		headers := http.Header{}
-		headers.Add(
-			authHeaderName, "sha256="+signature,
-		)
-		err = webhook.Handler(ctx, headers, body)
-		require.NoError(t, err)
-
-		select {
-		case <-results:
-			t.Fatal("did not expect data in channel")
-		default:
-		}
-	})
-
-	t.Run("returns error on invalid json", func(t *testing.T) {
-		t.Parallel()
-		ctx := t.Context()
-
-		s := Source{
-			c: &webhookClient{
-				config: webhookConfig{
-					WebhookPath:   "/webhook",
-					WebhookSecret: "secret",
+		},
+		"ignores events not in typesToStream": {
+			typesToStream: map[string]source.Extra{"project": {}},
+			eventPayload: map[string]any{
+				"eventName": "order_created",
+				"payload": map[string]any{
+					"name": "test-order",
+					"key":  "value",
 				},
 			},
-		}
+			signaturePrefix: "sha256=",
+		},
+		"returns error on invalid json": {
+			typesToStream:    map[string]source.Extra{"user": {}},
+			rawBody:          []byte(`{invalid-json`),
+			signaturePrefix:  "sha256=",
+			expectHandlerErr: true,
+		},
+	}
 
-		results := make(chan source.Data, 1)
-		typesToStream := map[string]source.Extra{"user": {}}
+	for name, tc := range handlerTests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
 
-		webhook, err := s.GetWebhook(ctx, typesToStream, results)
-		require.NoError(t, err)
+			s := Source{
+				c: &webhookClient{
+					config: webhookConfig{
+						WebhookPath:   "/webhook",
+						WebhookSecret: "secret",
+					},
+				},
+			}
 
-		body := []byte(`{invalid-json`)
+			results := make(chan source.Data, 1)
 
-		hasher := sha256.New()
-		hasher.Write(body)
-		hasher.Write([]byte("secret"))
-		signature := hex.EncodeToString(hasher.Sum(nil))
+			webhook, err := s.GetWebhook(ctx, tc.typesToStream, results)
+			require.NoError(t, err)
+			require.Equal(t, "/webhook", webhook.Path)
+			require.Equal(t, http.MethodPost, webhook.Method)
+			require.NotNil(t, webhook.Handler)
 
-		headers := http.Header{}
-		headers.Add(
-			authHeaderName, "sha256="+signature,
-		)
+			body := tc.rawBody
+			if body == nil {
+				body, err = json.Marshal(tc.eventPayload)
+				require.NoError(t, err)
+			}
 
-		err = webhook.Handler(ctx, headers, body)
-		require.Error(t, err)
-	})
+			headers := signedHeaders(body, "secret", tc.signaturePrefix)
+			err = webhook.Handler(ctx, headers, body)
+
+			if tc.expectHandlerErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			if tc.expectedData != nil {
+				ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+				defer cancel()
+
+				select {
+				case data := <-results:
+					require.Equal(t, tc.expectedData.Type, data.Type)
+					require.Equal(t, tc.expectedData.Operation, data.Operation)
+					require.Equal(t, tc.expectedData.Values, data.Values)
+				case <-ctx.Done():
+					t.Fatal("Timeout waiting for message processing: expected data in channel")
+				}
+			} else {
+				select {
+				case <-results:
+					t.Fatal("did not expect data in channel")
+				default:
+				}
+			}
+		})
+	}
 }
 
 func Test_DoChain(t *testing.T) {
@@ -230,13 +206,26 @@ func Test_DoChain(t *testing.T) {
 				switch r.URL.Path {
 				case "/projects/p1":
 					json.NewEncoder(w).Encode(map[string]any{
-						"_id":       "p1",
-						"projectId": "projectId",
-						"name":      "name",
-						"tenantId":  "",
+						"_id":           "p1",
+						"projectId":     "projectId",
+						"name":          "name",
+						"defaultBranch": "r1",
+						"tenantId":      "",
+						"info": map[string]any{
+							"teamContact": "contact",
+						},
 					})
 				case "/projects/p1/revisions/r1/configuration":
-					json.NewEncoder(w).Encode(map[string]any{"key": "value"})
+					json.NewEncoder(w).Encode(map[string]any{
+						"key": "value",
+						"services": map[string]any{
+							"service-1": map[string]any{
+								"name":     "service-1",
+								"type":     "custom",
+								"advanced": false,
+							},
+						},
+					})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 					return
@@ -244,23 +233,125 @@ func Test_DoChain(t *testing.T) {
 			},
 			expectedData: []source.Data{
 				{
-					Type:      "configuration",
+					Type:      revisionResource,
 					Operation: source.DataOperationUpsert,
+					Time:      time.Unix(1672531200, 0),
 					Values: map[string]any{
 						"project": map[string]any{
 							"_id":       "p1",
 							"projectId": "projectId",
 							"name":      "name",
 							"tenantId":  "",
+							"info": map[string]any{
+								"teamContact": "contact",
+							},
 						},
 						"revision": map[string]any{
 							"name": "r1",
 						},
-						"configuration": map[string]any{
-							"key": "value",
+					},
+				},
+				{
+					Type:      serviceResource,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Unix(1672531200, 0),
+					Values: map[string]any{
+						"project": map[string]any{
+							"_id":       "p1",
+							"projectId": "projectId",
+							"name":      "name",
+							"tenantId":  "",
+							"info": map[string]any{
+								"teamContact": "contact",
+							},
+						},
+						"revision": map[string]any{
+							"name": "r1",
+						},
+						"service": map[string]any{
+							"name":     "service-1",
+							"type":     "custom",
+							"advanced": false,
 						},
 					},
-					Time: time.Unix(1672531200, 0),
+				},
+			},
+		},
+		"configuration event no project info": {
+			event: event{
+				EventName:      "configuration_created",
+				EventTimestamp: 1672531200000, // 2023-01-01 00:00:00 UTC
+				Payload: map[string]any{
+					"projectId":    "p1",
+					"revisionName": "r1",
+				},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/projects/p1":
+					json.NewEncoder(w).Encode(map[string]any{
+						"_id":           "p1",
+						"projectId":     "projectId",
+						"name":          "name",
+						"defaultBranch": "r1",
+						"tenantId":      "",
+						"info":          nil,
+					})
+				case "/projects/p1/revisions/r1/configuration":
+					json.NewEncoder(w).Encode(map[string]any{
+						"key": "value",
+						"services": map[string]any{
+							"service-1": map[string]any{
+								"name":     "service-1",
+								"type":     "custom",
+								"advanced": false,
+							},
+						},
+					})
+				default:
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+			},
+			expectedData: []source.Data{
+				{
+					Type:      revisionResource,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Unix(1672531200, 0),
+					Values: map[string]any{
+						"project": map[string]any{
+							"_id":       "p1",
+							"projectId": "projectId",
+							"name":      "name",
+							"tenantId":  "",
+							"info":      nil,
+						},
+						"revision": map[string]any{
+							"name": "r1",
+						},
+					},
+				},
+				{
+					Type:      serviceResource,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Unix(1672531200, 0),
+					Values: map[string]any{
+						"project": map[string]any{
+							"_id":       "p1",
+							"projectId": "projectId",
+							"name":      "name",
+							"tenantId":  "",
+							"info":      nil,
+						},
+						"revision": map[string]any{
+							"name": "r1",
+						},
+						"service": map[string]any{
+							"name":     "service-1",
+							"type":     "custom",
+							"advanced": false,
+						},
+					},
 				},
 			},
 		},
@@ -320,10 +411,18 @@ func Test_DoChain(t *testing.T) {
 
 			cs, err := service.NewConsoleService()
 			require.NoError(t, err)
+			src := Source{cs: cs}
 
 			ch := make(chan source.Data, len(test.expectedData)+1)
 
-			err = doChain(ctx, test.event, ch, cs)
+			typesToStream := map[string]source.Extra{
+				serviceResource:  {},
+				revisionResource: {},
+				projectResource:  {},
+				"other_resource": {},
+			}
+
+			err = src.handleEvent(ctx, test.event, typesToStream, ch)
 			if test.expectedError != nil {
 				require.ErrorIs(t, err, test.expectedError)
 				return
@@ -361,19 +460,71 @@ func TestSource_listAssets(t *testing.T) {
 			"projectId": "project-1",
 			"name":      "name",
 			"tenantId":  "tenant-1",
+			"info": map[string]any{
+				"teamContact": "contact",
+			},
 		}
 
 		revision1 := map[string]any{
 			"name": "r1",
+		}
+		service1 := map[string]any{
+			"name":     "service-1",
+			"type":     "custom",
+			"advanced": false,
+		}
+
+		service2 := map[string]any{
+			"name":     "service-2",
+			"advanced": true,
+		}
+
+		expectedData := []source.Data{
+			{
+				Type:      projectResource,
+				Operation: source.DataOperationUpsert,
+				Time:      testTime,
+				Values: map[string]any{
+					"project": map[string]any{
+						"_id":           "p1",
+						"projectId":     "project-1",
+						"name":          "name",
+						"tenantId":      "tenant-1",
+						"defaultBranch": "r1",
+						"info": map[string]any{
+							"teamContact": "contact",
+						},
+					},
+				},
+			},
+			{
+				Type:      revisionResource,
+				Operation: source.DataOperationUpsert,
+				Time:      testTime,
+				Values: map[string]any{
+					"project":  project1,
+					"revision": revision1,
+				},
+			},
+			{
+				Type:      serviceResource,
+				Operation: source.DataOperationUpsert,
+				Time:      testTime,
+				Values: map[string]any{
+					"project":  project1,
+					"revision": revision1,
+					"service":  service1,
+				},
+			},
 		}
 
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			switch r.URL.Path {
 			case "/projects/":
-				json.NewEncoder(w).Encode([]map[string]any{project1})
-			case "/projects/p1":
-				json.NewEncoder(w).Encode(project1)
+				projectResponse := maps.Clone(project1)
+				projectResponse["defaultBranch"] = "r1"
+				json.NewEncoder(w).Encode([]map[string]any{projectResponse})
 			case "/projects/p1/revisions":
 				json.NewEncoder(w).Encode([]map[string]any{revision1})
 			case "/projects/p1/revisions/r1/configuration":
@@ -381,6 +532,10 @@ func TestSource_listAssets(t *testing.T) {
 					"key": "value",
 					"fastDataConfig": map[string]any{
 						"castFunctions": "some-code",
+					},
+					"services": map[string]any{
+						"service-1": service1,
+						"service-2": service2,
 					},
 				})
 			default:
@@ -397,125 +552,67 @@ func TestSource_listAssets(t *testing.T) {
 		require.NoError(t, err)
 
 		typesToSync := map[string]source.Extra{
-			"project":       {},
-			"configuration": {},
+			projectResource:  {},
+			revisionResource: {},
+			serviceResource:  {},
 		}
 
 		data, err := s.listAssets(ctx, typesToSync)
 		require.NoError(t, err)
-		require.Len(t, data, 2)
-
-		projectData := data[0]
-		require.Equal(t, "project", projectData.Type)
-		require.Equal(t, source.DataOperationUpsert, projectData.Operation)
-		require.WithinDuration(t, time.Now(), projectData.Time, 5*time.Second)
-
-		expectedProjectValues := map[string]any{
-			"project": map[string]any{
-				"_id":       "p1",
-				"projectId": "project-1",
-				"name":      "name",
-				"tenantId":  "tenant-1",
-			},
-		}
-		require.Equal(t, expectedProjectValues, projectData.Values)
-
-		configData := data[1]
-		require.Equal(t, "configuration", configData.Type)
-		require.Equal(t, source.DataOperationUpsert, configData.Operation)
-		require.WithinDuration(t, time.Now(), configData.Time, 5*time.Second)
-
-		expectedConfigValues := map[string]any{
-			"project": map[string]any{
-				"_id":       "p1",
-				"projectId": "project-1",
-				"name":      "name",
-				"tenantId":  "tenant-1",
-			},
-			"revision": map[string]any{
-				"name": "r1",
-			},
-			"configuration": map[string]any{
-				"key": "value",
-				"fastDataConfig": map[string]any{
-					"castFunctions": nil,
-				},
-			},
-		}
-		require.Equal(t, expectedConfigValues, configData.Values)
+		assert.Equal(t, expectedData, data)
 	})
 
-	t.Run("returns error when GetProjects fails", func(t *testing.T) {
-		ctx := t.Context()
-
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-		}))
-		defer server.Close()
-		t.Setenv("CONSOLE_ENDPOINT", server.URL)
-		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
-
-		s, err := NewSource()
-		require.NoError(t, err)
-
-		typesToSync := map[string]source.Extra{"project": {}}
-
-		_, err = s.listAssets(ctx, typesToSync)
-		require.ErrorIs(t, err, ErrRetrievingAssets)
-	})
-
-	t.Run("returns error when GetRevisions fails during configuration sync", func(t *testing.T) {
-		ctx := t.Context()
-
-		handler := func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/projects/" {
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode([]map[string]any{{"_id": "p1"}})
-				return
-			}
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-
-		server := httptest.NewServer(http.HandlerFunc(handler))
-		defer server.Close()
-		t.Setenv("CONSOLE_ENDPOINT", server.URL)
-		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
-
-		s, err := NewSource()
-		require.NoError(t, err)
-
-		typesToSync := map[string]source.Extra{"configuration": {}}
-
-		_, err = s.listAssets(ctx, typesToSync)
-		require.ErrorIs(t, err, ErrRetrievingAssets)
-	})
-
-	t.Run("returns error when GetConfiguration fails during configuration sync", func(t *testing.T) {
-		ctx := t.Context()
-
-		handler := func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			switch r.URL.Path {
-			case "/projects/":
-				json.NewEncoder(w).Encode([]map[string]any{{"_id": "p1"}})
-			case "/projects/p1/revisions":
-				json.NewEncoder(w).Encode([]map[string]any{{"name": "r1"}})
-			default:
+	errorTests := map[string]struct {
+		handler     http.HandlerFunc
+		typesToSync map[string]source.Extra
+	}{
+		"returns error when GetProjects fails": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-			}
-		}
+			},
+			typesToSync: map[string]source.Extra{projectResource: {}},
+		},
+		"returns error when GetRevisions fails during configuration sync": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/projects/" {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode([]map[string]any{{"_id": "p1"}})
+					return
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+			typesToSync: map[string]source.Extra{revisionResource: {}},
+		},
+		"returns error when GetConfiguration fails during configuration sync": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/projects/":
+					json.NewEncoder(w).Encode([]map[string]any{{"_id": "p1"}})
+				case "/projects/p1/revisions":
+					json.NewEncoder(w).Encode([]map[string]any{{"name": "r1"}})
+				default:
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+			},
+			typesToSync: map[string]source.Extra{serviceResource: {}},
+		},
+	}
 
-		server := httptest.NewServer(http.HandlerFunc(handler))
-		defer server.Close()
-		t.Setenv("CONSOLE_ENDPOINT", server.URL)
-		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+	for name, tc := range errorTests {
+		t.Run(name, func(t *testing.T) {
+			ctx := t.Context()
 
-		s, err := NewSource()
-		require.NoError(t, err)
+			server := httptest.NewServer(tc.handler)
+			defer server.Close()
+			t.Setenv("CONSOLE_ENDPOINT", server.URL)
+			t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
 
-		typesToSync := map[string]source.Extra{"configuration": {}}
+			s, err := NewSource()
+			require.NoError(t, err)
 
-		_, err = s.listAssets(ctx, typesToSync)
-		require.ErrorIs(t, err, ErrRetrievingAssets)
-	})
+			_, err = s.listAssets(ctx, tc.typesToSync)
+			require.ErrorIs(t, err, ErrRetrievingAssets)
+		})
+	}
 }

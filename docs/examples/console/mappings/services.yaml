@@ -1,0 +1,71 @@
+apiVersion: console.mia-platform.eu/v1alpha1
+itemFamily: services
+type: service
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s-%s-%s" .project._id .revision.name .service.name }}
+  metadata:
+    title: "{{ printf \"%s\" .service.name }}"
+    labels: |-
+      {{ $labels := object "mia-platform.eu/part-of-project" .project._id -}}
+      {{- $labels | toJSON }}
+  spec:
+    projectUniqueId: "{{ .project._id }}"
+    projectId: "{{ get \"projectId\" .project \"\" | quote }}"
+    tenantId: "{{ .project.tenantId }}"
+    revisionName: "{{ .revision.name }}"
+    configuration: "{{ .service | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ printf "relationship-%s-%s-%s-%s-dependency" .project._id .project._id .revision.name .service.name }}
+      sourceRef:
+        apiVersion: "console.mia-platform.eu/v1alpha1"
+        family: "projects"
+        name: "{{ .project._id }}"
+      typeRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "relationship-types"
+        name: "dependency.mia-platform.eu"
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ printf "relationship-%s-%s-%s-%s-%s-dependency" .project._id .revision.name .project._id .revision.name .service.name }}
+      sourceRef:
+        apiVersion: "console.mia-platform.eu/v1alpha1"
+        family: "revisions"
+        name:  "{{ printf \"%s-%s\" .project._id .revision.name }}"
+      typeRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "relationship-types"
+        name: "dependency.mia-platform.eu"
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info nil) -}}
+        {{- if $teamContact -}}
+          true
+        {{- else -}}
+          false
+        {{- end }}
+      identifier: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info "") -}}
+        {{- printf "relationship-%s-%s-%s-%s-ownership" $teamContact .project._id .revision.name .service.name | sha256sum}}
+      sourceRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "users"
+        name:  |-
+          {{ $info := (get "info" .project (object)) -}}
+          {{- $teamContact := (get "teamContact" $info "") -}}
+          {{- $teamContact | sha256sum }}
+      typeRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "relationship-types"
+        name: "ownership.mia-platform.eu"
