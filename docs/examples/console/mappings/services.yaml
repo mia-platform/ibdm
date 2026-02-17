@@ -4,7 +4,7 @@ type: service
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s-%s-%s" .project._id .revision.name .service.name }}
+    {{ printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum }}
   metadata:
     title: "{{ printf \"%s\" .service.name }}"
     labels: |-
