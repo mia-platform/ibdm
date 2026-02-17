@@ -13,10 +13,6 @@ mappings:
       deletePolicy: "none"
       identifier: "extra1"
       sourceRef:
-        apiVersion: ""
-        family: ""
-        name: ""
+        notValid: "{{ .extraValue }}"
       typeRef:
-        apiVersion: ""
-        family: ""
-        name: ""
+        notValid: "{{ .extraValue }}"

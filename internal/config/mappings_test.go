@@ -259,6 +259,10 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path:          filepath.Join("testdata", "extramissingfields.yaml"),
 			expectedError: ErrParsing,
 		},
+		"valid yaml file with extra mapping of family relationships with invalid sourceRef and typeRef": {
+			path:          filepath.Join("testdata", "extrainvalidfields.yaml"),
+			expectedError: ErrParsing,
+		},
 		"valid yaml file with extra mapping of family relationships with empty sourceRef and typeRef": {
 			path:          filepath.Join("testdata", "extraemptyfields.yaml"),
 			expectedError: ErrParsing,
