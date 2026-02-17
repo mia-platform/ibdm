@@ -165,7 +165,7 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 		log.Trace("fetching revisions for project", "_id", project["_id"], "projectId", project["projectId"])
 		revisions, err := s.cs.GetRevisions(ctx, project["_id"].(string))
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+			return nil, fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 		}
 		log.Trace("fetched revisions", "count", len(revisions), "_id", project["_id"], "projectId", project["projectId"])
 
@@ -175,7 +175,7 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 
 			configuration, err := s.cs.GetConfiguration(ctx, project["_id"].(string), revName)
 			if err != nil {
-				return nil, fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+				return nil, fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 			}
 
 			customRemoveFields(configuration)
@@ -302,7 +302,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 			var ev event
 			if err := json.Unmarshal(body, &ev); err != nil {
 				log.Error(ErrUnmarshalingEvent.Error(), "body", string(body), "error", err.Error())
-				return fmt.Errorf("%w: %s", ErrUnmarshalingEvent, err.Error())
+				return fmt.Errorf("%w: %w", ErrUnmarshalingEvent, err)
 			}
 
 			if !ev.IsTypeIn(webhookTypes) {
@@ -364,7 +364,7 @@ func (s *Source) configurationEventChain(ctx context.Context, ev event, types []
 	log.Trace("fetching full project", "_id", projectID)
 	project, err := s.cs.GetProject(ctx, projectID)
 	if err != nil {
-		return fmt.Errorf("%w: %s", ErrRetrievingAssets, err.Error())
+		return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 	}
 
 	for _, t := range types {

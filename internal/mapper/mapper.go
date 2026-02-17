@@ -297,7 +297,7 @@ func executeTemplatesMap(templates *template.Template, templateName string, data
 	}
 
 	if err := yaml.Unmarshal(outputBuilder.Bytes(), output); err != nil {
-		return nil, fmt.Errorf("%w: %s", errParsingSpecOutput, err.Error())
+		return nil, fmt.Errorf("%w: %w", errParsingSpecOutput, err)
 	}
 	return output, nil
 }
@@ -308,13 +308,13 @@ func executeExtraCreateIfTemplate(data map[string]any, extraMapping ExtraMapping
 	// Generate CreateIf
 	var createIfBuf bytes.Buffer
 	if err := extraMapping.CreateIfTemplate.Execute(&createIfBuf, data); err != nil {
-		return false, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+		return false, fmt.Errorf("%w: %w", errParsingExtra, err)
 	}
 
 	// Unmarshal the executed YAML back into a map
 	var createIf bool
 	if err := yaml.Unmarshal(createIfBuf.Bytes(), &createIf); err != nil {
-		return false, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+		return false, fmt.Errorf("%w: %w", errParsingExtra, err)
 	}
 	return createIf, nil
 }
@@ -338,19 +338,19 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 		// Generate Identifier
 		identifier, err := executeIdentifierTemplate(extraMapping.IDTemplate, "extra-id", data)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+			return nil, fmt.Errorf("%w: %w", errParsingExtra, err)
 		}
 
 		// Generate Body (Spec)
 		var bodyBuf bytes.Buffer
 		if err := extraMapping.BodyTemplate.Execute(&bodyBuf, data); err != nil {
-			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+			return nil, fmt.Errorf("%w: %w", errParsingExtra, err)
 		}
 
 		// Unmarshal the executed YAML back into a map
 		var spec map[string]any
 		if err := yaml.Unmarshal(bodyBuf.Bytes(), &spec); err != nil {
-			return nil, fmt.Errorf("%w: %s", errParsingExtra, err.Error())
+			return nil, fmt.Errorf("%w: %w", errParsingExtra, err)
 		}
 
 		// Handle Special Resources
