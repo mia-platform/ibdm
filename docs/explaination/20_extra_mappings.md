@@ -1,7 +1,7 @@
 # Extra Mappings
 
 Extra mappings cover the `extra` section of the template that is meant to create, for each mapping,
-extra items that must be created in the same acquisition instance of the parent item of the mapping. \
+extra items that must be created in the same acquisition instance of the parent item of the mapping.  
 In this way these extra items will be created using the data originated from the parent item and
 will be sent to the Mia-Platform Catalog along with it.
 
@@ -34,7 +34,8 @@ JSON).
 ### Relationship
 
 The `Relationship` represents the item that put in relation the item of the mapping itself,
-later referred as `targetRef`of the relationship, with other items that can or cannot be present in the Mia-Platform Catalog.\
+later referred as `targetRef`of the relationship,
+with other items that can or cannot be present in the Mia-Platform Catalog.  
 The typical structure of a `relationship` is comprehensive of the required fields plus:
 
 - `sourceRef`: it is the source of the relationship
@@ -43,7 +44,7 @@ The typical structure of a `relationship` is comprehensive of the required field
 The `targetRef` is automatically computed by the mapping using the `apiVersion`, `itemFamily` and `identifier`
 from the root mapping.
 
-Data integrity of the `relationship` needs to be managed by the mappings itself and their developers.\
+Data integrity of the `relationship` needs to be managed by the mappings itself and their developers.  
 In case of `sourceRef` with wrong `apiVersion`, `itemFamily` or `identifier`,
 thus not referring to actual existing items or definition, the Mia-Platform Catalog will not throw error and
 will map the sent relationship anyway.
@@ -52,28 +53,28 @@ will map the sent relationship anyway.
 
 ``` yaml
 extra:
-	- apiVersion: mia-platform.eu/v1alpha1
-		itemFamily: relationships
-		deletePolicy: "cascade"
-		createIf: |-
-			{{ $value := (get "value" .example-obj (object)) -}}
-			{{- $otherValue := (get "otherValue" $value nil) -}}
-			{{- if $otherValue -}}
-				true
-			{{- else -}}
-				false
-			{{- end }}
-		identifier: |-
-			{{ $value := (get "value" .example-obj (object)) -}}
-			{{- $otherValue := (get "otherValue" $value nil) -}}
-			{{- printf "relationship-%s-%s-example-type" $otherValue .directValue | sha256sum}}
-		sourceRef:
-			apiVersion: "mia-platform.eu/v1alpha1"
-			family: "family-example"
-			name:  |-
-				{{- printf "family-example-%s-example" .anotherId | sha256sum}}	
-		typeRef:
-			apiVersion: "mia-platform.eu/v1alpha1"
-			family: "relationship-types"
-			name: "example-type.mia-platform.eu"
+  - apiVersion: mia-platform.eu/v1alpha1
+    itemFamily: relationships
+    deletePolicy: "cascade"
+    createIf: |-
+      {{ $value := (get "value" .example-obj (object)) -}}
+      {{- $otherValue := (get "otherValue" $value nil) -}}
+      {{- if $otherValue -}}
+        true
+      {{- else -}}
+        false
+      {{- end }}
+    identifier: |-
+      {{ $value := (get "value" .example-obj (object)) -}}
+      {{- $otherValue := (get "otherValue" $value nil) -}}
+      {{- printf "relationship-%s-%s-example-type" $otherValue .directValue | sha256sum}}
+    sourceRef:
+      apiVersion: "mia-platform.eu/v1alpha1"
+      family: "family-example"
+      name:  |-
+        {{- printf "family-example-%s-example" .anotherId | sha256sum}}  
+    typeRef:
+      apiVersion: "mia-platform.eu/v1alpha1"
+      family: "relationship-types"
+      name: "example-type.mia-platform.eu"
 ```
