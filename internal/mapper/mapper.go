@@ -111,6 +111,8 @@ func New(identifierTemplate string, metadataTemplates, specTemplates map[string]
 	}, nil
 }
 
+// compileMetadataTemplates combines the key/value metadata templates into a
+// single YAML document template.
 func compileMetadataTemplates(metadataTemplates map[string]string, tmpl *template.Template, parsingErrs *error) *template.Template {
 	metadataTemplateString := new(strings.Builder)
 	metadataTemplateString.WriteString("---\n")
@@ -125,6 +127,8 @@ func compileMetadataTemplates(metadataTemplates map[string]string, tmpl *templat
 	return metadataTemplate
 }
 
+// compileSpecTemplates combines the key/value spec templates into a single YAML
+// document template.
 func compileSpecTemplates(specTemplates map[string]string, tmpl *template.Template, parsingErrs *error) *template.Template {
 	specTemplateString := new(strings.Builder)
 	specTemplateString.WriteString("---\n")
@@ -139,6 +143,8 @@ func compileSpecTemplates(specTemplates map[string]string, tmpl *template.Templa
 	return specTemplate
 }
 
+// compileExtraMappings pre-compiles extra templates (identifier, createIf and body)
+// to speed up mapping execution and to catch template errors early.
 func compileExtraMappings(extraTemplates []config.Extra, tmpl *template.Template, parsingErrs *error) []ExtraMapping {
 	extraMappings := make([]ExtraMapping, 0, len(extraTemplates))
 	for _, extra := range extraTemplates {
@@ -232,7 +238,7 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 	}, extraData, nil
 }
 
-// ApplyIdentifierTemplate implements Mapper.ApplyTemplates.
+// ApplyIdentifierTemplate implements Mapper.ApplyIdentifierTemplate.
 func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, []ExtraMappedData, error) {
 	identifier, err := executeIdentifierTemplate(m.idTemplate, "identifier", data)
 	if err != nil {
@@ -296,6 +302,8 @@ func executeTemplatesMap(templates *template.Template, templateName string, data
 	return output, nil
 }
 
+// executeExtraCreateIfTemplate renders an extra mapping "createIf" template and
+// parses its result into a boolean.
 func executeExtraCreateIfTemplate(data map[string]any, extraMapping ExtraMapping) (bool, error) {
 	// Generate CreateIf
 	var createIfBuf bytes.Buffer
@@ -359,6 +367,8 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 	return output, nil
 }
 
+// enrichSpec applies special-case mutations to a rendered extra spec based on
+// the extra item family.
 func enrichSpec(spec map[string]any, parentResourceInfo ParentItemInfo, itemFamily string) map[string]any {
 	if strings.EqualFold(itemFamily, config.ExtraRelationshipFamily) {
 		spec = enrichRelationshipSpec(spec, parentResourceInfo)
