@@ -13,5 +13,10 @@ mappings:
       deletePolicy: "none"
       identifier: "extra1"
       sourceRef:
-        extraKey: "{{ .extraValue }}"
-      type: "dependency"
+        apiVersion: "{{ .extraValue }}"
+        family: "{{ .extraValue }}"
+        name: "{{ .extraValue }}"
+      typeRef:
+        apiVersion: "{{ .extraValue }}"
+        family: "{{ .extraValue }}"
+        name: "{{ .extraValue }}"

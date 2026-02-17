@@ -96,17 +96,13 @@ func validateExtra(extraMap map[string]any) (map[string]any, error) {
 	}
 
 	itemFamily, ok := extraMap["itemFamily"].(string)
-
-	if !ok || ok &&
-		itemFamily != ExtraRelationshipFamily {
-		errorsList = append(errorsList, "unknown value 'itemFamily' in extra mapping")
+	if !ok {
+		errorsList = append(errorsList, "missing field 'itemFamily' in extra mapping")
 	}
 
-	if itemFamily == ExtraRelationshipFamily {
-		_, ok := extraMap["sourceRef"].(map[string]any)
-		if !ok {
-			errorsList = append(errorsList, "missing or invalid 'sourceRef' for relationship extra mapping")
-		}
+	valid, familySpecificErrors := validateFamilySpecificFields(extraMap, itemFamily)
+	if !valid {
+		errorsList = append(errorsList, familySpecificErrors...)
 	}
 
 	if len(errorsList) > 0 {
@@ -114,6 +110,60 @@ func validateExtra(extraMap map[string]any) (map[string]any, error) {
 	}
 
 	return extraMap, nil
+}
+
+func validateFamilySpecificFields(extraMap map[string]any, itemFamily string) (bool, []string) {
+	errorsList := []string{}
+
+	if itemFamily != ExtraRelationshipFamily {
+		errorsList = append(errorsList, "unknown value 'itemFamily' in extra mapping")
+	}
+
+	if itemFamily == ExtraRelationshipFamily {
+		valid, relationshipFamilyErrors := validateRelationshipFamilyFields(extraMap)
+		if !valid {
+			errorsList = append(errorsList, relationshipFamilyErrors...)
+		}
+	}
+	return len(errorsList) == 0, errorsList
+}
+
+func validateRelationshipFamilyFields(extraMap map[string]any) (bool, []string) {
+	errorsList := []string{}
+
+	_, ok := extraMap["sourceRef"].(map[string]any)
+	if !ok {
+		errorsList = append(errorsList, "missing or invalid 'sourceRef' for relationship extra mapping")
+	} else {
+		sourceRef := extraMap["sourceRef"].(map[string]any)
+		if _, ok := sourceRef["apiVersion"].(string); !ok {
+			errorsList = append(errorsList, "missing or invalid 'sourceRef.apiVersion' for relationship extra mapping")
+		}
+		if _, ok := sourceRef["family"].(string); !ok {
+			errorsList = append(errorsList, "missing or invalid 'sourceRef.family' for relationship extra mapping")
+		}
+		if _, ok := sourceRef["name"].(string); !ok {
+			errorsList = append(errorsList, "missing or invalid 'sourceRef.name' for relationship extra mapping")
+		}
+	}
+
+	_, ok = extraMap["typeRef"].(map[string]any)
+	if !ok {
+		errorsList = append(errorsList, "missing or invalid 'typeRef' for relationship extra mapping")
+	} else {
+		typeRef := extraMap["typeRef"].(map[string]any)
+		if _, ok := typeRef["apiVersion"].(string); !ok {
+			errorsList = append(errorsList, "missing or invalid 'typeRef.apiVersion' for relationship extra mapping")
+		}
+		if _, ok := typeRef["family"].(string); !ok {
+			errorsList = append(errorsList, "missing or invalid 'typeRef.family' for relationship extra mapping")
+		}
+		if _, ok := typeRef["name"].(string); !ok {
+			errorsList = append(errorsList, "missing or invalid 'typeRef.name' for relationship extra mapping")
+		}
+	}
+
+	return len(errorsList) == 0, errorsList
 }
 
 // UnmarshalYAML for special handling of the 'extra' field in mapping configurations.
