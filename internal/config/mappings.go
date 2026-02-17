@@ -15,17 +15,30 @@ import (
 )
 
 const (
+	// DeletePolicyCascade indicates that related items should be deleted when the source item is deleted.
 	DeletePolicyCascade = "cascade"
-	DeletePolicyNone    = "none"
+	// DeletePolicyNone indicates that related items should not be deleted when the source item is deleted.
+	DeletePolicyNone = "none"
 
+	// ExtraRelationshipFamily indicates that the mapping is for relationships between items.
 	ExtraRelationshipFamily = "relationships"
+
+	APIVersionField   = "apiVersion"
+	DeletePolicyField = "deletePolicy"
+	FamilyField       = "family"
+	IdentifierField   = "identifier"
+	ItemFamilyField   = "itemFamily"
+	NameField         = "name"
+	SourceRefField    = "sourceRef"
+	TypeField         = "type"
+	TypeRefField      = "typeRef"
 )
 
 var (
 	// ErrParsing reports failures that occur while decoding mapping files.
 	ErrParsing = errors.New("error parsing")
 
-	RequiredExtraFields = []string{"apiVersion", "itemFamily", "deletePolicy", "identifier"}
+	RequiredExtraFields = []string{APIVersionField, ItemFamilyField, DeletePolicyField, IdentifierField}
 )
 
 // MappingConfig holds the configuration for mapping rules.
@@ -89,15 +102,15 @@ func validateExtra(extraMap map[string]any) (map[string]any, error) {
 		}
 	}
 
-	if deletePolicy, ok := extraMap["deletePolicy"].(string); !ok || ok &&
+	if deletePolicy, ok := extraMap[DeletePolicyField].(string); !ok || ok &&
 		deletePolicy != DeletePolicyNone &&
 		deletePolicy != DeletePolicyCascade {
-		errorsList = append(errorsList, "unknown value 'deletePolicy' in extra mapping")
+		errorsList = append(errorsList, fmt.Sprintf("unknown value '%s' in extra mapping", DeletePolicyField))
 	}
 
-	itemFamily, ok := extraMap["itemFamily"].(string)
+	itemFamily, ok := extraMap[ItemFamilyField].(string)
 	if !ok {
-		errorsList = append(errorsList, "missing field 'itemFamily' in extra mapping")
+		errorsList = append(errorsList, fmt.Sprintf("missing field '%s' in extra mapping", ItemFamilyField))
 	}
 
 	valid, familySpecificErrors := validateFamilySpecificFields(extraMap, itemFamily)
@@ -116,7 +129,7 @@ func validateFamilySpecificFields(extraMap map[string]any, itemFamily string) (b
 	errorsList := []string{}
 
 	if itemFamily != ExtraRelationshipFamily {
-		errorsList = append(errorsList, "unknown value 'itemFamily' in extra mapping")
+		errorsList = append(errorsList, fmt.Sprintf("unknown value '%s' in extra mapping", ItemFamilyField))
 	}
 
 	if itemFamily == ExtraRelationshipFamily {
@@ -131,35 +144,33 @@ func validateFamilySpecificFields(extraMap map[string]any, itemFamily string) (b
 func validateRelationshipFamilyFields(extraMap map[string]any) (bool, []string) {
 	errorsList := []string{}
 
-	_, ok := extraMap["sourceRef"].(map[string]any)
+	sourceRef, ok := extraMap[SourceRefField].(map[string]any)
 	if !ok {
-		errorsList = append(errorsList, "missing or invalid 'sourceRef' for relationship extra mapping")
+		errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s' for relationship extra mapping", SourceRefField))
 	} else {
-		sourceRef := extraMap["sourceRef"].(map[string]any)
-		if _, ok := sourceRef["apiVersion"].(string); !ok {
-			errorsList = append(errorsList, "missing or invalid 'sourceRef.apiVersion' for relationship extra mapping")
+		if _, ok := sourceRef[APIVersionField].(string); !ok {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", SourceRefField, APIVersionField))
 		}
-		if _, ok := sourceRef["family"].(string); !ok {
-			errorsList = append(errorsList, "missing or invalid 'sourceRef.family' for relationship extra mapping")
+		if _, ok := sourceRef[FamilyField].(string); !ok {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", SourceRefField, FamilyField))
 		}
-		if _, ok := sourceRef["name"].(string); !ok {
-			errorsList = append(errorsList, "missing or invalid 'sourceRef.name' for relationship extra mapping")
+		if _, ok := sourceRef[NameField].(string); !ok {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", SourceRefField, NameField))
 		}
 	}
 
-	_, ok = extraMap["typeRef"].(map[string]any)
+	typeRef, ok := extraMap[TypeRefField].(map[string]any)
 	if !ok {
-		errorsList = append(errorsList, "missing or invalid 'typeRef' for relationship extra mapping")
+		errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s' for relationship extra mapping", TypeRefField))
 	} else {
-		typeRef := extraMap["typeRef"].(map[string]any)
-		if _, ok := typeRef["apiVersion"].(string); !ok {
-			errorsList = append(errorsList, "missing or invalid 'typeRef.apiVersion' for relationship extra mapping")
+		if _, ok := typeRef[APIVersionField].(string); !ok {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", TypeRefField, APIVersionField))
 		}
-		if _, ok := typeRef["family"].(string); !ok {
-			errorsList = append(errorsList, "missing or invalid 'typeRef.family' for relationship extra mapping")
+		if _, ok := typeRef[FamilyField].(string); !ok {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", TypeRefField, FamilyField))
 		}
-		if _, ok := typeRef["name"].(string); !ok {
-			errorsList = append(errorsList, "missing or invalid 'typeRef.name' for relationship extra mapping")
+		if _, ok := typeRef[NameField].(string); !ok {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", TypeRefField, NameField))
 		}
 	}
 
@@ -219,13 +230,13 @@ func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 
 		missingFields := []string{}
 		if config.Type == "" {
-			missingFields = append(missingFields, "type")
+			missingFields = append(missingFields, TypeField)
 		}
 		if config.APIVersion == "" {
-			missingFields = append(missingFields, "apiVersion")
+			missingFields = append(missingFields, APIVersionField)
 		}
 		if config.ItemFamily == "" {
-			missingFields = append(missingFields, "itemFamily")
+			missingFields = append(missingFields, ItemFamilyField)
 		}
 
 		if len(missingFields) > 0 {
