@@ -180,6 +180,7 @@ jobs:
       with:
         syft-version: ${{ env.SYFT_VERSION }}
         artifact-name: sbom.spdx.json
+        output-file: ./sbom.spdx.json
         image: nexus.mia-platform.eu/catalog/ibdm:${{ steps.meta.outputs.version }}
         upload-release-assets: false
     - name: Sign Images
