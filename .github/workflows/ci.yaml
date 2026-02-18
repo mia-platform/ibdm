@@ -179,7 +179,7 @@ jobs:
       uses: anchore/sbom-action@deef08a0db64bfad603422135db61477b16cef56 # v0.22.1
       with:
         syft-version: ${{ env.SYFT_VERSION }}
-        artifact-name: sbom.spdx sbom.spdx.json
+        artifact-name: sbom.spdx.json
         image: nexus.mia-platform.eu/catalog/ibdm:${{ steps.meta.outputs.version }}
         upload-release-assets: false
     - name: Sign Images
