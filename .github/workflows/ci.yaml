@@ -129,8 +129,9 @@ jobs:
         tags: |
           type=raw,value=latest,enable={{is_default_branch}},priority=990
           type=semver,pattern=v{{version}},priority=1000
-          type=semver,pattern=v{{major}}.{{minor}},priority=100
-          type=semver,pattern=v{{major}},priority=100
+          type=semver,pattern={{version}},priority=999
+          type=semver,pattern={{major}}.{{minor}},priority=100
+          type=semver,pattern={{major}},priority=100
         labels: |
           org.opencontainers.image.vendor=Mia s.r.l.
         annotations: |
@@ -202,6 +203,8 @@ jobs:
       if: github.ref_type == 'tag'
       run: |
         make ci-prepare-release
+      env:
+        COSIGN_PRIVATE_KEY: ${{ secrets.MIA_PLATFORM_KEY_KMS }}
     - name: Create GitHub Release
       if: github.ref_type == 'tag'
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
