@@ -1,7 +1,7 @@
 changelog:
   exclude:
     authors:
-    - renovate[bot]
+    - dependabot[bot]
   categories:
   - title: Breaking Changes 🛠
     labels:
