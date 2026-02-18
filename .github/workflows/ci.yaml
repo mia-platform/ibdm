@@ -75,6 +75,7 @@ jobs:
       contents: write
       packages: write
       id-token: write
+      attestations: write
     needs:
     - test
     # Only run on the main repository, not on forks
