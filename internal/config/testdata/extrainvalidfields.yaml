@@ -12,3 +12,7 @@ mappings:
       itemFamily: relationships
       deletePolicy: "none"
       identifier: "extra1"
+      sourceRef:
+        notValid: "{{ .extraValue }}"
+      typeRef:
+        notValid: "{{ .extraValue }}"

@@ -15,17 +15,30 @@ import (
 )
 
 const (
+	// DeletePolicyCascade indicates that related items should be deleted when the source item is deleted.
 	DeletePolicyCascade = "cascade"
-	DeletePolicyNone    = "none"
+	// DeletePolicyNone indicates that related items should not be deleted when the source item is deleted.
+	DeletePolicyNone = "none"
 
+	// ExtraRelationshipFamily indicates that the mapping is for relationships between items.
 	ExtraRelationshipFamily = "relationships"
+
+	APIVersionField   = "apiVersion"
+	DeletePolicyField = "deletePolicy"
+	FamilyField       = "family"
+	IdentifierField   = "identifier"
+	ItemFamilyField   = "itemFamily"
+	NameField         = "name"
+	SourceRefField    = "sourceRef"
+	TypeField         = "type"
+	TypeRefField      = "typeRef"
 )
 
 var (
 	// ErrParsing reports failures that occur while decoding mapping files.
 	ErrParsing = errors.New("error parsing")
 
-	RequiredExtraFields = []string{"apiVersion", "itemFamily", "deletePolicy", "identifier"}
+	RequiredExtraFields = []string{APIVersionField, ItemFamilyField, DeletePolicyField, IdentifierField}
 )
 
 // MappingConfig holds the configuration for mapping rules.
@@ -46,8 +59,11 @@ type Mappings struct {
 	Extra      []Extra           `json:"extra,omitempty" yaml:"extra,omitempty"`
 }
 
+// MetadataMapping holds a flattened representation of metadata templates.
 type MetadataMapping map[string]string
 
+// MetadataTemplate is the strongly-typed representation of the metadata section
+// in mapping files.
 type MetadataTemplate struct {
 	Annotations       string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	CreationTimestamp string `json:"creationTimestamp,omitempty" yaml:"creationTimestamp,omitempty"`
@@ -61,8 +77,7 @@ type MetadataTemplate struct {
 	UID               string `json:"uid,omitempty" yaml:"uid,omitempty"`
 }
 
-// UnmarshalYAML for special handling of the 'extra' field in mapping configurations.
-// It validates the presence and correctness of required fields.
+// UnmarshalYAML decodes YAML metadata templates and flattens them into a map.
 func (mm *MetadataMapping) UnmarshalYAML(value *yaml.Node) error {
 	var original MetadataTemplate
 	if err := value.Decode(&original); err != nil {
@@ -78,8 +93,11 @@ func (mm *MetadataMapping) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
+// Extra holds an extra mapping definition as a generic map after validation.
 type Extra map[string]any
 
+// validateExtra validates the required fields and domain-specific constraints
+// of an extra mapping.
 func validateExtra(extraMap map[string]any) (map[string]any, error) {
 	errorsList := []string{}
 
@@ -89,24 +107,20 @@ func validateExtra(extraMap map[string]any) (map[string]any, error) {
 		}
 	}
 
-	if deletePolicy, ok := extraMap["deletePolicy"].(string); !ok || ok &&
+	if deletePolicy, ok := extraMap[DeletePolicyField].(string); !ok || ok &&
 		deletePolicy != DeletePolicyNone &&
 		deletePolicy != DeletePolicyCascade {
-		errorsList = append(errorsList, "unknown value 'deletePolicy' in extra mapping")
+		errorsList = append(errorsList, fmt.Sprintf("unknown value '%s' in extra mapping", DeletePolicyField))
 	}
 
-	itemFamily, ok := extraMap["itemFamily"].(string)
-
-	if !ok || ok &&
-		itemFamily != ExtraRelationshipFamily {
-		errorsList = append(errorsList, "unknown value 'itemFamily' in extra mapping")
+	itemFamily, ok := extraMap[ItemFamilyField].(string)
+	if !ok {
+		errorsList = append(errorsList, fmt.Sprintf("missing field '%s' in extra mapping", ItemFamilyField))
 	}
 
-	if itemFamily == ExtraRelationshipFamily {
-		_, ok := extraMap["sourceRef"].(map[string]any)
-		if !ok {
-			errorsList = append(errorsList, "missing or invalid 'sourceRef' for relationship extra mapping")
-		}
+	valid, familySpecificErrors := validateFamilySpecificFields(extraMap, itemFamily)
+	if !valid {
+		errorsList = append(errorsList, familySpecificErrors...)
 	}
 
 	if len(errorsList) > 0 {
@@ -116,8 +130,63 @@ func validateExtra(extraMap map[string]any) (map[string]any, error) {
 	return extraMap, nil
 }
 
-// UnmarshalYAML for special handling of the 'extra' field in mapping configurations.
-// It validates the presence and correctness of required fields.
+// validateFamilySpecificFields validates fields that depend on the configured
+// extra item family.
+func validateFamilySpecificFields(extraMap map[string]any, itemFamily string) (bool, []string) {
+	errorsList := []string{}
+
+	if itemFamily != ExtraRelationshipFamily {
+		errorsList = append(errorsList, fmt.Sprintf("unknown value '%s' in extra mapping", ItemFamilyField))
+	}
+
+	if itemFamily == ExtraRelationshipFamily {
+		valid, relationshipFamilyErrors := validateRelationshipFamilyFields(extraMap)
+		if !valid {
+			errorsList = append(errorsList, relationshipFamilyErrors...)
+		}
+	}
+	return len(errorsList) == 0, errorsList
+}
+
+// validateRelationshipFamilyFields validates the relationship-specific fields
+// in an extra mapping.
+func validateRelationshipFamilyFields(extraMap map[string]any) (bool, []string) {
+	errorsList := []string{}
+
+	sourceRef, ok := extraMap[SourceRefField].(map[string]any)
+	if !ok {
+		errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s' for relationship extra mapping", SourceRefField))
+	} else {
+		if apiVersionField, ok := sourceRef[APIVersionField].(string); !ok || apiVersionField == "" {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", SourceRefField, APIVersionField))
+		}
+		if familyField, ok := sourceRef[FamilyField].(string); !ok || familyField == "" {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", SourceRefField, FamilyField))
+		}
+		if nameField, ok := sourceRef[NameField].(string); !ok || nameField == "" {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", SourceRefField, NameField))
+		}
+	}
+
+	typeRef, ok := extraMap[TypeRefField].(map[string]any)
+	if !ok {
+		errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s' for relationship extra mapping", TypeRefField))
+	} else {
+		if apiVersionField, ok := typeRef[APIVersionField].(string); !ok || apiVersionField == "" {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", TypeRefField, APIVersionField))
+		}
+		if familyField, ok := typeRef[FamilyField].(string); !ok || familyField == "" {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", TypeRefField, FamilyField))
+		}
+		if nameField, ok := typeRef[NameField].(string); !ok || nameField == "" {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", TypeRefField, NameField))
+		}
+	}
+
+	return len(errorsList) == 0, errorsList
+}
+
+// UnmarshalYAML decodes YAML for an extra mapping and validates required fields.
 func (e *Extra) UnmarshalYAML(value *yaml.Node) error {
 	var extraMap map[string]any
 	if err := value.Decode(&extraMap); err != nil {
@@ -169,13 +238,13 @@ func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 
 		missingFields := []string{}
 		if config.Type == "" {
-			missingFields = append(missingFields, "type")
+			missingFields = append(missingFields, TypeField)
 		}
 		if config.APIVersion == "" {
-			missingFields = append(missingFields, "apiVersion")
+			missingFields = append(missingFields, APIVersionField)
 		}
 		if config.ItemFamily == "" {
-			missingFields = append(missingFields, "itemFamily")
+			missingFields = append(missingFields, ItemFamilyField)
 		}
 
 		if len(missingFields) > 0 {

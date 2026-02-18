@@ -26,6 +26,25 @@ to a string and validated against these rules:
 - The first character must be alphanumeric.
 - The final character must be alphanumeric.
 
+## Metadata Templates
+
+Metadata templates cover the fields required to populate the `metadata` section that will be sent to
+the Mia-Platform Catalog.  
+The list of the allowed `metadata` that can be set is:
+`annotations`, `creationTimestamp`, `description`, `labels`, `links`, `name`, `namespace`, `tags`, `title`, `uid`.  
+Any extra not allowed `metadata` will be ignored and not sent to the catalog.
+
+We restrict template keys to a flat structure and rely on the template engine to build any nested
+data inside the values, but we suggest to do it only if necessary and try to keep the structure
+as flat as possible.  
+This constraint keeps the catalog representation concise and makes searching for keys easier.
+
+All templates are gathered into a YAML document before rendering.  
+The template engine then produces the final YAML, which we convert into a dynamic structure for the
+Mia-Platform Catalog.
+Because YAML is a superset of JSON, any value you emit must be valid YAML (and may also be valid
+JSON).
+
 ## Spec Templates
 
 Spec templates cover every other field required to populate the `spec` section that will be sent to
@@ -41,6 +60,12 @@ The template engine then produces the final YAML, which we convert into a dynami
 Mia-Platform Catalog.
 Because YAML is a superset of JSON, any value you emit must be valid YAML (and may also be valid
 JSON).
+
+## Extra Templates
+
+Extra templates cover the `extra` section that is meant to create, for each mapping, extra items.
+
+A more comprehensive documentation can be found in [Extra Mappings](./20_extra_mappings.md).
 
 ## Template Functions
 

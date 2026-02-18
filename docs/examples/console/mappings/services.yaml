@@ -4,7 +4,7 @@ type: service
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s-%s-%s" .project._id .revision.name .service.name }}
+    {{ printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum }}
   metadata:
     title: "{{ printf \"%s\" .service.name }}"
     labels: |-
@@ -38,7 +38,7 @@ mappings:
       sourceRef:
         apiVersion: "console.mia-platform.eu/v1alpha1"
         family: "revisions"
-        name:  "{{ printf \"%s-%s\" .project._id .revision.name }}"
+        name:  "{{ printf \"%s-%s\" .project._id .revision.name | sha256sum }}"
       typeRef:
         apiVersion: "mia-platform.eu/v1alpha1"
         family: "relationship-types"

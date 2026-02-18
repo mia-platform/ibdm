@@ -4,7 +4,7 @@ type: revision
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s-%s" .project._id .revision.name }}
+    {{ printf "%s-%s" .project._id .revision.name | sha256sum }}
   metadata:
     title: "{{ printf \"%s\" .revision.name }}"
     labels: |-

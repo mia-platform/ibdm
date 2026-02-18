@@ -251,5 +251,5 @@ func handleErr(err error) error {
 		return nil
 	}
 
-	return fmt.Errorf("%w: %s", ErrDevOpsSource, err.Error())
+	return fmt.Errorf("%w: %w", ErrDevOpsSource, err)
 }

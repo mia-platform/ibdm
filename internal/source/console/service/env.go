@@ -28,7 +28,7 @@ type config struct {
 func loadConfigFromEnv() (*config, error) {
 	config, err := env.ParseAs[config]()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", errParsingConfig, err.Error())
+		return nil, fmt.Errorf("%w: %w", errParsingConfig, err)
 	}
 	if err := config.validate(); err != nil {
 		return nil, err
