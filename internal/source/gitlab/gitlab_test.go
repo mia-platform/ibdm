@@ -800,14 +800,20 @@ func mustMarshal(t *testing.T, v any) []byte {
 func Test_RealRequestDeveloping(t *testing.T) {
 	t.Skip("This test is meant to be used for development purposes, it makes real API calls to GitLab and doesn't have assertions")
 
-	tokenRelativePath := "../../../local/gitlab/personal_access_token"
+	basePath := "../../../local/gitlab/"
+	tokenRelativePath := basePath + "personal_access_token"
 	tokenBytes, err := os.ReadFile(tokenRelativePath)
 	require.NoError(t, err, "failed to read GitLab token from file: %s", tokenRelativePath)
 	token := strings.TrimSpace(string(tokenBytes))
 
+	baseURLRelativePath := basePath + "base_url"
+	baseURLBytes, err := os.ReadFile(baseURLRelativePath)
+	require.NoError(t, err, "failed to read GitLab base URL from file: %s", baseURLRelativePath)
+	baseURL := strings.TrimSpace(string(baseURLBytes))
+
 	// To run: remove t.Skip, set GITLAB_TOKEN env var or populate the file below.
 	t.Setenv("GITLAB_TOKEN", token)
-	t.Setenv("GITLAB_BASE_URL", "https://git.tools.mia-platform.eu")
+	t.Setenv("GITLAB_BASE_URL", baseURL)
 
 	s, err := NewSource()
 	require.NoError(t, err)
