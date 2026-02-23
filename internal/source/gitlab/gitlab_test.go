@@ -5,7 +5,6 @@ package gitlab
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -797,6 +796,7 @@ func mustMarshal(t *testing.T, v any) []byte {
 	return b
 }
 
+// TODO: remove before merging PR.
 func Test_RealRequestDeveloping(t *testing.T) {
 	t.Skip("This test is meant to be used for development purposes, it makes real API calls to GitLab and doesn't have assertions")
 
@@ -812,12 +812,10 @@ func Test_RealRequestDeveloping(t *testing.T) {
 	s, err := NewSource()
 	require.NoError(t, err)
 
-	results := make(chan source.Data, 100)
+	results := make(chan source.Data, 400)
 	err = s.StartSyncProcess(t.Context(), map[string]source.Extra{projectResource: nil}, results)
 	require.NoError(t, err)
 	close(results)
 
-	for d := range results {
-		fmt.Printf("type=%s id=%v\n", d.Type, d.Values["id"])
-	}
+	require.Len(t, results, 300)
 }
