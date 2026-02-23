@@ -194,7 +194,7 @@ func TestMakeRequest(t *testing.T) {
 			defer srv.Close()
 
 			client := newTestGitLabClient(t, srv)
-			items, currPage, totalPages, err := client.makeRequest(t.Context(), "/api/v4/projects", "per_page=100", 1)
+			items, currPage, totalPages, err := client.makePageableRequest(t.Context(), "/api/v4/projects", "per_page=100", 1)
 
 			if tc.expectErr {
 				require.Error(t, err)
@@ -209,6 +209,7 @@ func TestMakeRequest(t *testing.T) {
 }
 
 func TestListAllPages(t *testing.T) {
+	maxPagesLimit = 3
 	testCases := map[string]struct {
 		pages         int // total pages the server reports
 		expectedCount int
@@ -295,7 +296,7 @@ func TestListProjects(t *testing.T) {
 			defer srv.Close()
 
 			client := newTestGitLabClient(t, srv)
-			items, err := client.ListProjects(t.Context())
+			items, err := client.listProjects(t.Context())
 
 			if tc.expectErr {
 				require.Error(t, err)
@@ -308,6 +309,7 @@ func TestListProjects(t *testing.T) {
 }
 
 func TestListPipelines(t *testing.T) {
+	maxPagesLimit = 3
 	testCases := map[string]struct {
 		handler       http.HandlerFunc
 		projectID     string
@@ -339,7 +341,7 @@ func TestListPipelines(t *testing.T) {
 			defer srv.Close()
 
 			client := newTestGitLabClient(t, srv)
-			items, err := client.ListPipelines(t.Context(), tc.projectID)
+			items, err := client.listPipelines(t.Context(), tc.projectID)
 
 			if tc.expectErr {
 				require.Error(t, err)
@@ -500,6 +502,11 @@ func TestGetWebhook_ReturnsCorrectPathAndMethod(t *testing.T) {
 func TestWebhookHandler(t *testing.T) {
 	validToken := "super-secret"
 	validUpdatedAt := "2024-06-01T10:00:00Z"
+	validProjectID := float64(5)
+	validProject := map[string]any{
+		"id":   validProjectID,
+		"name": "test-project",
+	}
 	expectedTime, _ := time.Parse(time.RFC3339, validUpdatedAt)
 
 	validBody := func(updatedAt string) []byte {
@@ -508,6 +515,9 @@ func TestWebhookHandler(t *testing.T) {
 			"object_attributes": map[string]any{
 				"id":     float64(31),
 				"status": "success",
+			},
+			"project": map[string]any{
+				"id": validProjectID,
 			},
 		}
 		if updatedAt != "" {
@@ -589,9 +599,19 @@ func TestWebhookHandler(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/api/v4/projects/5" {
+					jsonResponse(t, w, validProject)
+					return
+				}
+				w.WriteHeader(http.StatusNotFound)
+			}))
+			defer srv.Close()
+
 			results := make(chan source.Data, 1)
 
 			s := &Source{
+				c: newTestGitLabClient(t, srv),
 				webhookConfig: webhookConfig{
 					WebhookPath:  "/gitlab/webhook",
 					WebhookToken: tc.token,
@@ -675,30 +695,76 @@ func TestPipelineEvent_EventTime(t *testing.T) {
 }
 
 func TestParsePipelineEvent(t *testing.T) {
+	projectPayload := map[string]any{
+		"id":                  float64(5),
+		"name":                "test-project",
+		"path_with_namespace": "group/test-project",
+	}
+
 	testCases := map[string]struct {
 		body          []byte
+		handler       http.HandlerFunc
 		expectKind    string
 		expectValKeys []string
+		expectProject map[string]any
 		expectErr     bool
 	}{
 		"full pipeline payload": {
 			body: mustMarshal(t, map[string]any{
-				"object_kind":       "pipeline",
-				"object_attributes": map[string]any{"id": float64(1), "status": "running"},
-				"project":           map[string]any{"id": float64(5)},
+				"object_kind": "pipeline",
+				"object_attributes": map[string]any{
+					"id":     float64(1),
+					"status": "running",
+				},
+				"project": map[string]any{
+					"id": float64(5),
+				},
 			}),
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/api/v4/projects/5" {
+					jsonResponse(t, w, projectPayload)
+					return
+				}
+				w.WriteHeader(http.StatusNotFound)
+			},
 			expectKind:    "pipeline",
 			expectValKeys: []string{"object_kind", "object_attributes", "project"},
+			expectProject: projectPayload,
 		},
 		"invalid json": {
-			body:      []byte("{bad json"),
+			body: []byte("{bad json"),
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+			},
+			expectErr: true,
+		},
+		"getProject API error": {
+			body: mustMarshal(t, map[string]any{
+				"object_kind": "pipeline",
+				"object_attributes": map[string]any{
+					"id": float64(1),
+				},
+				"project": map[string]any{
+					"id": float64(5),
+				},
+			}),
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			},
 			expectErr: true,
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			ev, err := parsePipelineEvent(tc.body)
+			srv := httptest.NewServer(tc.handler)
+			defer srv.Close()
+
+			s := &Source{
+				c: newTestGitLabClient(t, srv),
+			}
+
+			ev, err := s.parsePipelineEvent(t.Context(), tc.body)
 			if tc.expectErr {
 				require.Error(t, err)
 				return
@@ -707,6 +773,9 @@ func TestParsePipelineEvent(t *testing.T) {
 			assert.Equal(t, tc.expectKind, ev.ObjectKind)
 			for _, k := range tc.expectValKeys {
 				assert.Contains(t, ev.ToValues(), k)
+			}
+			if tc.expectProject != nil {
+				assert.Equal(t, tc.expectProject, ev.project)
 			}
 		})
 	}

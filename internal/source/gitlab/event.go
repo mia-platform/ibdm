@@ -29,6 +29,7 @@ type pipelineEvent struct {
 
 	// rawValues holds the full decoded payload used as source.Data.Values.
 	rawValues map[string]any
+	project   map[string]any
 }
 
 // EventTime returns the time of the pipeline event. It reads the updated_at field
