@@ -88,7 +88,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 
 // syncProjects lists all GitLab projects and sends upsert events to results.
 func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) error {
-	projects, err := s.c.ListProjects(ctx)
+	projects, err := s.c.listProjects(ctx)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 	}
@@ -100,6 +100,7 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 			Values:    project,
 			Time:      updatedAtOrNow(project),
 		}
+		break
 	}
 
 	return nil
@@ -108,7 +109,7 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 // syncPipelines lists all projects and, for each project, lists all pipelines,
 // sending upsert events to results.
 func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) error {
-	projects, err := s.c.ListProjects(ctx)
+	projects, err := s.c.listProjects(ctx)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 	}
@@ -119,7 +120,7 @@ func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) 
 			continue
 		}
 
-		pipelines, err := s.c.ListPipelines(ctx, projectID)
+		pipelines, err := s.c.listPipelines(ctx, projectID)
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 		}
@@ -162,7 +163,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 				return nil
 			}
 
-			ev, err := parsePipelineEvent(body)
+			ev, err := s.parsePipelineEvent(ctx, body)
 			if err != nil {
 				log.Error(ErrUnmarshalingEvent.Error(), "error", err.Error())
 				return fmt.Errorf("%w: %w", ErrUnmarshalingEvent, err)
@@ -194,19 +195,34 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 
 // parsePipelineEvent decodes a raw webhook body into a pipelineEvent, preserving
 // the full payload for use as source.Data.Values.
-func parsePipelineEvent(body []byte) (*pipelineEvent, error) {
-	var raw map[string]any
-	if err := json.Unmarshal(body, &raw); err != nil {
+func (s *Source) parsePipelineEvent(ctx context.Context, body []byte) (*pipelineEvent, error) {
+	var pipeline map[string]any
+	if err := json.Unmarshal(body, &pipeline); err != nil {
 		return nil, err
 	}
 
-	objectKind, _ := raw["object_kind"].(string)
-	objectAttributes, _ := raw["object_attributes"].(map[string]any)
+	objectKind, _ := pipeline["object_kind"].(string)
+	objectAttributes, _ := pipeline["object_attributes"].(map[string]any)
+	project, _ := pipeline["project"].(map[string]any)
+	if project == nil {
+		return nil, errors.New("event payload missing project field")
+	}
+
+	projectID, ok := project["id"].(float64)
+	if !ok {
+		return nil, errors.New("event payload project.id is missing or invalid")
+	}
+
+	project, err := s.c.getProject(ctx, int(projectID))
+	if err != nil {
+		return nil, err
+	}
 
 	return &pipelineEvent{
 		ObjectKind:       objectKind,
 		ObjectAttributes: objectAttributes,
-		rawValues:        raw,
+		rawValues:        pipeline,
+		project:          project,
 	}, nil
 }
 
