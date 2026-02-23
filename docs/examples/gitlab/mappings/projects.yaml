@@ -1,0 +1,21 @@
+apiVersion: gitlab.mia-platform.eu/v1alpha1
+itemFamily: projects
+type: project
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%v" .id }}
+  metadata:
+    title: "{{ .name }}"
+  spec:
+    projectId: "{{ .id }}"
+    description: "{{ .name }}"
+    createdAt: "{{ .created_at }}"
+    license: "{{ get \"license\" . (object) | toJSON }}"
+    owner: "{{ get \"owner\" . (object) | toJSON }}"
+    path: "{{ .path }}"
+    pathWithNamespace: "{{ .path_with_namespace }}"
+    repository_access_level: "{{ .repository_access_level }}"
+    updated_at: "{{ .updated_at }}"
+    visibility: "{{ .visibility }}"
+    webUrl: "{{ .web_url }}"

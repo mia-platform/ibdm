@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: projects.gitlab.mia-platform.eu
+spec:
+  group: gitlab.mia-platform.eu
+  names:
+    kind: Project
+    plural: projects
+    displayPlural: Projects
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                additionalProperties: true
+      served: true
+      storage: true
