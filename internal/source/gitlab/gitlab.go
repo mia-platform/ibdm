@@ -100,7 +100,6 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 			Values:    project,
 			Time:      updatedAtOrNow(project),
 		}
-		break
 	}
 
 	return nil
