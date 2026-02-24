@@ -6,16 +6,24 @@ mappings:
   identifier: |-
     {{ printf "%v" .id }}
   metadata:
-    title: "{{ .name }}"
+    title: "{{ .path_with_namespace }}"
   spec:
-    projectId: "{{ .id }}"
-    description: "{{ .name }}"
+    id: "{{ .id }}"
+    name: "{{ .name }}"
+    description: |-
+        {{ $description := (get "description" . "") -}}
+        {{- if $description -}}
+          {{- .description -}}
+        {{- else -}}
+          {{- "" | quote -}}
+        {{- end }}
+    descriptionHtml: "{{ get \"description_html\" . \"\" | quote }}"
     createdAt: "{{ .created_at }}"
     license: "{{ get \"license\" . (object) | toJSON }}"
     owner: "{{ get \"owner\" . (object) | toJSON }}"
     path: "{{ .path }}"
     pathWithNamespace: "{{ .path_with_namespace }}"
-    repository_access_level: "{{ .repository_access_level }}"
-    updated_at: "{{ .updated_at }}"
+    repositoryAccessLevel: "{{ .repository_access_level }}"
+    updatedAt: "{{ .updated_at }}"
     visibility: "{{ .visibility }}"
     webUrl: "{{ .web_url }}"
