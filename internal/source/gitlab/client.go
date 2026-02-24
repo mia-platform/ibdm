@@ -158,6 +158,17 @@ func (c *gitLabClient) listAllPages(ctx context.Context, path, query string) ([]
 	return all, nil
 }
 
+// getProjectLanguages fetches the programming language usage breakdown for the given project.
+// The API returns a map of language name to usage percentage.
+func (c *gitLabClient) getProjectLanguages(ctx context.Context, projectID string) (map[string]any, error) {
+	langs, err := c.makeRequest(ctx, "/api/v4/projects/"+projectID+"/languages", "")
+	if err != nil {
+		return nil, err
+	}
+
+	return langs, nil
+}
+
 func (c *gitLabClient) getProject(ctx context.Context, projectID int) (map[string]any, error) {
 	project, err := c.makeRequest(ctx, "/api/v4/projects/"+strconv.Itoa(projectID), "")
 	if err != nil {

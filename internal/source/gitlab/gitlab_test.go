@@ -370,7 +370,10 @@ func TestStartSyncProcess(t *testing.T) {
 		lockBeforeRun     bool
 	}{
 		"sync projects": {
-			handler: paginatedHandler(t, map[string]any{"/api/v4/projects": singleProject}),
+			handler: paginatedHandler(t, map[string]any{
+				"/api/v4/projects":             singleProject,
+				"/api/v4/projects/1/languages": map[string]any{"Go": 100.0},
+			}),
 			typesToSync: map[string]source.Extra{
 				projectResource: nil,
 			},
@@ -379,7 +382,9 @@ func TestStartSyncProcess(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, projectResource, data[0].Type)
 				assert.Equal(t, source.DataOperationUpsert, data[0].Operation)
-				assert.Equal(t, singleProject[0], data[0].Values)
+				innerProject, _ := data[0].Values["project"].(map[string]any)
+				assert.Equal(t, "my-project", innerProject["name"])
+				assert.Equal(t, map[string]any{"Go": 100.0}, data[0].Values["project_languages"])
 			},
 		},
 		"sync pipelines": {
@@ -402,6 +407,7 @@ func TestStartSyncProcess(t *testing.T) {
 			handler: paginatedHandler(t, map[string]any{
 				"/api/v4/projects":             singleProject,
 				"/api/v4/projects/1/pipelines": singlePipeline,
+				"/api/v4/projects/1/languages": map[string]any{"Go": 100.0},
 			}),
 			typesToSync: map[string]source.Extra{
 				projectResource:  nil,
@@ -600,11 +606,14 @@ func TestWebhookHandler(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/api/v4/projects/5" {
+				switch r.URL.Path {
+				case "/api/v4/projects/5":
 					jsonResponse(t, w, validProject)
-					return
+				case "/api/v4/projects/5/languages":
+					jsonResponse(t, w, map[string]any{"Go": 100.0})
+				default:
+					w.WriteHeader(http.StatusNotFound)
 				}
-				w.WriteHeader(http.StatusNotFound)
 			}))
 			defer srv.Close()
 
@@ -721,15 +730,21 @@ func TestParsePipelineEvent(t *testing.T) {
 				},
 			}),
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/api/v4/projects/5" {
+				switch r.URL.Path {
+				case "/api/v4/projects/5":
 					jsonResponse(t, w, projectPayload)
-					return
+				case "/api/v4/projects/5/languages":
+					jsonResponse(t, w, map[string]any{"Go": 100.0})
+				default:
+					w.WriteHeader(http.StatusNotFound)
 				}
-				w.WriteHeader(http.StatusNotFound)
 			},
 			expectKind:    "pipeline",
 			expectValKeys: []string{"object_kind", "object_attributes", "project"},
-			expectProject: projectPayload,
+			expectProject: map[string]any{
+				"project":           projectPayload,
+				"project_languages": map[string]any{"Go": 100.0},
+			},
 		},
 		"invalid json": {
 			body: []byte("{bad json"),

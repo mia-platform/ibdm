@@ -4,26 +4,27 @@ type: project
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%v" .id }}
+    {{ printf "%v" .project.id }}
   metadata:
-    title: "{{ .path_with_namespace }}"
+    title: "{{ .project.path_with_namespace }}"
   spec:
-    id: "{{ .id }}"
-    name: "{{ .name }}"
+    id: "{{ .project.id }}"
+    name: "{{ .project.name }}"
     description: |-
-        {{ $description := (get "description" . "") -}}
+        {{ $description := (get "description" .project "") -}}
         {{- if $description -}}
-          {{- .description -}}
+          {{- .project.description -}}
         {{- else -}}
           {{- "" | quote -}}
         {{- end }}
-    descriptionHtml: "{{ get \"description_html\" . \"\" | quote }}"
-    createdAt: "{{ .created_at }}"
-    license: "{{ get \"license\" . (object) | toJSON }}"
-    owner: "{{ get \"owner\" . (object) | toJSON }}"
-    path: "{{ .path }}"
-    pathWithNamespace: "{{ .path_with_namespace }}"
-    repositoryAccessLevel: "{{ .repository_access_level }}"
-    updatedAt: "{{ .updated_at }}"
-    visibility: "{{ .visibility }}"
-    webUrl: "{{ .web_url }}"
+    descriptionHtml: "{{ get \"description_html\" .project \"\" | quote }}"
+    createdAt: "{{ .project.created_at }}"
+    license: "{{ get \"license\" .project (object) | toJSON }}"
+    owner: "{{ get \"owner\" .project (object) | toJSON }}"
+    path: "{{ .project.path }}"
+    pathWithNamespace: "{{ .project.path_with_namespace }}"
+    repositoryAccessLevel: "{{ .project.repository_access_level }}"
+    updatedAt: "{{ .project.updated_at }}"
+    visibility: "{{ .project.visibility }}"
+    webUrl: "{{ .project.web_url }}"
+    languages: "{{ .project_languages | toJSON }}"
