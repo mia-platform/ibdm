@@ -169,7 +169,7 @@ func (c *gitLabClient) getProject(ctx context.Context, projectID int) (map[strin
 
 // listProjects returns all accessible GitLab projects, crawling all available pages.
 func (c *gitLabClient) listProjects(ctx context.Context) ([]map[string]any, error) {
-	return c.listAllPages(ctx, "/api/v4/projects", "per_page=1")
+	return c.listAllPages(ctx, "/api/v4/projects", "per_page=100")
 }
 
 // listPipelines returns all pipelines for the given project ID, crawling all available pages.
