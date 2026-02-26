@@ -44,6 +44,7 @@ ignoreWords:
   - pubsubpb
   - structpb
   - sysdiglabs
+  - sysql
   - vtpm
 files:
   - "**/*.go"
