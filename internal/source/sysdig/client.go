@@ -25,13 +25,8 @@ type sysqlRequest struct {
 
 // sysqlResponse represents the JSON response from the SysQL API.
 type sysqlResponse struct {
-	Data    sysqlData    `json:"data"`
-	Summary sysqlSummary `json:"summary"`
-}
-
-// sysqlData holds the items array from a SysQL response.
-type sysqlData struct {
-	Items []map[string]any `json:"items"`
+	Items   []map[string]any `json:"items"`
+	Summary sysqlSummary     `json:"summary"`
 }
 
 // sysqlSummary contains metadata about a SysQL query result.
@@ -67,7 +62,7 @@ func queryAllPages(ctx context.Context, httpClient *http.Client, baseURL, apiTok
 			return nil
 		}
 
-		if err := handlePage(resp.Data.Items); err != nil {
+		if err := handlePage(resp.Items); err != nil {
 			return err
 		}
 

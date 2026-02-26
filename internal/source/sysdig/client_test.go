@@ -34,12 +34,10 @@ func TestExecuteSysQLQuery(t *testing.T) {
 				assert.Contains(t, req.Query, "MATCH Image")
 
 				resp := sysqlResponse{
-					Data: sysqlData{
-						Items: []map[string]any{
-							{
-								"vuln": map[string]any{"name": "CVE-2024-0001", "severity": "High"},
-								"img":  map[string]any{"imageId": "sha256:abc123", "imageReference": "nginx:latest"},
-							},
+					Items: []map[string]any{
+						{
+							"vuln": map[string]any{"name": "CVE-2024-0001", "severity": "High"},
+							"img":  map[string]any{"imageId": "sha256:abc123", "imageReference": "nginx:latest"},
 						},
 					},
 					Summary: sysqlSummary{FetchedItemsCount: 1},
@@ -49,12 +47,10 @@ func TestExecuteSysQLQuery(t *testing.T) {
 				require.NoError(t, err)
 			},
 			expectResp: &sysqlResponse{
-				Data: sysqlData{
-					Items: []map[string]any{
-						{
-							"vuln": map[string]any{"name": "CVE-2024-0001", "severity": "High"},
-							"img":  map[string]any{"imageId": "sha256:abc123", "imageReference": "nginx:latest"},
-						},
+				Items: []map[string]any{
+					{
+						"vuln": map[string]any{"name": "CVE-2024-0001", "severity": "High"},
+						"img":  map[string]any{"imageId": "sha256:abc123", "imageReference": "nginx:latest"},
 					},
 				},
 				Summary: sysqlSummary{FetchedItemsCount: 1},
@@ -91,7 +87,7 @@ func TestExecuteSysQLQuery(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectResp.Summary.FetchedItemsCount, resp.Summary.FetchedItemsCount)
-			assert.Len(t, resp.Data.Items, len(tc.expectResp.Data.Items))
+			assert.Len(t, resp.Items, len(tc.expectResp.Items))
 		})
 	}
 }
@@ -124,14 +120,14 @@ func TestQueryAllPages(t *testing.T) {
 		"single page with results": {
 			pages: []sysqlResponse{
 				{
-					Data: sysqlData{Items: []map[string]any{
+					Items: []map[string]any{
 						{"vuln": map[string]any{"name": "CVE-1"}, "img": map[string]any{"imageId": "img1"}},
 						{"vuln": map[string]any{"name": "CVE-2"}, "img": map[string]any{"imageId": "img2"}},
-					}},
+					},
 					Summary: sysqlSummary{FetchedItemsCount: 2},
 				},
 				{
-					Data:    sysqlData{Items: []map[string]any{}},
+					Items:   []map[string]any{},
 					Summary: sysqlSummary{FetchedItemsCount: 0},
 				},
 			},
@@ -140,19 +136,19 @@ func TestQueryAllPages(t *testing.T) {
 		"multiple pages": {
 			pages: []sysqlResponse{
 				{
-					Data: sysqlData{Items: []map[string]any{
+					Items: []map[string]any{
 						{"vuln": map[string]any{"name": "CVE-1"}, "img": map[string]any{"imageId": "img1"}},
-					}},
+					},
 					Summary: sysqlSummary{FetchedItemsCount: 1},
 				},
 				{
-					Data: sysqlData{Items: []map[string]any{
+					Items: []map[string]any{
 						{"vuln": map[string]any{"name": "CVE-2"}, "img": map[string]any{"imageId": "img2"}},
-					}},
+					},
 					Summary: sysqlSummary{FetchedItemsCount: 1},
 				},
 				{
-					Data:    sysqlData{Items: []map[string]any{}},
+					Items:   []map[string]any{},
 					Summary: sysqlSummary{FetchedItemsCount: 0},
 				},
 			},
@@ -161,7 +157,7 @@ func TestQueryAllPages(t *testing.T) {
 		"empty first page": {
 			pages: []sysqlResponse{
 				{
-					Data:    sysqlData{Items: []map[string]any{}},
+					Items:   []map[string]any{},
 					Summary: sysqlSummary{FetchedItemsCount: 0},
 				},
 			},
@@ -212,9 +208,9 @@ func TestQueryAllPagesContextCancellation(t *testing.T) {
 			cancel()
 		}
 		resp := sysqlResponse{
-			Data: sysqlData{Items: []map[string]any{
+			Items: []map[string]any{
 				{"vuln": map[string]any{"name": "CVE-1"}, "img": map[string]any{"imageId": "img1"}},
-			}},
+			},
 			Summary: sysqlSummary{FetchedItemsCount: 1},
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -248,9 +244,9 @@ func TestQueryAllPagesServerError(t *testing.T) {
 			return
 		}
 		resp := sysqlResponse{
-			Data: sysqlData{Items: []map[string]any{
+			Items: []map[string]any{
 				{"vuln": map[string]any{"name": "CVE-1"}, "img": map[string]any{"imageId": "img1"}},
-			}},
+			},
 			Summary: sysqlSummary{FetchedItemsCount: 1},
 		}
 		w.Header().Set("Content-Type", "application/json")

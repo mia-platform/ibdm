@@ -82,16 +82,16 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 			pages: []sysqlResponse{
 				{
-					Data: sysqlData{Items: []map[string]any{
+					Items: []map[string]any{
 						{
 							"vuln": map[string]any{"name": "CVE-2024-0001", "severity": "High"},
 							"img":  map[string]any{"imageId": "sha256:abc", "imageReference": "nginx:latest"},
 						},
-					}},
+					},
 					Summary: sysqlSummary{FetchedItemsCount: 1},
 				},
 				{
-					Data:    sysqlData{Items: []map[string]any{}},
+					Items:   []map[string]any{},
 					Summary: sysqlSummary{FetchedItemsCount: 0},
 				},
 			},
@@ -121,16 +121,16 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 			pages: []sysqlResponse{
 				{
-					Data: sysqlData{Items: []map[string]any{
+					Items: []map[string]any{
 						{
 							"vuln": map[string]any{"name": "CVE-2024-0002", "severity": "Low"},
 							"img":  map[string]any{"imageId": "sha256:def", "imageReference": "alpine:3.18"},
 						},
-					}},
+					},
 					Summary: sysqlSummary{FetchedItemsCount: 1},
 				},
 				{
-					Data:    sysqlData{Items: []map[string]any{}},
+					Items:   []map[string]any{},
 					Summary: sysqlSummary{FetchedItemsCount: 0},
 				},
 			},
@@ -152,7 +152,7 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 			pages: []sysqlResponse{
 				{
-					Data:    sysqlData{Items: []map[string]any{}},
+					Items:   []map[string]any{},
 					Summary: sysqlSummary{FetchedItemsCount: 0},
 				},
 			},
@@ -241,7 +241,7 @@ func TestStartSyncProcessConcurrencyGuard(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		<-blockCh
 		resp := sysqlResponse{
-			Data:    sysqlData{Items: []map[string]any{}},
+			Items:   []map[string]any{},
 			Summary: sysqlSummary{FetchedItemsCount: 0},
 		}
 		w.Header().Set("Content-Type", "application/json")
