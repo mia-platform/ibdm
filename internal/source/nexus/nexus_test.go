@@ -174,58 +174,7 @@ func TestStartSyncProcess(t *testing.T) {
 		expectedDataCount  int
 		validateData       func(t *testing.T, data []source.Data)
 	}{
-		"sync both types - all repos": {
-			handler:     standardMux(),
-			typesToSync: map[string]source.Extra{repositoryType: {}, componentAssetType: {}},
-			// 2 repos + 2 assets from maven-central + 0 from docker-hosted = 4
-			expectedDataCount: 4,
-			validateData: func(t *testing.T, data []source.Data) {
-				t.Helper()
-				repoCount := 0
-				assetCount := 0
-				for _, d := range data {
-					switch d.Type {
-					case repositoryType:
-						repoCount++
-						assert.Equal(t, source.DataOperationUpsert, d.Operation)
-						assert.Equal(t, testTime, d.Time)
-					case componentAssetType:
-						assetCount++
-						assert.Equal(t, source.DataOperationUpsert, d.Operation)
-						assert.Equal(t, testTime, d.Time)
-						// Verify flattened shape.
-						assert.NotNil(t, d.Values["asset"])
-						assert.Nil(t, d.Values["assets"]) // original key must not be present
-						assert.Equal(t, "commons-lang3", d.Values["name"])
-					}
-				}
-				assert.Equal(t, 2, repoCount)
-				assert.Equal(t, 2, assetCount)
-			},
-		},
-		"sync only repository type": {
-			handler: func() http.Handler {
-				mux := http.NewServeMux()
-				mux.HandleFunc("/service/rest/v1/repositories", func(w http.ResponseWriter, _ *http.Request) {
-					w.Header().Set("Content-Type", "application/json")
-					_ = json.NewEncoder(w).Encode(sampleRepos)
-				})
-				// No components handler — should not be called.
-				mux.HandleFunc("/service/rest/v1/components", func(_ http.ResponseWriter, _ *http.Request) {
-					t.Fatal("components endpoint should not be called when only repository type is requested")
-				})
-				return mux
-			}(),
-			typesToSync:       map[string]source.Extra{repositoryType: {}},
-			expectedDataCount: 2,
-			validateData: func(t *testing.T, data []source.Data) {
-				t.Helper()
-				for _, d := range data {
-					assert.Equal(t, repositoryType, d.Type)
-				}
-			},
-		},
-		"sync only component-asset type": {
+		"sync component assets from all repos": {
 			handler:           standardMux(),
 			typesToSync:       map[string]source.Extra{componentAssetType: {}},
 			expectedDataCount: 2, // 2 assets from maven-central, 0 from docker-hosted
@@ -233,7 +182,11 @@ func TestStartSyncProcess(t *testing.T) {
 				t.Helper()
 				for _, d := range data {
 					assert.Equal(t, componentAssetType, d.Type)
+					assert.Equal(t, source.DataOperationUpsert, d.Operation)
+					assert.Equal(t, testTime, d.Time)
 					assert.NotNil(t, d.Values["asset"])
+					assert.Nil(t, d.Values["assets"])
+					assert.Equal(t, "commons-lang3", d.Values["name"])
 				}
 			},
 		},
@@ -256,23 +209,13 @@ func TestStartSyncProcess(t *testing.T) {
 				return mux
 			}(),
 			specificRepository: "maven-central",
-			typesToSync:        map[string]source.Extra{repositoryType: {}, componentAssetType: {}},
-			expectedDataCount:  3, // 1 repo + 2 assets
+			typesToSync:        map[string]source.Extra{componentAssetType: {}},
+			expectedDataCount:  2, // 2 assets
 			validateData: func(t *testing.T, data []source.Data) {
 				t.Helper()
-				repoCount := 0
-				assetCount := 0
 				for _, d := range data {
-					switch d.Type {
-					case repositoryType:
-						repoCount++
-						assert.Equal(t, "maven-central", d.Values["name"])
-					case componentAssetType:
-						assetCount++
-					}
+					assert.Equal(t, componentAssetType, d.Type)
 				}
-				assert.Equal(t, 1, repoCount)
-				assert.Equal(t, 2, assetCount)
 			},
 		},
 		"unknown type is skipped": {
@@ -457,7 +400,7 @@ func TestConcurrencyGuard(t *testing.T) {
 	s.syncLock.Lock()
 
 	ch := make(chan source.Data, 100)
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{repositoryType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{componentAssetType: {}}, ch)
 	close(ch)
 
 	assert.NoError(t, err)

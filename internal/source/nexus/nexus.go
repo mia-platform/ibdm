@@ -17,7 +17,6 @@ import (
 const (
 	loggerName = "ibdm:source:nexus"
 
-	repositoryType     = "repository"
 	componentAssetType = "component-asset"
 )
 
@@ -59,8 +58,8 @@ func NewSource() (*Source, error) {
 }
 
 // StartSyncProcess implements source.SyncableSource.
-// It resolves repositories (one or all), then for each repository emits
-// repository and/or component-asset entries based on typesToSync.
+// It resolves repositories (one or all), then for each repository fans out
+// component assets onto the results channel.
 func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
@@ -70,18 +69,16 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	}
 	defer s.syncLock.Unlock()
 
-	// Determine which known types are requested.
-	_, syncRepositories := typesToSync[repositoryType]
 	_, syncComponentAssets := typesToSync[componentAssetType]
 
 	// Log unknown types.
 	for typeKey := range typesToSync {
-		if typeKey != repositoryType && typeKey != componentAssetType {
+		if typeKey != componentAssetType {
 			log.Debug("unknown type, skipping", "type", typeKey)
 		}
 	}
 
-	if !syncRepositories && !syncComponentAssets {
+	if !syncComponentAssets {
 		log.Debug("no known types requested, nothing to do")
 		return nil
 	}
@@ -102,21 +99,9 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 
 		repoName, _ := repo["name"].(string)
 
-		if syncRepositories {
-			log.Trace("emitting repository", "name", repoName)
-			results <- source.Data{
-				Type:      repositoryType,
-				Operation: source.DataOperationUpsert,
-				Values:    repo,
-				Time:      timeSource(),
-			}
-		}
-
-		if syncComponentAssets {
-			if err := s.syncComponentAssets(ctx, log, repoName, results); err != nil {
-				log.Error("failed to sync component-assets for repository", "repository", repoName, "error", err)
-				continue
-			}
+		if err := s.syncComponentAssets(ctx, log, repoName, results); err != nil {
+			log.Error("failed to sync component-assets for repository", "repository", repoName, "error", err)
+			continue
 		}
 	}
 
