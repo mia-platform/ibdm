@@ -17,7 +17,7 @@ import (
 const (
 	loggerName = "ibdm:source:nexus"
 
-	componentAssetType = "component-asset"
+	componentAssetType = "componentasset"
 )
 
 var (

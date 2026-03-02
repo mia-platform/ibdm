@@ -3,12 +3,12 @@
 apiVersion: mia-platform.eu/v1alpha1
 kind: ItemTypeDefinition
 metadata:
-  name: component-assets.nexus.mia-platform.eu
+  name: componentassets.nexus.mia-platform.eu
 spec:
   group: nexus.mia-platform.eu
   names:
     kind: ComponentAsset
-    plural: component-assets
+    plural: componentassets
     displayPlural: Component Assets
   scope: Organization
   versions:

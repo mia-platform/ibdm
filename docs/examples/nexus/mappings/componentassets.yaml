@@ -1,6 +1,6 @@
 apiVersion: nexus.mia-platform.eu/v1alpha1
-itemFamily: component-assets
-type: component-asset
+itemFamily: componentassets
+type: componentasset
 syncable: true
 mappings:
   identifier: |-
@@ -33,6 +33,10 @@ mappings:
       {{- $asset = set "uploader" (get "uploader" .asset "") $asset -}}
       {{- $asset = set "fileSize" (get "fileSize" .asset 0) $asset -}}
       {{- $asset = set "blobCreated" (get "blobCreated" .asset (now)) $asset -}}
-      {{- $asset = set "blobStoreName" (get "blobStoreName" .asset "") $asset -}}
+      {{- if (get "blobStoreName" .asset "") -}}
+        {{- $asset = set "blobStoreName" .asset.blobStoreName $asset -}}
+      {{- else -}}
+        {{- $asset = set "blobStoreName" "" $asset -}}
+      {{- end -}}
       {{- $asset = set "docker" (get "docker" .asset (object)) $asset -}}
       {{- $asset | toJSON }}
