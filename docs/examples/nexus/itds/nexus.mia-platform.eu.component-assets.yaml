@@ -21,6 +21,22 @@ spec:
           spec:
             type: object
             properties:
+              componentId:
+                description: Internal Nexus component ID.
+                type: string
+                title: Component ID
+              repository:
+                description: The repository containing this component.
+                type: string
+                title: Repository
+              format:
+                description: The component format (e.g. maven2, docker, npm).
+                type: string
+                title: Format
+              group:
+                description: The component group (may be empty for some formats).
+                type: string
+                title: Group
               name:
                 description: The component name.
                 type: string
@@ -29,46 +45,84 @@ spec:
                 description: The component version.
                 type: string
                 title: Version
-              group:
-                description: The component group (may be empty for some formats).
-                type: string
-                title: Group
-              format:
-                description: The component format (e.g. maven2, docker, npm).
-                type: string
-                title: Format
-              repository:
-                description: The repository containing this component.
-                type: string
-                title: Repository
-              assetPath:
-                description: The asset path within the repository.
-                type: string
-                title: Asset Path
-              downloadUrl:
-                description: The direct download URL for this asset.
-                type: string
-                title: Download URL
-              contentType:
-                description: The MIME type of the asset.
-                type: string
-                title: Content Type
-              fileSize:
-                description: The file size in bytes.
-                type: integer
-                title: File Size
-              checksum:
-                description: Checksum values for the asset.
+              tags:
+                description: Tags associated with this component.
+                type: array
+                title: Tags
+                additionalProperties: true
+              asset:
+                description: The asset file belonging to this component.
                 type: object
-                title: Checksum
+                title: Asset
                 properties:
-                  sha1:
-                    description: SHA-1 checksum.
+                  id:
+                    description: Internal Nexus asset ID.
                     type: string
-                    title: SHA-1
-                  sha256:
-                    description: SHA-256 checksum.
+                    title: Asset ID
+                  downloadUrl:
+                    description: URL to download the asset content.
                     type: string
-                    title: SHA-256
+                    title: Download URL
+                  path:
+                    description: The asset path within the repository.
+                    type: string
+                    title: Path
+                  repository:
+                    description: The repository containing this asset.
+                    type: string
+                    title: Repository
+                  format:
+                    description: The asset format (e.g. maven2, docker, npm).
+                    type: string
+                    title: Format
+                  checksum:
+                    description: Checksums for the asset content.
+                    type: object
+                    title: Checksum
+                    properties:
+                      sha1:
+                        description: SHA-1 checksum of the asset content.
+                        type: string
+                        title: SHA-1
+                      sha256:
+                        description: SHA-256 checksum of the asset content.
+                        type: string
+                        title: SHA-256
+                  contentType:
+                    description: The asset content type (MIME type).
+                    type: string
+                    title: Content Type
+                  lastModified:
+                    description: Timestamp of the last modification to this asset.
+                    type: string
+                    format: date-time
+                    title: Last Modified
+                  lastDownloaded:
+                    description: Timestamp of the last download of this asset.
+                    type: string
+                    format: date-time
+                    title: Last Downloaded
+                  uploader:
+                    description: The user who uploaded this asset.
+                    type: string
+                    title: Uploader
+                  fileSize:
+                    description: The size of the asset file in bytes.
+                    type: integer
+                    title: File Size
+                  blobCreated:
+                    description: Timestamp of when the asset blob was created in Nexus.
+                    type: string
+                    format: date-time
+                    title: Blob Created
+                  blobStoreName:
+                    description: The name of the blob store where this asset is stored in Nexus.
+                    type: string
+                    title: Blob Store Name
+                  docker:
+                    description: Docker-specific metadata for this asset (if applicable).
+                    type: object
+                    title: Docker Metadata
+                    additionalProperties: true
     served: true
     storage: true

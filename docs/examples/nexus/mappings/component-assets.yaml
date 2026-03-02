@@ -4,20 +4,35 @@ type: component-asset
 syncable: true
 mappings:
   identifier: |-
-    {{ .asset.checksum.sha256 }}
+    {{ printf "%s-%s" .name .asset.checksum.sha256 | sha256sum }}
   metadata:
-    title: "{{ .name }}:{{ .version }} — {{ .asset.path }}"
-    description: "{{ .format }} asset in {{ .repository }}"
+    title: |-
+      {{ printf "%s %s" .repository .name }}
   spec:
+    componentId: "{{ .id }}"
+    repository: "{{ .repository }}"
+    format: "{{ .format }}"
+    group: "{{ get \"group\" . \"\" | quote }}"
     name: "{{ .name }}"
     version: "{{ .version }}"
-    group: "{{ get \"group\" . \"\" | quote }}"
-    format: "{{ .format }}"
-    repository: "{{ .repository }}"
-    assetPath: "{{ .asset.path }}"
-    downloadUrl: "{{ .asset.downloadUrl }}"
-    contentType: "{{ get \"contentType\" .asset \"\" | quote }}"
-    fileSize: "{{ get \"fileSize\" .asset 0 }}"
-    checksum:
-      sha1: "{{ get \"sha1\" .asset.checksum \"\" | quote }}"
-      sha256: "{{ .asset.checksum.sha256 }}"
+    tags: "{{ get \"tags\" . (list) | toJSON }}"
+    asset: |-
+      {{ $asset := object -}}
+      {{ $checksum := object -}}
+      {{- $asset = set "id" .asset.id $asset -}}
+      {{- $asset = set "downloadUrl" .asset.downloadUrl $asset -}}
+      {{- $asset = set "path" .asset.path $asset -}}
+      {{- $asset = set "repository" .asset.repository $asset -}}
+      {{- $asset = set "format" .asset.format $asset -}}
+      {{- $checksum = set "sha1" .asset.checksum.sha1 $checksum -}}
+      {{- $checksum = set "sha256" .asset.checksum.sha256 $checksum -}}
+      {{- $asset = set "checksum" $checksum $asset -}}
+      {{- $asset = set "contentType" (get "contentType" .asset "") $asset -}}
+      {{- $asset = set "lastModified" (get "lastModified" .asset (now)) $asset -}}
+      {{- $asset = set "lastDownloaded" (get "lastDownloaded" .asset (now)) $asset -}}
+      {{- $asset = set "uploader" (get "uploader" .asset "") $asset -}}
+      {{- $asset = set "fileSize" (get "fileSize" .asset 0) $asset -}}
+      {{- $asset = set "blobCreated" (get "blobCreated" .asset (now)) $asset -}}
+      {{- $asset = set "blobStoreName" (get "blobStoreName" .asset "") $asset -}}
+      {{- $asset = set "docker" (get "docker" .asset (object)) $asset -}}
+      {{- $asset | toJSON }}
