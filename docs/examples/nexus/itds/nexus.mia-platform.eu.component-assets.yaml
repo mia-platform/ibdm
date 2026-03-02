@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: component-assets.nexus.mia-platform.eu
+spec:
+  group: nexus.mia-platform.eu
+  names:
+    kind: ComponentAsset
+    plural: component-assets
+    displayPlural: Component Assets
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The component name.
+                type: string
+                title: Name
+              version:
+                description: The component version.
+                type: string
+                title: Version
+              group:
+                description: The component group (may be empty for some formats).
+                type: string
+                title: Group
+              format:
+                description: The component format (e.g. maven2, docker, npm).
+                type: string
+                title: Format
+              repository:
+                description: The repository containing this component.
+                type: string
+                title: Repository
+              assetPath:
+                description: The asset path within the repository.
+                type: string
+                title: Asset Path
+              downloadUrl:
+                description: The direct download URL for this asset.
+                type: string
+                title: Download URL
+              contentType:
+                description: The MIME type of the asset.
+                type: string
+                title: Content Type
+              fileSize:
+                description: The file size in bytes.
+                type: integer
+                title: File Size
+              checksum:
+                description: Checksum values for the asset.
+                type: object
+                title: Checksum
+                properties:
+                  sha1:
+                    description: SHA-1 checksum.
+                    type: string
+                    title: SHA-1
+                  sha256:
+                    description: SHA-256 checksum.
+                    type: string
+                    title: SHA-256
+    served: true
+    storage: true

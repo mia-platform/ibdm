@@ -1,0 +1,23 @@
+apiVersion: nexus.mia-platform.eu/v1alpha1
+itemFamily: component-assets
+type: component-asset
+syncable: true
+mappings:
+  identifier: |-
+    {{ .asset.checksum.sha256 }}
+  metadata:
+    title: "{{ .name }}:{{ .version }} — {{ .asset.path }}"
+    description: "{{ .format }} asset in {{ .repository }}"
+  spec:
+    name: "{{ .name }}"
+    version: "{{ .version }}"
+    group: "{{ get \"group\" . \"\" | quote }}"
+    format: "{{ .format }}"
+    repository: "{{ .repository }}"
+    assetPath: "{{ .asset.path }}"
+    downloadUrl: "{{ .asset.downloadUrl }}"
+    contentType: "{{ get \"contentType\" .asset \"\" | quote }}"
+    fileSize: "{{ get \"fileSize\" .asset 0 }}"
+    checksum:
+      sha1: "{{ get \"sha1\" .asset.checksum \"\" | quote }}"
+      sha256: "{{ .asset.checksum.sha256 }}"
