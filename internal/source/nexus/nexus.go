@@ -17,6 +17,7 @@ import (
 const (
 	loggerName = "ibdm:source:nexus"
 
+	dockerImageType    = "dockerimage"
 	componentAssetType = "componentasset"
 )
 
@@ -99,7 +100,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 
 		repoName, _ := repo["name"].(string)
 
-		if err := s.syncComponentAssets(ctx, log, repoName, results); err != nil {
+		if err := s.syncComponentAssets(ctx, log, s.config.URLHost, repoName, results); err != nil {
 			log.Error("failed to sync component-assets for repository", "repository", repoName, "error", err)
 			continue
 		}
@@ -130,7 +131,7 @@ func (s *Source) resolveRepositories(ctx context.Context, log logger.Logger) ([]
 
 // syncComponentAssets fetches all components for a repository with pagination,
 // fans out each component's assets, and pushes one source.Data per asset.
-func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, repository string, results chan<- source.Data) error {
+func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, host, repository string, results chan<- source.Data) error {
 	continuationToken := ""
 	for {
 		if err := ctx.Err(); err != nil {
@@ -145,9 +146,25 @@ func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, rep
 		}
 
 		for _, component := range page.Items {
+			format, _ := component["format"].(string)
+			if format != "docker" {
+				continue
+			}
+
 			assets, _ := component["assets"].([]any)
 			if len(assets) == 0 {
 				continue
+			}
+
+			results <- source.Data{
+				Type:      dockerImageType,
+				Operation: source.DataOperationUpsert,
+				Values: map[string]any{
+					"host":    host,
+					"name":    component["name"],
+					"version": component["version"],
+				},
+				Time: timeSource(),
 			}
 
 			for _, rawAsset := range assets {
@@ -156,7 +173,7 @@ func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, rep
 					continue
 				}
 
-				values := flattenComponentAsset(component, asset)
+				values := flattenComponentAsset(component, asset, host)
 				results <- source.Data{
 					Type:      componentAssetType,
 					Operation: source.DataOperationUpsert,
@@ -177,8 +194,9 @@ func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, rep
 
 // flattenComponentAsset constructs the flattened map for a single component-asset entry.
 // It copies component-level fields and adds a single "asset" key with the asset data.
-func flattenComponentAsset(component, asset map[string]any) map[string]any {
+func flattenComponentAsset(component, asset map[string]any, host string) map[string]any {
 	values := map[string]any{
+		"host":       host,
 		"id":         component["id"],
 		"repository": component["repository"],
 		"format":     component["format"],

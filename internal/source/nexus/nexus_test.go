@@ -118,31 +118,30 @@ func TestStartSyncProcess(t *testing.T) {
 		Items: []map[string]any{
 			{
 				"id":         "comp1",
-				"repository": "maven-central",
-				"format":     "maven2",
-				"group":      "org.apache.commons",
-				"name":       "commons-lang3",
-				"version":    "3.14.0",
+				"repository": "docker-hosted",
+				"format":     "docker",
+				"name":       "my-image",
+				"version":    "1.0.0",
 				"assets": []any{
 					map[string]any{
-						"downloadUrl": "https://nexus.example.com/repo/commons-lang3-3.14.0.jar",
-						"path":        "org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar",
+						"downloadUrl": "https://nexus.example.com/repository/docker-hosted/v2/my-image/manifests/1.0.0",
+						"path":        "v2/my-image/manifests/1.0.0",
 						"id":          "asset1",
-						"repository":  "maven-central",
-						"format":      "maven2",
+						"repository":  "docker-hosted",
+						"format":      "docker",
 						"checksum":    map[string]any{"sha1": "abc123", "sha256": "def456"},
-						"contentType": "application/java-archive",
-						"fileSize":    float64(654321),
+						"contentType": "application/vnd.docker.distribution.manifest.v2+json",
+						"fileSize":    float64(1234),
 					},
 					map[string]any{
-						"downloadUrl": "https://nexus.example.com/repo/commons-lang3-3.14.0.pom",
-						"path":        "org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.pom",
+						"downloadUrl": "https://nexus.example.com/repository/docker-hosted/v2/my-image/blobs/sha256:abc",
+						"path":        "v2/my-image/blobs/sha256:abc",
 						"id":          "asset2",
-						"repository":  "maven-central",
-						"format":      "maven2",
+						"repository":  "docker-hosted",
+						"format":      "docker",
 						"checksum":    map[string]any{"sha1": "xyz789", "sha256": "uvw012"},
-						"contentType": "application/xml",
-						"fileSize":    float64(1234),
+						"contentType": "application/vnd.docker.distribution.layer.v1.tar+gzip",
+						"fileSize":    float64(654321),
 					},
 				},
 				"tags": []any{},
@@ -160,7 +159,7 @@ func TestStartSyncProcess(t *testing.T) {
 		mux.HandleFunc("/service/rest/v1/components", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			repo := r.URL.Query().Get("repository")
-			if repo == "maven-central" {
+			if repo == "docker-hosted" {
 				_ = json.NewEncoder(w).Encode(sampleComponents)
 			} else {
 				_ = json.NewEncoder(w).Encode(componentsPageResponse{Items: []map[string]any{}, ContinuationToken: nil})
@@ -177,30 +176,43 @@ func TestStartSyncProcess(t *testing.T) {
 		validateData       func(t *testing.T, data []source.Data)
 	}{
 		"sync component assets from all repos": {
-			handler:           standardMux(),
-			typesToSync:       map[string]source.Extra{componentAssetType: {}},
-			expectedDataCount: 2, // 2 assets from maven-central, 0 from docker-hosted
+			handler:     standardMux(),
+			typesToSync: map[string]source.Extra{componentAssetType: {}},
+			// docker-hosted: 1 dockerImageType + 2 componentAssetType; maven-central: 0 (non-docker skipped)
+			expectedDataCount: 3,
 			validateData: func(t *testing.T, data []source.Data) {
 				t.Helper()
+				dockerImageCount := 0
+				componentAssetCount := 0
 				for _, d := range data {
-					assert.Equal(t, componentAssetType, d.Type)
 					assert.Equal(t, source.DataOperationUpsert, d.Operation)
 					assert.Equal(t, testTime, d.Time)
-					assert.NotNil(t, d.Values["asset"])
-					assert.Nil(t, d.Values["assets"])
-					assert.Equal(t, "commons-lang3", d.Values["name"])
+					assert.NotEmpty(t, d.Values["host"])
+					switch d.Type {
+					case dockerImageType:
+						dockerImageCount++
+						assert.Equal(t, "my-image", d.Values["name"])
+						assert.Equal(t, "1.0.0", d.Values["version"])
+					case componentAssetType:
+						componentAssetCount++
+						assert.NotNil(t, d.Values["asset"])
+						assert.Nil(t, d.Values["assets"])
+						assert.Equal(t, "my-image", d.Values["name"])
+					}
 				}
+				assert.Equal(t, 1, dockerImageCount)
+				assert.Equal(t, 2, componentAssetCount)
 			},
 		},
 		"sync with specific repository": {
 			handler: func() http.Handler {
 				mux := http.NewServeMux()
-				mux.HandleFunc("/service/rest/v1/repositories/maven-central", func(w http.ResponseWriter, _ *http.Request) {
+				mux.HandleFunc("/service/rest/v1/repositories/docker-hosted", func(w http.ResponseWriter, _ *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
-					_ = json.NewEncoder(w).Encode(sampleRepos[0])
+					_ = json.NewEncoder(w).Encode(sampleRepos[1])
 				})
 				mux.HandleFunc("/service/rest/v1/components", func(w http.ResponseWriter, r *http.Request) {
-					require.Equal(t, "maven-central", r.URL.Query().Get("repository"))
+					require.Equal(t, "docker-hosted", r.URL.Query().Get("repository"))
 					w.Header().Set("Content-Type", "application/json")
 					_ = json.NewEncoder(w).Encode(sampleComponents)
 				})
@@ -210,13 +222,15 @@ func TestStartSyncProcess(t *testing.T) {
 				})
 				return mux
 			}(),
-			specificRepository: "maven-central",
+			specificRepository: "docker-hosted",
 			typesToSync:        map[string]source.Extra{componentAssetType: {}},
-			expectedDataCount:  2, // 2 assets
+			// 1 dockerImageType + 2 componentAssetType
+			expectedDataCount: 3,
 			validateData: func(t *testing.T, data []source.Data) {
 				t.Helper()
 				for _, d := range data {
-					assert.Equal(t, componentAssetType, d.Type)
+					assert.Contains(t, []string{dockerImageType, componentAssetType}, d.Type)
+					assert.NotEmpty(t, d.Values["host"])
 				}
 			},
 		},
@@ -270,15 +284,14 @@ func TestFanOut(t *testing.T) {
 		Items: []map[string]any{
 			{
 				"id":         "comp1",
-				"repository": "maven-central",
-				"format":     "maven2",
-				"group":      "org.apache.commons",
-				"name":       "commons-lang3",
-				"version":    "3.14.0",
+				"repository": "docker-hosted",
+				"format":     "docker",
+				"name":       "my-image",
+				"version":    "2.0.0",
 				"assets": []any{
-					map[string]any{"id": "a1", "path": "file1.jar", "checksum": map[string]any{"sha256": "hash1"}},
-					map[string]any{"id": "a2", "path": "file1.pom", "checksum": map[string]any{"sha256": "hash2"}},
-					map[string]any{"id": "a3", "path": "file1-sources.jar", "checksum": map[string]any{"sha256": "hash3"}},
+					map[string]any{"id": "a1", "path": "v2/my-image/manifests/2.0.0", "checksum": map[string]any{"sha256": "hash1"}},
+					map[string]any{"id": "a2", "path": "v2/my-image/blobs/sha256:aaa", "checksum": map[string]any{"sha256": "hash2"}},
+					map[string]any{"id": "a3", "path": "v2/my-image/blobs/sha256:bbb", "checksum": map[string]any{"sha256": "hash3"}},
 				},
 				"tags": []any{},
 			},
@@ -290,7 +303,7 @@ func TestFanOut(t *testing.T) {
 	mux.HandleFunc("/service/rest/v1/repositories", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode([]map[string]any{
-			{"name": "maven-central", "format": "maven2", "type": "proxy"},
+			{"name": "docker-hosted", "format": "docker", "type": "hosted"},
 		})
 	})
 	mux.HandleFunc("/service/rest/v1/components", func(w http.ResponseWriter, _ *http.Request) {
@@ -313,30 +326,34 @@ func TestFanOut(t *testing.T) {
 	<-done
 
 	require.NoError(t, err)
-	require.Len(t, data, 3)
+	// 1 dockerImageType + 3 componentAssetType
+	require.Len(t, data, 4)
 
-	// Check each entry has the correct flattened shape.
-	for i, d := range data {
+	// First entry is the dockerImageType for the component.
+	assert.Equal(t, dockerImageType, data[0].Type)
+	assert.Equal(t, "my-image", data[0].Values["name"])
+	assert.Equal(t, "2.0.0", data[0].Values["version"])
+	assert.Equal(t, s.config.URLHost, data[0].Values["host"])
+
+	// Remaining entries are componentAssetType, one per asset.
+	expectedAssets := []struct{ id, path string }{
+		{"a1", "v2/my-image/manifests/2.0.0"},
+		{"a2", "v2/my-image/blobs/sha256:aaa"},
+		{"a3", "v2/my-image/blobs/sha256:bbb"},
+	}
+	for i, expected := range expectedAssets {
+		d := data[i+1]
 		assert.Equal(t, componentAssetType, d.Type)
-		assert.Equal(t, "commons-lang3", d.Values["name"])
-		assert.Equal(t, "3.14.0", d.Values["version"])
-		assert.Equal(t, "maven2", d.Values["format"])
+		assert.Equal(t, "my-image", d.Values["name"])
+		assert.Equal(t, "2.0.0", d.Values["version"])
+		assert.Equal(t, "docker", d.Values["format"])
+		assert.Equal(t, s.config.URLHost, d.Values["host"])
 		assert.Nil(t, d.Values["assets"], "original assets array must not be in the flattened map")
 
 		asset, ok := d.Values["asset"].(map[string]any)
 		require.True(t, ok, "asset must be a map")
-
-		switch i {
-		case 0:
-			assert.Equal(t, "a1", asset["id"])
-			assert.Equal(t, "file1.jar", asset["path"])
-		case 1:
-			assert.Equal(t, "a2", asset["id"])
-			assert.Equal(t, "file1.pom", asset["path"])
-		case 2:
-			assert.Equal(t, "a3", asset["id"])
-			assert.Equal(t, "file1-sources.jar", asset["path"])
-		}
+		assert.Equal(t, expected.id, asset["id"])
+		assert.Equal(t, expected.path, asset["path"])
 	}
 }
 
@@ -347,9 +364,9 @@ func TestZeroAssetsSkipped(t *testing.T) {
 		Items: []map[string]any{
 			{
 				"id":         "comp1",
-				"repository": "maven-central",
-				"format":     "maven2",
-				"name":       "empty-artifact",
+				"repository": "docker-hosted",
+				"format":     "docker",
+				"name":       "empty-image",
 				"version":    "1.0.0",
 				"assets":     []any{},
 				"tags":       []any{},
@@ -362,7 +379,7 @@ func TestZeroAssetsSkipped(t *testing.T) {
 	mux.HandleFunc("/service/rest/v1/repositories", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode([]map[string]any{
-			{"name": "maven-central", "format": "maven2", "type": "proxy"},
+			{"name": "docker-hosted", "format": "docker", "type": "hosted"},
 		})
 	})
 	mux.HandleFunc("/service/rest/v1/components", func(w http.ResponseWriter, _ *http.Request) {
@@ -419,8 +436,7 @@ func TestContextCancellationInSync(t *testing.T) {
 	mux.HandleFunc("/service/rest/v1/repositories", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode([]map[string]any{
-			{"name": "repo1", "format": "maven2", "type": "proxy"},
-			{"name": "repo2", "format": "maven2", "type": "proxy"},
+			{"name": "docker-hosted", "format": "docker", "type": "hosted"},
 		})
 	})
 	mux.HandleFunc("/service/rest/v1/components", func(w http.ResponseWriter, _ *http.Request) {
@@ -430,9 +446,9 @@ func TestContextCancellationInSync(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(componentsPageResponse{
 			Items: []map[string]any{
 				{
-					"id": "comp1", "repository": "repo1", "format": "maven2",
-					"name": "artifact", "version": "1.0",
-					"assets": []any{map[string]any{"id": "a1", "path": "f.jar"}},
+					"id": "comp1", "repository": "docker-hosted", "format": "docker",
+					"name": "my-image", "version": "1.0",
+					"assets": []any{map[string]any{"id": "a1", "path": "v2/my-image/manifests/1.0"}},
 					"tags":   []any{},
 				},
 			},
@@ -515,8 +531,9 @@ func TestFlattenComponentAsset(t *testing.T) {
 		"checksum":    map[string]any{"sha256": "abc"},
 	}
 
-	result := flattenComponentAsset(component, asset)
+	result := flattenComponentAsset(component, asset, "nexus.example.com")
 
+	assert.Equal(t, "nexus.example.com", result["host"])
 	assert.Equal(t, "comp-id", result["id"])
 	assert.Equal(t, "maven-central", result["repository"])
 	assert.Equal(t, "maven2", result["format"])

@@ -4,8 +4,8 @@ type: dockerimage
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s/%s:%s" .image.host .image.name .image.version }}
+    {{ printf "%s/%s:%s" .host .name .version }}
   metadata:
     title: |-
-      {{ printf "%s:%s" .image.name .image.version }}
+      {{ printf "%s:%s" .name .version }}
   spec: {}
