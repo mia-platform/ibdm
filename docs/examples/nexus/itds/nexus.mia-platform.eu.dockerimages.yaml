@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: dockerimages.nexus.mia-platform.eu
+spec:
+  group: nexus.mia-platform.eu
+  names:
+    kind: DockerImage
+    plural: dockerimages
+    displayPlural: Docker Images
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                additionalProperties: false
+      served: true
+      storage: true

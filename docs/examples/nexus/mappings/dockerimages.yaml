@@ -1,0 +1,11 @@
+apiVersion: console.mia-platform.eu/v1alpha1
+itemFamily: dockerimages
+type: dockerimage
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s/%s:%s" .image.host .image.name .image.version }}
+  metadata:
+    title: |-
+      {{ printf "%s:%s" .image.name .image.version }}
+  spec: {}
