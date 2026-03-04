@@ -20,12 +20,14 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"all required env vars set": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
-				t.Setenv("NEXUS_URL", "https://nexus.example.com")
+				t.Setenv("NEXUS_URL_SCHEMA", "https")
+				t.Setenv("NEXUS_URL_HOST", "nexus.example.com")
 				t.Setenv("NEXUS_TOKEN_NAME", "mytoken")
 				t.Setenv("NEXUS_TOKEN_PASSCODE", "secret")
 			},
 			expectedConfig: config{
-				URL:           "https://nexus.example.com",
+				URLSchema:     "https",
+				URLHost:       "nexus.example.com",
 				TokenName:     "mytoken",
 				TokenPasscode: "secret",
 				HTTPTimeout:   30 * time.Second,
@@ -34,23 +36,35 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"all env vars set including optional": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
-				t.Setenv("NEXUS_URL", "https://nexus.example.com")
+				t.Setenv("NEXUS_URL_SCHEMA", "https")
+				t.Setenv("NEXUS_URL_HOST", "nexus.example.com")
 				t.Setenv("NEXUS_TOKEN_NAME", "mytoken")
 				t.Setenv("NEXUS_TOKEN_PASSCODE", "secret")
 				t.Setenv("NEXUS_HTTP_TIMEOUT", "10s")
 				t.Setenv("NEXUS_SPECIFIC_REPOSITORY", "maven-central")
 			},
 			expectedConfig: config{
-				URL:                "https://nexus.example.com",
+				URLSchema:          "https",
+				URLHost:            "nexus.example.com",
 				TokenName:          "mytoken",
 				TokenPasscode:      "secret",
 				HTTPTimeout:        10 * time.Second,
 				SpecificRepository: "maven-central",
 			},
 		},
-		"missing NEXUS_URL": {
+		"missing NEXUS_URL_SCHEMA": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
+				t.Setenv("NEXUS_URL_HOST", "nexus.example.com")
+				t.Setenv("NEXUS_TOKEN_NAME", "mytoken")
+				t.Setenv("NEXUS_TOKEN_PASSCODE", "secret")
+			},
+			expectedErr: ErrMissingEnvVariable,
+		},
+		"missing NEXUS_URL_HOST": {
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				t.Setenv("NEXUS_URL_SCHEMA", "https")
 				t.Setenv("NEXUS_TOKEN_NAME", "mytoken")
 				t.Setenv("NEXUS_TOKEN_PASSCODE", "secret")
 			},
@@ -59,7 +73,8 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"missing NEXUS_TOKEN_NAME": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
-				t.Setenv("NEXUS_URL", "https://nexus.example.com")
+				t.Setenv("NEXUS_URL_SCHEMA", "https")
+				t.Setenv("NEXUS_URL_HOST", "nexus.example.com")
 				t.Setenv("NEXUS_TOKEN_PASSCODE", "secret")
 			},
 			expectedErr: ErrMissingEnvVariable,
@@ -67,7 +82,8 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"missing NEXUS_TOKEN_PASSCODE": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
-				t.Setenv("NEXUS_URL", "https://nexus.example.com")
+				t.Setenv("NEXUS_URL_SCHEMA", "https")
+				t.Setenv("NEXUS_URL_HOST", "nexus.example.com")
 				t.Setenv("NEXUS_TOKEN_NAME", "mytoken")
 			},
 			expectedErr: ErrMissingEnvVariable,
@@ -105,14 +121,24 @@ func TestValidateConfig(t *testing.T) {
 	}{
 		"valid config": {
 			config: config{
-				URL:           "https://nexus.example.com",
+				URLSchema:     "https",
+				URLHost:       "nexus.example.com",
 				TokenName:     "mytoken",
 				TokenPasscode: "secret",
 				HTTPTimeout:   30 * time.Second,
 			},
 		},
-		"missing URL": {
+		"missing URL schema": {
 			config: config{
+				URLHost:       "nexus.example.com",
+				TokenName:     "mytoken",
+				TokenPasscode: "secret",
+			},
+			expectErr: ErrMissingEnvVariable,
+		},
+		"missing URL host": {
+			config: config{
+				URLSchema:     "https",
 				TokenName:     "mytoken",
 				TokenPasscode: "secret",
 			},
@@ -120,14 +146,16 @@ func TestValidateConfig(t *testing.T) {
 		},
 		"missing token name": {
 			config: config{
-				URL:           "https://nexus.example.com",
+				URLSchema:     "https",
+				URLHost:       "nexus.example.com",
 				TokenPasscode: "secret",
 			},
 			expectErr: ErrMissingEnvVariable,
 		},
 		"missing token passcode": {
 			config: config{
-				URL:       "https://nexus.example.com",
+				URLSchema: "https",
+				URLHost:   "nexus.example.com",
 				TokenName: "mytoken",
 			},
 			expectErr: ErrMissingEnvVariable,

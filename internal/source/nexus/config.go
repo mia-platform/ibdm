@@ -21,7 +21,8 @@ var (
 
 // config holds the environment-driven Nexus settings.
 type config struct {
-	URL                string        `env:"NEXUS_URL"`
+	URLSchema          string        `env:"NEXUS_URL_SCHEMA"`
+	URLHost            string        `env:"NEXUS_URL_HOST"`
 	TokenName          string        `env:"NEXUS_TOKEN_NAME"`
 	TokenPasscode      string        `env:"NEXUS_TOKEN_PASSCODE"`
 	HTTPTimeout        time.Duration `env:"NEXUS_HTTP_TIMEOUT"        envDefault:"30s"`
@@ -47,8 +48,11 @@ func loadConfigFromEnv() (config, error) {
 func validateConfig(cfg config) error {
 	missing := make([]string, 0)
 
-	if cfg.URL == "" {
-		missing = append(missing, "NEXUS_URL")
+	if cfg.URLSchema == "" {
+		missing = append(missing, "NEXUS_URL_SCHEMA")
+	}
+	if cfg.URLHost == "" {
+		missing = append(missing, "NEXUS_URL_HOST")
 	}
 	if cfg.TokenName == "" {
 		missing = append(missing, "NEXUS_TOKEN_NAME")

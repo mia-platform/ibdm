@@ -38,7 +38,8 @@ func newTestSource(t *testing.T, handler http.Handler, specificRepository string
 
 	return &Source{
 		config: config{
-			URL:                server.URL,
+			URLSchema:          u.Scheme,
+			URLHost:            u.Host,
 			TokenName:          "test-token",
 			TokenPasscode:      "test-passcode",
 			HTTPTimeout:        5 * time.Second,
@@ -73,7 +74,8 @@ func TestNewSource(t *testing.T) {
 		"valid configuration": {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
-				t.Setenv("NEXUS_URL", "https://nexus.example.com")
+				t.Setenv("NEXUS_URL_SCHEMA", "https")
+				t.Setenv("NEXUS_URL_HOST", "nexus.example.com")
 				t.Setenv("NEXUS_TOKEN_NAME", "mytoken")
 				t.Setenv("NEXUS_TOKEN_PASSCODE", "secret")
 			},

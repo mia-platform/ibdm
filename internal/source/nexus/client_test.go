@@ -44,7 +44,8 @@ func TestNewClient(t *testing.T) {
 	}{
 		"valid config": {
 			config: config{
-				URL:           "https://nexus.example.com",
+				URLSchema:     "https",
+				URLHost:       "nexus.example.com",
 				TokenName:     "mytoken",
 				TokenPasscode: "secret",
 				HTTPTimeout:   30 * time.Second,
@@ -52,7 +53,8 @@ func TestNewClient(t *testing.T) {
 		},
 		"invalid URL": {
 			config: config{
-				URL:           "://invalid",
+				URLSchema:     "ht tp",
+				URLHost:       "nexus.example.com",
 				TokenName:     "mytoken",
 				TokenPasscode: "secret",
 				HTTPTimeout:   30 * time.Second,
@@ -72,7 +74,7 @@ func TestNewClient(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.config.TokenName, c.tokenName)
 			assert.Equal(t, tc.config.TokenPasscode, c.tokenPasscode)
-			assert.Equal(t, tc.config.URL, c.baseURL.String())
+			assert.Equal(t, tc.config.URLSchema+"://"+tc.config.URLHost, c.baseURL.String())
 		})
 	}
 }

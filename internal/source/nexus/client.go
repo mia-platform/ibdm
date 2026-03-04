@@ -32,9 +32,9 @@ type client struct {
 
 // newClient creates a client from the given config.
 func newClient(cfg config) (*client, error) {
-	u, err := url.Parse(cfg.URL)
+	u, err := url.Parse(cfg.URLSchema + "://" + cfg.URLHost)
 	if err != nil {
-		return nil, fmt.Errorf("%w: invalid NEXUS_URL: %w", ErrInvalidEnvVariable, err)
+		return nil, fmt.Errorf("%w: invalid NEXUS_URL_SCHEMA or NEXUS_URL_HOST: %w", ErrInvalidEnvVariable, err)
 	}
 
 	return &client{
