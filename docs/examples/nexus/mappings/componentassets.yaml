@@ -4,10 +4,10 @@ type: componentasset
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s-%s" .name .asset.checksum.sha256 | sha256sum }}
+    {{ printf "%s" .asset.id | sha256sum }}
   metadata:
     title: |-
-      {{ printf "%s %s" .repository .name }}
+      {{ printf "%s/%s:%s" .host .name .version }}
   spec:
     componentId: "{{ .id }}"
     repository: "{{ .repository }}"
@@ -40,3 +40,18 @@ mappings:
       {{- end -}}
       {{- $asset = set "docker" (get "docker" .asset (object)) $asset -}}
       {{- $asset | toJSON }}
+  extra:
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ printf "%s-%s" (printf "%s/%s:%s" .host .name .version | sha256sum) (printf "%s" .id | sha256sum) | sha256sum }}
+      sourceRef:
+        apiVersion: "nexus.mia-platform.eu/v1alpha1"
+        family: "dockerimages"
+        name: |-
+          {{ printf "%s/%s:%s" .host .name .version | sha256sum }}
+      typeRef:
+        apiVersion: "mia-platform.eu/v1alpha1"
+        family: "relationship-types"
+        name: "dependency.mia-platform.eu"
