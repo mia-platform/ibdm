@@ -1,0 +1,190 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: vulnerabilities.sysdig.mia-platform.eu
+spec:
+  group: sysdig.mia-platform.eu
+  names:
+    kind: Vulnerability
+    plural: vulnerabilities
+    singular: vulnerability
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              imageId:
+                description: The unique identifier of the container image.
+                type: string
+                title: Image ID
+              imageReference:
+                description: The full reference of the container image (e.g. registry/repo:tag).
+                type: string
+                title: Image Reference
+              manifestDigest:
+                description: The digest of the image manifest.
+                type: string
+                title: Manifest Digest
+              repository:
+                description: The repository the image belongs to.
+                type: string
+                title: Repository
+              vulnerability:
+                description: Details of the vulnerability found in the image.
+                type: object
+                title: Vulnerability
+                properties:
+                  acceptedRisk:
+                    description: Whether the risk of this vulnerability has been accepted.
+                    type: boolean
+                    title: Accepted Risk
+                  acceptedRiskInPipeline:
+                    description: Whether the risk of this vulnerability has been accepted in the pipeline.
+                    type: boolean
+                    title: Accepted Risk in Pipeline
+                  acceptedRiskInRuntime:
+                    description: Whether the risk of this vulnerability has been accepted in runtime.
+                    type: boolean
+                    title: Accepted Risk in Runtime
+                  createdAt:
+                    description: The timestamp when the vulnerability record was created.
+                    type: string
+                    format: date-time
+                    title: Created At
+                  customerId:
+                    description: The identifier of the customer associated with this vulnerability.
+                    type: number
+                    title: Customer ID
+                  cvssScore:
+                    description: The CVSS score of the vulnerability.
+                    type: number
+                    title: CVSS Score
+                  cvssSource:
+                    description: The source of the CVSS score.
+                    type: string
+                    title: CVSS Source
+                  cvssVector:
+                    description: The CVSS vector string.
+                    type: string
+                    title: CVSS Vector
+                  cvssVersion:
+                    description: The version of the CVSS scoring system used.
+                    type: string
+                    title: CVSS Version
+                  epssPercentile:
+                    description: The EPSS percentile score indicating exploit prediction.
+                    type: number
+                    title: EPSS Percentile
+                  epssScore:
+                    description: The EPSS score indicating exploit prediction.
+                    type: number
+                    title: EPSS Score
+                  firstSeen:
+                    description: The timestamp when the vulnerability was first seen.
+                    type: string
+                    format: date-time
+                    title: First Seen
+                  fixDate:
+                    description: The date when a fix was made available.
+                    type: string
+                    format: date-time
+                    title: Fix Date
+                  fixedInVersion:
+                    description: The package version that contains the fix.
+                    type: string
+                    title: Fixed In Version
+                  globalId:
+                    description: The global identifier of the vulnerability (e.g. CVE ID).
+                    type: string
+                    title: Global ID
+                  hasExploit:
+                    description: Whether a known exploit exists for this vulnerability.
+                    type: boolean
+                    title: Has Exploit
+                  hasFix:
+                    description: Whether a fix is available for this vulnerability.
+                    type: boolean
+                    title: Has Fix
+                  hash:
+                    description: A hash uniquely identifying the vulnerability record.
+                    type: string
+                    title: Hash
+                  inUse:
+                    description: Whether the vulnerable package is currently in use.
+                    type: boolean
+                    title: In Use
+                  knownRansomwareCampaignUse:
+                    description: Whether this vulnerability is known to be used in ransomware campaigns.
+                    type: boolean
+                    title: Known Ransomware Campaign Use
+                  lastModified:
+                    description: The timestamp when the vulnerability record was last modified.
+                    type: string
+                    format: date-time
+                    title: Last Modified
+                  name:
+                    description: The name of the vulnerability (e.g. CVE identifier).
+                    type: string
+                    title: Name
+                  namespace:
+                    description: The namespace of the vulnerability source feed.
+                    type: array
+                    title: Namespace
+                    items:
+                      type: string
+                  packageInfo:
+                    description: Additional information about the affected package.
+                    type: string
+                    title: Package Info
+                  packageName:
+                    description: The name of the affected package.
+                    type: string
+                    title: Package Name
+                  packagePath:
+                    description: The file-system path of the affected package.
+                    type: string
+                    title: Package Path
+                  packageType:
+                    description: The type of the affected package (e.g. rpm, deb, npm).
+                    type: string
+                    title: Package Type
+                  packageVersion:
+                    description: The version of the affected package.
+                    type: string
+                    title: Package Version
+                  publicationDate:
+                    description: The date when the vulnerability was publicly disclosed.
+                    type: string
+                    format: date-time
+                    title: Publication Date
+                  purl:
+                    description: The package URL (purl) of the affected package.
+                    type: string
+                    title: Package URL
+                  severity:
+                    description: The severity label of the vulnerability (e.g. Critical, High, Medium, Low).
+                    type: string
+                    title: Severity
+                  severityInt:
+                    description: The numeric representation of the severity level.
+                    type: integer
+                    title: Severity (numeric)
+                  solutionDate:
+                    description: The date when a solution was provided.
+                    type: string
+                    format: date-time
+                    title: Solution Date
+                  suggestedFix:
+                    description: The suggested remediation or fix for the vulnerability.
+                    type: string
+                    title: Suggested Fix
+    served: true
+    storage: true

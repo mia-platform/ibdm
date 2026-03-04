@@ -4,16 +4,55 @@ type: vulnerability
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s-%s" .img.imageId .vuln.name | sha256sum }}
+    {{ printf "%s-%s" .img.imageReference .vuln.name | sha256sum }}
   metadata:
-    title: "{{ printf \"%s %s\" .img.imageReference .vuln.name }}"
+    title: |-
+      {{ printf "%s %s" .img.imageReference .vuln.name }}
     labels: |-
       {{ $labels := object "mia-platform.eu/sysdig-vuln-severity" .vuln.severity -}}
       {{- $labels | toJSON }}
   spec:
     imageId: "{{ .img.imageId }}"
     imageReference: "{{ .img.imageReference }}"
-    vulnerability: "{{ .vuln | toJSON }}"
+    manifestDigest: "{{ .img.manifestDigest }}"
+    repository: "{{ .img.repository }}"
+    vulnerability: |-
+      {{ $vulnerability := object -}}
+      {{- $vulnerability = set "acceptedRisk" .vuln.acceptedRisk $vulnerability -}}
+      {{- $vulnerability = set "acceptedRiskInPipeline" .vuln.acceptedRiskInPipeline $vulnerability -}}
+      {{- $vulnerability = set "acceptedRiskInRuntime" .vuln.acceptedRiskInRuntime $vulnerability -}}
+      {{- $vulnerability = set "createdAt" .vuln.createdAt $vulnerability -}}
+      {{- $vulnerability = set "customerId" .vuln.customerId $vulnerability -}}
+      {{- $vulnerability = set "cvssScore" .vuln.cvssScore $vulnerability -}}
+      {{- $vulnerability = set "cvssSource" .vuln.cvssSource $vulnerability -}}
+      {{- $vulnerability = set "cvssVector" .vuln.cvssVector $vulnerability -}}
+      {{- $vulnerability = set "cvssVersion" .vuln.cvssVersion $vulnerability -}}
+      {{- $vulnerability = set "epssPercentile" .vuln.epssPercentile $vulnerability -}}
+      {{- $vulnerability = set "epssScore" .vuln.epssScore $vulnerability -}}
+      {{- $vulnerability = set "firstSeen" .vuln.firstSeen $vulnerability -}}
+      {{- $vulnerability = set "fixDate" .vuln.fixDate $vulnerability -}}
+      {{- $vulnerability = set "fixedInVersion" .vuln.fixedInVersion $vulnerability -}}
+      {{- $vulnerability = set "globalId" .vuln.globalId $vulnerability -}}
+      {{- $vulnerability = set "hasExploit" .vuln.hasExploit $vulnerability -}}
+      {{- $vulnerability = set "hasFix" .vuln.hasFix $vulnerability -}}
+      {{- $vulnerability = set "hash" .vuln.hash $vulnerability -}}
+      {{- $vulnerability = set "inUse" .vuln.inUse $vulnerability -}}
+      {{- $vulnerability = set "knownRansomwareCampaignUse" .vuln.knownRansomwareCampaignUse $vulnerability -}}
+      {{- $vulnerability = set "lastModified" .vuln.lastModified $vulnerability -}}
+      {{- $vulnerability = set "name" .vuln.name $vulnerability -}}
+      {{- $vulnerability = set "namespace" .vuln.namespace $vulnerability -}}
+      {{- $vulnerability = set "packageInfo" .vuln.packageInfo $vulnerability -}}
+      {{- $vulnerability = set "packageName" .vuln.packageName $vulnerability -}}
+      {{- $vulnerability = set "packagePath" .vuln.packagePath $vulnerability -}}
+      {{- $vulnerability = set "packageType" .vuln.packageType $vulnerability -}}
+      {{- $vulnerability = set "packageVersion" .vuln.packageVersion $vulnerability -}}
+      {{- $vulnerability = set "publicationDate" .vuln.publicationDate $vulnerability -}}
+      {{- $vulnerability = set "purl" .vuln.purl $vulnerability -}}
+      {{- $vulnerability = set "severity" .vuln.severity $vulnerability -}}
+      {{- $vulnerability = set "severityInt" .vuln.severityInt $vulnerability -}}
+      {{- $vulnerability = set "solutionDate" .vuln.solutionDate $vulnerability -}}
+      {{- $vulnerability = set "suggestedFix" .vuln.suggestedFix $vulnerability -}}
+      {{- $vulnerability | toJSON }}
   extra:
     - apiVersion: mia-platform.eu/v1alpha1
       itemFamily: relationships
@@ -22,8 +61,9 @@ mappings:
         {{ printf "rel-vuln-%s-%s-%s" .img.imageReference .img.imageId .vuln.name | sha256sum }}
       sourceRef:
         apiVersion: "nexus.mia-platform.eu/v1alpha1"
-        family: "images"
-        name: "{{ .img.imageReference | sha256sum }}"
+        family: "dockerimages"
+        name:  |-
+          {{ printf "%s" .img.imageReference }}
       typeRef:
         apiVersion: "mia-platform.eu/v1alpha1"
         family: "relationship-types"
