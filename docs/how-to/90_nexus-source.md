@@ -1,7 +1,7 @@
 # Sonatype Nexus Repository Manager Integration
 
 The Sonatype Nexus Repository Manager Integration of `ibdm` works in sync mode only, getting
-resources via the [Nexus REST API](https://help.sonatype.com/en/rest-and-integration-api.html).
+resources via the [Nexus REST API](https://help.sonatype.com/en/automation.html#rest-api).
 
 ## Commands
 
@@ -46,8 +46,8 @@ two data types that can be used in mapping files:
 
 ## Authentication
 
-The source authenticates using a [Nexus user token](https://help.sonatype.com/en/user-tokens.html)
-pair via HTTP Basic Auth. The `NEXUS_TOKEN_NAME` is sent as the Basic Auth username and
+The source authenticates using a `Nexus user token` pair via HTTP Basic Auth.
+The `NEXUS_TOKEN_NAME` is sent as the Basic Auth username and
 `NEXUS_TOKEN_PASSCODE` as the password.
 
 To create a user token, navigate to your Nexus user profile and select **User Token** in the
