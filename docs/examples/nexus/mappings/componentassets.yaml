@@ -32,7 +32,11 @@ mappings:
       {{- $asset = set "lastDownloaded" (get "lastDownloaded" .asset (now)) $asset -}}
       {{- $asset = set "uploader" (get "uploader" .asset "") $asset -}}
       {{- $asset = set "fileSize" (get "fileSize" .asset 0) $asset -}}
-      {{- $asset = set "blobCreated" (get "blobCreated" .asset (now)) $asset -}}
+      {{- if (get "blobCreated" .asset "") -}}
+        {{- $asset = set "blobCreated" .asset.blobCreated $asset -}}
+      {{- else -}}
+        {{- $asset = set "blobCreated" "" $asset -}}
+      {{- end -}}
       {{- if (get "blobStoreName" .asset "") -}}
         {{- $asset = set "blobStoreName" .asset.blobStoreName $asset -}}
       {{- else -}}

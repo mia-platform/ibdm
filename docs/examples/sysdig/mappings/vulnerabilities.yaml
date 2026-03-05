@@ -51,7 +51,11 @@ mappings:
       {{- $vulnerability = set "severity" .vuln.severity $vulnerability -}}
       {{- $vulnerability = set "severityInt" .vuln.severityInt $vulnerability -}}
       {{- $vulnerability = set "solutionDate" .vuln.solutionDate $vulnerability -}}
-      {{- $vulnerability = set "suggestedFix" .vuln.suggestedFix $vulnerability -}}
+      {{- if (get "suggestedFix" .vuln "") -}}
+        {{- $vulnerability = set "suggestedFix" .vuln.blobStoreName $vulnerability -}}
+      {{- else -}}
+        {{- $vulnerability = set "suggestedFix" "" $vulnerability -}}
+      {{- end -}}
       {{- $vulnerability | toJSON }}
   extra:
     - apiVersion: mia-platform.eu/v1alpha1

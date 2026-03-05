@@ -1,4 +1,4 @@
-apiVersion: console.mia-platform.eu/v1alpha1
+apiVersion: nexus.mia-platform.eu/v1alpha1
 itemFamily: dockerimages
 type: dockerimage
 syncable: true
@@ -12,4 +12,3 @@ mappings:
     host: "{{ .host }}"
     name: "{{ .name }}"
     version: "{{ .version }}"
-    repository: "{{ .repository }}"
