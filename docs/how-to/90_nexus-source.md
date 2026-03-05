@@ -46,9 +46,8 @@ two data types that can be used in mapping files:
 
 ## Authentication
 
-The source authenticates using a `Nexus user token` pair via HTTP Basic Auth.
-The `NEXUS_TOKEN_NAME` is sent as the Basic Auth username and
-`NEXUS_TOKEN_PASSCODE` as the password.
+The source authenticates using a [Nexus user token](https://help.sonatype.com/en/user-tokens.html) pair via HTTP Basic Auth.
+The `NEXUS_TOKEN_NAME` is sent as the Basic Auth username and `NEXUS_TOKEN_PASSCODE` as the password.
 
 To create a user token, navigate to your Nexus user profile and select **User Token** in the
 left-hand menu. Click **Access user token** and copy the token name code and the token pass code.
