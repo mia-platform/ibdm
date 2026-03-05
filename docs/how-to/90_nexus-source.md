@@ -17,8 +17,9 @@ ibdm sync nexus --mapping-file <path to mapping file or folder>
 
 In addition to other environment variables the Nexus source requires these additional ones:
 
-- `NEXUS_URL`: the base URL of the Nexus Repository Manager instance (e.g. `https://nexus.example.com`).
-	Must include scheme, no trailing slash.
+- `NEXUS_URL_SCHEMA`: the URL scheme of the Nexus Repository Manager instance (e.g. `https`).
+- `NEXUS_URL_HOST`: the hostname (and optional port) of the Nexus Repository Manager instance
+	(e.g. `nexus.example.com`). No scheme, no trailing slash.
 - `NEXUS_TOKEN_NAME`: Nexus user token name — the first part of a
 	[Nexus user token](https://help.sonatype.com/en/user-tokens.html) pair. Used as the username
 	in HTTP Basic Auth.
@@ -33,12 +34,13 @@ The following environment variables are optional:
 
 ## Supported Data Types
 
-The source supports two data types that can be used in mapping files:
+The source operates on Docker repositories only — non-Docker components are skipped. It supports
+two data types that can be used in mapping files:
 
-- `repository` — Nexus repositories (hosted, proxy, group). Each repository is emitted as a single
-	item containing repository metadata such as name, format, type, and URL.
-- `component-asset` — Component assets with a fan-out design. For each component in a repository,
-	the source emits one item per asset. Each item contains the component-level fields (`id`,
+- `dockerimage` — One entry per Docker component. Each item contains the component-level fields
+	`host`, `name`, and `version`.
+- `componentasset` — Component assets with a fan-out design. For each Docker component, the source
+	emits one item per asset. Each item contains the component-level fields (`host`, `id`,
 	`repository`, `format`, `group`, `name`, `version`, `tags`) plus a single `asset` object with
 	the asset details. Mapping templates access asset fields via `{{ .asset.fieldName }}`.
 
@@ -57,8 +59,8 @@ The token must have read permissions on the repositories and components you inte
 
 Example mapping files are provided in the `docs/examples/nexus/mappings/` directory:
 
-- `repositories.yaml` — maps Nexus repositories to Catalog items.
-- `component-assets.yaml` — maps component assets (fan-out) to Catalog items.
+- `dockerimages.yaml` — maps Docker image components to Catalog items.
+- `componentassets.yaml` — maps component assets to Catalog items.
 
 These files can be used as a starting point for your own mapping configurations. Pass the folder
 or a specific file to the `--mapping-file` flag:

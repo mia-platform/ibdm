@@ -8,4 +8,8 @@ mappings:
   metadata:
     title: |-
       {{ printf "%s/%s:%s" .host .name .version }}
-  spec: {}
+  spec:
+    host: "{{ .host }}"
+    name: "{{ .name }}"
+    version: "{{ .version }}"
+    repository: "{{ .repository }}"

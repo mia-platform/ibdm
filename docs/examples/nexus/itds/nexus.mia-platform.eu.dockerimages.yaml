@@ -21,6 +21,21 @@ spec:
             spec:
               type: object
               properties:
-                additionalProperties: false
+                host:
+                  description: The registry host of the Docker image.
+                  type: string
+                  title: Host
+                name:
+                  description: The name of the Docker image.
+                  type: string
+                  title: Name
+                version:
+                  description: The version tag of the Docker image.
+                  type: string
+                  title: Version
+                repository:
+                  description: The repository containing this Docker image.
+                  type: string
+                  title: Repository
       served: true
       storage: true
