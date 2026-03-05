@@ -24,6 +24,9 @@ words:
   - tmpl
   - upserted
   - uuidv
+  - Sonatype
+  - mytoken
+  - mylib
 ignoreWords:
   - acks
   - apiv

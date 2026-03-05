@@ -232,6 +232,42 @@ func buildRevisionData(revisionName string) map[string]any {
 	return map[string]any{"name": revisionName}
 }
 
+// buildServiceData returns a service map with normalized dockerImage field.
+func buildServiceData(svc map[string]any) map[string]any {
+	dockerImage, ok := svc["dockerImage"].(string)
+	if ok {
+		svc["dockerImage"] = ensureDockerImageTag(dockerImage)
+	}
+	return svc
+}
+
+// ensureDockerImageTag guarantees that a Docker image reference always carries
+// an explicit tag, defaulting to "latest" if none is present.
+func ensureDockerImageTag(image string) string {
+	if image == "" {
+		return image
+	}
+
+	// Digest references are already version-pinned.
+	if strings.Contains(image, "@") {
+		return image
+	}
+
+	// Only inspect the last path component so registry ports are not confused with tags.
+	lastSegment := image
+	if idx := strings.LastIndex(image, "/"); idx != -1 {
+		lastSegment = image[idx+1:]
+	}
+
+	// A non-empty tag is present when the last segment contains ":" followed
+	// by at least one character.
+	if colonIdx := strings.Index(lastSegment, ":"); colonIdx != -1 && colonIdx < len(lastSegment)-1 {
+		return image
+	}
+
+	return image + ":latest"
+}
+
 // isServiceValid reports whether svc qualifies for synchronisation. A service
 // is valid when its type is "custom" and it is not marked as advanced.
 func isServiceValid(svc map[string]any) bool {
@@ -264,7 +300,7 @@ func createServiceData(project map[string]any, revisionName string, svc map[stri
 		Values: map[string]any{
 			"project":  buildProjectData(project),
 			"revision": buildRevisionData(revisionName),
-			"service":  svc,
+			"service":  buildServiceData(svc),
 		},
 	}
 }

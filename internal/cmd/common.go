@@ -20,6 +20,7 @@ import (
 	azuredevops "github.com/mia-platform/ibdm/internal/source/azure-devops"
 	"github.com/mia-platform/ibdm/internal/source/console"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
+	"github.com/mia-platform/ibdm/internal/source/nexus"
 	"github.com/mia-platform/ibdm/internal/source/sysdig"
 )
 
@@ -40,6 +41,7 @@ var (
 		"azure-devops": "Microsoft Azure DevOps integration",
 		"gcp":          "Google Cloud Platform integration",
 		"console":      "Mia Platform Console integration",
+		"nexus":        "Sonatype Nexus Repository Manager integration",
 		"sysdig":       "Sysdig Secure integration",
 	}
 )
@@ -89,6 +91,8 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 		return gcp.NewSource()
 	case "console":
 		return console.NewSource()
+	case "nexus":
+		return nexus.NewSource()
 	case "sysdig":
 		return sysdig.NewSource()
 	}

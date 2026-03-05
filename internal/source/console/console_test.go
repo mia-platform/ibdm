@@ -616,3 +616,49 @@ func TestSource_listAssets(t *testing.T) {
 		})
 	}
 }
+
+func Test_buildServiceData(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		input    map[string]any
+		expected map[string]any
+	}{
+		"no dockerImage field": {
+			input:    map[string]any{"name": "svc"},
+			expected: map[string]any{"name": "svc"},
+		},
+		"image without tag gets :latest appended": {
+			input:    map[string]any{"dockerImage": "nexus.host/board/app"},
+			expected: map[string]any{"dockerImage": "nexus.host/board/app:latest"},
+		},
+		"image with explicit version is unchanged": {
+			input:    map[string]any{"dockerImage": "nexus.host/board/app:8.1.2"},
+			expected: map[string]any{"dockerImage": "nexus.host/board/app:8.1.2"},
+		},
+		"registry with port and no tag gets :latest appended": {
+			input:    map[string]any{"dockerImage": "registry:5000/app"},
+			expected: map[string]any{"dockerImage": "registry:5000/app:latest"},
+		},
+		"registry with port and explicit tag is unchanged": {
+			input:    map[string]any{"dockerImage": "registry:5000/app:1.0"},
+			expected: map[string]any{"dockerImage": "registry:5000/app:1.0"},
+		},
+		"digest-pinned image is unchanged": {
+			input:    map[string]any{"dockerImage": "app@sha256:abc123"},
+			expected: map[string]any{"dockerImage": "app@sha256:abc123"},
+		},
+		"empty dockerImage is unchanged": {
+			input:    map[string]any{"dockerImage": ""},
+			expected: map[string]any{"dockerImage": ""},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			result := buildServiceData(tc.input)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
