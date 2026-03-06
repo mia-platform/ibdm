@@ -14,5 +14,7 @@ mappings:
       identifier: "extra1"
       sourceRef:
         notValid: "{{ .extraValue }}"
+      targetRef:
+        notValid: "{{ .extraValue }}"
       typeRef:
         notValid: "{{ .extraValue }}"

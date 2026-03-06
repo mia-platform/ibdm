@@ -12,11 +12,6 @@ mappings:
       itemFamily: relationships
       deletePolicy: "none"
       identifier: "extra1"
-      sourceRef:
-        apiVersion: ""
-        family: ""
-        name: ""
-      typeRef:
-        apiVersion: ""
-        family: ""
-        name: ""
+      sourceRef: ""
+      targetRef: ""
+      typeRef: ""

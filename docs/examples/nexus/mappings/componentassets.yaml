@@ -50,12 +50,8 @@ mappings:
       deletePolicy: "cascade"
       identifier: |-
         {{ printf "%s-%s" (printf "%s/%s:%s" .host .name .version | sha256sum) (printf "%s" .id | sha256sum) | sha256sum }}
-      sourceRef:
-        apiVersion: "nexus.mia-platform.eu/v1alpha1"
-        family: "dockerimages"
-        name: |-
-          {{ printf "%s/%s:%s" .host .name .version | sha256sum }}
-      typeRef:
-        apiVersion: "mia-platform.eu/v1alpha1"
-        family: "relationship-types"
-        name: "dependency.mia-platform.eu"
+      sourceRef: |-
+        urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:null:{{ printf "%s/%s:%s" .host .name .version | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:ComponentAsset:null:{{ printf "%s" .id | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency.mia-platform.eu"

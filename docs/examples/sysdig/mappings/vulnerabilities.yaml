@@ -52,7 +52,7 @@ mappings:
       {{- $vulnerability = set "severityInt" .vuln.severityInt $vulnerability -}}
       {{- $vulnerability = set "solutionDate" .vuln.solutionDate $vulnerability -}}
       {{- if (get "suggestedFix" .vuln "") -}}
-        {{- $vulnerability = set "suggestedFix" .vuln.blobStoreName $vulnerability -}}
+        {{- $vulnerability = set "suggestedFix" .vuln.suggestedFix $vulnerability -}}
       {{- else -}}
         {{- $vulnerability = set "suggestedFix" "" $vulnerability -}}
       {{- end -}}
@@ -63,11 +63,10 @@ mappings:
       deletePolicy: "none"
       identifier: |-
         {{ printf "rel-vuln-%s-%s-%s" .img.imageReference .img.imageId .vuln.name | sha256sum }}
-      sourceRef:
-        apiVersion: "nexus.mia-platform.eu/v1alpha1"
-        family: "dockerimages"
-        name:  |-
-          {{ printf "%s" .img.imageReference | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:sysdig.mia-platform.eu:v1alpha1:Vulnerability:null:{{ printf "%s-%s" .img.imageReference .vuln.name | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:null:{{ printf "%s" .img.imageReference | sha256sum }}
       typeRef:
         apiVersion: "mia-platform.eu/v1alpha1"
         family: "relationship-types"

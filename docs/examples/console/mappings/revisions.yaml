@@ -17,11 +17,7 @@ mappings:
       deletePolicy: "cascade"
       identifier: |-
         {{ printf "relationship-%s-%s-%s-dependency" .project._id .project._id .revision.name | sha256sum }}
-      sourceRef:
-        apiVersion: "console.mia-platform.eu/v1alpha1"
-        family: "projects"
-        name: "{{ .project._id }}"
-      typeRef:
-        apiVersion: "mia-platform.eu/v1alpha1"
-        family: "relationship-types"
-        name: "dependency.mia-platform.eu"
+      sourceRef: "urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Project:null:{{ .project._id }}"
+      targetRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:null:{{ printf "%s-%s" .project._id .revision.name | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency.mia-platform.eu"
