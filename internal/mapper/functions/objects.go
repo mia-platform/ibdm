@@ -13,7 +13,7 @@ func Object(keyAndValues ...any) map[string]any {
 		key := castToString(keyAndValues[idx])
 		var value any = nil
 		if idx+1 < parametersLength {
-			value = keyAndValues[idx+1]
+			value = keyAndValues[idx+1] //nolint:gosec // G602 false positive: bounds are checked above
 		}
 
 		obj[key] = value
