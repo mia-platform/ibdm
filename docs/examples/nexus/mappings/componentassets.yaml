@@ -49,9 +49,9 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ printf "%s-%s" (printf "%s/%s:%s" .host .name .version | sha256sum) (printf "%s" .asset.id | sha256sum) | sha256sum }}
+        {{ printf "relationship-%s-%s-belonging" (printf "%s" .asset.id | sha256sum) (printf "%s/%s:%s" .host .name .version | sha256sum) | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:null:{{ printf "%s/%s:%s" .host .name .version | sha256sum }}
-      targetRef: |-
         urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:ComponentAsset:null:{{ printf "%s" .asset.id | sha256sum }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency.mia-platform.eu"
+      targetRef: |-
+        urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:null:{{ printf "%s/%s:%s" .host .name .version | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:belonging.mia-platform.eu"
