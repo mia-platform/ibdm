@@ -48,7 +48,7 @@ mappings:
       identifier: |-
         {{ $info := (get "info" .project (object)) -}}
         {{- $teamContact := (get "teamContact" $info "") -}}
-        {{- printf "relationship-%s-%s-ownership" $teamContact (printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum) | sha256sum}}
+        {{- printf "relationship-%s-%s-ownership" ($teamContact | sha256sum) (printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum) | sha256sum}}
       sourceRef: |-
         {{ $info := (get "info" .project (object)) -}}
         {{- $teamContact := (get "teamContact" $info "") -}}
