@@ -4,13 +4,10 @@ type: vulnerability
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%s" .vuln.globalId | sha256sum }}
+    {{ printf "%s" .vuln.name | sha256sum }}
   metadata:
     title: |-
       {{ printf "%s" .vuln.name }}
-    labels: |-
-      {{ $labels := object "mia-platform.eu/sysdig-vuln-severity" .vuln.severity -}}
-      {{- $labels | toJSON }}
   spec:
     acceptedRisk: "{{ .vuln.acceptedRisk }}"
     acceptedRiskInPipeline: "{{ .vuln.acceptedRiskInPipeline }}"
@@ -57,9 +54,9 @@ mappings:
       itemFamily: relationships
       deletePolicy: "none"
       identifier: |-
-        {{ printf "rel-vuln-%s-%s" (.vuln.globalId | sha256sum) (printf "%s" .img.imageReference | sha256sum) | sha256sum }}
+        {{ printf "rel-vuln-%s-%s" (.vuln.name | sha256sum) (printf "%s" .img.imageReference | sha256sum) | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:sysdig.mia-platform.eu:v1alpha1:Vulnerability:null:{{ printf "%s" .vuln.globalId | sha256sum }}
+        urn:mia-platform-catalog:sysdig.mia-platform.eu:v1alpha1:Vulnerability:null:{{ printf "%s" .vuln.name | sha256sum }}
       targetRef: |-
         urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:null:{{ printf "%s" .img.imageReference | sha256sum }}
       typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:vulnerability.mia-platform.eu"
