@@ -2,7 +2,7 @@ module github.com/mia-platform/ibdm
 
 go 1.25
 
-toolchain go1.25.7
+toolchain go1.25.8
 
 require (
 	cloud.google.com/go/asset v1.22.0
