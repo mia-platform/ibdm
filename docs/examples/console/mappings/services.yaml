@@ -28,12 +28,12 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ printf "relationship-%s-%s-dependency" (printf "%s-%s" .project._id .revision.name | sha256sum) (printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum) | sha256sum }}
+        {{ printf "relationship-%s-%s-belonging" (printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum) (printf "%s-%s" .project._id .revision.name | sha256sum) | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:null:{{ printf "%s-%s" .project._id .revision.name | sha256sum }}
-      targetRef: |-
         urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Service:null:{{ printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency.mia-platform.eu"
+      targetRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:null:{{ printf "%s-%s" .project._id .revision.name | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:belonging.mia-platform.eu"
     - apiVersion: mia-platform.eu/v1alpha1
       itemFamily: relationships
       deletePolicy: "cascade"
