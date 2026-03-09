@@ -130,12 +130,9 @@ func getExtra(tb testing.TB, deletePolicy string, id int) config.Extra {
 		"itemFamily":   "relationships",
 		"deletePolicy": deletePolicy,
 		"identifier":   `{{ printf "relationship--%s--%s--dependency` + idString + `" .field1 .field2 }}`,
-		"sourceRef": map[string]any{
-			"apiVersion": "resource.custom-platform/v1",
-			"family":     "family1",
-			"name":       "{{ .field2 }}" + idString,
-		},
-		"type": "dependency",
+		"sourceRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .field2 }}" + idString,
+		"targetRef":    "urn:mia-platform-catalog:mia-platform.eu:v1:Family:null:{{ .id }}",
+		"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 	}
 }
 
@@ -234,17 +231,9 @@ func TestStreamPipeline(t *testing.T) {
 					ItemFamily: "relationships",
 					Name:       "relationship--value1--value2--dependency",
 					Data: map[string]any{
-						"sourceRef": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "value2",
-						},
-						"targetRef": map[string]any{
-							"apiVersion": "v1",
-							"family":     "family",
-							"name":       "item1",
-						},
-						"type": "dependency",
+						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:value2",
+						"targetRef": "urn:mia-platform-catalog:mia-platform.eu:v1:Family:null:item1",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 					},
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -302,17 +291,9 @@ func TestStreamPipeline(t *testing.T) {
 					ItemFamily: "relationships",
 					Name:       "relationship--value1--value2--dependency",
 					Data: map[string]any{
-						"sourceRef": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "value2",
-						},
-						"targetRef": map[string]any{
-							"apiVersion": "v1",
-							"family":     "family",
-							"name":       "item1",
-						},
-						"type": "dependency",
+						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:value2",
+						"targetRef": "urn:mia-platform-catalog:mia-platform.eu:v1:Family:null:item1",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 					},
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -321,17 +302,9 @@ func TestStreamPipeline(t *testing.T) {
 					ItemFamily: "relationships",
 					Name:       "relationship--value1--value2--dependency-1",
 					Data: map[string]any{
-						"sourceRef": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "value2-1",
-						},
-						"targetRef": map[string]any{
-							"apiVersion": "v1",
-							"family":     "family",
-							"name":       "item1",
-						},
-						"type": "dependency",
+						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:value2-1",
+						"targetRef": "urn:mia-platform-catalog:mia-platform.eu:v1:Family:null:item1",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 					},
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -469,17 +442,9 @@ func TestStreamPipelineWebhook(t *testing.T) {
 					ItemFamily: "relationships",
 					Name:       "relationship--value1--value2--dependency",
 					Data: map[string]any{
-						"sourceRef": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "value2",
-						},
-						"targetRef": map[string]any{
-							"apiVersion": "v1",
-							"family":     "family",
-							"name":       "item1",
-						},
-						"type": "dependency",
+						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:value2",
+						"targetRef": "urn:mia-platform-catalog:mia-platform.eu:v1:Family:null:item1",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 					},
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -546,17 +511,9 @@ func TestStreamPipelineWebhook(t *testing.T) {
 					ItemFamily: "relationships",
 					Name:       "relationship--value1--value2--dependency",
 					Data: map[string]any{
-						"sourceRef": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "value2",
-						},
-						"targetRef": map[string]any{
-							"apiVersion": "v1",
-							"family":     "family",
-							"name":       "item1",
-						},
-						"type": "dependency",
+						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:value2",
+						"targetRef": "urn:mia-platform-catalog:mia-platform.eu:v1:Family:null:item1",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 					},
 					OperationTime: "2024-06-01T12:00:00Z",
 				},
@@ -565,17 +522,9 @@ func TestStreamPipelineWebhook(t *testing.T) {
 					ItemFamily: "relationships",
 					Name:       "relationship--value1--value2--dependency-1",
 					Data: map[string]any{
-						"sourceRef": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "value2-1",
-						},
-						"targetRef": map[string]any{
-							"apiVersion": "v1",
-							"family":     "family",
-							"name":       "item1",
-						},
-						"type": "dependency",
+						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:value2-1",
+						"targetRef": "urn:mia-platform-catalog:mia-platform.eu:v1:Family:null:item1",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 					},
 					OperationTime: "2024-06-01T12:00:00Z",
 				},

@@ -225,8 +225,7 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 		return MappedData{}, nil, err
 	}
 
-	parentResourceInfo.Identifier = identifier
-	extraData, err := executeExtraMappings(data, m.extraMappings, parentResourceInfo)
+	extraData, err := executeExtraMappings(data, m.extraMappings)
 	if err != nil {
 		return MappedData{}, nil, err
 	}
@@ -320,7 +319,7 @@ func executeExtraCreateIfTemplate(data map[string]any, extraMapping ExtraMapping
 }
 
 // executeExtraMappings renders the pre-compiled extra templates.
-func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, parentResourceInfo ParentItemInfo) ([]ExtraMappedData, error) {
+func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping) ([]ExtraMappedData, error) {
 	output := make([]ExtraMappedData, 0, len(extraMappings))
 
 	for _, extraMapping := range extraMappings {
@@ -353,9 +352,6 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 			return nil, fmt.Errorf("%w: %w", errParsingExtra, err)
 		}
 
-		// Handle Special Resources
-		spec = enrichSpec(spec, parentResourceInfo, extraMapping.ItemFamily)
-
 		output = append(output, ExtraMappedData{
 			APIVersion: extraMapping.APIVersion,
 			ItemFamily: extraMapping.ItemFamily,
@@ -365,27 +361,6 @@ func executeExtraMappings(data map[string]any, extraMappings []ExtraMapping, par
 	}
 
 	return output, nil
-}
-
-// enrichSpec applies special-case mutations to a rendered extra spec based on
-// the extra item family.
-func enrichSpec(spec map[string]any, parentResourceInfo ParentItemInfo, itemFamily string) map[string]any {
-	if strings.EqualFold(itemFamily, config.ExtraRelationshipFamily) {
-		spec = enrichRelationshipSpec(spec, parentResourceInfo)
-	}
-
-	return spec
-}
-
-func enrichRelationshipSpec(spec map[string]any, parentResourceInfo ParentItemInfo) map[string]any {
-	// Inject targetRef
-	spec["targetRef"] = map[string]any{
-		"apiVersion": parentResourceInfo.APIVersion,
-		"family":     parentResourceInfo.ItemFamily,
-		"name":       parentResourceInfo.Identifier,
-	}
-
-	return spec
 }
 
 // templateFunctions exposes the custom helpers added to every mapping template.

@@ -183,16 +183,9 @@ func TestNewMappingsFromPath(t *testing.T) {
 								"itemFamily":   "relationships",
 								"identifier":   `extra1`,
 								"deletePolicy": "none",
-								"sourceRef": map[string]any{
-									"apiVersion": "{{ .extraValue }}",
-									"family":     "{{ .extraValue }}",
-									"name":       "{{ .extraValue }}",
-								},
-								"typeRef": map[string]any{
-									"apiVersion": "{{ .extraValue }}",
-									"family":     "{{ .extraValue }}",
-									"name":       "{{ .extraValue }}",
-								},
+								"sourceRef":    "{{ .extraValue }}",
+								"targetRef":    "{{ .extraValue }}",
+								"typeRef":      "{{ .extraValue }}",
 							},
 						},
 					},
@@ -219,32 +212,18 @@ func TestNewMappingsFromPath(t *testing.T) {
 								"itemFamily":   "relationships",
 								"identifier":   `extra1`,
 								"deletePolicy": "none",
-								"sourceRef": map[string]any{
-									"apiVersion": "{{ .extraValue }}",
-									"family":     "{{ .extraValue }}",
-									"name":       "{{ .extraValue }}",
-								},
-								"typeRef": map[string]any{
-									"apiVersion": "{{ .extraValue }}",
-									"family":     "{{ .extraValue }}",
-									"name":       "{{ .extraValue }}",
-								},
+								"sourceRef":    "{{ .extraValue }}",
+								"targetRef":    "{{ .extraValue }}",
+								"typeRef":      "{{ .extraValue }}",
 							},
 							{
 								"apiVersion":   "group/v1",
 								"itemFamily":   "relationships",
 								"identifier":   `extra2`,
 								"deletePolicy": "none",
-								"sourceRef": map[string]any{
-									"apiVersion": "{{ .extraValue }}",
-									"family":     "{{ .extraValue }}",
-									"name":       "{{ .extraValue }}",
-								},
-								"typeRef": map[string]any{
-									"apiVersion": "{{ .extraValue }}",
-									"family":     "{{ .extraValue }}",
-									"name":       "{{ .extraValue }}",
-								},
+								"sourceRef":    "{{ .extraValue }}",
+								"targetRef":    "{{ .extraValue }}",
+								"typeRef":      "{{ .extraValue }}",
 							},
 						},
 					},
@@ -255,15 +234,15 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path:          filepath.Join("testdata", "extrainvalidfamily.yaml"),
 			expectedError: ErrParsing,
 		},
-		"valid yaml file with extra mapping of family relationships with missing sourceRef and typeRef": {
+		"valid yaml file with extra mapping of family relationships with missing sourceRef, targetRef and typeRef": {
 			path:          filepath.Join("testdata", "extramissingfields.yaml"),
 			expectedError: ErrParsing,
 		},
-		"valid yaml file with extra mapping of family relationships with invalid sourceRef and typeRef": {
+		"valid yaml file with extra mapping of family relationships with invalid sourceRef, targetRef and typeRef": {
 			path:          filepath.Join("testdata", "extrainvalidfields.yaml"),
 			expectedError: ErrParsing,
 		},
-		"valid yaml file with extra mapping of family relationships with empty sourceRef and typeRef": {
+		"valid yaml file with extra mapping of family relationships with empty sourceRef, targetRef and typeRef": {
 			path:          filepath.Join("testdata", "extraemptyfields.yaml"),
 			expectedError: ErrParsing,
 		},

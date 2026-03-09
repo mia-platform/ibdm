@@ -25,11 +25,10 @@ const (
 
 	APIVersionField   = "apiVersion"
 	DeletePolicyField = "deletePolicy"
-	FamilyField       = "family"
 	IdentifierField   = "identifier"
 	ItemFamilyField   = "itemFamily"
-	NameField         = "name"
 	SourceRefField    = "sourceRef"
+	TargetRefField    = "targetRef"
 	TypeField         = "type"
 	TypeRefField      = "typeRef"
 )
@@ -153,33 +152,9 @@ func validateFamilySpecificFields(extraMap map[string]any, itemFamily string) (b
 func validateRelationshipFamilyFields(extraMap map[string]any) (bool, []string) {
 	errorsList := []string{}
 
-	sourceRef, ok := extraMap[SourceRefField].(map[string]any)
-	if !ok {
-		errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s' for relationship extra mapping", SourceRefField))
-	} else {
-		if apiVersionField, ok := sourceRef[APIVersionField].(string); !ok || apiVersionField == "" {
-			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", SourceRefField, APIVersionField))
-		}
-		if familyField, ok := sourceRef[FamilyField].(string); !ok || familyField == "" {
-			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", SourceRefField, FamilyField))
-		}
-		if nameField, ok := sourceRef[NameField].(string); !ok || nameField == "" {
-			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", SourceRefField, NameField))
-		}
-	}
-
-	typeRef, ok := extraMap[TypeRefField].(map[string]any)
-	if !ok {
-		errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s' for relationship extra mapping", TypeRefField))
-	} else {
-		if apiVersionField, ok := typeRef[APIVersionField].(string); !ok || apiVersionField == "" {
-			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", TypeRefField, APIVersionField))
-		}
-		if familyField, ok := typeRef[FamilyField].(string); !ok || familyField == "" {
-			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", TypeRefField, FamilyField))
-		}
-		if nameField, ok := typeRef[NameField].(string); !ok || nameField == "" {
-			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s.%s' for relationship extra mapping", TypeRefField, NameField))
+	for _, field := range []string{SourceRefField, TargetRefField, TypeRefField} {
+		if value, ok := extraMap[field].(string); !ok || value == "" {
+			errorsList = append(errorsList, fmt.Sprintf("missing or invalid '%s' for relationship extra mapping", field))
 		}
 	}
 

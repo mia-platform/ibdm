@@ -12,23 +12,13 @@ mappings:
       itemFamily: relationships
       deletePolicy: "none"
       identifier: "extra1"
-      sourceRef:
-        apiVersion: "{{ .extraValue }}"
-        family: "{{ .extraValue }}"
-        name: "{{ .extraValue }}"
-      typeRef:
-        apiVersion: "{{ .extraValue }}"
-        family: "{{ .extraValue }}"
-        name: "{{ .extraValue }}"
+      sourceRef: "{{ .extraValue }}"
+      targetRef: "{{ .extraValue }}"
+      typeRef: "{{ .extraValue }}"
     - apiVersion: group/v1
       itemFamily: relationships
       deletePolicy: "none"
       identifier: "extra2"
-      sourceRef:
-        apiVersion: "{{ .extraValue }}"
-        family: "{{ .extraValue }}"
-        name: "{{ .extraValue }}"
-      typeRef:
-        apiVersion: "{{ .extraValue }}"
-        family: "{{ .extraValue }}"
-        name: "{{ .extraValue }}"
+      sourceRef: "{{ .extraValue }}"
+      targetRef: "{{ .extraValue }}"
+      typeRef: "{{ .extraValue }}"

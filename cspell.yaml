@@ -27,6 +27,7 @@ words:
   - Sonatype
   - mytoken
   - mylib
+  - epss
 ignoreWords:
   - acks
   - apiv

@@ -350,16 +350,9 @@ func TestMapper(t *testing.T) {
 							"itemFamily":   "relationships",
 							"deletePolicy": "cascade",
 							"identifier":   "{{ .name }}",
-							"sourceRef": map[string]any{
-								"apiVersion": "resource.custom-platform/v1",
-								"family":     "family1",
-								"name":       "{{ .otherKey.value }}",
-							},
-							"type": map[string]any{
-								"apiVersion": "resource.custom-platform/v1",
-								"family":     "family1",
-								"name":       "{{ .otherKey.value }}",
-							},
+							"sourceRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .otherKey.value }}",
+							"targetRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .name }}",
+							"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 						},
 						{
 							"apiVersion":   "api/v1",
@@ -367,16 +360,9 @@ func TestMapper(t *testing.T) {
 							"deletePolicy": "cascade",
 							"createIf":     "{{ false }}",
 							"identifier":   "{{ .name }}",
-							"sourceRef": map[string]any{
-								"apiVersion": "resource.custom-platform/v1",
-								"family":     "family1",
-								"name":       "{{ .otherKey.value }}",
-							},
-							"type": map[string]any{
-								"apiVersion": "resource.custom-platform/v1",
-								"family":     "family1",
-								"name":       "{{ .otherKey.value }}",
-							},
+							"sourceRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .otherKey.value }}",
+							"targetRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .name }}",
+							"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 						},
 						{
 							"apiVersion":   "api/v1",
@@ -384,16 +370,9 @@ func TestMapper(t *testing.T) {
 							"deletePolicy": "cascade",
 							"createIf":     "{{ eq .otherKey.string \"example\" }}",
 							"identifier":   "{{ .name }}-create",
-							"sourceRef": map[string]any{
-								"apiVersion": "resource.custom-platform/v1",
-								"family":     "family1",
-								"name":       "{{ .otherKey.value }}",
-							},
-							"type": map[string]any{
-								"apiVersion": "resource.custom-platform/v1",
-								"family":     "family1",
-								"name":       "{{ .otherKey.value }}",
-							},
+							"sourceRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .otherKey.value }}",
+							"targetRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .name }}",
+							"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 						},
 					},
 				)
@@ -439,21 +418,9 @@ func TestMapper(t *testing.T) {
 					ItemFamily: "relationships",
 					Identifier: "example",
 					Spec: map[string]any{
-						"sourceRef": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "42",
-						},
-						"targetRef": map[string]any{
-							"apiVersion": "",
-							"family":     "",
-							"name":       "example",
-						},
-						"type": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "42",
-						},
+						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:42",
+						"targetRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:example",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 					},
 				},
 				{
@@ -461,21 +428,9 @@ func TestMapper(t *testing.T) {
 					ItemFamily: "relationships",
 					Identifier: "example-create",
 					Spec: map[string]any{
-						"sourceRef": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "42",
-						},
-						"targetRef": map[string]any{
-							"apiVersion": "",
-							"family":     "",
-							"name":       "example",
-						},
-						"type": map[string]any{
-							"apiVersion": "resource.custom-platform/v1",
-							"family":     "family1",
-							"name":       "42",
-						},
+						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:42",
+						"targetRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:example",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
 					},
 				},
 			},
