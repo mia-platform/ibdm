@@ -7,6 +7,8 @@ updates:
   schedule:
     interval: monthly
     timezone: Europe/Rome
+  ignore:
+  - dependency-name: anchore/sbom-action
   groups:
     minor-actions-dependencies:
       update-types:
