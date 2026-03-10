@@ -179,7 +179,7 @@ jobs:
         cosign-release: ${{ env.COSIGN_VERSION }}
     - name: Setup Syft and Generate SBOM for Docker Image
       if: github.ref_type == 'tag'
-      uses: anchore/sbom-action@17ae1740179002c89186b61233e0f892c3118b11 # v0.23.0
+      uses: anchore/sbom-action@deef08a0db64bfad603422135db61477b16cef56 # v0.22.1
       with:
         syft-version: ${{ env.SYFT_VERSION }}
         artifact-name: sbom.spdx.json
