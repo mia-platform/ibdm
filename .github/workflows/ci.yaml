@@ -170,6 +170,7 @@ jobs:
         sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
         registry-user: ${{ secrets.NEXUS_USER }}
         registry-password: ${{ secrets.NEXUS_TOKEN }}
+        stop-on-failed-policy-eval: true
         stop-on-processing-error: true
     - name: Setup Cosign
       if: github.ref_type == 'tag'
