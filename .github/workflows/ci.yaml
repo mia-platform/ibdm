@@ -90,18 +90,18 @@ jobs:
       with:
         go-version-file: go.mod
     - name: Docker Login to GitHub Repository
-      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Docker Login to DockerHub
-      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
       with:
         username: ${{ secrets.BOT_DOCKER_USERNAME }}
         password: ${{ secrets.BOT_DOCKER_TOKEN }}
     - name: Login to Mia registry
-      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
       with:
         registry: nexus.mia-platform.eu
         username: ${{ secrets.NEXUS_USER }}
