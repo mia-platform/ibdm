@@ -9,6 +9,8 @@ updates:
     timezone: Europe/Rome
   ignore:
   - dependency-name: anchore/sbom-action
+  - dependency-name: sigstore/cosign-installer
+  - dependency-name: sysdiglabs/scan-action
   groups:
     minor-actions-dependencies:
       update-types:
