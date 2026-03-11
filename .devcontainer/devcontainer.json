@@ -3,8 +3,8 @@
 	"image": "mcr.microsoft.com/devcontainers/base:2.1.2-trixie",
 	"features": {
 		"ghcr.io/devcontainers/features/go:1.3.2": {
-			"version": "1.25.8",
-			"golangciLintVersion": "2.8.0"
+			"version": "1.26.1",
+			"golangciLintVersion": "2.11.2"
 		}
 	},
 	"runArgs": [
