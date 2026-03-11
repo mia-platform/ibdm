@@ -18,7 +18,6 @@ func TestMakeRequest(t *testing.T) {
 	testCases := map[string]struct {
 		handler       http.HandlerFunc
 		expectedItems []map[string]any
-		expectedCurr  int
 		expectedTotal int
 		expectErr     bool
 	}{
@@ -27,22 +26,18 @@ func TestMakeRequest(t *testing.T) {
 				assert.Equal(t, "test-token", r.Header.Get("PRIVATE-TOKEN"))
 				assert.Equal(t, "application/json", r.Header.Get("Accept"))
 				assert.Equal(t, "1", r.URL.Query().Get("page"))
-				w.Header().Set("x-page", "1")
 				w.Header().Set("x-total-pages", "1")
 				jsonResponse(t, w, []map[string]any{{"id": float64(1)}})
 			},
 			expectedItems: []map[string]any{{"id": float64(1)}},
-			expectedCurr:  1,
 			expectedTotal: 1,
 		},
 		"pagination headers parsed": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("x-page", "2")
 				w.Header().Set("x-total-pages", "5")
 				jsonResponse(t, w, []map[string]any{{"id": float64(2)}})
 			},
 			expectedItems: []map[string]any{{"id": float64(2)}},
-			expectedCurr:  2,
 			expectedTotal: 5,
 		},
 		"non-200 status": {
@@ -67,7 +62,7 @@ func TestMakeRequest(t *testing.T) {
 			defer srv.Close()
 
 			client := newTestGitLabClient(t, srv)
-			items, currPage, totalPages, err := client.makePageableRequest(t.Context(), "/api/v4/projects", "per_page=100", 1)
+			items, totalPages, err := client.makePageableRequest(t.Context(), "/api/v4/projects", "per_page=100", 1)
 
 			if tc.expectErr {
 				require.Error(t, err)
@@ -75,14 +70,12 @@ func TestMakeRequest(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedItems, items)
-			assert.Equal(t, tc.expectedCurr, currPage)
 			assert.Equal(t, tc.expectedTotal, totalPages)
 		})
 	}
 }
 
 func TestListAllPages(t *testing.T) {
-	maxPagesLimit = 3
 	testCases := map[string]struct {
 		pages         int // total pages the server reports
 		expectedCount int
@@ -95,10 +88,6 @@ func TestListAllPages(t *testing.T) {
 		"three pages all collected": {
 			pages:         3,
 			expectedCount: 3,
-		},
-		"stops at maxPagesLimit": {
-			pages:         maxPagesLimit + 5,
-			expectedCount: maxPagesLimit,
 		},
 	}
 
@@ -182,7 +171,6 @@ func TestListProjects(t *testing.T) {
 }
 
 func TestListPipelines(t *testing.T) {
-	maxPagesLimit = 3
 	testCases := map[string]struct {
 		handler       http.HandlerFunc
 		projectID     string
