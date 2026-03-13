@@ -185,7 +185,12 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 				case revisionResource:
 					result = append(result, createRevisionData(project, revName, timeSource()))
 				case serviceResource:
-					if revName != project["defaultBranch"].(string) {
+					defaultBranch, ok := project["defaultBranch"].(string)
+					if !ok {
+						log.Trace("nil defaultBranch for project", "_id", project["_id"], "projectId", project["projectId"], "revisionName", revName)
+						continue
+					}
+					if revName != defaultBranch {
 						continue
 					}
 					for _, svc := range configuration["services"].(map[string]any) {
