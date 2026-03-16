@@ -22,7 +22,13 @@ mappings:
     epssScore: "{{ .vuln.epssScore }}"
     firstSeen: "{{ .vuln.firstSeen }}"
     fixDate: "{{ .vuln.fixDate }}"
-    fixedInVersion: "{{ .vuln.fixedInVersion }}"
+    fixedInVersion: |-
+      {{ $fixedInVersion := (get "fixedInVersion" .vuln "") -}}
+      {{- if $fixedInVersion -}}
+        {{- .vuln.fixedInVersion  -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     globalId: "{{ .vuln.globalId }}"
     hasExploit: "{{ .vuln.hasExploit }}"
     hasFix: "{{ .vuln.hasFix }}"
