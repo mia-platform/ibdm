@@ -6,10 +6,11 @@ mappings:
   identifier: |-
     {{ printf "%v" .project.id }}
   metadata:
-    title: "{{ .project.path_with_namespace }}"
+    title: "{{ .project.name_with_namespace }}"
   spec:
     id: "{{ .project.id }}"
     name: "{{ .project.name }}"
+    nameWithNamespace: "{{ .project.name_with_namespace }}"
     description: |-
         {{ $description := (get "description" .project "") -}}
         {{- if $description -}}
@@ -19,12 +20,56 @@ mappings:
         {{- end }}
     descriptionHtml: "{{ get \"description_html\" .project \"\" | quote }}"
     createdAt: "{{ .project.created_at }}"
+    defaultBranch: "{{ .project.default_branch }}"
+    tagList: "{{ .project.tag_list | toJSON }}"
+    topics: "{{ .project.topics | toJSON }}"
+    sshUrlToRepo: "{{ .project.ssh_url_to_repo }}"
+    httpUrlToRepo: "{{ .project.http_url_to_repo }}"
+    webUrl: "{{ .project.web_url }}"
+    readmeUrl: "{{ .project.readme_url }}"
+    forksCount: "{{ .project.forks_count }}"
+    starCount: "{{ .project.star_count }}"
+    lastActivityAt: "{{ .project.last_activity_at }}"
+    packagesEnabled: "{{ .project.packages_enabled }}"
+    emptyRepo: "{{ .project.empty_repo }}"
+    archived: "{{ .project.archived }}"
+    visibility: "{{ .project.visibility }}"
+    issuesEnabled: "{{ .project.issues_enabled }}"
+    mergeRequestsEnabled: "{{ .project.merge_requests_enabled }}"
+    wikiEnabled: "{{ .project.wiki_enabled }}"
+    jobsEnabled: "{{ .project.jobs_enabled }}"
+    snippetsEnabled: "{{ .project.snippets_enabled }}"
+    containerRegistryEnabled: "{{ .project.container_registry_enabled }}"
+    serviceDesksEnabled: "{{ .project.service_desk_enabled }}"
+    canCreateMergeRequestIn: "{{ .project.can_create_merge_request_in }}"
+    issuesAccessLevel: "{{ .project.issues_access_level }}"
+    repositoryAccessLevel: "{{ .project.repository_access_level }}"
+    mergeRequestsAccessLevel: "{{ .project.merge_requests_access_level }}"
+    forkingAccessLevel: "{{ .project.forking_access_level }}"
+    wikiAccessLevel: "{{ .project.wiki_access_level }}"
+    buildsAccessLevel: "{{ .project.builds_access_level }}"
+    snippetsAccessLevel: "{{ .project.snippets_access_level }}"
+    pagesAccessLevel: "{{ .project.pages_access_level }}"
+    securityAndComplianceAccessLevel: "{{ .project.security_and_compliance_access_level }}"
+    releasesAccessLevel: "{{ .project.releases_access_level }}"
+    environmentsAccessLevel: "{{ .project.environments_access_level }}"
+    featureFlagsAccessLevel: "{{ .project.feature_flags_access_level }}"
+    infrastructureAccessLevel: "{{ .project.infrastructure_access_level }}"
+    creatorId: "{{ .project.creator_id }}"
+    publicJobs: "{{ .project.public_jobs }}"
+    onlyAllowMergeIfPipelineSucceeds: "{{ .project.only_allow_merge_if_pipeline_succeeds }}"
+    allowMergeOnSkippedPipeline: |-
+        {{ $allowMergeOnSkippedPipeline := (get "allow_merge_on_skipped_pipeline" .project "") -}}
+        {{- if $allowMergeOnSkippedPipeline -}}
+          {{- .project.allow_merge_on_skipped_pipeline -}}
+        {{- else -}}
+          {{- "" | quote -}}
+        {{- end }}
+    requestAccessEnabled: "{{ .project.request_access_enabled }}"
+    mergeMethod: "{{ .project.merge_method }}"
     license: "{{ get \"license\" .project (object) | toJSON }}"
     owner: "{{ get \"owner\" .project (object) | toJSON }}"
     path: "{{ .project.path }}"
     pathWithNamespace: "{{ .project.path_with_namespace }}"
-    repositoryAccessLevel: "{{ .project.repository_access_level }}"
     updatedAt: "{{ .project.updated_at }}"
-    visibility: "{{ .project.visibility }}"
-    webUrl: "{{ .project.web_url }}"
     languages: "{{ .project_languages | toJSON }}"
