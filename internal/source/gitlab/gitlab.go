@@ -86,60 +86,78 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	return nil
 }
 
-// syncProjects lists all GitLab projects and sends upsert events to results.
+// syncProjects iterates all GitLab projects page by page and sends upsert events to results.
 func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) error {
-	projects, err := s.c.listProjects(ctx)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-	}
-
-	for _, project := range projects {
-		id, err := projectIDFromItem(project)
-		if err != nil {
-			continue
+	it := s.c.newProjectsIterator()
+	for {
+		projects, err := it.next(ctx)
+		if errors.Is(err, ErrIteratorDone) {
+			break
 		}
-
-		langs, err := s.c.getProjectLanguages(ctx, id)
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 		}
 
-		results <- source.Data{
-			Type:      projectResource,
-			Operation: source.DataOperationUpsert,
-			Values:    projectWrapper(project, langs),
-			Time:      updatedAtOrNow(project),
+		for _, project := range projects {
+			id, err := projectIDFromItem(project)
+			if err != nil {
+				continue
+			}
+
+			langs, err := s.c.getProjectLanguages(ctx, id)
+			if err != nil {
+				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+			}
+
+			results <- source.Data{
+				Type:      projectResource,
+				Operation: source.DataOperationUpsert,
+				Values:    projectWrapper(project, langs),
+				Time:      updatedAtOrNow(project),
+			}
 		}
 	}
 
 	return nil
 }
 
-// syncPipelines lists all projects and, for each project, lists all pipelines,
-// sending upsert events to results.
+// syncPipelines iterates all projects and, for each project, iterates all pipelines
+// page by page, sending upsert events to results.
 func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) error {
-	projects, err := s.c.listProjects(ctx)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-	}
-
-	for _, project := range projects {
-		projectID, err := projectIDFromItem(project)
-		if err != nil {
-			continue
+	projectIt := s.c.newProjectsIterator()
+	for {
+		projects, err := projectIt.next(ctx)
+		if errors.Is(err, ErrIteratorDone) {
+			break
 		}
-
-		pipelines, err := s.c.listPipelines(ctx, projectID)
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 		}
 
-		for _, pipeline := range pipelines {
-			results <- source.Data{
-				Type:      pipelineResource,
-				Operation: source.DataOperationUpsert,
-				Values:    pipeline,
-				Time:      updatedAtOrNow(pipeline),
+		for _, project := range projects {
+			projectID, err := projectIDFromItem(project)
+			if err != nil {
+				continue
+			}
+
+			pipelineIt := s.c.newProjectResourcesIterator(pipelineResource, projectID)
+			for {
+				pipelines, err := pipelineIt.next(ctx)
+				if errors.Is(err, ErrIteratorDone) {
+					break
+				}
+				if err != nil {
+					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+				}
+
+				for _, pipeline := range pipelines {
+					results <- source.Data{
+						Type:      pipelineResource,
+						Operation: source.DataOperationUpsert,
+						Values:    pipeline,
+						Time:      updatedAtOrNow(pipeline),
+					}
+				}
 			}
 		}
 	}

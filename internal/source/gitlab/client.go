@@ -6,6 +6,7 @@ package gitlab
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,105 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/info"
 )
+
+// ErrIteratorDone is returned by iterator next() methods when all pages have been consumed.
+var ErrIteratorDone = errors.New("iterator done")
+
+// projectsIterator pages through the top-level GitLab projects list.
+type projectsIterator struct {
+	c          *gitLabClient
+	currPage   int
+	totalPages int
+	done       bool
+}
+
+// projectResourcesIterator pages through a resource scoped to a specific project
+// (e.g. pipelines). resource must be one of the package-level resource constants.
+type projectResourcesIterator struct {
+	c          *gitLabClient
+	resource   string
+	projectID  string
+	currPage   int
+	totalPages int
+	done       bool
+}
+
+// newProjectsIterator returns a projectsIterator ready to stream all projects.
+func (c *gitLabClient) newProjectsIterator() *projectsIterator {
+	return &projectsIterator{c: c}
+}
+
+// newProjectResourcesIterator returns a projectResourcesIterator for the given resource
+// and project. resource must be one of the package-level resource constants (e.g. pipelineResource).
+func (c *gitLabClient) newProjectResourcesIterator(resource, projectID string) *projectResourcesIterator {
+	return &projectResourcesIterator{c: c, resource: resource, projectID: projectID}
+}
+
+// next fetches the next page of projects. Returns ErrIteratorDone when all pages
+// have been consumed. The caller never receives an empty slice.
+func (it *projectsIterator) next(ctx context.Context) ([]map[string]any, error) {
+	if it.done {
+		return nil, ErrIteratorDone
+	}
+
+	it.currPage++
+
+	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/projects", "per_page=100", it.currPage)
+	if err != nil {
+		return nil, err
+	}
+
+	it.totalPages = totalPages
+
+	if it.currPage >= it.totalPages {
+		it.done = true
+	}
+
+	if len(items) == 0 {
+		it.done = true
+		return nil, ErrIteratorDone
+	}
+
+	return items, nil
+}
+
+// next fetches the next page of the project-scoped resource. Returns ErrIteratorDone
+// when all pages have been consumed. The caller never receives an empty slice.
+func (it *projectResourcesIterator) next(ctx context.Context) ([]map[string]any, error) {
+	if it.done {
+		return nil, ErrIteratorDone
+	}
+
+	var path, query string
+
+	switch it.resource {
+	case pipelineResource:
+		path = fmt.Sprintf("/api/v4/projects/%s/pipelines", it.projectID)
+		query = "per_page=100"
+	default:
+		return nil, fmt.Errorf("unknown resource: %s", it.resource)
+	}
+
+	it.currPage++
+
+	items, totalPages, err := it.c.makePageableRequest(ctx, path, query, it.currPage)
+	if err != nil {
+		return nil, err
+	}
+
+	it.totalPages = totalPages
+
+	if it.currPage >= it.totalPages {
+		it.done = true
+	}
+
+	if len(items) == 0 {
+		it.done = true
+		return nil, ErrIteratorDone
+	}
+
+	return items, nil
+}
 
 const (
 	defaultTimeout = 30 * time.Second
@@ -130,28 +230,6 @@ func (c *gitLabClient) makePageableRequest(ctx context.Context, path, query stri
 	return items, totalPages, nil
 }
 
-// listAllPages fetches all pages of a GitLab API endpoint, returning the aggregated results.
-func (c *gitLabClient) listAllPages(ctx context.Context, path, query string) ([]map[string]any, error) {
-	// Fetch page 1 first to learn the total number of pages.
-	firstPage, totalPages, err := c.makePageableRequest(ctx, path, query, 1)
-	if err != nil {
-		return nil, err
-	}
-
-	all := firstPage
-
-	for page := 2; page <= totalPages; page++ {
-		items, _, err := c.makePageableRequest(ctx, path, query, page)
-		if err != nil {
-			return nil, err
-		}
-
-		all = append(all, items...)
-	}
-
-	return all, nil
-}
-
 // getProjectLanguages fetches the programming language usage breakdown for the given project.
 // The API returns a map of language name to usage percentage.
 func (c *gitLabClient) getProjectLanguages(ctx context.Context, projectID string) (map[string]any, error) {
@@ -171,25 +249,3 @@ func (c *gitLabClient) getProject(ctx context.Context, projectID int) (map[strin
 
 	return project, nil
 }
-
-// listProjects returns all accessible GitLab projects, crawling all available pages.
-func (c *gitLabClient) listProjects(ctx context.Context) ([]map[string]any, error) {
-	return c.listAllPages(ctx, "/api/v4/projects", "per_page=100")
-}
-
-// listPipelines returns all pipelines for the given project ID, crawling all available pages.
-func (c *gitLabClient) listPipelines(ctx context.Context, projectID string) ([]map[string]any, error) {
-	return c.listAllPages(ctx, "/api/v4/projects/"+projectID+"/pipelines", "per_page=100")
-}
-
-// // listMergeRequests returns all merge requests for the given project ID, crawling all available pages.
-// // Reserved for future sync extension.
-// func (c *gitLabClient) listMergeRequests(ctx context.Context, projectID string) ([]map[string]any, error) {
-// 	return c.listAllPages(ctx, "/api/v4/projects/"+projectID+"/merge_requests", "state=all&per_page=100")
-// }
-
-// // listReleases returns all releases for the given project ID, crawling all available pages.
-// // Reserved for future sync extension.
-// func (c *gitLabClient) listReleases(ctx context.Context, projectID string) ([]map[string]any, error) {
-// 	return c.listAllPages(ctx, "/api/v4/projects/"+projectID+"/releases", "per_page=100")
-// }
