@@ -143,7 +143,7 @@ func (c *gitLabClient) makeRequest(ctx context.Context, path, query string) (map
 		return nil, fmt.Errorf("invalid query string: %w", err)
 	}
 
-	_, body, err := c.doRequest(ctx, path, q) //nolint:bodyclose // body is closed inside doRequest
+	_, body, err := c.doRequest(ctx, path, q)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func (c *gitLabClient) makeRequestList(ctx context.Context, path, query string) 
 		return nil, fmt.Errorf("invalid query string: %w", err)
 	}
 
-	_, body, err := c.doRequest(ctx, path, q) //nolint:bodyclose // body is closed inside doRequest
+	_, body, err := c.doRequest(ctx, path, q)
 	if err != nil {
 		return nil, err
 	}
@@ -186,12 +186,12 @@ func (c *gitLabClient) makePageableRequest(ctx context.Context, path, query stri
 
 	q.Set("page", strconv.Itoa(page))
 
-	resp, body, err := c.doRequest(ctx, path, q) //nolint:bodyclose // body is closed inside doRequest
+	headers, body, err := c.doRequest(ctx, path, q)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	totalPages, _ := strconv.Atoi(resp.Header.Get("x-total-pages"))
+	totalPages, _ := strconv.Atoi(headers.Get("x-total-pages"))
 
 	var items []map[string]any
 	if err := json.Unmarshal(body, &items); err != nil {
@@ -202,9 +202,8 @@ func (c *gitLabClient) makePageableRequest(ctx context.Context, path, query stri
 }
 
 // doRequest builds and fires a GET request to the GitLab API, enforces a 200 status,
-// reads the response body, and returns it together with the response for header access.
-// resp.Body is already closed on return.
-func (c *gitLabClient) doRequest(ctx context.Context, path string, q url.Values) (*http.Response, []byte, error) {
+// reads and closes the response body, and returns the response headers and body bytes.
+func (c *gitLabClient) doRequest(ctx context.Context, path string, q url.Values) (http.Header, []byte, error) {
 	u, err := url.Parse(c.config.BaseURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid base URL: %w", err)
@@ -243,7 +242,7 @@ func (c *gitLabClient) doRequest(ctx context.Context, path string, q url.Values)
 		return nil, nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return resp, body, nil
+	return resp.Header, body, nil
 }
 
 // getProjectLanguages fetches the programming language usage breakdown for the given project.
