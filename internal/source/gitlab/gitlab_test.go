@@ -36,8 +36,9 @@ func TestStartSyncProcess(t *testing.T) {
 	}{
 		"sync projects": {
 			handler: paginatedHandler(t, map[string]any{
-				"/api/v4/projects":             singleProject,
-				"/api/v4/projects/1/languages": map[string]any{"Go": 100.0},
+				"/api/v4/projects":                 singleProject,
+				"/api/v4/projects/1/languages":     map[string]any{"Go": 100.0},
+				"/api/v4/projects/1/access_tokens": []map[string]any{},
 			}),
 			typesToSync: map[string]source.Extra{
 				projectResource: nil,
@@ -70,9 +71,10 @@ func TestStartSyncProcess(t *testing.T) {
 		},
 		"sync projects and pipelines": {
 			handler: paginatedHandler(t, map[string]any{
-				"/api/v4/projects":             singleProject,
-				"/api/v4/projects/1/pipelines": singlePipeline,
-				"/api/v4/projects/1/languages": map[string]any{"Go": 100.0},
+				"/api/v4/projects":                 singleProject,
+				"/api/v4/projects/1/pipelines":     singlePipeline,
+				"/api/v4/projects/1/languages":     map[string]any{"Go": 100.0},
+				"/api/v4/projects/1/access_tokens": []map[string]any{},
 			}),
 			typesToSync: map[string]source.Extra{
 				projectResource:  nil,
@@ -260,6 +262,8 @@ func TestWebhookHandler(t *testing.T) {
 					jsonResponse(t, w, validProject)
 				case "/api/v4/projects/5/languages":
 					jsonResponse(t, w, map[string]any{"Go": 100.0})
+				case "/api/v4/projects/5/access_tokens":
+					jsonResponse(t, w, []map[string]any{})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -340,6 +344,8 @@ func TestParsePipelineEvent(t *testing.T) {
 					jsonResponse(t, w, projectPayload)
 				case "/api/v4/projects/5/languages":
 					jsonResponse(t, w, map[string]any{"Go": 100.0})
+				case "/api/v4/projects/5/access_tokens":
+					jsonResponse(t, w, []map[string]any{})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -347,8 +353,9 @@ func TestParsePipelineEvent(t *testing.T) {
 			expectKind:    "pipeline",
 			expectValKeys: []string{"object_kind", "object_attributes", "project"},
 			expectProject: map[string]any{
-				"project":           projectPayload,
-				"project_languages": map[string]any{"Go": 100.0},
+				"project":               projectPayload,
+				"project_languages":     map[string]any{"Go": 100.0},
+				"project_access_tokens": []map[string]any{},
 			},
 		},
 		"invalid json": {

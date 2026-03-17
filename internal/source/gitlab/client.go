@@ -17,8 +17,14 @@ import (
 	"github.com/mia-platform/ibdm/internal/info"
 )
 
-// ErrIteratorDone is returned by iterator next() methods when all pages have been consumed.
-var ErrIteratorDone = errors.New("iterator done")
+var (
+	// ErrIteratorDone is returned by iterator next() methods when all pages have been consumed.
+	ErrIteratorDone = errors.New("iterator done")
+
+	// ErrNotAccessible is returned when a resource cannot be retrieved from the GitLab API.
+	// This can be due to insufficient permissions or because the resource does not exist.
+	ErrNotAccessible = errors.New("resource not accessible")
+)
 
 // projectsIterator pages through the top-level GitLab projects list.
 type projectsIterator struct {
@@ -59,7 +65,7 @@ func (it *projectsIterator) next(ctx context.Context) ([]map[string]any, error) 
 
 	it.currPage++
 
-	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/projects", "per_page=100", it.currPage)
+	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/projects", "per_page=10", it.currPage)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +96,7 @@ func (it *projectResourcesIterator) next(ctx context.Context) ([]map[string]any,
 	switch it.resource {
 	case pipelineResource:
 		path = fmt.Sprintf("/api/v4/projects/%s/pipelines", it.projectID)
-		query = "per_page=100"
+		query = "per_page=10"
 	default:
 		return nil, fmt.Errorf("unknown resource: %s", it.resource)
 	}
@@ -132,45 +138,37 @@ func userAgent() string {
 
 // makeRequest issues a single GET request to the GitLab API and returns the decoded item.
 func (c *gitLabClient) makeRequest(ctx context.Context, path, query string) (map[string]any, error) {
-	u, err := url.Parse(c.config.BaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	u.Path = path
-
 	q, err := url.ParseQuery(query)
 	if err != nil {
 		return nil, fmt.Errorf("invalid query string: %w", err)
 	}
 
-	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	_, body, err := c.doRequest(ctx, path, q) //nolint:bodyclose // body is closed inside doRequest
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, err
 	}
 
-	req.Header.Set("PRIVATE-TOKEN", c.config.Token)
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", userAgent())
+	var item map[string]any
+	if err := json.Unmarshal(body, &item); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
 
-	resp, err := c.http.Do(req)
+	return item, nil
+}
+
+// makeRequestList issues a single GET request to the GitLab API and returns the decoded list of items.
+func (c *gitLabClient) makeRequestList(ctx context.Context, path, query string) ([]map[string]any, error) {
+	q, err := url.ParseQuery(query)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitLab API returned status %d for %s", resp.StatusCode, u.Path)
+		return nil, fmt.Errorf("invalid query string: %w", err)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	_, body, err := c.doRequest(ctx, path, q) //nolint:bodyclose // body is closed inside doRequest
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, err
 	}
 
-	var items map[string]any
+	var items []map[string]any
 	if err := json.Unmarshal(body, &items); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -181,24 +179,43 @@ func (c *gitLabClient) makeRequest(ctx context.Context, path, query string) (map
 // makePageableRequest issues a single paginated GET request to the GitLab API and returns
 // the decoded items together with the total number of pages from the response headers.
 func (c *gitLabClient) makePageableRequest(ctx context.Context, path, query string, page int) ([]map[string]any, int, error) {
-	u, err := url.Parse(c.config.BaseURL)
-	if err != nil {
-		return nil, 0, fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	u.Path = path
-
 	q, err := url.ParseQuery(query)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invalid query string: %w", err)
 	}
 
 	q.Set("page", strconv.Itoa(page))
+
+	resp, body, err := c.doRequest(ctx, path, q) //nolint:bodyclose // body is closed inside doRequest
+	if err != nil {
+		return nil, 0, err
+	}
+
+	totalPages, _ := strconv.Atoi(resp.Header.Get("x-total-pages"))
+
+	var items []map[string]any
+	if err := json.Unmarshal(body, &items); err != nil {
+		return nil, 0, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return items, totalPages, nil
+}
+
+// doRequest builds and fires a GET request to the GitLab API, enforces a 200 status,
+// reads the response body, and returns it together with the response for header access.
+// resp.Body is already closed on return.
+func (c *gitLabClient) doRequest(ctx context.Context, path string, q url.Values) (*http.Response, []byte, error) {
+	u, err := url.Parse(c.config.BaseURL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid base URL: %w", err)
+	}
+
+	u.Path = path
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to create request: %w", err)
+		return nil, nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("PRIVATE-TOKEN", c.config.Token)
@@ -207,27 +224,26 @@ func (c *gitLabClient) makePageableRequest(ctx context.Context, path, query stri
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("request failed: %w", err)
+		return nil, nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, 0, fmt.Errorf("GitLab API returned status %d for %s", resp.StatusCode, u.Path)
+		var err error
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			err = fmt.Errorf("GitLab API returned status %d for %s: %w", resp.StatusCode, u.Path, ErrNotAccessible)
+		} else {
+			err = fmt.Errorf("GitLab API returned status %d for %s", resp.StatusCode, u.Path)
+		}
+		return nil, nil, err
 	}
-
-	totalPages, _ := strconv.Atoi(resp.Header.Get("x-total-pages"))
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to read response body: %w", err)
+		return nil, nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var items []map[string]any
-	if err := json.Unmarshal(body, &items); err != nil {
-		return nil, 0, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return items, totalPages, nil
+	return resp, body, nil
 }
 
 // getProjectLanguages fetches the programming language usage breakdown for the given project.
@@ -239,6 +255,16 @@ func (c *gitLabClient) getProjectLanguages(ctx context.Context, projectID string
 	}
 
 	return langs, nil
+}
+
+// getProjectAccessTokens fetches the list of project access tokens for the given project.
+func (c *gitLabClient) getProjectAccessTokens(ctx context.Context, projectID string) ([]map[string]any, error) {
+	tokens, err := c.makeRequestList(ctx, "/api/v4/projects/"+projectID+"/access_tokens", "")
+	if err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
 }
 
 func (c *gitLabClient) getProject(ctx context.Context, projectID int) (map[string]any, error) {

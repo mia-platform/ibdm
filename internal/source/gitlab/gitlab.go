@@ -109,10 +109,15 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 			}
 
+			tokens, err := s.c.getProjectAccessTokens(ctx, id)
+			if err != nil && !errors.Is(err, ErrNotAccessible) {
+				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+			}
+
 			results <- source.Data{
 				Type:      projectResource,
 				Operation: source.DataOperationUpsert,
-				Values:    projectWrapper(project, langs),
+				Values:    projectWrapper(project, langs, tokens),
 				Time:      updatedAtOrNow(project),
 			}
 		}
@@ -250,11 +255,16 @@ func (s *Source) parsePipelineEvent(ctx context.Context, body []byte) (*pipeline
 		return nil, err
 	}
 
+	tokens, err := s.c.getProjectAccessTokens(ctx, strconv.Itoa(int(projectID)))
+	if err != nil && !errors.Is(err, ErrNotAccessible) {
+		return nil, err
+	}
+
 	return &pipelineEvent{
 		ObjectKind:       objectKind,
 		ObjectAttributes: objectAttributes,
 		rawValues:        pipeline,
-		project:          projectWrapper(project, langs),
+		project:          projectWrapper(project, langs, tokens),
 	}, nil
 }
 
@@ -280,10 +290,11 @@ func projectIDFromItem(project map[string]any) (string, error) {
 	return strconv.FormatInt(int64(idFloat), 10), nil
 }
 
-// projectWrapper wraps a project and its languages into a single map.
-func projectWrapper(project, languages map[string]any) map[string]any {
+// projectWrapper wraps a project, its languages, and its access tokens into a single map.
+func projectWrapper(project, languages map[string]any, tokens []map[string]any) map[string]any {
 	projectWrapped := make(map[string]any)
 	projectWrapped["project"] = project
 	projectWrapped["project_languages"] = languages
+	projectWrapped["project_access_tokens"] = tokens
 	return projectWrapped
 }
