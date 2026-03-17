@@ -1,0 +1,23 @@
+apiVersion: gitlab.mia-platform.eu/v1alpha1
+itemFamily: accesstokens
+type: accesstoken
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%v" .project_access_tokens.id }}
+  metadata:
+    title: "{{ .project_access_tokens.name }}"
+  spec:
+    id: "{{ .project_access_tokens.id }}"
+    name: "{{ .project_access_tokens.name }}"
+    revoked: "{{ .project_access_tokens.revoked }}"
+    createdAt: "{{ .project_access_tokens.created_at }}"
+    description: "{{ .project_access_tokens.description }}"
+    scopes: "{{ .project_access_tokens.scopes | toJSON }}"
+    userId: "{{ .project_access_tokens.user_id }}"
+    lastUsedAt: "{{ .project_access_tokens.last_used_at }}"
+    active: "{{ .project_access_tokens.active }}"
+    expiresAt: "{{ .project_access_tokens.expires_at }}"
+    accessLevel: "{{ .project_access_tokens.access_level }}"
+    resourceType: "{{ .project_access_tokens.resource_type }}"
+    resourceId: "{{ .project_access_tokens.resource_id }}"
