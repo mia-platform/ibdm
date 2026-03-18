@@ -93,6 +93,23 @@ func TestStartSyncProcess(t *testing.T) {
 			lockBeforeRun:     true,
 			expectedDataCount: 0,
 		},
+		"sync group access tokens": {
+			handler: paginatedHandler(t, map[string]any{
+				"/api/v4/groups":                  []map[string]any{{"id": float64(10), "name": "my-group"}},
+				"/api/v4/groups/10/access_tokens": []map[string]any{{"id": float64(1), "name": "token-a"}, {"id": float64(2), "name": "token-b"}},
+			}),
+			typesToSync: map[string]source.Extra{
+				accessTokenResource: nil,
+			},
+			expectedDataCount: 2,
+			checkData: func(t *testing.T, data []source.Data) {
+				t.Helper()
+				for _, d := range data {
+					assert.Equal(t, accessTokenResource, d.Type)
+					assert.Equal(t, source.DataOperationUpsert, d.Operation)
+				}
+			},
+		},
 	}
 
 	for name, tc := range testCases {
@@ -474,7 +491,7 @@ func TestProjectIDFromItem(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			id, err := projectIDFromItem(tc.item)
+			id, err := getIDFromItem(tc.item)
 			if tc.expectErr {
 				require.Error(t, err)
 				return

@@ -19,8 +19,9 @@ import (
 const (
 	loggerName = "ibdm:source:gitlab"
 
-	projectResource  = "project"
-	pipelineResource = "pipeline"
+	projectResource     = "project"
+	pipelineResource    = "pipeline"
+	accessTokenResource = "accesstoken"
 )
 
 var (
@@ -83,6 +84,12 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 		}
 	}
 
+	if _, ok := typesToSync[accessTokenResource]; ok {
+		if err := s.syncGroupAccessTokens(ctx, results); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -99,7 +106,7 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 		}
 
 		for _, project := range projects {
-			id, err := projectIDFromItem(project)
+			id, err := getIDFromItem(project)
 			if err != nil {
 				continue
 			}
@@ -140,7 +147,7 @@ func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) 
 		}
 
 		for _, project := range projects {
-			projectID, err := projectIDFromItem(project)
+			projectID, err := getIDFromItem(project)
 			if err != nil {
 				continue
 			}
@@ -161,6 +168,50 @@ func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) 
 						Operation: source.DataOperationUpsert,
 						Values:    pipeline,
 						Time:      updatedAtOrNow(pipeline),
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// syncGroupAccessTokens iterates all GitLab groups and, for each group, iterates all access tokens
+// page by page, sending upsert events to results.
+func (s *Source) syncGroupAccessTokens(ctx context.Context, results chan<- source.Data) error {
+	groupIt := s.c.newGroupsIterator()
+	for {
+		groups, err := groupIt.next(ctx)
+		if errors.Is(err, ErrIteratorDone) {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+		}
+
+		for _, group := range groups {
+			groupID, err := getIDFromItem(group)
+			if err != nil {
+				continue
+			}
+
+			tokenIt := s.c.newGroupResourcesIterator(accessTokenResource, groupID)
+			for {
+				tokens, err := tokenIt.next(ctx)
+				if errors.Is(err, ErrIteratorDone) {
+					break
+				}
+				if err != nil {
+					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+				}
+
+				for _, token := range tokens {
+					results <- source.Data{
+						Type:      accessTokenResource,
+						Operation: source.DataOperationUpsert,
+						Values:    token,
+						Time:      updatedAtOrNow(token),
 					}
 				}
 			}
@@ -280,11 +331,11 @@ func updatedAtOrNow(item map[string]any) time.Time {
 	return time.Now()
 }
 
-// projectIDFromItem extracts the numeric project ID from a GitLab project map.
-func projectIDFromItem(project map[string]any) (string, error) {
-	idFloat, ok := project["id"].(float64)
+// getIDFromItem extracts the numeric ID from a GitLab API item.
+func getIDFromItem(item map[string]any) (string, error) {
+	idFloat, ok := item["id"].(float64)
 	if !ok {
-		return "", errors.New("project missing id field")
+		return "", errors.New("item missing id field")
 	}
 
 	return strconv.FormatInt(int64(idFloat), 10), nil

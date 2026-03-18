@@ -53,7 +53,7 @@ func (it *projectsIterator) next(ctx context.Context) ([]map[string]any, error) 
 
 	it.currPage++
 
-	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/projects", "per_page=100", it.currPage)
+	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/projects", it.currPage)
 	if err != nil {
 		return nil, err
 	}
@@ -79,19 +79,113 @@ func (it *projectResourcesIterator) next(ctx context.Context) ([]map[string]any,
 		return nil, ErrIteratorDone
 	}
 
-	var path, query string
+	var path string
 
 	switch it.resource {
 	case pipelineResource:
 		path = fmt.Sprintf("/api/v4/projects/%s/pipelines", it.projectID)
-		query = "per_page=100"
 	default:
 		return nil, fmt.Errorf("unknown resource: %s", it.resource)
 	}
 
 	it.currPage++
 
-	items, totalPages, err := it.c.makePageableRequest(ctx, path, query, it.currPage)
+	items, totalPages, err := it.c.makePageableRequest(ctx, path, it.currPage)
+	if err != nil {
+		return nil, err
+	}
+
+	it.totalPages = totalPages
+
+	if it.currPage >= it.totalPages {
+		it.done = true
+	}
+
+	if len(items) == 0 {
+		it.done = true
+		return nil, ErrIteratorDone
+	}
+
+	return items, nil
+}
+
+// groupsIterator pages through the top-level GitLab groups list.
+type groupsIterator struct {
+	c          *gitLabClient
+	currPage   int
+	totalPages int
+	done       bool
+}
+
+// groupResourcesIterator pages through a resource scoped to a specific group
+// (e.g. access tokens). resource must be one of the package-level resource constants.
+type groupResourcesIterator struct {
+	c          *gitLabClient
+	resource   string
+	groupID    string
+	currPage   int
+	totalPages int
+	done       bool
+}
+
+// newGroupsIterator returns a groupsIterator ready to stream all groups.
+func (c *gitLabClient) newGroupsIterator() *groupsIterator {
+	return &groupsIterator{c: c}
+}
+
+// newGroupResourcesIterator returns a groupResourcesIterator for the given resource
+// and group. resource must be one of the package-level resource constants (e.g. accessTokenResource).
+func (c *gitLabClient) newGroupResourcesIterator(resource, groupID string) *groupResourcesIterator {
+	return &groupResourcesIterator{c: c, resource: resource, groupID: groupID}
+}
+
+// next fetches the next page of groups. Returns ErrIteratorDone when all pages
+// have been consumed. The caller never receives an empty slice.
+func (it *groupsIterator) next(ctx context.Context) ([]map[string]any, error) {
+	if it.done {
+		return nil, ErrIteratorDone
+	}
+
+	it.currPage++
+
+	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/groups", it.currPage)
+	if err != nil {
+		return nil, err
+	}
+
+	it.totalPages = totalPages
+
+	if it.currPage >= it.totalPages {
+		it.done = true
+	}
+
+	if len(items) == 0 {
+		it.done = true
+		return nil, ErrIteratorDone
+	}
+
+	return items, nil
+}
+
+// next fetches the next page of the group-scoped resource. Returns ErrIteratorDone
+// when all pages have been consumed. The caller never receives an empty slice.
+func (it *groupResourcesIterator) next(ctx context.Context) ([]map[string]any, error) {
+	if it.done {
+		return nil, ErrIteratorDone
+	}
+
+	var path string
+
+	switch it.resource {
+	case accessTokenResource:
+		path = fmt.Sprintf("/api/v4/groups/%s/access_tokens", it.groupID)
+	default:
+		return nil, fmt.Errorf("unknown resource: %s", it.resource)
+	}
+
+	it.currPage++
+
+	items, totalPages, err := it.c.makePageableRequest(ctx, path, it.currPage)
 	if err != nil {
 		return nil, err
 	}

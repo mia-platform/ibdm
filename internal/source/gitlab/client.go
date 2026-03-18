@@ -79,12 +79,9 @@ func (c *gitLabClient) makeRequestList(ctx context.Context, path, query string) 
 
 // makePageableRequest issues a single paginated GET request to the GitLab API and returns
 // the decoded items together with the total number of pages from the response headers.
-func (c *gitLabClient) makePageableRequest(ctx context.Context, path, query string, page int) ([]map[string]any, int, error) {
-	q, err := url.ParseQuery(query)
-	if err != nil {
-		return nil, 0, fmt.Errorf("invalid query string: %w", err)
-	}
-
+func (c *gitLabClient) makePageableRequest(ctx context.Context, path string, page int) ([]map[string]any, int, error) {
+	q := url.Values{}
+	q.Set("per_page", "100")
 	q.Set("page", strconv.Itoa(page))
 
 	headers, body, err := c.doRequest(ctx, path, q)

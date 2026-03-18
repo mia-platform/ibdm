@@ -60,7 +60,7 @@ func TestMakePageableRequest(t *testing.T) {
 			defer srv.Close()
 
 			client := newTestGitLabClient(t, srv)
-			items, totalPages, err := client.makePageableRequest(t.Context(), "/api/v4/projects", "per_page=100", 1)
+			items, totalPages, err := client.makePageableRequest(t.Context(), "/api/v4/projects", 1)
 
 			if tc.expectErr {
 				require.Error(t, err)
