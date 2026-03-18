@@ -85,7 +85,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	}
 
 	if _, ok := typesToSync[accessTokenResource]; ok {
-		if err := s.syncGroupAccessTokens(ctx, results); err != nil {
+		if err := s.syncAccessTokenResources(ctx, results); err != nil {
 			return err
 		}
 	}
@@ -106,26 +106,44 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 		}
 
 		for _, project := range projects {
-			id, err := getIDFromItem(project)
+			projectID, err := getIDFromItem(project)
 			if err != nil {
 				continue
 			}
 
-			langs, err := s.c.getProjectLanguages(ctx, id)
+			langs, err := s.c.getProjectLanguages(ctx, projectID)
 			if err != nil {
-				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-			}
-
-			tokens, err := s.c.getProjectAccessTokens(ctx, id)
-			if err != nil && !errors.Is(err, ErrNotAccessible) {
 				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 			}
 
 			results <- source.Data{
 				Type:      projectResource,
 				Operation: source.DataOperationUpsert,
-				Values:    projectWrapper(project, langs, tokens),
+				Values:    projectWrapper(project, langs),
 				Time:      updatedAtOrNow(project),
+			}
+
+			tokenIt, err := s.c.newProjectResourcesIterator(accessTokenResource, projectID)
+			if err != nil {
+				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+			}
+			for {
+				tokens, err := tokenIt.next(ctx)
+				if errors.Is(err, ErrIteratorDone) {
+					break
+				}
+				if err != nil {
+					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+				}
+
+				for _, token := range tokens {
+					results <- source.Data{
+						Type:      accessTokenResource,
+						Operation: source.DataOperationUpsert,
+						Values:    token,
+						Time:      updatedAtOrNow(token),
+					}
+				}
 			}
 		}
 	}
@@ -152,7 +170,10 @@ func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) 
 				continue
 			}
 
-			pipelineIt := s.c.newProjectResourcesIterator(pipelineResource, projectID)
+			pipelineIt, err := s.c.newProjectResourcesIterator(pipelineResource, projectID)
+			if err != nil {
+				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+			}
 			for {
 				pipelines, err := pipelineIt.next(ctx)
 				if errors.Is(err, ErrIteratorDone) {
@@ -177,9 +198,9 @@ func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) 
 	return nil
 }
 
-// syncGroupAccessTokens iterates all GitLab groups and, for each group, iterates all access tokens
+// syncAccessTokenResources iterates all GitLab groups and, for each group, iterates all access tokens
 // page by page, sending upsert events to results.
-func (s *Source) syncGroupAccessTokens(ctx context.Context, results chan<- source.Data) error {
+func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- source.Data) error {
 	groupIt := s.c.newGroupsIterator()
 	for {
 		groups, err := groupIt.next(ctx)
@@ -195,13 +216,23 @@ func (s *Source) syncGroupAccessTokens(ctx context.Context, results chan<- sourc
 			if err != nil {
 				continue
 			}
+			fmt.Printf("syncing access tokens for group %s\n", groupID)
 
-			tokenIt := s.c.newGroupResourcesIterator(accessTokenResource, groupID)
+			tokenIt, err := s.c.newGroupResourcesIterator(accessTokenResource, groupID)
+			if err != nil {
+				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+			}
 			for {
 				tokens, err := tokenIt.next(ctx)
 				if errors.Is(err, ErrIteratorDone) {
 					break
 				}
+
+				if err != nil && errors.Is(err, ErrNotAccessible) {
+					fmt.Printf("error retrieving access tokens for group %s: %v\n", groupID, err)
+					continue
+				}
+
 				if err != nil {
 					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 				}
@@ -306,16 +337,11 @@ func (s *Source) parsePipelineEvent(ctx context.Context, body []byte) (*pipeline
 		return nil, err
 	}
 
-	tokens, err := s.c.getProjectAccessTokens(ctx, strconv.Itoa(int(projectID)))
-	if err != nil && !errors.Is(err, ErrNotAccessible) {
-		return nil, err
-	}
-
 	return &pipelineEvent{
 		ObjectKind:       objectKind,
 		ObjectAttributes: objectAttributes,
 		rawValues:        pipeline,
-		project:          projectWrapper(project, langs, tokens),
+		project:          projectWrapper(project, langs),
 	}, nil
 }
 
@@ -341,11 +367,10 @@ func getIDFromItem(item map[string]any) (string, error) {
 	return strconv.FormatInt(int64(idFloat), 10), nil
 }
 
-// projectWrapper wraps a project, its languages, and its access tokens into a single map.
-func projectWrapper(project, languages map[string]any, tokens []map[string]any) map[string]any {
+// projectWrapper wraps a project and its languages into a single map.
+func projectWrapper(project, languages map[string]any) map[string]any {
 	projectWrapped := make(map[string]any)
 	projectWrapped["project"] = project
 	projectWrapped["project_languages"] = languages
-	projectWrapped["project_access_tokens"] = tokens
 	return projectWrapped
 }

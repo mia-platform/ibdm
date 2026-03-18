@@ -154,16 +154,6 @@ func (c *gitLabClient) getProjectLanguages(ctx context.Context, projectID string
 	return langs, nil
 }
 
-// getProjectAccessTokens fetches the list of project access tokens for the given project.
-func (c *gitLabClient) getProjectAccessTokens(ctx context.Context, projectID string) ([]map[string]any, error) {
-	tokens, err := c.makeRequestList(ctx, "/api/v4/projects/"+projectID+"/access_tokens", "")
-	if err != nil {
-		return nil, err
-	}
-
-	return tokens, nil
-}
-
 func (c *gitLabClient) getProject(ctx context.Context, projectID int) (map[string]any, error) {
 	project, err := c.makeRequest(ctx, "/api/v4/projects/"+strconv.Itoa(projectID), "")
 	if err != nil {

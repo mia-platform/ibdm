@@ -14,179 +14,123 @@ var (
 	ErrIteratorDone = errors.New("iterator done")
 )
 
-// projectsIterator pages through the top-level GitLab projects list.
-type projectsIterator struct {
+// itemIterator pages through a top-level GitLab list endpoint (e.g. /api/v4/projects
+// or /api/v4/groups). The path is fixed at construction time.
+type itemIterator struct {
 	c          *gitLabClient
+	path       string
 	currPage   int
 	totalPages int
 	done       bool
 }
 
-// projectResourcesIterator pages through a resource scoped to a specific project
-// (e.g. pipelines). resource must be one of the package-level resource constants.
-type projectResourcesIterator struct {
+// itemResourcesIterator pages through a resource scoped to a specific parent item
+// (e.g. /api/v4/projects/42/pipelines). The path is resolved and fixed at construction time.
+type itemResourcesIterator struct {
 	c          *gitLabClient
-	resource   string
-	projectID  string
+	path       string
 	currPage   int
 	totalPages int
 	done       bool
 }
 
-// newProjectsIterator returns a projectsIterator ready to stream all projects.
-func (c *gitLabClient) newProjectsIterator() *projectsIterator {
-	return &projectsIterator{c: c}
+// newItemIterator returns an itemIterator for the given API path.
+func (c *gitLabClient) newItemIterator(path string) *itemIterator {
+	return &itemIterator{c: c, path: path}
 }
 
-// newProjectResourcesIterator returns a projectResourcesIterator for the given resource
-// and project. resource must be one of the package-level resource constants (e.g. pipelineResource).
-func (c *gitLabClient) newProjectResourcesIterator(resource, projectID string) *projectResourcesIterator {
-	return &projectResourcesIterator{c: c, resource: resource, projectID: projectID}
+// newProjectsIterator returns an itemIterator ready to stream all projects.
+func (c *gitLabClient) newProjectsIterator() *itemIterator {
+	return c.newItemIterator("/api/v4/projects")
 }
 
-// next fetches the next page of projects. Returns ErrIteratorDone when all pages
-// have been consumed. The caller never receives an empty slice.
-func (it *projectsIterator) next(ctx context.Context) ([]map[string]any, error) {
-	if it.done {
-		return nil, ErrIteratorDone
-	}
-
-	it.currPage++
-
-	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/projects", it.currPage)
-	if err != nil {
-		return nil, err
-	}
-
-	it.totalPages = totalPages
-
-	if it.currPage >= it.totalPages {
-		it.done = true
-	}
-
-	if len(items) == 0 {
-		it.done = true
-		return nil, ErrIteratorDone
-	}
-
-	return items, nil
+// newGroupsIterator returns an itemIterator ready to stream all groups.
+func (c *gitLabClient) newGroupsIterator() *itemIterator {
+	return c.newItemIterator("/api/v4/groups")
 }
 
-// next fetches the next page of the project-scoped resource. Returns ErrIteratorDone
-// when all pages have been consumed. The caller never receives an empty slice.
-func (it *projectResourcesIterator) next(ctx context.Context) ([]map[string]any, error) {
-	if it.done {
-		return nil, ErrIteratorDone
-	}
+// newItemResourcesIterator returns an itemResourcesIterator for the given API path.
+func (c *gitLabClient) newItemResourcesIterator(path string) *itemResourcesIterator {
+	return &itemResourcesIterator{c: c, path: path}
+}
 
+// newProjectResourcesIterator returns an itemResourcesIterator for the given resource
+// scoped to a project. The resource must be one of the package-level resource constants.
+func (c *gitLabClient) newProjectResourcesIterator(resource, projectID string) (*itemResourcesIterator, error) {
 	var path string
 
-	switch it.resource {
+	switch resource {
 	case pipelineResource:
-		path = fmt.Sprintf("/api/v4/projects/%s/pipelines", it.projectID)
+		path = fmt.Sprintf("/api/v4/projects/%s/pipelines", projectID)
+	case accessTokenResource:
+		path = fmt.Sprintf("/api/v4/projects/%s/access_tokens", projectID)
 	default:
-		return nil, fmt.Errorf("unknown resource: %s", it.resource)
+		return nil, fmt.Errorf("unknown project resource: %s", resource)
 	}
 
-	it.currPage++
-
-	items, totalPages, err := it.c.makePageableRequest(ctx, path, it.currPage)
-	if err != nil {
-		return nil, err
-	}
-
-	it.totalPages = totalPages
-
-	if it.currPage >= it.totalPages {
-		it.done = true
-	}
-
-	if len(items) == 0 {
-		it.done = true
-		return nil, ErrIteratorDone
-	}
-
-	return items, nil
+	return c.newItemResourcesIterator(path), nil
 }
 
-// groupsIterator pages through the top-level GitLab groups list.
-type groupsIterator struct {
-	c          *gitLabClient
-	currPage   int
-	totalPages int
-	done       bool
-}
-
-// groupResourcesIterator pages through a resource scoped to a specific group
-// (e.g. access tokens). resource must be one of the package-level resource constants.
-type groupResourcesIterator struct {
-	c          *gitLabClient
-	resource   string
-	groupID    string
-	currPage   int
-	totalPages int
-	done       bool
-}
-
-// newGroupsIterator returns a groupsIterator ready to stream all groups.
-func (c *gitLabClient) newGroupsIterator() *groupsIterator {
-	return &groupsIterator{c: c}
-}
-
-// newGroupResourcesIterator returns a groupResourcesIterator for the given resource
-// and group. resource must be one of the package-level resource constants (e.g. accessTokenResource).
-func (c *gitLabClient) newGroupResourcesIterator(resource, groupID string) *groupResourcesIterator {
-	return &groupResourcesIterator{c: c, resource: resource, groupID: groupID}
-}
-
-// next fetches the next page of groups. Returns ErrIteratorDone when all pages
-// have been consumed. The caller never receives an empty slice.
-func (it *groupsIterator) next(ctx context.Context) ([]map[string]any, error) {
-	if it.done {
-		return nil, ErrIteratorDone
-	}
-
-	it.currPage++
-
-	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/groups", it.currPage)
-	if err != nil {
-		return nil, err
-	}
-
-	it.totalPages = totalPages
-
-	if it.currPage >= it.totalPages {
-		it.done = true
-	}
-
-	if len(items) == 0 {
-		it.done = true
-		return nil, ErrIteratorDone
-	}
-
-	return items, nil
-}
-
-// next fetches the next page of the group-scoped resource. Returns ErrIteratorDone
-// when all pages have been consumed. The caller never receives an empty slice.
-func (it *groupResourcesIterator) next(ctx context.Context) ([]map[string]any, error) {
-	if it.done {
-		return nil, ErrIteratorDone
-	}
-
+// newGroupResourcesIterator returns an itemResourcesIterator for the given resource
+// scoped to a group. The resource must be one of the package-level resource constants.
+func (c *gitLabClient) newGroupResourcesIterator(resource, groupID string) (*itemResourcesIterator, error) {
 	var path string
 
-	switch it.resource {
+	switch resource {
 	case accessTokenResource:
-		path = fmt.Sprintf("/api/v4/groups/%s/access_tokens", it.groupID)
+		path = fmt.Sprintf("/api/v4/groups/%s/access_tokens", groupID)
 	default:
-		return nil, fmt.Errorf("unknown resource: %s", it.resource)
+		return nil, fmt.Errorf("unknown group resource: %s", resource)
+	}
+
+	return c.newItemResourcesIterator(path), nil
+}
+
+// next fetches the next page of items. Returns ErrIteratorDone when all pages
+// have been consumed. The caller never receives an empty slice.
+func (it *itemIterator) next(ctx context.Context) ([]map[string]any, error) {
+	if it.done {
+		return nil, ErrIteratorDone
 	}
 
 	it.currPage++
 
-	items, totalPages, err := it.c.makePageableRequest(ctx, path, it.currPage)
+	items, totalPages, err := it.c.makePageableRequest(ctx, it.path, it.currPage)
 	if err != nil {
+		if it.currPage >= it.totalPages {
+			it.done = true
+		}
+		return nil, err
+	}
+
+	it.totalPages = totalPages
+
+	if it.currPage >= it.totalPages {
+		it.done = true
+	}
+
+	if len(items) == 0 {
+		it.done = true
+		return nil, ErrIteratorDone
+	}
+
+	return items, nil
+}
+
+// next fetches the next page of the scoped resource. Returns ErrIteratorDone
+// when all pages have been consumed. The caller never receives an empty slice.
+func (it *itemResourcesIterator) next(ctx context.Context) ([]map[string]any, error) {
+	if it.done {
+		return nil, ErrIteratorDone
+	}
+
+	it.currPage++
+
+	items, totalPages, err := it.c.makePageableRequest(ctx, it.path, it.currPage)
+	if err != nil {
+		if it.currPage >= it.totalPages {
+			it.done = true
+		}
 		return nil, err
 	}
 

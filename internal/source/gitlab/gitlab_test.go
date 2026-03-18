@@ -361,8 +361,6 @@ func TestParsePipelineEvent(t *testing.T) {
 					jsonResponse(t, w, projectPayload)
 				case "/api/v4/projects/5/languages":
 					jsonResponse(t, w, map[string]any{"Go": 100.0})
-				case "/api/v4/projects/5/access_tokens":
-					jsonResponse(t, w, []map[string]any{})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -370,9 +368,8 @@ func TestParsePipelineEvent(t *testing.T) {
 			expectKind:    "pipeline",
 			expectValKeys: []string{"object_kind", "object_attributes", "project"},
 			expectProject: map[string]any{
-				"project":               projectPayload,
-				"project_languages":     map[string]any{"Go": 100.0},
-				"project_access_tokens": []map[string]any{},
+				"project":           projectPayload,
+				"project_languages": map[string]any{"Go": 100.0},
 			},
 		},
 		"invalid json": {
