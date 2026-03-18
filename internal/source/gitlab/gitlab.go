@@ -204,6 +204,8 @@ func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) 
 // syncAccessTokenResources iterates all GitLab groups and, for each group, iterates all access tokens
 // page by page, sending upsert events to results.
 func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- source.Data) error {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
 	groupIt := s.c.newGroupsIterator()
 	for {
 		groups, err := groupIt.next(ctx)
@@ -219,7 +221,6 @@ func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- so
 			if err != nil {
 				continue
 			}
-			fmt.Printf("syncing access tokens for group %s\n", groupID)
 
 			tokenIt, err := s.c.newGroupResourcesIterator(accessTokenResource, groupID)
 			if err != nil {
@@ -232,7 +233,7 @@ func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- so
 				}
 
 				if err != nil && errors.Is(err, ErrNotAccessible) {
-					fmt.Printf("error retrieving access tokens for group %s: %v\n", groupID, err)
+					log.Error("skipping group access tokens: insufficient permissions", "group_id", groupID)
 					continue
 				}
 
