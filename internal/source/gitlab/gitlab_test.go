@@ -110,6 +110,59 @@ func TestStartSyncProcess(t *testing.T) {
 				}
 			},
 		},
+		"sync projects emits project access tokens": {
+			handler: paginatedHandler(t, map[string]any{
+				"/api/v4/projects":                 singleProject,
+				"/api/v4/projects/1/languages":     map[string]any{"Go": 100.0},
+				"/api/v4/projects/1/access_tokens": []map[string]any{{"id": float64(10), "name": "tok-a"}, {"id": float64(11), "name": "tok-b"}},
+			}),
+			typesToSync: map[string]source.Extra{
+				projectResource: nil,
+			},
+			expectedDataCount: 3, // 1 project + 2 access tokens
+			checkData: func(t *testing.T, data []source.Data) {
+				t.Helper()
+				types := make(map[string]int)
+				for _, d := range data {
+					types[d.Type]++
+					assert.Equal(t, source.DataOperationUpsert, d.Operation)
+				}
+				assert.Equal(t, 1, types[projectResource])
+				assert.Equal(t, 2, types[accessTokenResource])
+
+				var tokenData []source.Data
+				for _, d := range data {
+					if d.Type == accessTokenResource {
+						tokenData = append(tokenData, d)
+					}
+				}
+				for _, d := range tokenData {
+					assert.Contains(t, d.Values, "project")
+					assert.Contains(t, d.Values, "token")
+					innerProject, _ := d.Values["project"].(map[string]any)
+					assert.Equal(t, "my-project", innerProject["name"])
+				}
+			},
+		},
+		"sync projects access tokens API error": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/api/v4/projects":
+					w.Header().Set("x-total-pages", "1")
+					jsonResponse(t, w, singleProject)
+				case "/api/v4/projects/1/languages":
+					jsonResponse(t, w, map[string]any{"Go": 100.0})
+				case "/api/v4/projects/1/access_tokens":
+					w.WriteHeader(http.StatusInternalServerError)
+				default:
+					w.WriteHeader(http.StatusNotFound)
+				}
+			},
+			typesToSync: map[string]source.Extra{
+				projectResource: nil,
+			},
+			expectErr: true,
+		},
 	}
 
 	for name, tc := range testCases {
