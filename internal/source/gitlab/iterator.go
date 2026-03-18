@@ -53,7 +53,7 @@ func (it *projectsIterator) next(ctx context.Context) ([]map[string]any, error) 
 
 	it.currPage++
 
-	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/projects", "per_page=10", it.currPage)
+	items, totalPages, err := it.c.makePageableRequest(ctx, "/api/v4/projects", "per_page=100", it.currPage)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (it *projectResourcesIterator) next(ctx context.Context) ([]map[string]any,
 	switch it.resource {
 	case pipelineResource:
 		path = fmt.Sprintf("/api/v4/projects/%s/pipelines", it.projectID)
-		query = "per_page=10"
+		query = "per_page=100"
 	default:
 		return nil, fmt.Errorf("unknown resource: %s", it.resource)
 	}
