@@ -140,8 +140,11 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 					results <- source.Data{
 						Type:      accessTokenResource,
 						Operation: source.DataOperationUpsert,
-						Values:    token,
-						Time:      updatedAtOrNow(token),
+						Values: map[string]any{
+							"project": project,
+							"token":   token,
+						},
+						Time: updatedAtOrNow(token),
 					}
 				}
 			}
@@ -241,8 +244,11 @@ func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- so
 					results <- source.Data{
 						Type:      accessTokenResource,
 						Operation: source.DataOperationUpsert,
-						Values:    token,
-						Time:      updatedAtOrNow(token),
+						Values: map[string]any{
+							"group": group,
+							"token": token,
+						},
+						Time: updatedAtOrNow(token),
 					}
 				}
 			}
