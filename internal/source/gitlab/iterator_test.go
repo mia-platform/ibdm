@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestItemIterator(t *testing.T) {
+func TestPageIterator(t *testing.T) {
 	testCases := map[string]struct {
 		handler       http.HandlerFunc
 		expectedCount int
@@ -80,7 +80,7 @@ func TestItemIterator(t *testing.T) {
 			defer srv.Close()
 
 			client := newTestGitLabClient(t, srv)
-			it := client.newItemIterator("/api/v4/projects")
+			it := client.newPageIterator("/api/v4/projects")
 
 			var all []map[string]any
 			for {
@@ -112,7 +112,7 @@ func TestItemIterator(t *testing.T) {
 		defer srv.Close()
 
 		client := newTestGitLabClient(t, srv)
-		it := client.newItemIterator("/api/v4/groups")
+		it := client.newPageIterator("/api/v4/groups")
 
 		items, err := it.next(t.Context())
 		require.NoError(t, err)
@@ -158,7 +158,7 @@ func TestItemIterator(t *testing.T) {
 	})
 }
 
-func TestItemResourcesIterator(t *testing.T) {
+func TestPageIteratorWithResources(t *testing.T) {
 	testCases := map[string]struct {
 		handler       http.HandlerFunc
 		path          string
@@ -218,7 +218,7 @@ func TestItemResourcesIterator(t *testing.T) {
 			defer srv.Close()
 
 			client := newTestGitLabClient(t, srv)
-			it := client.newItemResourcesIterator(tc.path)
+			it := client.newPageIterator(tc.path)
 
 			var all []map[string]any
 			for {
@@ -253,7 +253,7 @@ func TestItemResourcesIterator(t *testing.T) {
 		defer srv.Close()
 
 		client := newTestGitLabClient(t, srv)
-		it := client.newItemResourcesIterator("/api/v4/projects/1/pipelines")
+		it := client.newPageIterator("/api/v4/projects/1/pipelines")
 
 		// First page
 		items, err := it.next(t.Context())
