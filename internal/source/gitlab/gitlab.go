@@ -37,6 +37,8 @@ var (
 	ErrRetrievingAssets = errors.New("error retrieving assets")
 )
 
+var _ source.SyncableSource = &Source{}
+
 // NewSource constructs a [Source] by reading its configuration from environment
 // variables. It returns [ErrSourceCreation] if either the API config or the
 // webhook config cannot be loaded.
@@ -95,7 +97,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 
 // syncProjects iterates all GitLab projects page by page and sends upsert events to results.
 func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) error {
-	it := s.c.newProjectsIterator()
+	it := s.c.listProjects()
 	for {
 		projects, err := it.next(ctx)
 		if errors.Is(err, ErrIteratorDone) {
@@ -123,10 +125,7 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 				Time:      updatedAtOrNow(project),
 			}
 
-			tokenIt, err := s.c.newProjectResourcesIterator(accessTokenResource, projectID)
-			if err != nil {
-				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-			}
+			tokenIt := s.c.listProjectAccessTokens(projectID)
 			for {
 				tokens, err := tokenIt.next(ctx)
 				if errors.Is(err, ErrIteratorDone) {
@@ -157,7 +156,7 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 // syncPipelines iterates all projects and, for each project, iterates all pipelines
 // page by page, sending upsert events to results.
 func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) error {
-	projectIt := s.c.newProjectsIterator()
+	projectIt := s.c.listProjects()
 	for {
 		projects, err := projectIt.next(ctx)
 		if errors.Is(err, ErrIteratorDone) {
@@ -173,10 +172,7 @@ func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) 
 				continue
 			}
 
-			pipelineIt, err := s.c.newProjectResourcesIterator(pipelineResource, projectID)
-			if err != nil {
-				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-			}
+			pipelineIt := s.c.listProjectPipelines(projectID)
 			for {
 				pipelines, err := pipelineIt.next(ctx)
 				if errors.Is(err, ErrIteratorDone) {
@@ -206,7 +202,7 @@ func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) 
 func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	groupIt := s.c.newGroupsIterator()
+	groupIt := s.c.listGroups()
 	for {
 		groups, err := groupIt.next(ctx)
 		if errors.Is(err, ErrIteratorDone) {
@@ -222,10 +218,7 @@ func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- so
 				continue
 			}
 
-			tokenIt, err := s.c.newGroupResourcesIterator(accessTokenResource, groupID)
-			if err != nil {
-				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-			}
+			tokenIt := s.c.listGroupAccessTokens(groupID)
 			for {
 				tokens, err := tokenIt.next(ctx)
 				if errors.Is(err, ErrIteratorDone) {

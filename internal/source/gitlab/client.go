@@ -162,3 +162,33 @@ func (c *gitLabClient) getProject(ctx context.Context, projectID int) (map[strin
 
 	return project, nil
 }
+
+// newPageIterator returns a pageIterator for the given API path.
+func (c *gitLabClient) newPageIterator(path string) *pageIterator {
+	return &pageIterator{c: c, path: path}
+}
+
+// listProjects returns an iterator that pages through all GitLab projects.
+func (c *gitLabClient) listProjects() iterator {
+	return c.newPageIterator("/api/v4/projects")
+}
+
+// listGroups returns an iterator that pages through all GitLab groups.
+func (c *gitLabClient) listGroups() iterator {
+	return c.newPageIterator("/api/v4/groups")
+}
+
+// listProjectPipelines returns an iterator that pages through pipelines for the given project.
+func (c *gitLabClient) listProjectPipelines(projectID string) iterator {
+	return c.newPageIterator("/api/v4/projects/" + projectID + "/pipelines")
+}
+
+// listProjectAccessTokens returns an iterator that pages through access tokens for the given project.
+func (c *gitLabClient) listProjectAccessTokens(projectID string) iterator {
+	return c.newPageIterator("/api/v4/projects/" + projectID + "/access_tokens")
+}
+
+// listGroupAccessTokens returns an iterator that pages through access tokens for the given group.
+func (c *gitLabClient) listGroupAccessTokens(groupID string) iterator {
+	return c.newPageIterator("/api/v4/groups/" + groupID + "/access_tokens")
+}

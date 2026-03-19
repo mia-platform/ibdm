@@ -140,3 +140,80 @@ func TestMakeRequestList(t *testing.T) {
 		})
 	}
 }
+
+func TestListFactoryMethods(t *testing.T) {
+	t.Run("listProjects hits /api/v4/projects", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/api/v4/projects", r.URL.Path)
+			w.Header().Set("x-total-pages", "1")
+			jsonResponse(t, w, []map[string]any{{"id": float64(1)}})
+		}))
+		defer srv.Close()
+
+		client := newTestGitLabClient(t, srv)
+		it := client.listProjects()
+		items, err := it.next(t.Context())
+		require.NoError(t, err)
+		assert.Len(t, items, 1)
+	})
+
+	t.Run("listGroups hits /api/v4/groups", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/api/v4/groups", r.URL.Path)
+			w.Header().Set("x-total-pages", "1")
+			jsonResponse(t, w, []map[string]any{{"id": float64(1)}})
+		}))
+		defer srv.Close()
+
+		client := newTestGitLabClient(t, srv)
+		it := client.listGroups()
+		items, err := it.next(t.Context())
+		require.NoError(t, err)
+		assert.Len(t, items, 1)
+	})
+
+	t.Run("listProjectPipelines hits correct path", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/api/v4/projects/42/pipelines", r.URL.Path)
+			w.Header().Set("x-total-pages", "1")
+			jsonResponse(t, w, []map[string]any{{"id": float64(1)}})
+		}))
+		defer srv.Close()
+
+		client := newTestGitLabClient(t, srv)
+		it := client.listProjectPipelines("42")
+		items, err := it.next(t.Context())
+		require.NoError(t, err)
+		assert.Len(t, items, 1)
+	})
+
+	t.Run("listProjectAccessTokens hits correct path", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/api/v4/projects/42/access_tokens", r.URL.Path)
+			w.Header().Set("x-total-pages", "1")
+			jsonResponse(t, w, []map[string]any{{"id": float64(1)}})
+		}))
+		defer srv.Close()
+
+		client := newTestGitLabClient(t, srv)
+		it := client.listProjectAccessTokens("42")
+		items, err := it.next(t.Context())
+		require.NoError(t, err)
+		assert.Len(t, items, 1)
+	})
+
+	t.Run("listGroupAccessTokens hits correct path", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/api/v4/groups/10/access_tokens", r.URL.Path)
+			w.Header().Set("x-total-pages", "1")
+			jsonResponse(t, w, []map[string]any{{"id": float64(1)}})
+		}))
+		defer srv.Close()
+
+		client := newTestGitLabClient(t, srv)
+		it := client.listGroupAccessTokens("10")
+		items, err := it.next(t.Context())
+		require.NoError(t, err)
+		assert.Len(t, items, 1)
+	})
+}

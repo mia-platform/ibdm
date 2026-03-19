@@ -80,7 +80,7 @@ func TestPageIterator(t *testing.T) {
 			defer srv.Close()
 
 			client := newTestGitLabClient(t, srv)
-			it := client.newPageIterator("/api/v4/projects")
+			it := client.newPageIterator("/any/path")
 
 			var all []map[string]any
 			for {
@@ -112,7 +112,7 @@ func TestPageIterator(t *testing.T) {
 		defer srv.Close()
 
 		client := newTestGitLabClient(t, srv)
-		it := client.newPageIterator("/api/v4/groups")
+		it := client.newPageIterator("/any/path")
 
 		items, err := it.next(t.Context())
 		require.NoError(t, err)
@@ -125,123 +125,6 @@ func TestPageIterator(t *testing.T) {
 		require.ErrorIs(t, err, ErrIteratorDone)
 	})
 
-	t.Run("newProjectsIterator hits /api/v4/projects", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, "/api/v4/projects", r.URL.Path)
-			w.Header().Set("x-total-pages", "1")
-			jsonResponse(t, w, []map[string]any{{"id": float64(1)}})
-		}))
-		defer srv.Close()
-
-		client := newTestGitLabClient(t, srv)
-		it := client.newProjectsIterator()
-
-		items, err := it.next(t.Context())
-		require.NoError(t, err)
-		assert.Len(t, items, 1)
-	})
-
-	t.Run("newGroupsIterator hits /api/v4/groups", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, "/api/v4/groups", r.URL.Path)
-			w.Header().Set("x-total-pages", "1")
-			jsonResponse(t, w, []map[string]any{{"id": float64(1)}})
-		}))
-		defer srv.Close()
-
-		client := newTestGitLabClient(t, srv)
-		it := client.newGroupsIterator()
-
-		items, err := it.next(t.Context())
-		require.NoError(t, err)
-		assert.Len(t, items, 1)
-	})
-}
-
-func TestPageIteratorWithResources(t *testing.T) {
-	testCases := map[string]struct {
-		handler       http.HandlerFunc
-		path          string
-		expectedCount int
-		expectErr     bool
-	}{
-		"single page of pipelines": {
-			path: "/api/v4/projects/42/pipelines",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				assert.Contains(t, r.URL.Path, "/42/pipelines")
-				w.Header().Set("x-total-pages", "1")
-				jsonResponse(t, w, []map[string]any{{"id": float64(10)}, {"id": float64(11)}})
-			},
-			expectedCount: 2,
-		},
-		"multi page": {
-			path: "/api/v4/projects/7/pipelines",
-			handler: func() http.HandlerFunc {
-				var call atomic.Int32
-				return func(w http.ResponseWriter, r *http.Request) {
-					n := int(call.Add(1))
-					w.Header().Set("x-total-pages", "2")
-					jsonResponse(t, w, []map[string]any{{"id": float64(n * 10)}})
-				}
-			}(),
-			expectedCount: 2,
-		},
-		"empty result": {
-			path: "/api/v4/projects/99/pipelines",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("x-total-pages", "0")
-				jsonResponse(t, w, []map[string]any{})
-			},
-			expectedCount: 0,
-		},
-		"single page of group access tokens": {
-			path: "/api/v4/groups/42/access_tokens",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				assert.Contains(t, r.URL.Path, "/42/access_tokens")
-				w.Header().Set("x-total-pages", "1")
-				jsonResponse(t, w, []map[string]any{{"id": float64(1)}, {"id": float64(2)}})
-			},
-			expectedCount: 2,
-		},
-		"server error": {
-			path: "/api/v4/projects/42/pipelines",
-			handler: func(w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusUnauthorized)
-			},
-			expectErr: true,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			srv := httptest.NewServer(tc.handler)
-			defer srv.Close()
-
-			client := newTestGitLabClient(t, srv)
-			it := client.newPageIterator(tc.path)
-
-			var all []map[string]any
-			for {
-				items, err := it.next(t.Context())
-				if errors.Is(err, ErrIteratorDone) {
-					break
-				}
-				if err != nil {
-					if tc.expectErr {
-						return
-					}
-					require.NoError(t, err)
-				}
-				all = append(all, items...)
-			}
-
-			if tc.expectErr {
-				t.Fatal("expected error but iteration completed")
-			}
-			assert.Len(t, all, tc.expectedCount)
-		})
-	}
-
 	t.Run("pages arrive incrementally", func(t *testing.T) {
 		var requestCount atomic.Int32
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -253,7 +136,7 @@ func TestPageIteratorWithResources(t *testing.T) {
 		defer srv.Close()
 
 		client := newTestGitLabClient(t, srv)
-		it := client.newPageIterator("/api/v4/projects/1/pipelines")
+		it := client.newPageIterator("/any/path")
 
 		// First page
 		items, err := it.next(t.Context())
@@ -278,45 +161,5 @@ func TestPageIteratorWithResources(t *testing.T) {
 		require.ErrorIs(t, err, ErrIteratorDone)
 
 		assert.EqualValues(t, 3, requestCount.Load())
-	})
-}
-
-func TestNewProjectResourcesIterator(t *testing.T) {
-	client := &gitLabClient{}
-
-	t.Run("pipeline resource", func(t *testing.T) {
-		it, err := client.newProjectResourcesIterator(pipelineResource, "42")
-		require.NoError(t, err)
-		assert.NotNil(t, it)
-	})
-
-	t.Run("access token resource", func(t *testing.T) {
-		it, err := client.newProjectResourcesIterator(accessTokenResource, "42")
-		require.NoError(t, err)
-		assert.NotNil(t, it)
-	})
-
-	t.Run("unknown resource returns error", func(t *testing.T) {
-		it, err := client.newProjectResourcesIterator("unknown", "42")
-		require.Error(t, err)
-		assert.Nil(t, it)
-		assert.Contains(t, err.Error(), "unknown project resource")
-	})
-}
-
-func TestNewGroupResourcesIterator(t *testing.T) {
-	client := &gitLabClient{}
-
-	t.Run("access token resource", func(t *testing.T) {
-		it, err := client.newGroupResourcesIterator(accessTokenResource, "10")
-		require.NoError(t, err)
-		assert.NotNil(t, it)
-	})
-
-	t.Run("unknown resource returns error", func(t *testing.T) {
-		it, err := client.newGroupResourcesIterator("unknown", "10")
-		require.Error(t, err)
-		assert.Nil(t, it)
-		assert.Contains(t, err.Error(), "unknown group resource")
 	})
 }
