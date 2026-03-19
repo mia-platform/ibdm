@@ -11,6 +11,18 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
+// sourceConfig holds the environment-driven GitLab API settings.
+type sourceConfig struct {
+	Token   string `env:"GITLAB_TOKEN,required"`
+	BaseURL string `env:"GITLAB_BASE_URL" envDefault:"https://gitlab.com"`
+}
+
+// webhookConfig holds the environment-driven GitLab webhook settings.
+type webhookConfig struct {
+	WebhookPath  string `env:"GITLAB_WEBHOOK_PATH" envDefault:"/gitlab/webhook"`
+	WebhookToken string `env:"GITLAB_WEBHOOK_TOKEN"`
+}
+
 const (
 	msgInvalidWebhookPath = "GITLAB_WEBHOOK_PATH must start with '/'"
 )

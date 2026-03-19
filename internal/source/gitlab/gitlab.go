@@ -9,11 +9,21 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
+
+// Source implements [source.WebhookSource] and [source.SyncableSource] for GitLab.
+// It can both poll resources via the GitLab REST API and receive real-time pipeline
+// events through a token-authenticated webhook.
+type Source struct {
+	c             *gitLabClient
+	webhookConfig webhookConfig
+	syncLock      sync.Mutex
+}
 
 const (
 	loggerName = "ibdm:source:gitlab"
@@ -22,19 +32,6 @@ const (
 	pipelineResource    = "pipeline"
 	accessTokenResource = "accesstoken"
 )
-
-// eventProcessor defines the contract for processing a specific GitLab webhook
-// event type. Each implementation lives in its own processor_*.go file.
-type eventProcessor interface {
-	process(ctx context.Context, s *Source, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error)
-}
-
-// eventProcessors maps X-Gitlab-Event header values to their processor.
-// Register new event types by adding an entry here and creating the
-// corresponding processor_*.go file.
-var eventProcessors = map[string]eventProcessor{
-	pipelineHookHeaderValue: &pipelineEventProcessor{},
-}
 
 var (
 	// ErrSourceCreation is returned when the source cannot be initialised.

@@ -27,6 +27,12 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
+// gitLabClient wraps the HTTP client and source configuration for GitLab API requests.
+type gitLabClient struct {
+	config sourceConfig
+	http   *http.Client
+}
+
 // newHTTPClient returns a default HTTP client with the configured timeout.
 func newHTTPClient() *http.Client {
 	return &http.Client{Timeout: defaultTimeout}
