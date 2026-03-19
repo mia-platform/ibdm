@@ -228,15 +228,13 @@ func TestGetWebhook_ReturnsCorrectPathAndMethod(t *testing.T) {
 
 func TestWebhookHandler(t *testing.T) {
 	validToken := "super-secret"
-	validUpdatedAt := "2024-06-01T10:00:00Z"
 	validProjectID := float64(5)
 	validProject := map[string]any{
 		"id":   validProjectID,
 		"name": "test-project",
 	}
-	expectedTime, _ := time.Parse(time.RFC3339, validUpdatedAt)
 
-	validBody := func(updatedAt string) []byte {
+	validBody := func() []byte {
 		payload := map[string]any{
 			"object_kind": "pipeline",
 			"object_attributes": map[string]any{
@@ -246,9 +244,6 @@ func TestWebhookHandler(t *testing.T) {
 			"project": map[string]any{
 				"id": validProjectID,
 			},
-		}
-		if updatedAt != "" {
-			payload["object_attributes"].(map[string]any)["updated_at"] = updatedAt
 		}
 		b, _ := json.Marshal(payload)
 		return b
@@ -272,7 +267,7 @@ func TestWebhookHandler(t *testing.T) {
 	}{
 		"valid pipeline event dispatched": {
 			token:         validToken,
-			body:          validBody(""),
+			body:          validBody(),
 			headers:       validHeaders(validToken, pipelineHookHeaderValue),
 			typesToStream: map[string]source.Extra{pipelineResource: nil},
 			expectData:    true,
@@ -283,43 +278,25 @@ func TestWebhookHandler(t *testing.T) {
 				assert.NotNil(t, d.Values)
 			},
 		},
-		"valid pipeline event with updated_at time": {
-			token:         validToken,
-			body:          validBody(validUpdatedAt),
-			headers:       validHeaders(validToken, pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
-			expectData:    true,
-			checkData: func(t *testing.T, d source.Data) {
-				t.Helper()
-				assert.Equal(t, expectedTime.UTC(), d.Time.UTC())
-			},
-		},
 		"invalid token": {
 			token:         validToken,
-			body:          validBody(""),
+			body:          validBody(),
 			headers:       validHeaders("wrong-token", pipelineHookHeaderValue),
 			typesToStream: map[string]source.Extra{pipelineResource: nil},
 			expectErr:     ErrSignatureMismatch,
 		},
-		"wrong event type is silently ignored": {
+		"unknown event type is silently ignored": {
 			token:         validToken,
-			body:          validBody(""),
+			body:          validBody(),
 			headers:       validHeaders(validToken, "Push Hook"),
 			typesToStream: map[string]source.Extra{pipelineResource: nil},
 			expectData:    false,
 		},
-		"malformed body": {
+		"processor error does not produce data": {
 			token:         validToken,
 			body:          []byte("not-json"),
 			headers:       validHeaders(validToken, pipelineHookHeaderValue),
 			typesToStream: map[string]source.Extra{pipelineResource: nil},
-			expectData:    false,
-		},
-		"pipeline type not in typesToStream": {
-			token:         validToken,
-			body:          validBody(""),
-			headers:       validHeaders(validToken, pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{"project": nil},
 			expectData:    false,
 		},
 	}
@@ -332,8 +309,6 @@ func TestWebhookHandler(t *testing.T) {
 					jsonResponse(t, w, validProject)
 				case "/api/v4/projects/5/languages":
 					jsonResponse(t, w, map[string]any{"Go": 100.0})
-				case "/api/v4/projects/5/access_tokens":
-					jsonResponse(t, w, []map[string]any{})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -373,104 +348,7 @@ func TestWebhookHandler(t *testing.T) {
 					tc.checkData(t, data)
 				}
 			case <-t.Context().Done():
-				t.Fatal("timed out waiting for pipeline event to be dispatched")
-			}
-		})
-	}
-}
-
-// -------------------------------------------------------------------
-// parsePipelineEvent tests
-// -------------------------------------------------------------------
-
-func TestParsePipelineEvent(t *testing.T) {
-	projectPayload := map[string]any{
-		"id":                  float64(5),
-		"name":                "test-project",
-		"path_with_namespace": "group/test-project",
-	}
-
-	testCases := map[string]struct {
-		body          []byte
-		handler       http.HandlerFunc
-		expectKind    string
-		expectValKeys []string
-		expectProject map[string]any
-		expectErr     bool
-	}{
-		"full pipeline payload": {
-			body: mustMarshal(t, map[string]any{
-				"object_kind": "pipeline",
-				"object_attributes": map[string]any{
-					"id":     float64(1),
-					"status": "running",
-				},
-				"project": map[string]any{
-					"id": float64(5),
-				},
-			}),
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				switch r.URL.Path {
-				case "/api/v4/projects/5":
-					jsonResponse(t, w, projectPayload)
-				case "/api/v4/projects/5/languages":
-					jsonResponse(t, w, map[string]any{"Go": 100.0})
-				default:
-					w.WriteHeader(http.StatusNotFound)
-				}
-			},
-			expectKind:    "pipeline",
-			expectValKeys: []string{"object_kind", "object_attributes", "project"},
-			expectProject: map[string]any{
-				"project":           projectPayload,
-				"project_languages": map[string]any{"Go": 100.0},
-			},
-		},
-		"invalid json": {
-			body: []byte("{bad json"),
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusNotFound)
-			},
-			expectErr: true,
-		},
-		"getProject API error": {
-			body: mustMarshal(t, map[string]any{
-				"object_kind": "pipeline",
-				"object_attributes": map[string]any{
-					"id": float64(1),
-				},
-				"project": map[string]any{
-					"id": float64(5),
-				},
-			}),
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusInternalServerError)
-			},
-			expectErr: true,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			srv := httptest.NewServer(tc.handler)
-			defer srv.Close()
-
-			s := &Source{
-				c: newTestGitLabClient(t, srv),
-			}
-
-			ev, err := s.parsePipelineEvent(t.Context(), tc.body)
-			if tc.expectErr {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, tc.expectKind, ev.ObjectKind)
-			for _, k := range tc.expectValKeys {
-				assert.Contains(t, ev.ToValues(), k)
-			}
-			if tc.expectProject != nil {
-				assert.Equal(t, tc.expectProject, ev.project)
+				t.Fatal("timed out waiting for webhook event to be dispatched")
 			}
 		})
 	}

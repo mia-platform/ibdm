@@ -5,7 +5,6 @@ package gitlab
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,6 +23,19 @@ const (
 	accessTokenResource = "accesstoken"
 )
 
+// eventProcessor defines the contract for processing a specific GitLab webhook
+// event type. Each implementation lives in its own processor_*.go file.
+type eventProcessor interface {
+	process(ctx context.Context, s *Source, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error)
+}
+
+// eventProcessors maps X-Gitlab-Event header values to their processor.
+// Register new event types by adding an entry here and creating the
+// corresponding processor_*.go file.
+var eventProcessors = map[string]eventProcessor{
+	pipelineHookHeaderValue: &pipelineEventProcessor{},
+}
+
 var (
 	// ErrSourceCreation is returned when the source cannot be initialised.
 	ErrSourceCreation = errors.New("source creation error")
@@ -31,8 +43,6 @@ var (
 	ErrWebhookTokenMissing = errors.New("webhook token not configured")
 	// ErrSignatureMismatch is returned when the incoming webhook token does not match.
 	ErrSignatureMismatch = errors.New("webhook token mismatch")
-	// ErrUnmarshalingEvent is returned when the webhook body cannot be decoded.
-	ErrUnmarshalingEvent = errors.New("error unmarshaling event")
 	// ErrRetrievingAssets is returned when an API listing call fails.
 	ErrRetrievingAssets = errors.New("error retrieving assets")
 )
@@ -274,75 +284,26 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 			}
 
 			go func() {
-				if headers.Get(gitlabEventHeader) != pipelineHookHeaderValue {
-					log.Debug("ignoring non-pipeline event", gitlabEventHeader, headers.Get(gitlabEventHeader))
+				eventType := headers.Get(gitlabEventHeader)
+				processor, ok := eventProcessors[eventType]
+				if !ok {
+					log.Debug("ignoring unsupported event", gitlabEventHeader, eventType)
 					return
 				}
 
-				ev, err := s.parsePipelineEvent(ctx, body)
+				data, err := processor.process(ctx, s, typesToStream, body)
 				if err != nil {
-					log.Error(ErrUnmarshalingEvent.Error(), "error", err.Error())
+					log.Error("error processing webhook event", "event", eventType, "error", err.Error())
 					return
 				}
 
-				if ev.ObjectKind != pipelineEventKind {
-					log.Debug("ignoring event with unexpected object_kind", "object_kind", ev.ObjectKind)
-					return
-				}
-
-				if _, ok := typesToStream[pipelineResource]; !ok {
-					log.Debug("ignoring pipeline event: pipeline type not requested")
-					return
-				}
-
-				results <- source.Data{
-					Type:      pipelineResource,
-					Operation: source.DataOperationUpsert,
-					Values:    ev.ToValues(),
-					Time:      ev.EventTime(),
+				for _, d := range data {
+					results <- d
 				}
 			}()
 
 			return nil
 		},
-	}, nil
-}
-
-// parsePipelineEvent decodes a raw webhook body into a pipelineEvent, preserving
-// the full payload for use as source.Data.Values.
-func (s *Source) parsePipelineEvent(ctx context.Context, body []byte) (*pipelineEvent, error) {
-	var pipeline map[string]any
-	if err := json.Unmarshal(body, &pipeline); err != nil {
-		return nil, err
-	}
-
-	objectKind, _ := pipeline["object_kind"].(string)
-	objectAttributes, _ := pipeline["object_attributes"].(map[string]any)
-	project, _ := pipeline["project"].(map[string]any)
-	if project == nil {
-		return nil, errors.New("event payload missing project field")
-	}
-
-	projectID, ok := project["id"].(float64)
-	if !ok {
-		return nil, errors.New("event payload project.id is missing or invalid")
-	}
-
-	project, err := s.c.getProject(ctx, int(projectID))
-	if err != nil {
-		return nil, err
-	}
-
-	langs, err := s.c.getProjectLanguages(ctx, strconv.Itoa(int(projectID)))
-	if err != nil {
-		return nil, err
-	}
-
-	return &pipelineEvent{
-		ObjectKind:       objectKind,
-		ObjectAttributes: objectAttributes,
-		rawValues:        pipeline,
-		project:          projectWrapper(project, langs),
 	}, nil
 }
 
