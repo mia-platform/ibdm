@@ -87,11 +87,9 @@ func TestParsePipelineEvent(t *testing.T) {
 			srv := httptest.NewServer(tc.handler)
 			defer srv.Close()
 
-			s := &Source{
-				c: newTestGitLabClient(t, srv),
-			}
+			c := newTestGitLabClient(t, srv)
 
-			ev, err := parsePipelineEvent(t.Context(), s, tc.body)
+			ev, err := parsePipelineEvent(t.Context(), c, tc.body)
 			if tc.expectErr {
 				require.Error(t, err)
 				return
@@ -198,10 +196,10 @@ func TestPipelineEventProcessor(t *testing.T) {
 			srv := httptest.NewServer(apiHandler)
 			defer srv.Close()
 
-			s := &Source{c: newTestGitLabClient(t, srv)}
+			c := newTestGitLabClient(t, srv)
 			p := &pipelineEventProcessor{}
 
-			data, err := p.process(t.Context(), s, tc.typesToStream, tc.body)
+			data, err := p.process(t.Context(), c, tc.typesToStream, tc.body)
 			if tc.expectErr {
 				require.Error(t, err)
 				return

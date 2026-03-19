@@ -15,8 +15,8 @@ import (
 // pipelineEventProcessor handles "Pipeline Hook" webhook events.
 type pipelineEventProcessor struct{}
 
-func (p *pipelineEventProcessor) process(ctx context.Context, s *Source, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
-	ev, err := parsePipelineEvent(ctx, s, body)
+func (p *pipelineEventProcessor) process(ctx context.Context, c *gitLabClient, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
+	ev, err := parsePipelineEvent(ctx, c, body)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (p *pipelineEventProcessor) process(ctx context.Context, s *Source, typesTo
 
 // parsePipelineEvent decodes a raw webhook body into a pipelineEvent, preserving
 // the full payload for use as source.Data.Values.
-func parsePipelineEvent(ctx context.Context, s *Source, body []byte) (*pipelineEvent, error) {
+func parsePipelineEvent(ctx context.Context, c *gitLabClient, body []byte) (*pipelineEvent, error) {
 	var pipeline map[string]any
 	if err := json.Unmarshal(body, &pipeline); err != nil {
 		return nil, err
@@ -59,12 +59,12 @@ func parsePipelineEvent(ctx context.Context, s *Source, body []byte) (*pipelineE
 		return nil, errors.New("event payload project.id is missing or invalid")
 	}
 
-	project, err := s.c.getProject(ctx, int(projectID))
+	project, err := c.getProject(ctx, int(projectID))
 	if err != nil {
 		return nil, err
 	}
 
-	langs, err := s.c.getProjectLanguages(ctx, strconv.Itoa(int(projectID)))
+	langs, err := c.getProjectLanguages(ctx, strconv.Itoa(int(projectID)))
 	if err != nil {
 		return nil, err
 	}

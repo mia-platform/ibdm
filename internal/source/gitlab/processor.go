@@ -12,7 +12,7 @@ import (
 // eventProcessor defines the contract for processing a specific GitLab webhook
 // event type. Each implementation lives in its own processor_*.go file.
 type eventProcessor interface {
-	process(ctx context.Context, s *Source, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error)
+	process(ctx context.Context, c *gitLabClient, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error)
 }
 
 // eventProcessors maps X-Gitlab-Event header values to their processor.

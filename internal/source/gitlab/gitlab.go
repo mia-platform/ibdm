@@ -288,7 +288,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 					return
 				}
 
-				data, err := processor.process(ctx, s, typesToStream, body)
+				data, err := processor.process(ctx, s.c, typesToStream, body)
 				if err != nil {
 					log.Error("error processing webhook event", "event", eventType, "error", err.Error())
 					return
