@@ -313,7 +313,7 @@ func TestWebhookHandler(t *testing.T) {
 			body:          []byte("not-json"),
 			headers:       validHeaders(validToken, pipelineHookHeaderValue),
 			typesToStream: map[string]source.Extra{pipelineResource: nil},
-			expectErr:     ErrUnmarshalingEvent,
+			expectData:    false,
 		},
 		"pipeline type not in typesToStream": {
 			token:         validToken,
@@ -362,6 +362,7 @@ func TestWebhookHandler(t *testing.T) {
 			require.NoError(t, handlerErr)
 
 			if !tc.expectData {
+				time.Sleep(100 * time.Millisecond)
 				assert.Empty(t, results)
 				return
 			}

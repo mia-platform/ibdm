@@ -38,6 +38,7 @@ var (
 )
 
 var _ source.SyncableSource = &Source{}
+var _ source.WebhookSource = &Source{}
 
 // NewSource constructs a [Source] by reading its configuration from environment
 // variables. It returns [ErrSourceCreation] if either the API config or the
@@ -272,28 +273,28 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 				return ErrSignatureMismatch
 			}
 
-			if headers.Get(gitlabEventHeader) != pipelineHookHeaderValue {
-				log.Debug("ignoring non-pipeline event", gitlabEventHeader, headers.Get(gitlabEventHeader))
-				return nil
-			}
-
-			ev, err := s.parsePipelineEvent(ctx, body)
-			if err != nil {
-				log.Error(ErrUnmarshalingEvent.Error(), "error", err.Error())
-				return fmt.Errorf("%w: %w", ErrUnmarshalingEvent, err)
-			}
-
-			if ev.ObjectKind != pipelineEventKind {
-				log.Debug("ignoring event with unexpected object_kind", "object_kind", ev.ObjectKind)
-				return nil
-			}
-
-			if _, ok := typesToStream[pipelineResource]; !ok {
-				log.Debug("ignoring pipeline event: pipeline type not requested")
-				return nil
-			}
-
 			go func() {
+				if headers.Get(gitlabEventHeader) != pipelineHookHeaderValue {
+					log.Debug("ignoring non-pipeline event", gitlabEventHeader, headers.Get(gitlabEventHeader))
+					return
+				}
+
+				ev, err := s.parsePipelineEvent(ctx, body)
+				if err != nil {
+					log.Error(ErrUnmarshalingEvent.Error(), "error", err.Error())
+					return
+				}
+
+				if ev.ObjectKind != pipelineEventKind {
+					log.Debug("ignoring event with unexpected object_kind", "object_kind", ev.ObjectKind)
+					return
+				}
+
+				if _, ok := typesToStream[pipelineResource]; !ok {
+					log.Debug("ignoring pipeline event: pipeline type not requested")
+					return
+				}
+
 				results <- source.Data{
 					Type:      pipelineResource,
 					Operation: source.DataOperationUpsert,
