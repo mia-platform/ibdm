@@ -150,24 +150,28 @@ func TestPipelineEventProcessor(t *testing.T) {
 		checkData     func(t *testing.T, data []source.Data)
 		expectErr     bool
 	}{
-		"valid pipeline event": {
+		"both project and pipeline in typesToStream": {
 			body:          pipelineBody(""),
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
-			expectData:    1,
+			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			expectData:    2,
 			checkData: func(t *testing.T, data []source.Data) {
 				t.Helper()
-				assert.Equal(t, pipelineResource, data[0].Type)
+				assert.Equal(t, projectResource, data[0].Type)
 				assert.Equal(t, source.DataOperationUpsert, data[0].Operation)
 				assert.NotNil(t, data[0].Values)
+				assert.Equal(t, pipelineResource, data[1].Type)
+				assert.Equal(t, source.DataOperationUpsert, data[1].Operation)
+				assert.NotNil(t, data[1].Values)
 			},
 		},
 		"valid pipeline event with updated_at time": {
 			body:          pipelineBody(validUpdatedAt),
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
-			expectData:    1,
+			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			expectData:    2,
 			checkData: func(t *testing.T, data []source.Data) {
 				t.Helper()
 				assert.Equal(t, expectedTime.UTC(), data[0].Time.UTC())
+				assert.Equal(t, expectedTime.UTC(), data[1].Time.UTC())
 			},
 		},
 		"wrong object_kind returns no data": {
@@ -176,17 +180,22 @@ func TestPipelineEventProcessor(t *testing.T) {
 				"object_attributes": map[string]any{},
 				"project":           map[string]any{"id": validProjectID},
 			}),
+			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			expectData:    0,
+		},
+		"project not in typesToStream returns no data": {
+			body:          pipelineBody(""),
 			typesToStream: map[string]source.Extra{pipelineResource: nil},
 			expectData:    0,
 		},
-		"pipeline type not in typesToStream": {
+		"pipeline not in typesToStream returns no data": {
 			body:          pipelineBody(""),
-			typesToStream: map[string]source.Extra{"project": nil},
+			typesToStream: map[string]source.Extra{projectResource: nil},
 			expectData:    0,
 		},
 		"malformed body": {
 			body:          []byte("not-json"),
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
+			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
 			expectErr:     true,
 		},
 	}

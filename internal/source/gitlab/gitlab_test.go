@@ -269,11 +269,11 @@ func TestWebhookHandler(t *testing.T) {
 			token:         validToken,
 			body:          validBody(),
 			headers:       validHeaders(validToken, pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
+			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
 			expectData:    true,
 			checkData: func(t *testing.T, d source.Data) {
 				t.Helper()
-				assert.Equal(t, pipelineResource, d.Type)
+				assert.Equal(t, projectResource, d.Type)
 				assert.Equal(t, source.DataOperationUpsert, d.Operation)
 				assert.NotNil(t, d.Values)
 			},
@@ -282,21 +282,21 @@ func TestWebhookHandler(t *testing.T) {
 			token:         validToken,
 			body:          validBody(),
 			headers:       validHeaders("wrong-token", pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
+			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
 			expectErr:     ErrSignatureMismatch,
 		},
 		"unknown event type is silently ignored": {
 			token:         validToken,
 			body:          validBody(),
 			headers:       validHeaders(validToken, "Push Hook"),
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
+			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
 			expectData:    false,
 		},
 		"processor error does not produce data": {
 			token:         validToken,
 			body:          []byte("not-json"),
 			headers:       validHeaders(validToken, pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
+			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
 			expectData:    false,
 		},
 	}
@@ -315,7 +315,7 @@ func TestWebhookHandler(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			results := make(chan source.Data, 1)
+			results := make(chan source.Data, 2)
 
 			s := &Source{
 				c: newTestGitLabClient(t, srv),

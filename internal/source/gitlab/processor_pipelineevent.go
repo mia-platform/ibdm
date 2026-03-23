@@ -16,6 +16,7 @@ import (
 type pipelineEventProcessor struct{}
 
 func (p *pipelineEventProcessor) process(ctx context.Context, c *gitLabClient, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
+	var eventsToMap []source.Data
 	ev, err := parsePipelineEvent(ctx, c, body)
 	if err != nil {
 		return nil, err
@@ -25,18 +26,31 @@ func (p *pipelineEventProcessor) process(ctx context.Context, c *gitLabClient, t
 		return nil, nil
 	}
 
+	if _, ok := typesToStream[projectResource]; !ok {
+		return nil, nil
+	}
+
+	eventsToMap = append(eventsToMap, source.Data{
+		Type:      projectResource,
+		Operation: source.DataOperationUpsert,
+		Values:    ev.project,
+		Time:      ev.EventTime(),
+	})
+
 	if _, ok := typesToStream[pipelineResource]; !ok {
 		return nil, nil
 	}
 
-	return []source.Data{
-		{
-			Type:      pipelineResource,
-			Operation: source.DataOperationUpsert,
-			Values:    ev.ToValues(),
-			Time:      ev.EventTime(),
+	eventsToMap = append(eventsToMap, source.Data{
+		Type:      pipelineResource,
+		Operation: source.DataOperationUpsert,
+		Values: map[string]any{
+			"pipeline": ev.ObjectAttributes,
 		},
-	}, nil
+		Time: ev.EventTime(),
+	})
+
+	return eventsToMap, nil
 }
 
 // parsePipelineEvent decodes a raw webhook body into a pipelineEvent, preserving
