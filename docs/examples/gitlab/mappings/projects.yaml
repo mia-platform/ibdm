@@ -1,6 +1,6 @@
 apiVersion: gitlab.mia-platform.eu/v1alpha1
 itemFamily: projects
-type: projects
+type: project
 syncable: true
 mappings:
   identifier: |-
