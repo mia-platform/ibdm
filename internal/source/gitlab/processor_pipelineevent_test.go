@@ -15,6 +15,50 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
+func TestPipelineEvent_EventTime(t *testing.T) {
+	testCases := map[string]struct {
+		objectAttributes map[string]any
+		checkTime        func(t *testing.T, got time.Time)
+	}{
+		"updated_at present and parseable": {
+			objectAttributes: map[string]any{"updated_at": "2024-05-15T08:30:00Z"},
+			checkTime: func(t *testing.T, got time.Time) {
+				t.Helper()
+				expected, _ := time.Parse(time.RFC3339, "2024-05-15T08:30:00Z")
+				assert.Equal(t, expected.UTC(), got.UTC())
+			},
+		},
+		"updated_at present but malformed falls back to now": {
+			objectAttributes: map[string]any{"updated_at": "not-a-date"},
+			checkTime: func(t *testing.T, got time.Time) {
+				t.Helper()
+				assert.WithinDuration(t, time.Now(), got, 5*time.Second)
+			},
+		},
+		"updated_at absent falls back to now": {
+			objectAttributes: map[string]any{"status": "success"},
+			checkTime: func(t *testing.T, got time.Time) {
+				t.Helper()
+				assert.WithinDuration(t, time.Now(), got, 5*time.Second)
+			},
+		},
+		"nil object_attributes falls back to now": {
+			objectAttributes: nil,
+			checkTime: func(t *testing.T, got time.Time) {
+				t.Helper()
+				assert.WithinDuration(t, time.Now(), got, 5*time.Second)
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			ev := &pipelineEvent{ObjectAttributes: tc.objectAttributes}
+			tc.checkTime(t, ev.EventTime())
+		})
+	}
+}
+
 func TestParsePipelineEvent(t *testing.T) {
 	projectPayload := map[string]any{
 		"id":                  float64(5),
@@ -26,7 +70,6 @@ func TestParsePipelineEvent(t *testing.T) {
 		body          []byte
 		handler       http.HandlerFunc
 		expectKind    string
-		expectValKeys []string
 		expectProject map[string]any
 		expectErr     bool
 	}{
@@ -51,8 +94,7 @@ func TestParsePipelineEvent(t *testing.T) {
 					w.WriteHeader(http.StatusNotFound)
 				}
 			},
-			expectKind:    "pipeline",
-			expectValKeys: []string{"object_kind", "object_attributes", "project"},
+			expectKind: "pipeline",
 			expectProject: map[string]any{
 				"project":           projectPayload,
 				"project_languages": map[string]any{"Go": 100.0},
@@ -96,9 +138,7 @@ func TestParsePipelineEvent(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectKind, ev.ObjectKind)
-			for _, k := range tc.expectValKeys {
-				assert.Contains(t, ev.ToValues(), k)
-			}
+			assert.NotEmpty(t, ev.pipeline)
 			if tc.expectProject != nil {
 				assert.Equal(t, tc.expectProject, ev.project)
 			}

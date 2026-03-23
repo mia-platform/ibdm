@@ -8,9 +8,45 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/mia-platform/ibdm/internal/source"
 )
+
+const (
+	// pipelineEventKind is the object_kind value for pipeline webhook events.
+	pipelineEventKind = "pipeline"
+
+	// pipelineHookHeaderValue is the expected value of X-Gitlab-Event for pipeline events.
+	pipelineHookHeaderValue = "Pipeline Hook"
+)
+
+// pipelineEvent represents a GitLab pipeline webhook payload.
+type pipelineEvent struct {
+	ObjectKind       string         `json:"object_kind"`       //nolint:tagliatelle // GitLab API uses snake_case
+	ObjectAttributes map[string]any `json:"object_attributes"` //nolint:tagliatelle // GitLab API uses snake_case
+
+	pipeline map[string]any
+	project  map[string]any
+}
+
+var _ gitlabEvent = &pipelineEvent{}
+
+// EventTime returns the time of the pipeline event. It reads the updated_at field
+// from object_attributes when present, and falls back to time.Now().
+func (e *pipelineEvent) EventTime() time.Time {
+	if e.ObjectAttributes == nil {
+		return time.Now()
+	}
+
+	if updatedAt, ok := e.ObjectAttributes["updated_at"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, updatedAt); err == nil {
+			return t
+		}
+	}
+
+	return time.Now()
+}
 
 // pipelineEventProcessor handles "Pipeline Hook" webhook events.
 type pipelineEventProcessor struct{}
@@ -45,7 +81,7 @@ func (p *pipelineEventProcessor) process(ctx context.Context, c *gitLabClient, t
 		Type:      pipelineResource,
 		Operation: source.DataOperationUpsert,
 		Values: map[string]any{
-			"pipeline": ev.ObjectAttributes,
+			"pipeline": ev.pipeline,
 		},
 		Time: ev.EventTime(),
 	})
@@ -56,14 +92,14 @@ func (p *pipelineEventProcessor) process(ctx context.Context, c *gitLabClient, t
 // parsePipelineEvent decodes a raw webhook body into a pipelineEvent, preserving
 // the full payload for use as source.Data.Values.
 func parsePipelineEvent(ctx context.Context, c *gitLabClient, body []byte) (*pipelineEvent, error) {
-	var pipeline map[string]any
-	if err := json.Unmarshal(body, &pipeline); err != nil {
+	var pipelineEv map[string]any
+	if err := json.Unmarshal(body, &pipelineEv); err != nil {
 		return nil, err
 	}
 
-	objectKind, _ := pipeline["object_kind"].(string)
-	objectAttributes, _ := pipeline["object_attributes"].(map[string]any)
-	project, _ := pipeline["project"].(map[string]any)
+	objectKind, _ := pipelineEv["object_kind"].(string)
+	objectAttributes, _ := pipelineEv["object_attributes"].(map[string]any)
+	project, _ := pipelineEv["project"].(map[string]any)
 	if project == nil {
 		return nil, errors.New("event payload missing project field")
 	}
@@ -86,7 +122,7 @@ func parsePipelineEvent(ctx context.Context, c *gitLabClient, body []byte) (*pip
 	return &pipelineEvent{
 		ObjectKind:       objectKind,
 		ObjectAttributes: objectAttributes,
-		rawValues:        pipeline,
+		pipeline:         objectAttributes,
 		project:          projectWrapper(project, langs),
 	}, nil
 }
