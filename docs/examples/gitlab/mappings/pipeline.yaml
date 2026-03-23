@@ -1,0 +1,11 @@
+apiVersion: gitlab.mia-platform.eu/v1alpha1
+itemFamily: pipelines
+type: pipeline
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%v" .pipeline.id | sha256sum }}
+  metadata:
+    title: "{{ .pipeline.name }}"
+  spec:
+    id: "{{ .pipeline.id }}"
