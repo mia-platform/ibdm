@@ -33,8 +33,9 @@ var (
 	availableEventSources = map[string]string{
 		"azure":        "Microsoft Azure integration",
 		"azure-devops": "Microsoft Azure DevOps integration",
-		"gcp":          "Google Cloud Platform integration",
 		"console":      "Mia Platform Console integration",
+		"gcp":          "Google Cloud Platform integration",
+		"gitlab":       "GitLab integration",
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{
