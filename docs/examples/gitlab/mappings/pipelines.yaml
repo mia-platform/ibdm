@@ -6,6 +6,7 @@ mappings:
   identifier: |-
     {{ printf "%v" .pipeline.id | sha256sum }}
   metadata:
-    title: "{{ .pipeline.name }}"
+    title: "{{ .pipeline.name | quote }}"
   spec:
     id: "{{ .pipeline.id }}"
+    name: "{{ .pipeline.name | quote }}"
