@@ -1,0 +1,98 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: repositories.github.mia-platform.eu
+spec:
+  group: github.mia-platform.eu
+  names:
+    kind: Repository
+    plural: repositories
+    displayPlural: GitHub Repositories
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                description: The name of the repository.
+                type: string
+                title: Name
+              fullName:
+                description: The full name of the repository (org/repo).
+                type: string
+                title: Full Name
+              description:
+                description: A short description of the repository.
+                type: string
+                title: Description
+              url:
+                description: The URL of the repository on GitHub.
+                type: string
+                title: URL
+              language:
+                description: The primary programming language of the repository.
+                type: string
+                title: Language
+              visibility:
+                description: "Repository visibility: public, private, or internal."
+                type: string
+                title: Visibility
+              defaultBranch:
+                description: The default branch of the repository.
+                type: string
+                title: Default Branch
+              archived:
+                description: Whether the repository is archived.
+                type: boolean
+                title: Archived
+              fork:
+                description: Whether the repository is a fork.
+                type: boolean
+                title: Fork
+              stargazersCount:
+                description: Number of stars on the repository.
+                type: integer
+                title: Stars
+              forksCount:
+                description: Number of forks of the repository.
+                type: integer
+                title: Forks
+              openIssuesCount:
+                description: Number of open issues and pull requests.
+                type: integer
+                title: Open Issues
+              license:
+                description: The SPDX identifier of the repository's license.
+                type: string
+                title: License
+              topics:
+                description: Topics (tags) assigned to the repository.
+                type: array
+                title: Topics
+                items:
+                  type: string
+              created:
+                description: The creation time of the repository (RFC 3339).
+                type: string
+                format: date-time
+                title: Created At
+              lastUpdate:
+                description: The last time the repository metadata was updated (RFC 3339).
+                type: string
+                format: date-time
+                title: Last Update
+              lastPush:
+                description: The last time a push was made to the repository (RFC 3339).
+                type: string
+                format: date-time
+                title: Last Push
+    served: true
+    storage: true

@@ -1,0 +1,29 @@
+apiVersion: github.mia-platform.eu/v1alpha1
+itemFamily: repositories
+type: repository
+extra:
+  apiVersion: "2026-03-10"
+syncable: true
+mappings:
+  identifier: |-
+    {{ .repository.full_name | replace "/" "." | lower }}
+  metadata:
+    title: "{{ .repository.name }}"
+  spec:
+    name: "{{ .repository.name }}"
+    fullName: "{{ .repository.full_name }}"
+    description: "{{ .repository.description }}"
+    url: "{{ .repository.html_url }}"
+    language: "{{ .repository.language }}"
+    visibility: "{{ .repository.visibility }}"
+    defaultBranch: "{{ .repository.default_branch }}"
+    archived: "{{ .repository.archived }}"
+    fork: "{{ .repository.fork }}"
+    stargazersCount: "{{ .repository.stargazers_count }}"
+    forksCount: "{{ .repository.forks_count }}"
+    openIssuesCount: "{{ .repository.open_issues_count }}"
+    license: "{{ .repository.license | toJSON }}"
+    topics: "{{ .repository.topics | toJSON }}"
+    created: "{{ .repository.created_at }}"
+    lastUpdate: "{{ .repository.updated_at }}"
+    lastPush: "{{ .repository.pushed_at }}"
