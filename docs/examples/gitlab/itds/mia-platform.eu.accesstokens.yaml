@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: accesstokens.mia-platform.eu
+spec:
+  group: mia-platform.eu
+  names:
+    kind: AccessToken
+    plural: accesstokens
+    displayPlural: Access Tokens
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                id:
+                  description: The unique identifier of the access token.
+                  type: integer
+                  title: ID
+                name:
+                  description: The name of the access token.
+                  type: string
+                  title: Name
+                revoked:
+                  description: Whether the access token has been revoked.
+                  type: boolean
+                  title: Revoked
+                createdAt:
+                  description: The date and time when the access token was created.
+                  type: string
+                  title: Created At
+                  format: date-time
+                description:
+                  description: An optional description of the access token.
+                  type: string
+                  title: Description
+                scopes:
+                  description: The list of scopes granted to the access token.
+                  type: array
+                  title: Scopes
+                  items:
+                    type: string
+                userId:
+                  description: The ID of the user associated with the access token.
+                  type: integer
+                  title: User ID
+                lastUsedAt:
+                  description: The date and time the access token was last used.
+                  type: string
+                  title: Last Used At
+                  format: date-time
+                active:
+                  description: Whether the access token is currently active.
+                  type: boolean
+                  title: Active
+                expiresAt:
+                  description: The date when the access token expires.
+                  type: string
+                  title: Expires At
+                  format: date
+                accessLevel:
+                  description: The access level granted by the token (e.g. 40 for Maintainer).
+                  type: integer
+                  title: Access Level
+                resourceType:
+                  description: The type of resource the token belongs to (project or group).
+                  type: string
+                  title: Resource Type
+                resourceId:
+                  description: The ID of the resource (project or group) the token belongs to.
+                  type: integer
+                  title: Resource ID
+                resourceName:
+                  description: The name of the resource (project or group) the token belongs to.
+                  type: string
+                  title: Resource Name
+      served: true
+      storage: true

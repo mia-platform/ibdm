@@ -309,6 +309,8 @@ func TestWebhookHandler(t *testing.T) {
 					jsonResponse(t, w, validProject)
 				case "/api/v4/projects/5/languages":
 					jsonResponse(t, w, map[string]any{"Go": 100.0})
+				case "/api/v4/projects/5/pipelines/31":
+					jsonResponse(t, w, map[string]any{"id": float64(31), "status": "success"})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}

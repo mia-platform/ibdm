@@ -53,13 +53,21 @@ type pipelineEventProcessor struct{}
 
 func (p *pipelineEventProcessor) process(ctx context.Context, c *gitLabClient, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
 	var eventsToMap []source.Data
+
+	// Decode only the object_kind before doing any API calls.
+	var raw struct {
+		ObjectKind string `json:"object_kind"` //nolint:tagliatelle // GitLab API uses snake_case
+	}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, err
+	}
+	if raw.ObjectKind != pipelineEventKind {
+		return nil, nil
+	}
+
 	ev, err := parsePipelineEvent(ctx, c, body)
 	if err != nil {
 		return nil, err
-	}
-
-	if ev.ObjectKind != pipelineEventKind {
-		return nil, nil
 	}
 
 	if _, ok := typesToStream[projectResource]; !ok {
@@ -109,12 +117,27 @@ func parsePipelineEvent(ctx context.Context, c *gitLabClient, body []byte) (*pip
 		return nil, errors.New("event payload project.id is missing or invalid")
 	}
 
+	if objectAttributes == nil {
+		return nil, errors.New("event payload missing object_attributes field")
+	}
+	pipelineID, ok := objectAttributes["id"].(float64)
+	if !ok {
+		return nil, errors.New("event payload object_attributes.id is missing or invalid")
+	}
+
+	projectIDStr := strconv.Itoa(int(projectID))
+
 	project, err := c.getProject(ctx, int(projectID))
 	if err != nil {
 		return nil, err
 	}
 
-	langs, err := c.getProjectLanguages(ctx, strconv.Itoa(int(projectID)))
+	langs, err := c.getProjectLanguages(ctx, projectIDStr)
+	if err != nil {
+		return nil, err
+	}
+
+	pipeline, err := c.getPipeline(ctx, projectIDStr, strconv.Itoa(int(pipelineID)))
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +145,7 @@ func parsePipelineEvent(ctx context.Context, c *gitLabClient, body []byte) (*pip
 	return &pipelineEvent{
 		ObjectKind:       objectKind,
 		ObjectAttributes: objectAttributes,
-		pipeline:         objectAttributes,
+		pipeline:         pipeline,
 		project:          projectWrapper(project, langs),
 	}, nil
 }

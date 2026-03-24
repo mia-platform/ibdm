@@ -90,6 +90,8 @@ func TestParsePipelineEvent(t *testing.T) {
 					jsonResponse(t, w, projectPayload)
 				case "/api/v4/projects/5/languages":
 					jsonResponse(t, w, map[string]any{"Go": 100.0})
+				case "/api/v4/projects/5/pipelines/1":
+					jsonResponse(t, w, map[string]any{"id": float64(1), "status": "running", "ref": "main"})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -117,8 +119,30 @@ func TestParsePipelineEvent(t *testing.T) {
 					"id": float64(5),
 				},
 			}),
-			handler: func(w http.ResponseWriter, r *http.Request) {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
+			},
+			expectErr: true,
+		},
+		"getPipeline API error": {
+			body: mustMarshal(t, map[string]any{
+				"object_kind": "pipeline",
+				"object_attributes": map[string]any{
+					"id": float64(1),
+				},
+				"project": map[string]any{
+					"id": float64(5),
+				},
+			}),
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/api/v4/projects/5":
+					jsonResponse(t, w, projectPayload)
+				case "/api/v4/projects/5/languages":
+					jsonResponse(t, w, map[string]any{"Go": 100.0})
+				default:
+					w.WriteHeader(http.StatusInternalServerError)
+				}
 			},
 			expectErr: true,
 		},
@@ -139,6 +163,7 @@ func TestParsePipelineEvent(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectKind, ev.ObjectKind)
 			assert.NotEmpty(t, ev.pipeline)
+			assert.NotEqual(t, ev.ObjectAttributes, ev.pipeline)
 			if tc.expectProject != nil {
 				assert.Equal(t, tc.expectProject, ev.project)
 			}
@@ -161,6 +186,8 @@ func TestPipelineEventProcessor(t *testing.T) {
 			jsonResponse(t, w, validProject)
 		case "/api/v4/projects/5/languages":
 			jsonResponse(t, w, map[string]any{"Go": 100.0})
+		case "/api/v4/projects/5/pipelines/31":
+			jsonResponse(t, w, map[string]any{"id": float64(31), "status": "success", "ref": "main"})
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

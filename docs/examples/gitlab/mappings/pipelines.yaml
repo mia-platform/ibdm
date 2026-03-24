@@ -6,7 +6,21 @@ mappings:
   identifier: |-
     {{ printf "%v" .pipeline.id | sha256sum }}
   metadata:
-    title: "{{ .pipeline.name | quote }}"
+    title: "{{ .pipeline.id }}"
   spec:
     id: "{{ .pipeline.id }}"
-    name: "{{ .pipeline.name | quote }}"
+    created_at: "{{ .pipeline.created_at }}"
+    finished_at: "{{ .pipeline.finished_at }}"
+    projectId: "{{ .pipeline.project_id }}"
+    ref: "{{ .pipeline.ref }}"
+    sha: "{{ .pipeline.sha }}"
+    source: "{{ .pipeline.source }}"
+    status: "{{ .pipeline.status }}"
+    userId: "{{ get \"id\" .pipeline.user \"\" }}"
+    url: |-
+      {{ $url := (get "url" .pipeline "") -}}
+      {{- if $url -}}
+        {{- .pipeline.url -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}

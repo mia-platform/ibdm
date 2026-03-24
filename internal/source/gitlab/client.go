@@ -169,6 +169,15 @@ func (c *gitLabClient) getProject(ctx context.Context, projectID int) (map[strin
 	return project, nil
 }
 
+func (c *gitLabClient) getPipeline(ctx context.Context, projectID string, pipelineID string) (map[string]any, error) {
+	pipeline, err := c.makeRequest(ctx, "/api/v4/projects/"+projectID+"/pipelines/"+pipelineID, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return pipeline, nil
+}
+
 // newPageIterator returns a pageIterator for the given API path.
 func (c *gitLabClient) newPageIterator(path string) *pageIterator {
 	return &pageIterator{c: c, path: path}
