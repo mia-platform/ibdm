@@ -38,14 +38,18 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 
 			signature := headers.Get("X-Hub-Signature-256")
 			if signature == "" {
-				return fmt.Errorf("%w: missing X-Hub-Signature-256 header", ErrGitHubSource)
+				err := fmt.Errorf("%w: missing webhook signature", ErrGitHubSource)
+				log.Error("webhook request missing signature header", "error", err.Error())
+				return err
 			}
 
 			if !verifySignature(body, signature, s.config.WebhookSecret) {
-				return fmt.Errorf("%w: invalid webhook signature", ErrGitHubSource)
+				err := fmt.Errorf("%w: invalid webhook signature", ErrGitHubSource)
+				log.Error("webhook request with invalid signature", "error", err.Error())
+				return err
 			}
 
-			go func() {
+			go func(ctx context.Context) {
 				defer func() {
 					if afterGoroutine != nil {
 						afterGoroutine()
@@ -74,7 +78,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 				for _, d := range data {
 					results <- d
 				}
-			}()
+			}(ctx)
 
 			return nil
 		},
