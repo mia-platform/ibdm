@@ -32,7 +32,7 @@ type config struct {
 	HTTPTimeout   time.Duration `env:"GITHUB_HTTP_TIMEOUT"   envDefault:"30s"`
 	PageSize      int           `env:"GITHUB_PAGE_SIZE"      envDefault:"100"`
 	WebhookSecret string        `env:"GITHUB_WEBHOOK_SECRET"`
-	WebhookPath   string        `env:"GITHUB_WEBHOOK_PATH"   envDefault:"/webhook/github"`
+	WebhookPath   string        `env:"GITHUB_WEBHOOK_PATH"   envDefault:"/github/webhook"`
 }
 
 // loadConfigFromEnv parses configuration from environment variables and
