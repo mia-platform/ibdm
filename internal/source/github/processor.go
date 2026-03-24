@@ -12,6 +12,7 @@ import (
 const (
 	githubEventHeader          = "X-GitHub-Event"
 	repositoryEventHeaderValue = "repository"
+	pushEventHeaderValue       = "push"
 )
 
 // eventProcessor handles a single GitHub webhook event type.
@@ -28,4 +29,5 @@ type eventProcessor interface {
 // Keys are the exact values of the X-GitHub-Event header.
 var eventProcessors = map[string]eventProcessor{
 	repositoryEventHeaderValue: &repositoryEventProcessor{},
+	pushEventHeaderValue:       &pushEventProcessor{},
 }

@@ -50,7 +50,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 				Org:         "mia-platform",
 				HTTPTimeout: 30_000_000_000,
 				PageSize:    100,
-				WebhookPath: "/webhook/github",
+				WebhookPath: "/github/webhook",
 			},
 		},
 		"missing GITHUB_TOKEN returns error": {
@@ -78,7 +78,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 				Org:         "mia-platform",
 				HTTPTimeout: 30_000_000_000,
 				PageSize:    1,
-				WebhookPath: "/webhook/github",
+				WebhookPath: "/github/webhook",
 			},
 		},
 		"page size at upper bound is accepted": {
@@ -94,7 +94,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 				Org:         "mia-platform",
 				HTTPTimeout: 30_000_000_000,
 				PageSize:    100,
-				WebhookPath: "/webhook/github",
+				WebhookPath: "/github/webhook",
 			},
 		},
 		"page size below lower bound returns error": {

@@ -38,7 +38,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 
 			signature := headers.Get("X-Hub-Signature-256")
 			if signature == "" {
-				err := fmt.Errorf("%w: missing webhook signature", ErrGitHubSource)
+				err := fmt.Errorf("%w: missing X-Hub-Signature-256 header", ErrGitHubSource)
 				log.Error("webhook request missing signature header", "error", err.Error())
 				return err
 			}
