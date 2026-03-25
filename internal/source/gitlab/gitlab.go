@@ -99,6 +99,8 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 
 // syncProjectAssets iterates all GitLab projects page by page and sends upsert events to results.
 func (s *Source) syncProjectAssets(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
 	_, ok := typesToSync[projectResource]
 	if !ok {
 		return nil
@@ -122,6 +124,7 @@ func (s *Source) syncProjectAssets(ctx context.Context, typesToSync map[string]s
 
 			langs, err := s.c.getProjectLanguages(ctx, projectID)
 			if err != nil {
+				log.Error("error fetching project languages, proceeding with empty languages", "project_id", projectID, "error", err.Error())
 				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 			}
 
@@ -133,11 +136,17 @@ func (s *Source) syncProjectAssets(ctx context.Context, typesToSync map[string]s
 			}
 
 			if _, ok := typesToSync[accessTokenResource]; ok {
-				s.syncProjectAccessTokens(ctx, project, results)
+				if err := s.syncProjectAccessTokens(ctx, project, results); err != nil {
+					log.Error("error syncing project access tokens", "project_id", projectID, "error", err.Error())
+					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+				}
 			}
 
 			if _, ok := typesToSync[pipelineResource]; ok {
-				s.syncProjectPipelines(ctx, project, results)
+				if err := s.syncProjectPipelines(ctx, project, results); err != nil {
+					log.Error("error syncing project pipelines", "project_id", projectID, "error", err.Error())
+					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+				}
 			}
 		}
 		break

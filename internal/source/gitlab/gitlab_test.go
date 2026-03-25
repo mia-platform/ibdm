@@ -53,26 +53,16 @@ func TestStartSyncProcess(t *testing.T) {
 				assert.Equal(t, map[string]any{"Go": 100.0}, data[0].Values["project_languages"])
 			},
 		},
-		"sync pipelines": {
-			handler: paginatedHandler(t, map[string]any{
-				"/api/v4/projects":             singleProject,
-				"/api/v4/projects/1/pipelines": singlePipeline,
-			}),
-			typesToSync: map[string]source.Extra{
-				pipelineResource: nil,
-			},
-			expectedDataCount: 1,
-			checkData: func(t *testing.T, data []source.Data) {
-				t.Helper()
-				assert.Equal(t, pipelineResource, data[0].Type)
-				assert.Equal(t, source.DataOperationUpsert, data[0].Operation)
-				assert.Equal(t, singlePipeline[0], data[0].Values)
-			},
+		"sync pipelines only without project resource is no-op": {
+			handler:           paginatedHandler(t, map[string]any{}),
+			typesToSync:       map[string]source.Extra{pipelineResource: nil},
+			expectedDataCount: 0,
 		},
 		"sync projects and pipelines": {
 			handler: paginatedHandler(t, map[string]any{
 				"/api/v4/projects":                 singleProject,
 				"/api/v4/projects/1/pipelines":     singlePipeline,
+				"/api/v4/projects/1/pipelines/100": map[string]any{"id": float64(100), "status": "success"},
 				"/api/v4/projects/1/languages":     map[string]any{"Go": 100.0},
 				"/api/v4/projects/1/access_tokens": []map[string]any{},
 			}),
@@ -115,9 +105,11 @@ func TestStartSyncProcess(t *testing.T) {
 				"/api/v4/projects":                 singleProject,
 				"/api/v4/projects/1/languages":     map[string]any{"Go": 100.0},
 				"/api/v4/projects/1/access_tokens": []map[string]any{{"id": float64(10), "name": "tok-a"}, {"id": float64(11), "name": "tok-b"}},
+				"/api/v4/groups":                   []map[string]any{},
 			}),
 			typesToSync: map[string]source.Extra{
-				projectResource: nil,
+				projectResource:     nil,
+				accessTokenResource: nil,
 			},
 			expectedDataCount: 3, // 1 project + 2 access tokens
 			checkData: func(t *testing.T, data []source.Data) {
@@ -159,7 +151,8 @@ func TestStartSyncProcess(t *testing.T) {
 				}
 			},
 			typesToSync: map[string]source.Extra{
-				projectResource: nil,
+				projectResource:     nil,
+				accessTokenResource: nil,
 			},
 			expectErr: true,
 		},
