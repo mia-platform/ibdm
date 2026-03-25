@@ -20,4 +20,5 @@ type eventProcessor interface {
 // corresponding processor_*.go file.
 var eventProcessors = map[string]eventProcessor{
 	pipelineHookHeaderValue: &pipelineEventProcessor{},
+	pushHookHeaderValue:     &pushEventProcessor{},
 }
