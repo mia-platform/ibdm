@@ -12,8 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gofiber/fiber/v2/log"
-
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
@@ -85,13 +83,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	defer s.syncLock.Unlock()
 
 	if _, ok := typesToSync[projectResource]; ok {
-		if err := s.syncProjects(ctx, results); err != nil {
-			return err
-		}
-	}
-
-	if _, ok := typesToSync[pipelineResource]; ok {
-		if err := s.syncPipelines(ctx, results); err != nil {
+		if err := s.syncProjectAssets(ctx, typesToSync, results); err != nil {
 			return err
 		}
 	}
@@ -105,8 +97,13 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	return nil
 }
 
-// syncProjects iterates all GitLab projects page by page and sends upsert events to results.
-func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) error {
+// syncProjectAssets iterates all GitLab projects page by page and sends upsert events to results.
+func (s *Source) syncProjectAssets(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+	_, ok := typesToSync[projectResource]
+	if !ok {
+		return nil
+	}
+
 	it := s.c.listProjects()
 	for {
 		projects, err := it.next(ctx)
@@ -135,46 +132,62 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 				Time:      updatedAtOrNow(project),
 			}
 
-			tokenIt := s.c.listProjectAccessTokens(projectID)
-			for {
-				tokens, err := tokenIt.next(ctx)
-				if errors.Is(err, ErrIteratorDone) {
-					break
-				}
+			if _, ok := typesToSync[accessTokenResource]; ok {
+				s.syncProjectAccessTokens(ctx, project, results)
+			}
 
-				if err != nil && errors.Is(err, ErrNotAccessible) {
-					log.Error("skipping project access tokens: insufficient permissions", "project_id", projectID)
-					continue
-				}
-
-				if err != nil {
-					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-				}
-
-				for _, token := range tokens {
-					results <- source.Data{
-						Type:      accessTokenResource,
-						Operation: source.DataOperationUpsert,
-						Values: map[string]any{
-							"project": project,
-							"token":   token,
-						},
-						Time: updatedAtOrNow(token),
-					}
-				}
+			if _, ok := typesToSync[pipelineResource]; ok {
+				s.syncProjectPipelines(ctx, project, results)
 			}
 		}
+		break
 	}
 
 	return nil
 }
 
-// syncPipelines iterates all projects and, for each project, iterates all pipelines
-// page by page, sending upsert events to results.
-func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) error {
-	projectIt := s.c.listProjects()
+// syncProjectAccessTokens iterates all access tokens for a given project and sends upsert events to results.
+func (s *Source) syncProjectAccessTokens(ctx context.Context, project map[string]any, results chan<- source.Data) error {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	projectID, _ := getIDFromItem(project)
+	tokenIt := s.c.listProjectAccessTokens(projectID)
 	for {
-		projects, err := projectIt.next(ctx)
+		tokens, err := tokenIt.next(ctx)
+		if errors.Is(err, ErrIteratorDone) {
+			break
+		}
+
+		if err != nil && errors.Is(err, ErrNotAccessible) {
+			log.Error("skipping project access tokens: insufficient permissions", "project_id", projectID)
+			continue
+		}
+
+		if err != nil {
+			return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+		}
+
+		for _, token := range tokens {
+			results <- source.Data{
+				Type:      accessTokenResource,
+				Operation: source.DataOperationUpsert,
+				Values: map[string]any{
+					"project": project,
+					"token":   token,
+				},
+				Time: accessTokenTimeOrNow(token),
+			}
+		}
+	}
+	return nil
+}
+
+// syncProjectPipelines iterates all pipelines for a given project and sends upsert events to results.
+func (s *Source) syncProjectPipelines(ctx context.Context, project map[string]any, results chan<- source.Data) error {
+	projectID, _ := getIDFromItem(project)
+	pipelineIt := s.c.listProjectPipelines(projectID)
+	for {
+		pipelines, err := pipelineIt.next(ctx)
 		if errors.Is(err, ErrIteratorDone) {
 			break
 		}
@@ -182,34 +195,25 @@ func (s *Source) syncPipelines(ctx context.Context, results chan<- source.Data) 
 			return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 		}
 
-		for _, project := range projects {
-			projectID, err := getIDFromItem(project)
+		for _, pipeline := range pipelines {
+			pipelineID, _ := getIDFromItem(pipeline)
+
+			fullPipeline, err := s.c.getPipeline(ctx, projectID, pipelineID)
 			if err != nil {
-				continue
+				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 			}
 
-			pipelineIt := s.c.listProjectPipelines(projectID)
-			for {
-				pipelines, err := pipelineIt.next(ctx)
-				if errors.Is(err, ErrIteratorDone) {
-					break
-				}
-				if err != nil {
-					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-				}
-
-				for _, pipeline := range pipelines {
-					results <- source.Data{
-						Type:      pipelineResource,
-						Operation: source.DataOperationUpsert,
-						Values:    pipeline,
-						Time:      updatedAtOrNow(pipeline),
-					}
-				}
+			results <- source.Data{
+				Type:      pipelineResource,
+				Operation: source.DataOperationUpsert,
+				Values: map[string]any{
+					"project":  project,
+					"pipeline": fullPipeline,
+				},
+				Time: pipelineTimeOrNow(fullPipeline),
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -258,7 +262,7 @@ func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- so
 							"group": group,
 							"token": token,
 						},
-						Time: updatedAtOrNow(token),
+						Time: accessTokenTimeOrNow(token),
 					}
 				}
 			}
@@ -317,6 +321,35 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 func updatedAtOrNow(item map[string]any) time.Time {
 	if updatedAt, ok := item["updated_at"].(string); ok {
 		if t, err := time.Parse(time.RFC3339, updatedAt); err == nil {
+			return t
+		}
+	}
+
+	return time.Now()
+}
+
+// pipelineTimeOrNow reads the finished_at field from a GitLab API item and parses it
+// as RFC3339. When finished_at is absent or unparsable, it tries the created_at field, and finally
+// falls back to time.Now().
+func pipelineTimeOrNow(item map[string]any) time.Time {
+	if finishedAt, ok := item["finished_at"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, finishedAt); err == nil {
+			return t
+		}
+	} else if createdAt, ok := item["created_at"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, createdAt); err == nil {
+			return t
+		}
+	}
+
+	return time.Now()
+}
+
+// accessTokenTimeOrNow reads the created_at field from a GitLab API item and parses it
+// as RFC3339. When absent or unparsable it falls back to time.Now().
+func accessTokenTimeOrNow(item map[string]any) time.Time {
+	if createdAt, ok := item["created_at"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, createdAt); err == nil {
 			return t
 		}
 	}

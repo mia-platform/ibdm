@@ -9,14 +9,20 @@ mappings:
     title: "{{ .pipeline.id }}"
   spec:
     id: "{{ .pipeline.id }}"
-    created_at: "{{ .pipeline.created_at }}"
-    finished_at: "{{ .pipeline.finished_at }}"
+    created_at: "{{ get \"created_at\" .pipeline \"\" }}"
+    finished_at: "{{ get \"finished_at\" .pipeline \"\" }}"
     projectId: "{{ .pipeline.project_id }}"
-    ref: "{{ .pipeline.ref }}"
-    sha: "{{ .pipeline.sha }}"
-    source: "{{ .pipeline.source }}"
-    status: "{{ .pipeline.status }}"
-    userId: "{{ get \"id\" .pipeline.user \"\" }}"
+    ref: "{{ get \"ref\" .pipeline \"\" }}"
+    sha: "{{ get \"sha\" .pipeline \"\" }}"
+    source: "{{ get \"source\" .pipeline \"\" }}"
+    status: "{{ get \"status\" .pipeline \"\" }}"
+    userId: |-
+      {{ $user := (get "user" .pipeline "") -}}
+      {{- if $user -}}
+        {{- $user.id -}}
+      {{- else -}}
+        {{- 0 -}}
+      {{- end }}
     url: |-
       {{ $url := (get "url" .pipeline "") -}}
       {{- if $url -}}
