@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/fiber/v2/log"
+
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
@@ -139,6 +141,12 @@ func (s *Source) syncProjects(ctx context.Context, results chan<- source.Data) e
 				if errors.Is(err, ErrIteratorDone) {
 					break
 				}
+
+				if err != nil && errors.Is(err, ErrNotAccessible) {
+					log.Error("skipping project access tokens: insufficient permissions", "project_id", projectID)
+					continue
+				}
+
 				if err != nil {
 					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 				}
