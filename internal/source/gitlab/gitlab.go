@@ -149,7 +149,6 @@ func (s *Source) syncProjectAssets(ctx context.Context, typesToSync map[string]s
 				}
 			}
 		}
-		break
 	}
 
 	return nil
