@@ -24,14 +24,14 @@ func TestLoadSourceConfigFromEnv(t *testing.T) {
 			},
 			expectedCfg: sourceConfig{Token: "my-token", BaseURL: "https://gitlab.example.com"},
 		},
-		"default base URL": {
+		"missing required token": {
+			expectErr: true,
+		},
+		"missing required base URL": {
 			setEnv: func(t *testing.T) {
 				t.Helper()
 				t.Setenv("GITLAB_TOKEN", "my-token")
 			},
-			expectedCfg: sourceConfig{Token: "my-token", BaseURL: "https://gitlab.com"},
-		},
-		"missing required token": {
 			expectErr: true,
 		},
 	}

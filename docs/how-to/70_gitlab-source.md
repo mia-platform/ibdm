@@ -29,7 +29,7 @@ In addition to other environment variables the GitLab source requires or accepts
 
 - `GITLAB_TOKEN` (**required**): a GitLab personal access token or project/group access token used
   to authenticate all REST API requests
-- `GITLAB_BASE_URL`: the base URL of the GitLab instance (default: `https://gitlab.com`)
+- `GITLAB_BASE_URL` (**required**): the base URL of the GitLab instance (e.g. `https://gitlab.com`)
 - `GITLAB_WEBHOOK_PATH`: the path where the webhook handler will be exposed (default:
   `/gitlab/webhook`)
 - `GITLAB_WEBHOOK_TOKEN`: the secret token configured in the GitLab webhook settings — used to

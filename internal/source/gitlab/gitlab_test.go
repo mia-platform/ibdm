@@ -20,11 +20,12 @@ func TestNewSource(t *testing.T) {
 			setEnv: func(t *testing.T) {
 				t.Helper()
 				t.Setenv("GITLAB_TOKEN", "my-token")
+				t.Setenv("GITLAB_BASE_URL", "https://gitlab.com")
 				t.Setenv("GITLAB_WEBHOOK_TOKEN", "webhook-secret")
 			},
 		},
 		"source config error wraps ErrSourceCreation": {
-			setEnv:    func(t *testing.T) { t.Helper() }, // GITLAB_TOKEN missing
+			setEnv:    func(t *testing.T) { t.Helper() }, // GITLAB_TOKEN and GITLAB_BASE_URL missing
 			expectErr: ErrSourceCreation,
 		},
 		"webhook config error wraps ErrSourceCreation": {
