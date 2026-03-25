@@ -4,7 +4,7 @@ type: project
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%v" .project.id | sha256sum }}
+    {{ printf "%s" .project.id | sha256sum }}
   metadata:
     title: "{{ .project.name_with_namespace }}"
   spec:

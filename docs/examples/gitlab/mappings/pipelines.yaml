@@ -4,7 +4,7 @@ type: pipeline
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%v" .pipeline.id | sha256sum }}
+    {{ printf "%s" .pipeline.id | sha256sum }}
   metadata:
     title: "{{ .pipeline.id }}"
   spec:
@@ -24,3 +24,14 @@ mappings:
       {{- else -}}
         {{- "" | quote -}}
       {{- end }}
+  extra:
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ printf "relationship-%s-%s-dependency" (printf "%s" .project.id | sha256sum) (printf "%s" .pipeline.id | sha256sum) | sha256sum}}
+      sourceRef: |-
+        urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:Project:null:{{ printf "%s" .project.id | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:mia-platform.eu:v1alpha1:Pipeline:null:{{ printf "%s" .pipeline.id | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency.mia-platform.eu"
