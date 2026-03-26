@@ -11,7 +11,7 @@ mappings:
     id: "{{ .pipeline.id }}"
     created_at: "{{ get \"created_at\" .pipeline \"\" }}"
     finished_at: "{{ get \"finished_at\" .pipeline \"\" }}"
-    projectId: "{{ .pipeline.project_id }}"
+    projectId: "{{ .project.id }}"
     ref: "{{ get \"ref\" .pipeline \"\" }}"
     sha: "{{ get \"sha\" .pipeline \"\" }}"
     source: "{{ get \"source\" .pipeline \"\" }}"
