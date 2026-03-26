@@ -97,7 +97,7 @@ func TestWebhookHandler(t *testing.T) {
 		"unknown event type is silently ignored": {
 			token:         validToken,
 			body:          validBody(),
-			headers:       validHeaders(validToken, "Push Hook"),
+			headers:       validHeaders(validToken, "Emoji Hook"),
 			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
 			expectData:    false,
 		},
@@ -148,6 +148,7 @@ func TestWebhookHandler(t *testing.T) {
 			require.NoError(t, handlerErr)
 
 			if !tc.expectData {
+				// TODO: improve this removing sleep function and using a non-blocking read on the channel instead
 				time.Sleep(100 * time.Millisecond)
 				assert.Empty(t, results)
 				return
