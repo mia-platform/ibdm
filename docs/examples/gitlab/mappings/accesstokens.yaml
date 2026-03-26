@@ -1,0 +1,60 @@
+apiVersion: mia-platform.eu/v1alpha1
+itemFamily: accesstokens
+type: accesstoken
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s" .token.id | sha256sum }}
+  metadata:
+    title: "{{ .token.name }}"
+  spec:
+    id: "{{ .token.id }}"
+    name: "{{ .token.name }}"
+    revoked: "{{ .token.revoked }}"
+    createdAt: "{{ .token.created_at }}"
+    description: |-
+      {{ $description := (get "description" .token "") -}}
+      {{- if $description -}}
+        {{- .token.description -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    scopes: "{{ .token.scopes | toJSON }}"
+    userId: "{{ .token.user_id }}"
+    lastUsedAt: |-
+      {{ $lastUsedAt := (get "last_used_at" .token "") -}}
+      {{- if $lastUsedAt -}}
+        {{- .token.last_used_at -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    active: "{{ .token.active }}"
+    expiresAt: "{{ .token.expires_at }}"
+    accessLevel: "{{ .token.access_level }}"
+    resourceType: "{{ .token.resource_type }}"
+    resourceId: "{{ .token.resource_id }}"
+    resourceName: |-
+      {{ $resourceType := (get "resource_type" .token "") -}}
+      {{- if eq $resourceType "project" -}}
+        {{- printf "%s" .project.name_with_namespace -}}
+      {{- else -}}
+        {{- printf "%s" .group.full_name -}}
+      {{- end }}
+  extra:
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "none"
+      createIf: |-
+        {{ $resourceType := (get "resource_type" .token "") -}}
+        {{- if eq $resourceType "project" -}}
+          true
+        {{- else -}}
+          false
+        {{- end }}
+      identifier: |-
+        {{ printf "relationship-%s-%s-dependency" (printf "%s" .project.id | sha256sum) (printf "%s" .token.id | sha256sum) | sha256sum}}
+      sourceRef: |-
+        urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:Project:null:{{ printf "%s" .project.id | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:mia-platform.eu:v1alpha1:AccessToken:null:{{ printf "%s" .token.id | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency.mia-platform.eu"

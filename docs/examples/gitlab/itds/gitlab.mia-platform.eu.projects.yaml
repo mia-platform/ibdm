@@ -1,0 +1,248 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: projects.gitlab.mia-platform.eu
+spec:
+  group: gitlab.mia-platform.eu
+  names:
+    kind: Project
+    plural: projects
+    displayPlural: Projects
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                id:
+                  description: The unique identifier of the project.
+                  type: integer
+                  title: ID
+                name:
+                  description: The name of the project.
+                  type: string
+                  title: Name
+                nameWithNamespace:
+                  description: The name of the project including its namespace.
+                  type: string
+                  title: Name With Namespace
+                description:
+                  description: A description of the project.
+                  type: string
+                  title: Description
+                descriptionHtml:
+                  description: The HTML rendered description of the project.
+                  type: string
+                  title: Description HTML
+                createdAt:
+                  description: The date and time when the project was created.
+                  type: string
+                  title: Created At
+                  format: date-time
+                defaultBranch:
+                  description: The default branch of the project.
+                  type: string
+                  title: Default Branch
+                tagList:
+                  description: The list of tags associated with the project.
+                  type: array
+                  title: Tag List
+                  items:
+                    type: string
+                topics:
+                  description: The list of topics associated with the project.
+                  type: array
+                  title: Topics
+                  items:
+                    type: string
+                sshUrlToRepo:
+                  description: The SSH URL to clone the repository.
+                  type: string
+                  title: SSH URL to Repo
+                httpUrlToRepo:
+                  description: The HTTP URL to clone the repository.
+                  type: string
+                  title: HTTP URL to Repo
+                webUrl:
+                  description: The web URL of the project.
+                  type: string
+                  title: Web URL
+                readmeUrl:
+                  description: The URL of the project's README file.
+                  type: string
+                  title: README URL
+                forksCount:
+                  description: The number of forks of the project.
+                  type: integer
+                  title: Forks Count
+                starCount:
+                  description: The number of stars of the project.
+                  type: integer
+                  title: Star Count
+                lastActivityAt:
+                  description: The date and time of the last activity on the project.
+                  type: string
+                  title: Last Activity At
+                  format: date-time
+                packagesEnabled:
+                  description: Whether packages are enabled for the project.
+                  type: boolean
+                  title: Packages Enabled
+                emptyRepo:
+                  description: Whether the repository is empty.
+                  type: boolean
+                  title: Empty Repo
+                archived:
+                  description: Whether the project is archived.
+                  type: boolean
+                  title: Archived
+                visibility:
+                  description: The visibility level of the project (public, internal, private).
+                  type: string
+                  title: Visibility
+                issuesEnabled:
+                  description: Whether issues are enabled for the project.
+                  type: boolean
+                  title: Issues Enabled
+                mergeRequestsEnabled:
+                  description: Whether merge requests are enabled for the project.
+                  type: boolean
+                  title: Merge Requests Enabled
+                wikiEnabled:
+                  description: Whether the wiki is enabled for the project.
+                  type: boolean
+                  title: Wiki Enabled
+                jobsEnabled:
+                  description: Whether CI/CD jobs are enabled for the project.
+                  type: boolean
+                  title: Jobs Enabled
+                snippetsEnabled:
+                  description: Whether snippets are enabled for the project.
+                  type: boolean
+                  title: Snippets Enabled
+                containerRegistryEnabled:
+                  description: Whether the container registry is enabled for the project.
+                  type: boolean
+                  title: Container Registry Enabled
+                serviceDesksEnabled:
+                  description: Whether service desks are enabled for the project.
+                  type: boolean
+                  title: Service Desks Enabled
+                canCreateMergeRequestIn:
+                  description: Whether a merge request can be created for the current user in this project.
+                  type: boolean
+                  title: Can Create Merge Request In
+                issuesAccessLevel:
+                  description: The access level for issues.
+                  type: string
+                  title: Issues Access Level
+                repositoryAccessLevel:
+                  description: The access level for the repository.
+                  type: string
+                  title: Repository Access Level
+                mergeRequestsAccessLevel:
+                  description: The access level for merge requests.
+                  type: string
+                  title: Merge Requests Access Level
+                forkingAccessLevel:
+                  description: The access level for forking.
+                  type: string
+                  title: Forking Access Level
+                wikiAccessLevel:
+                  description: The access level for the wiki.
+                  type: string
+                  title: Wiki Access Level
+                buildsAccessLevel:
+                  description: The access level for builds.
+                  type: string
+                  title: Builds Access Level
+                snippetsAccessLevel:
+                  description: The access level for snippets.
+                  type: string
+                  title: Snippets Access Level
+                pagesAccessLevel:
+                  description: The access level for pages.
+                  type: string
+                  title: Pages Access Level
+                securityAndComplianceAccessLevel:
+                  description: The access level for security and compliance features.
+                  type: string
+                  title: Security And Compliance Access Level
+                releasesAccessLevel:
+                  description: The access level for releases.
+                  type: string
+                  title: Releases Access Level
+                environmentsAccessLevel:
+                  description: The access level for environments.
+                  type: string
+                  title: Environments Access Level
+                featureFlagsAccessLevel:
+                  description: The access level for feature flags.
+                  type: string
+                  title: Feature Flags Access Level
+                infrastructureAccessLevel:
+                  description: The access level for infrastructure.
+                  type: string
+                  title: Infrastructure Access Level
+                creatorId:
+                  description: The ID of the user who created the project.
+                  type: integer
+                  title: Creator ID
+                publicJobs:
+                  description: Whether jobs are visible to the public.
+                  type: boolean
+                  title: Public Jobs
+                onlyAllowMergeIfPipelineSucceeds:
+                  description: Whether merges are only allowed when all pipeline jobs succeed.
+                  type: boolean
+                  title: Only Allow Merge If Pipeline Succeeds
+                allowMergeOnSkippedPipeline:
+                  description: Whether merges are allowed when the pipeline is skipped.
+                  type: boolean
+                  title: Allow Merge On Skipped Pipeline
+                requestAccessEnabled:
+                  description: Whether users can request access to the project.
+                  type: boolean
+                  title: Request Access Enabled
+                mergeMethod:
+                  description: The merge method for the project (merge, rebase_merge, ff).
+                  type: string
+                  title: Merge Method
+                license:
+                  description: The license information for the project.
+                  type: object
+                  title: License
+                  additionalProperties: true
+                owner:
+                  description: The owner user of the project (for personal projects).
+                  type: object
+                  title: Owner
+                  additionalProperties: true
+                path:
+                  description: The path of the project.
+                  type: string
+                  title: Path
+                pathWithNamespace:
+                  description: The path of the project including its namespace.
+                  type: string
+                  title: Path With Namespace
+                updatedAt:
+                  description: The date and time when the project was last updated.
+                  type: string
+                  title: Updated At
+                  format: date-time
+                languages:
+                  description: The programming languages used in the project and their percentage.
+                  type: object
+                  title: Languages
+                  additionalProperties:
+                    type: number
+      served: true
+      storage: true

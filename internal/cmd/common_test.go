@@ -35,6 +35,7 @@ func TestCompletion(t *testing.T) {
 				"azure-devops\tMicrosoft Azure DevOps integration",
 				"gcp\tGoogle Cloud Platform integration",
 				"console\tMia Platform Console integration",
+				"gitlab\tGitLab integration",
 			},
 		},
 		"some args, no completions": {
@@ -42,7 +43,7 @@ func TestCompletion(t *testing.T) {
 		},
 		"no args, partial string, return filtered commands": {
 			args:       []string{},
-			toComplete: "g",
+			toComplete: "gc",
 			expectedCompletion: []string{
 				"gcp\tGoogle Cloud Platform integration",
 			},

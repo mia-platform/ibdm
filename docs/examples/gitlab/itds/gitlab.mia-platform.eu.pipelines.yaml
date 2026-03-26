@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: pipelines.gitlab.mia-platform.eu
+spec:
+  group: gitlab.mia-platform.eu
+  names:
+    kind: Pipeline
+    plural: pipelines
+    displayPlural: Pipelines
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                id:
+                  description: The unique identifier of the pipeline.
+                  type: integer
+                  title: ID
+                created_at:
+                  description: The date and time when the pipeline was created.
+                  type: string
+                  title: Created At
+                  format: date-time
+                finished_at:
+                  description: The date and time when the pipeline finished.
+                  type: string
+                  title: Finished At
+                  format: date-time
+                projectId:
+                  description: The ID of the project this pipeline belongs to.
+                  type: integer
+                  title: Project ID
+                ref:
+                  description: The branch or tag the pipeline was triggered for.
+                  type: string
+                  title: Ref
+                sha:
+                  description: The commit SHA the pipeline was triggered for.
+                  type: string
+                  title: SHA
+                source:
+                  description: The source that triggered the pipeline (e.g. push, web, schedule).
+                  type: string
+                  title: Source
+                status:
+                  description: The current status of the pipeline (e.g. running, success, failed).
+                  type: string
+                  title: Status
+                userId:
+                  description: The ID of the user who triggered the pipeline.
+                  type: integer
+                  title: User ID
+                url:
+                  description: The web URL of the pipeline.
+                  type: string
+                  title: URL
+      served: true
+      storage: true
