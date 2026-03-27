@@ -12,4 +12,10 @@ mappings:
     name: "{{ .name }}"
     displayName: "{{ get \"displayName\" . \"\" | quote }}"
     state: "{{ .properties.state | lower }}"
-    tags: "{{ .tags | toJSON }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}

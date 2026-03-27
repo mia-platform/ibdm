@@ -19,4 +19,10 @@ mappings:
       {{- $publisher := get "publisher" $image "" -}}
       {{- $version := get "sku" $image "" -}}
       {{- printf "%s %s" $publisher $version | trim }}
-    tags: "{{ .tags | toJSON }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}

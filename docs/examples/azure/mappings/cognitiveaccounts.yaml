@@ -14,4 +14,10 @@ mappings:
     provisioningState: "{{ .properties.provisioningState | lower }}"
     kind: "{{ .kind }}"
     endpoint: "{{ .properties.endpoint }}"
-    tags: "{{ .tags | toJSON }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}

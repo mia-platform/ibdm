@@ -17,4 +17,10 @@ mappings:
     availabilityState: "{{ .properties.availabilityState | lower }}"
     defaultHostname: "{{ .properties.defaultHostName }}"
     serverFarmId: "{{ .properties.serverFarmId }}"
-    tags: "{{ .tags | toJSON }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}

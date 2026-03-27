@@ -16,4 +16,10 @@ mappings:
     minorVersion: "{{ .properties.minorVersion }}"
     fullyQualifiedDomainName: "{{ .properties.fullyQualifiedDomainName }}"
     publicNetworkAccess: "{{ .properties.network.publicNetworkAccess | lower }}"
-    tags: "{{ .tags | toJSON }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}

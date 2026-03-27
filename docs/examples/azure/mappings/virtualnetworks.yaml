@@ -23,4 +23,10 @@ mappings:
         {{- $subs = append $subs $obj -}}
       {{- end -}}
       {{- $subs | toJSON }}
-    tags: "{{ .tags | toJSON }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}
