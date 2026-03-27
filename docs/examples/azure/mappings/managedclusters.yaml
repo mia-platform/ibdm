@@ -24,4 +24,10 @@ mappings:
     serviceCidrs: "{{ .properties.networkProfile.serviceCidrs | toJSON }}"
     networkPlugin: "{{ .properties.networkProfile.networkPlugin | lower }}"
     outboundType: "{{ .properties.networkProfile.outboundType | lower }}"
-    tags: "{{ .tags | toJSON }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}

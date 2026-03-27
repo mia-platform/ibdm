@@ -18,4 +18,10 @@ mappings:
     statusOfPrimaryLocation: "{{ .properties.statusOfPrimary | lower }}"
     secondaryLocation: "{{ get \"secondaryLocation\" .properties \"\" | lower | quote }}"
     statusOfSecondaryLocation: "{{ get \"statusOfSecondary\" .properties \"\" | lower | quote }}"
-    tags: "{{ .tags | toJSON }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}

@@ -22,7 +22,13 @@ mappings:
     targetPort: |-
       {{ $ingress := get "ingress" .properties.configuration (object) -}}
       {{- $targetPort := get "targetPort" $ingress -1 }}
-      {{- if gt $targetPort -1 -}}{{- $targetPort -}}{{- end }}
+      {{- $targetPort }}
     minReplicas: "{{ .properties.template.scale.minReplicas }}"
     maxReplicas: "{{ .properties.template.scale.maxReplicas }}"
-    tags: "{{ .tags | toJSON }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}
