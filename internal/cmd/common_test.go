@@ -34,6 +34,7 @@ func TestCompletion(t *testing.T) {
 				"azure\tMicrosoft Azure integration",
 				"azure-devops\tMicrosoft Azure DevOps integration",
 				"gcp\tGoogle Cloud Platform integration",
+				"github\tGitHub integration",
 				"console\tMia Platform Console integration",
 				"gitlab\tGitLab integration",
 			},

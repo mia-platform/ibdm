@@ -20,6 +20,7 @@ import (
 	azuredevops "github.com/mia-platform/ibdm/internal/source/azure-devops"
 	"github.com/mia-platform/ibdm/internal/source/console"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
+	"github.com/mia-platform/ibdm/internal/source/github"
 	"github.com/mia-platform/ibdm/internal/source/gitlab"
 	"github.com/mia-platform/ibdm/internal/source/nexus"
 	"github.com/mia-platform/ibdm/internal/source/sysdig"
@@ -35,6 +36,7 @@ var (
 		"azure-devops": "Microsoft Azure DevOps integration",
 		"console":      "Mia Platform Console integration",
 		"gcp":          "Google Cloud Platform integration",
+		"github":       "GitHub integration",
 		"gitlab":       "GitLab integration",
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
@@ -42,6 +44,7 @@ var (
 		"azure":        "Microsoft Azure integration",
 		"azure-devops": "Microsoft Azure DevOps integration",
 		"gcp":          "Google Cloud Platform integration",
+		"github":       "GitHub integration",
 		"gitlab":       "GitLab integration",
 		"console":      "Mia Platform Console integration",
 		"nexus":        "Sonatype Nexus Repository Manager integration",
@@ -92,6 +95,8 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 		return azuredevops.NewSource()
 	case "gcp":
 		return gcp.NewSource()
+	case "github":
+		return github.NewSource()
 	case "console":
 		return console.NewSource()
 	case "gitlab":
