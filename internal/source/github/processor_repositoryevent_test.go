@@ -4,6 +4,9 @@
 package github
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -127,4 +130,42 @@ func TestRepositoryEventProcessor(t *testing.T) {
 			assert.Equal(t, tc.expectedData, data)
 		})
 	}
+}
+
+func TestRepositoryEventProcessorWithLanguages(t *testing.T) {
+	fixedTime := time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC)
+	originalTimeSource := timeSource
+	t.Cleanup(func() { timeSource = originalTimeSource })
+	timeSource = func() time.Time { return fixedTime }
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/repos/mia-platform/my-repo/languages":
+			json.NewEncoder(w).Encode(map[string]float64{"Go": 100000})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	c := &client{
+		baseURL:    server.URL,
+		org:        "mia-platform",
+		token:      "ghp_test",
+		pageSize:   50,
+		httpClient: server.Client(),
+	}
+
+	processor := &repositoryEventProcessor{client: c}
+	body := []byte(`{"action":"created","repository":{"id":1,"name":"my-repo","full_name":"mia-platform/my-repo"}}`)
+	typesToStream := map[string]source.Extra{repositoryType: {}}
+
+	data, err := processor.process(t.Context(), typesToStream, body)
+	require.NoError(t, err)
+	require.Len(t, data, 1)
+
+	assert.Equal(t, repositoryType, data[0].Type)
+	assert.Equal(t, source.DataOperationUpsert, data[0].Operation)
+	assert.Equal(t, map[string]float64{"Go": 100}, data[0].Values["repositoryLanguages"])
 }

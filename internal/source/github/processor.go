@@ -28,12 +28,15 @@ type eventProcessor interface {
 	process(ctx context.Context, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error)
 }
 
-// eventProcessors is the static registry of event processors.
-// Keys are the exact values of the X-GitHub-Event header.
-var eventProcessors = map[string]eventProcessor{
-	repositoryEventHeaderValue:                 &repositoryEventProcessor{},
-	pushEventHeaderValue:                       &pushEventProcessor{},
-	personalAccessTokenRequestEventHeaderValue: &personalAccessTokenRequestProcessor{},
-	workflowDispatchEventHeaderValue:           &workflowDispatchProcessor{},
-	workflowRunEventHeaderValue:                &workflowRunProcessor{},
+// newEventProcessors constructs the per-webhook processor registry with the
+// provided client injected into every processor. Each processor decides
+// independently whether to use the client.
+func newEventProcessors(c *client) map[string]eventProcessor {
+	return map[string]eventProcessor{
+		repositoryEventHeaderValue:                 &repositoryEventProcessor{client: c},
+		pushEventHeaderValue:                       &pushEventProcessor{client: c},
+		personalAccessTokenRequestEventHeaderValue: &personalAccessTokenRequestProcessor{client: c},
+		workflowDispatchEventHeaderValue:           &workflowDispatchProcessor{client: c},
+		workflowRunEventHeaderValue:                &workflowRunProcessor{client: c},
+	}
 }

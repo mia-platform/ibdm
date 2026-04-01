@@ -6,15 +6,17 @@ extra:
 syncable: true
 mappings:
   identifier: |-
-    {{ .repository.full_name | replace "/" "." | lower }}
+    {{ printf "%s" .repository.id | sha256sum }}
   metadata:
-    title: "{{ .repository.name }}"
+    title: "{{ .repository.full_name }}"
   spec:
+    id: "{{ .repository.id }}"
     name: "{{ .repository.name }}"
     fullName: "{{ .repository.full_name }}"
     description: "{{ .repository.description }}"
     url: "{{ .repository.html_url }}"
     language: "{{ .repository.language }}"
+    languages: "{{ .repositoryLanguages | toJSON }}"
     visibility: "{{ .repository.visibility }}"
     defaultBranch: "{{ .repository.default_branch }}"
     archived: "{{ .repository.archived }}"

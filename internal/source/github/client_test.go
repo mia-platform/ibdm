@@ -115,3 +115,106 @@ func TestListWorkflowRunsFactoryURL(t *testing.T) {
 	assert.Equal(t, "50", capturedRequest.URL.Query().Get("per_page"))
 	assert.Equal(t, "1", capturedRequest.URL.Query().Get("page"))
 }
+
+func TestComputeLanguagePercentages(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		input    map[string]float64
+		expected map[string]float64
+	}{
+		"typical sample": {
+			input:    map[string]float64{"Go": 527079, "Makefile": 13129, "Dockerfile": 362},
+			expected: map[string]float64{"Go": 97.5, "Makefile": 2.43, "Dockerfile": 0.07},
+		},
+		"single language": {
+			input:    map[string]float64{"Go": 100000},
+			expected: map[string]float64{"Go": 100},
+		},
+		"empty input": {
+			input:    map[string]float64{},
+			expected: map[string]float64{},
+		},
+		"all zero bytes": {
+			input:    map[string]float64{"Go": 0},
+			expected: map[string]float64{},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			result := computeLanguagePercentages(tc.input)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestGetRepositoryLanguages(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		handler    func(w http.ResponseWriter, r *http.Request)
+		wantErr    bool
+		wantResult map[string]float64
+	}{
+		"happy path returns percentages": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]float64{
+					"Go":         527079,
+					"Makefile":   13129,
+					"Dockerfile": 362,
+				})
+			},
+			wantResult: map[string]float64{"Go": 97.5, "Makefile": 2.43, "Dockerfile": 0.07},
+		},
+		"non-2xx status returns error": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+			},
+			wantErr: true,
+		},
+		"invalid JSON returns error": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte("not json"))
+			},
+			wantErr: true,
+		},
+		"empty repository returns empty percentages": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]float64{})
+			},
+			wantResult: map[string]float64{},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(tc.handler))
+			t.Cleanup(server.Close)
+
+			c := &client{
+				baseURL:    server.URL,
+				org:        "mia-platform",
+				token:      "ghp_testtoken",
+				pageSize:   50,
+				httpClient: server.Client(),
+			}
+
+			result, err := c.getRepositoryLanguages(t.Context(), "mia-platform/my-repo", "2026-03-10")
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantResult, result)
+		})
+	}
+}

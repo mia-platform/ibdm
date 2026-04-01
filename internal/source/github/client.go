@@ -5,7 +5,9 @@ package github
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -75,4 +77,43 @@ func (c *client) listWorkflowRuns(owner, repo, apiVersion string) iterator {
 		apiVersion:  apiVersion,
 		responseKey: "workflow_runs",
 	}
+}
+
+// getRepositoryLanguages fetches the programming languages used in a repository
+// and returns them as percentage values rounded to one decimal place.
+// fullName must be in "owner/repo" form.
+func (c *client) getRepositoryLanguages(ctx context.Context, fullName, apiVersion string) (map[string]float64, error) {
+	resp, err := c.doRequest(ctx, "/repos/"+fullName+"/languages", apiVersion, 1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch repository languages: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("unexpected status code %d fetching repository languages", resp.StatusCode)
+	}
+
+	var raw map[string]float64
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, fmt.Errorf("failed to decode repository languages response: %w", err)
+	}
+
+	return computeLanguagePercentages(raw), nil
+}
+
+// computeLanguagePercentages converts a map of language→byte-count to a map of
+// language→percentage (rounded to two decimal places).
+func computeLanguagePercentages(raw map[string]float64) map[string]float64 {
+	var total float64
+	for _, b := range raw {
+		total += b
+	}
+	if total == 0 {
+		return map[string]float64{}
+	}
+	result := make(map[string]float64, len(raw))
+	for lang, b := range raw {
+		result[lang] = math.Round(b/total*10000) / 100
+	}
+	return result
 }

@@ -13,7 +13,9 @@ import (
 )
 
 // workflowRunProcessor handles "workflow_run" webhook events.
-type workflowRunProcessor struct{}
+type workflowRunProcessor struct {
+	client *client
+}
 
 // workflowRunActionToOperation maps workflow_run webhook actions to data operations.
 var workflowRunActionToOperation = map[string]source.DataOperation{

@@ -157,6 +157,59 @@ func TestStartSyncProcess(t *testing.T) {
 			expectedData: nil,
 			expectErr:    ErrGitHubSource,
 		},
+		"repository with full_name fetches languages": {
+			typesToSync: map[string]source.Extra{
+				repositoryType: {"apiVersion": "2026-03-10"},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/orgs/test-org/repos":
+					json.NewEncoder(w).Encode([]map[string]any{
+						{"id": float64(1), "name": "repo1", "full_name": "test-org/repo1"},
+					})
+				case "/repos/test-org/repo1/languages":
+					json.NewEncoder(w).Encode(map[string]float64{"Go": 100000})
+				default:
+					w.WriteHeader(http.StatusNotFound)
+				}
+			},
+			expectedData: []source.Data{
+				{
+					Type:      repositoryType,
+					Operation: source.DataOperationUpsert,
+					Values: map[string]any{
+						repositoryType:        map[string]any{"id": float64(1), "name": "repo1", "full_name": "test-org/repo1"},
+						"repositoryLanguages": map[string]float64{"Go": 100},
+					},
+					Time: fixedTime,
+				},
+			},
+		},
+		"languages API error is silently skipped": {
+			typesToSync: map[string]source.Extra{
+				repositoryType: {"apiVersion": "2026-03-10"},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/orgs/test-org/repos":
+					json.NewEncoder(w).Encode([]map[string]any{
+						{"id": float64(1), "name": "repo1", "full_name": "test-org/repo1"},
+					})
+				default:
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+			},
+			expectedData: []source.Data{
+				{
+					Type:      repositoryType,
+					Operation: source.DataOperationUpsert,
+					Values:    map[string]any{repositoryType: map[string]any{"id": float64(1), "name": "repo1", "full_name": "test-org/repo1"}},
+					Time:      fixedTime,
+				},
+			},
+		},
 	}
 
 	for name, tc := range testCases {

@@ -143,10 +143,17 @@ func (s *Source) syncRepositories(ctx context.Context, extra source.Extra, resul
 		}
 
 		for _, item := range items {
+			fullName, _ := item["full_name"].(string)
+			values := map[string]any{repositoryType: item}
+			if fullName != "" {
+				if langs, err := s.client.getRepositoryLanguages(ctx, fullName, apiVersion); err == nil {
+					values["repositoryLanguages"] = langs
+				}
+			}
 			results <- source.Data{
 				Type:      repositoryType,
 				Operation: source.DataOperationUpsert,
-				Values:    map[string]any{repositoryType: item},
+				Values:    values,
 				Time:      timeSource(),
 			}
 		}

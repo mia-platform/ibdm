@@ -13,9 +13,11 @@ import (
 )
 
 // pushEventProcessor handles "push" webhook events.
-type pushEventProcessor struct{}
+type pushEventProcessor struct {
+	client *client
+}
 
-func (p *pushEventProcessor) process(_ context.Context, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
+func (p *pushEventProcessor) process(ctx context.Context, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
 	if _, ok := typesToStream[repositoryType]; !ok {
 		return nil, nil
 	}
@@ -25,11 +27,21 @@ func (p *pushEventProcessor) process(_ context.Context, typesToStream map[string
 		return nil, err
 	}
 
+	values := map[string]any{repositoryType: repoObject}
+	if p.client != nil {
+		if fullName, _ := repoObject["full_name"].(string); fullName != "" {
+			apiVersion := apiVersionFromExtra(typesToStream[repositoryType])
+			if langs, err := p.client.getRepositoryLanguages(ctx, fullName, apiVersion); err == nil {
+				values["repositoryLanguages"] = langs
+			}
+		}
+	}
+
 	return []source.Data{
 		{
 			Type:      repositoryType,
 			Operation: source.DataOperationUpsert,
-			Values:    map[string]any{repositoryType: repoObject},
+			Values:    values,
 			Time:      timeSource(),
 		},
 	}, nil

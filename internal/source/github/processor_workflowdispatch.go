@@ -13,7 +13,9 @@ import (
 )
 
 // workflowDispatchProcessor handles "workflow_dispatch" webhook events.
-type workflowDispatchProcessor struct{}
+type workflowDispatchProcessor struct {
+	client *client
+}
 
 func (p *workflowDispatchProcessor) process(_ context.Context, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
 	if _, ok := typesToStream[workflowDispatchType]; !ok {

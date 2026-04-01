@@ -13,7 +13,9 @@ import (
 )
 
 // personalAccessTokenRequestProcessor handles "personal_access_token_request" webhook events.
-type personalAccessTokenRequestProcessor struct{}
+type personalAccessTokenRequestProcessor struct {
+	client *client
+}
 
 // patActionToOperation maps personal_access_token_request webhook actions to data operations.
 var patActionToOperation = map[string]source.DataOperation{

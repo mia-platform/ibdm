@@ -34,6 +34,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 		Method: http.MethodPost,
 		Path:   s.config.WebhookPath,
 		Handler: func(ctx context.Context, headers http.Header, body []byte) error {
+			processors := newEventProcessors(s.client)
 			log := logger.FromContext(ctx).WithName(loggerName)
 
 			signature := headers.Get("X-Hub-Signature-256")
@@ -57,7 +58,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 				}()
 
 				eventType := headers.Get(githubEventHeader)
-				processor, ok := eventProcessors[eventType]
+				processor, ok := processors[eventType]
 				if !ok {
 					log.Debug("ignoring unsupported event", githubEventHeader, eventType)
 					return
