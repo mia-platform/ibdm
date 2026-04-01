@@ -302,3 +302,358 @@ func TestApiVersionFromExtra(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractOwnerRepo(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		repo      map[string]any
+		wantOwner string
+		wantName  string
+	}{
+		"valid repo": {
+			repo:      map[string]any{"name": "my-repo", "owner": map[string]any{"login": "org-name"}},
+			wantOwner: "org-name",
+			wantName:  "my-repo",
+		},
+		"missing owner field": {
+			repo:      map[string]any{"name": "my-repo"},
+			wantOwner: "",
+			wantName:  "my-repo",
+		},
+		"owner is not an object": {
+			repo:      map[string]any{"name": "my-repo", "owner": "string"},
+			wantOwner: "",
+			wantName:  "my-repo",
+		},
+		"missing name field": {
+			repo:      map[string]any{"owner": map[string]any{"login": "org"}},
+			wantOwner: "org",
+			wantName:  "",
+		},
+		"missing login in owner": {
+			repo:      map[string]any{"name": "repo", "owner": map[string]any{}},
+			wantOwner: "",
+			wantName:  "repo",
+		},
+		"empty map": {
+			repo:      map[string]any{},
+			wantOwner: "",
+			wantName:  "",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			owner, repoName := extractOwnerRepo(tc.repo)
+			assert.Equal(t, tc.wantOwner, owner)
+			assert.Equal(t, tc.wantName, repoName)
+		})
+	}
+}
+
+func TestSyncWorkflowRuns(t *testing.T) {
+	fixedTime := time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC)
+	originalTimeSource := timeSource
+	t.Cleanup(func() { timeSource = originalTimeSource })
+	timeSource = func() time.Time { return fixedTime }
+
+	testCases := map[string]struct {
+		handler      http.HandlerFunc
+		expectedData []source.Data
+		expectErr    error
+		errContains  string
+	}{
+		"happy path with repos and workflow runs": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/orgs/test-org/repos":
+					json.NewEncoder(w).Encode([]map[string]any{
+						{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
+						{"name": "repo2", "owner": map[string]any{"login": "test-org"}},
+					})
+				case "/repos/test-org/repo1/actions/runs":
+					json.NewEncoder(w).Encode(map[string]any{
+						"total_count":   1,
+						"workflow_runs": []map[string]any{{"id": float64(10), "name": "Build"}},
+					})
+				case "/repos/test-org/repo2/actions/runs":
+					json.NewEncoder(w).Encode(map[string]any{
+						"total_count":   1,
+						"workflow_runs": []map[string]any{{"id": float64(20), "name": "Test"}},
+					})
+				}
+			},
+			expectedData: []source.Data{
+				{
+					Type:      workflowRunType,
+					Operation: source.DataOperationUpsert,
+					Values:    map[string]any{workflowRunType: map[string]any{"id": float64(10), "name": "Build"}},
+					Time:      fixedTime,
+				},
+				{
+					Type:      workflowRunType,
+					Operation: source.DataOperationUpsert,
+					Values:    map[string]any{workflowRunType: map[string]any{"id": float64(20), "name": "Test"}},
+					Time:      fixedTime,
+				},
+			},
+		},
+		"empty org no repos": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode([]map[string]any{})
+			},
+			expectedData: nil,
+		},
+		"repo with no runs": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/orgs/test-org/repos":
+					json.NewEncoder(w).Encode([]map[string]any{
+						{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
+					})
+				case "/repos/test-org/repo1/actions/runs":
+					json.NewEncoder(w).Encode(map[string]any{
+						"total_count":   0,
+						"workflow_runs": []map[string]any{},
+					})
+				}
+			},
+			expectedData: nil,
+		},
+		"API error on repos": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"message":"error"}`))
+			},
+			expectErr: ErrRetrievingAssets,
+		},
+		"API error on runs": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/orgs/test-org/repos":
+					json.NewEncoder(w).Encode([]map[string]any{
+						{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
+					})
+				default:
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(`{"message":"error"}`))
+				}
+			},
+			expectErr: ErrRetrievingAssets,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(tc.handler)
+			t.Cleanup(server.Close)
+
+			s := &Source{
+				client: &client{
+					baseURL:    server.URL,
+					org:        "test-org",
+					token:      "test-token",
+					pageSize:   100,
+					httpClient: server.Client(),
+				},
+			}
+
+			results := make(chan source.Data, 100)
+			err := s.syncWorkflowRuns(t.Context(), source.Extra{"apiVersion": "2026-03-10"}, results)
+			close(results)
+
+			if tc.expectErr != nil {
+				require.ErrorIs(t, err, tc.expectErr)
+				return
+			}
+
+			require.NoError(t, err)
+
+			var got []source.Data
+			for d := range results {
+				got = append(got, d)
+			}
+
+			assert.Equal(t, tc.expectedData, got)
+		})
+	}
+}
+
+func TestSyncWorkflowRunsContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Link", `<http://example.com?page=2>; rel="next"`)
+		json.NewEncoder(w).Encode([]map[string]any{
+			{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
+		})
+	}))
+	t.Cleanup(server.Close)
+
+	s := &Source{
+		client: &client{
+			baseURL:    server.URL,
+			org:        "test-org",
+			token:      "test-token",
+			pageSize:   100,
+			httpClient: server.Client(),
+		},
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	results := make(chan source.Data, 100)
+	err := s.syncWorkflowRuns(ctx, source.Extra{}, results)
+
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestStartSyncProcessWithWorkflowRunType(t *testing.T) {
+	fixedTime := time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC)
+	originalTimeSource := timeSource
+	t.Cleanup(func() { timeSource = originalTimeSource })
+	timeSource = func() time.Time { return fixedTime }
+
+	testCases := map[string]struct {
+		typesToSync  map[string]source.Extra
+		handler      http.HandlerFunc
+		expectedData []source.Data
+		expectErr    error
+	}{
+		"workflow_run only": {
+			typesToSync: map[string]source.Extra{
+				workflowRunType: {"apiVersion": "2026-03-10"},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/orgs/test-org/repos":
+					json.NewEncoder(w).Encode([]map[string]any{
+						{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
+					})
+				case "/repos/test-org/repo1/actions/runs":
+					json.NewEncoder(w).Encode(map[string]any{
+						"total_count":   1,
+						"workflow_runs": []map[string]any{{"id": float64(10), "name": "Build"}},
+					})
+				}
+			},
+			expectedData: []source.Data{
+				{
+					Type:      workflowRunType,
+					Operation: source.DataOperationUpsert,
+					Values:    map[string]any{workflowRunType: map[string]any{"id": float64(10), "name": "Build"}},
+					Time:      fixedTime,
+				},
+			},
+		},
+		"both repository and workflow_run types": {
+			typesToSync: map[string]source.Extra{
+				repositoryType:  {"apiVersion": "2026-03-10"},
+				workflowRunType: {"apiVersion": "2026-03-10"},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/orgs/test-org/repos":
+					json.NewEncoder(w).Encode([]map[string]any{
+						{"id": float64(1), "name": "repo1", "owner": map[string]any{"login": "test-org"}},
+					})
+				case "/repos/test-org/repo1/actions/runs":
+					json.NewEncoder(w).Encode(map[string]any{
+						"total_count":   1,
+						"workflow_runs": []map[string]any{{"id": float64(10), "name": "Build"}},
+					})
+				}
+			},
+			expectedData: []source.Data{
+				{
+					Type:      repositoryType,
+					Operation: source.DataOperationUpsert,
+					Values:    map[string]any{repositoryType: map[string]any{"id": float64(1), "name": "repo1", "owner": map[string]any{"login": "test-org"}}},
+					Time:      fixedTime,
+				},
+				{
+					Type:      workflowRunType,
+					Operation: source.DataOperationUpsert,
+					Values:    map[string]any{workflowRunType: map[string]any{"id": float64(10), "name": "Build"}},
+					Time:      fixedTime,
+				},
+			},
+		},
+		"unknown type alongside workflow_run": {
+			typesToSync: map[string]source.Extra{
+				workflowRunType: {"apiVersion": "2026-03-10"},
+				"unknowntype":   {},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/orgs/test-org/repos":
+					json.NewEncoder(w).Encode([]map[string]any{
+						{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
+					})
+				case "/repos/test-org/repo1/actions/runs":
+					json.NewEncoder(w).Encode(map[string]any{
+						"total_count":   1,
+						"workflow_runs": []map[string]any{{"id": float64(10)}},
+					})
+				}
+			},
+			expectedData: []source.Data{
+				{
+					Type:      workflowRunType,
+					Operation: source.DataOperationUpsert,
+					Values:    map[string]any{workflowRunType: map[string]any{"id": float64(10)}},
+					Time:      fixedTime,
+				},
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(tc.handler)
+			t.Cleanup(server.Close)
+
+			s := &Source{
+				config: config{
+					URL:   server.URL,
+					Org:   "test-org",
+					Token: "test-token",
+				},
+				client: &client{
+					baseURL:    server.URL,
+					org:        "test-org",
+					token:      "test-token",
+					pageSize:   100,
+					httpClient: server.Client(),
+				},
+			}
+
+			results := make(chan source.Data, 100)
+			err := s.StartSyncProcess(t.Context(), tc.typesToSync, results)
+			close(results)
+
+			if tc.expectErr != nil {
+				require.ErrorIs(t, err, tc.expectErr)
+				return
+			}
+
+			require.NoError(t, err)
+
+			var got []source.Data
+			for d := range results {
+				got = append(got, d)
+			}
+
+			assert.Equal(t, tc.expectedData, got)
+		})
+	}
+}

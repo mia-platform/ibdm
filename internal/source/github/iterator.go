@@ -97,3 +97,76 @@ func hasRelNext(linkHeader string) bool {
 
 // ErrIteratorDone signals that all pages have been consumed.
 var ErrIteratorDone = errors.New("iterator done")
+
+// wrappedPageIterator implements the iterator interface for GitHub API
+// endpoints that return a JSON object wrapping the items array under a
+// named key (e.g., {"workflow_runs": [...], "total_count": N}).
+type wrappedPageIterator struct {
+	client      *client
+	path        string
+	apiVersion  string
+	responseKey string
+	currPage    int
+	done        bool
+}
+
+func (it *wrappedPageIterator) next(ctx context.Context) ([]map[string]any, error) {
+	if it.done {
+		return nil, ErrIteratorDone
+	}
+
+	it.currPage++
+
+	resp, err := it.client.doRequest(ctx, it.path, it.apiVersion, it.currPage)
+	if err != nil {
+		it.done = true
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+		remaining := resp.Header.Get("X-Ratelimit-Remaining")
+		if remaining == "0" {
+			it.done = true
+			reset := resp.Header.Get("X-Ratelimit-Reset")
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
+			return nil, fmt.Errorf("rate limit exhausted (resets at %s): %s", reset, string(body))
+		}
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		it.done = true
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
+		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var wrapper map[string]json.RawMessage
+	if err := json.NewDecoder(resp.Body).Decode(&wrapper); err != nil {
+		it.done = true
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	raw, ok := wrapper[it.responseKey]
+	if !ok {
+		it.done = true
+		return nil, fmt.Errorf("response missing key %q", it.responseKey)
+	}
+
+	var items []map[string]any
+	if err := json.Unmarshal(raw, &items); err != nil {
+		it.done = true
+		return nil, fmt.Errorf("failed to decode %q: %w", it.responseKey, err)
+	}
+
+	if len(items) == 0 {
+		it.done = true
+		return nil, ErrIteratorDone
+	}
+
+	linkHeader := resp.Header.Get("Link")
+	if !hasRelNext(linkHeader) {
+		it.done = true
+	}
+
+	return items, nil
+}

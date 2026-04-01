@@ -21,6 +21,15 @@ const (
 	// repositoryType is the data type key for GitHub repositories.
 	repositoryType = "repository"
 
+	// personalAccessTokenRequestType is the data type key for GitHub PAT requests.
+	personalAccessTokenRequestType = "personal_access_token_request"
+
+	// workflowDispatchType is the data type key for GitHub workflow dispatch events.
+	workflowDispatchType = "workflow_dispatch"
+
+	// workflowRunType is the data type key for GitHub workflow runs.
+	workflowRunType = "workflow_run"
+
 	// defaultAPIVersion is the GitHub REST API version used when the mapping
 	// config does not explicitly set extra["apiVersion"].
 	defaultAPIVersion = "2026-03-10"
@@ -92,8 +101,22 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 		}
 	}
 
+	if _, ok := typesToSync[workflowRunType]; ok {
+		if err := s.syncWorkflowRuns(ctx, typesToSync[workflowRunType], results); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil
+			}
+			log.Error("error syncing workflow runs", "error", err.Error())
+			return fmt.Errorf("%w: %w", ErrGitHubSource, err)
+		}
+	}
+
+	knownTypes := map[string]bool{
+		repositoryType:  true,
+		workflowRunType: true,
+	}
 	for dataType := range typesToSync {
-		if dataType != repositoryType {
+		if !knownTypes[dataType] {
 			log.Debug("skipping unknown data type", "type", dataType)
 		}
 	}
@@ -140,4 +163,79 @@ func apiVersionFromExtra(extra source.Extra) string {
 		}
 	}
 	return defaultAPIVersion
+}
+
+// syncWorkflowRuns fetches all workflow runs for every repository in the
+// configured organization and pushes each as a source.Data entry onto the
+// results channel.
+//
+// It iterates repositories page by page, and for each repository on the
+// current page it fetches all workflow runs before moving to the next page
+// of repositories. This keeps memory usage bounded and delivers results
+// to the channel as early as possible.
+func (s *Source) syncWorkflowRuns(ctx context.Context, extra source.Extra, results chan<- source.Data) error {
+	apiVersion := apiVersionFromExtra(extra)
+
+	repoIt := s.client.listRepositories(apiVersion)
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		repos, err := repoIt.next(ctx)
+		if errors.Is(err, ErrIteratorDone) {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+		}
+
+		for _, repo := range repos {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
+			owner, repoName := extractOwnerRepo(repo)
+			if owner == "" || repoName == "" {
+				continue
+			}
+
+			runIt := s.client.listWorkflowRuns(owner, repoName, apiVersion)
+			for {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+
+				items, err := runIt.next(ctx)
+				if errors.Is(err, ErrIteratorDone) {
+					break
+				}
+				if err != nil {
+					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+				}
+
+				for _, item := range items {
+					results <- source.Data{
+						Type:      workflowRunType,
+						Operation: source.DataOperationUpsert,
+						Values:    map[string]any{workflowRunType: item},
+						Time:      timeSource(),
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// extractOwnerRepo extracts the owner login and repository name from a
+// repository object. Returns empty strings if the fields are missing.
+func extractOwnerRepo(repo map[string]any) (string, string) {
+	name, _ := repo["name"].(string)
+	ownerObj, _ := repo["owner"].(map[string]any)
+	if ownerObj == nil {
+		return "", name
+	}
+	login, _ := ownerObj["login"].(string)
+	return login, name
 }

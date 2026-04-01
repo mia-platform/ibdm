@@ -79,3 +79,39 @@ func TestClientRequestHeaders(t *testing.T) {
 	assert.Equal(t, "2026-03-10", capturedRequest.Header.Get("X-GitHub-Api-Version"))
 	assert.Equal(t, userAgent, capturedRequest.Header.Get("User-Agent"))
 }
+
+func TestListWorkflowRunsFactoryURL(t *testing.T) {
+	t.Parallel()
+
+	var capturedRequest *http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedRequest = r
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(map[string]any{
+			"total_count":   1,
+			"workflow_runs": []map[string]any{{"id": 1, "name": "Build"}},
+		})
+		if err != nil {
+			t.Error(err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	c := &client{
+		baseURL:    server.URL,
+		org:        "mia-platform",
+		token:      "ghp_testtoken",
+		pageSize:   50,
+		httpClient: server.Client(),
+	}
+
+	it := c.listWorkflowRuns("mia-platform", "my-repo", "2026-03-10")
+	items, err := it.next(t.Context())
+	require.NoError(t, err)
+	assert.Len(t, items, 1)
+
+	require.NotNil(t, capturedRequest)
+	assert.Equal(t, "/repos/mia-platform/my-repo/actions/runs", capturedRequest.URL.Path)
+	assert.Equal(t, "50", capturedRequest.URL.Query().Get("per_page"))
+	assert.Equal(t, "1", capturedRequest.URL.Query().Get("page"))
+}

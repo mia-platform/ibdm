@@ -65,3 +65,14 @@ func (c *client) newPageIterator(path, apiVersion string) iterator {
 func (c *client) listRepositories(apiVersion string) iterator {
 	return c.newPageIterator("/orgs/"+url.PathEscape(c.org)+"/repos?type=all", apiVersion)
 }
+
+// listWorkflowRuns returns an iterator that pages through all workflow runs
+// for the given repository identified by owner and repo name.
+func (c *client) listWorkflowRuns(owner, repo, apiVersion string) iterator {
+	return &wrappedPageIterator{
+		client:      c,
+		path:        "/repos/" + url.PathEscape(owner) + "/" + url.PathEscape(repo) + "/actions/runs",
+		apiVersion:  apiVersion,
+		responseKey: "workflow_runs",
+	}
+}
