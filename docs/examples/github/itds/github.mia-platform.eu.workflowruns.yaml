@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: workflowruns.github.mia-platform.eu
+spec:
+  group: github.mia-platform.eu
+  names:
+    kind: WorkflowRun
+    plural: workflowruns
+    displayPlural: GitHub Workflow Runs
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              id:
+                description: The unique numeric ID of the workflow run.
+                type: integer
+                title: ID
+              name:
+                description: The name of the workflow run.
+                type: string
+                title: Name
+              displayTitle:
+                description: The display title of the workflow run.
+                type: string
+                title: Display Title
+              status:
+                description: "The current status of the workflow run: queued, in_progress, or completed."
+                type: string
+                title: Status
+              conclusion:
+                description: "The outcome of the completed run: success, failure, cancelled, skipped, etc."
+                type: string
+                title: Conclusion
+              workflowId:
+                description: The ID of the workflow definition that this run belongs to.
+                type: integer
+                title: Workflow ID
+              workflowPath:
+                description: The path of the workflow definition file within the repository.
+                type: string
+                title: Workflow Path
+              repositoryId:
+                description: The numeric ID of the repository the run belongs to.
+                type: integer
+                title: Repository ID
+              repositoryFullName:
+                description: The full name (owner/repo) of the repository the run belongs to.
+                type: string
+                title: Repository
+              headBranch:
+                description: The branch the run was triggered on.
+                type: string
+                title: Branch
+              headSha:
+                description: The commit SHA that triggered the run.
+                type: string
+                title: Commit SHA
+              event:
+                description: The event that triggered the workflow run.
+                type: string
+                title: Trigger Event
+              runNumber:
+                description: The sequential run number within the repository.
+                type: integer
+                title: Run Number
+              runAttempt:
+                description: The attempt number of the run (re-runs increment this).
+                type: integer
+                title: Run Attempt
+              url:
+                description: The URL of the workflow run on GitHub.
+                type: string
+                title: URL
+              created:
+                description: The time the run was created (RFC 3339).
+                type: string
+                format: date-time
+                title: Created At
+              updated:
+                description: The time the run was last updated (RFC 3339).
+                type: string
+                format: date-time
+                title: Updated At
+              runStartedAt:
+                description: The time the run actually started executing (RFC 3339).
+                type: string
+                format: date-time
+                title: Started At
+    served: true
+    storage: true

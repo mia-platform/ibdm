@@ -41,6 +41,12 @@ spec:
                 description: The primary programming language of the repository.
                 type: string
                 title: Language
+              languages:
+                description: Percentage breakdown of programming languages used in the repository.
+                type: object
+                title: Languages
+                additionalProperties:
+                  type: number
               visibility:
                 description: "Repository visibility: public, private, or internal."
                 type: string
