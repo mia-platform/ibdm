@@ -406,38 +406,26 @@ func TestExtractOwnerRepo(t *testing.T) {
 	}
 }
 
-func TestSyncWorkflowRuns(t *testing.T) {
+func TestSyncRepositoryWorkflowRuns(t *testing.T) {
 	fixedTime := time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC)
 	originalTimeSource := timeSource
 	t.Cleanup(func() { timeSource = originalTimeSource })
 	timeSource = func() time.Time { return fixedTime }
 
 	testCases := map[string]struct {
+		repo         map[string]any
 		handler      http.HandlerFunc
 		expectedData []source.Data
 		expectErr    error
-		errContains  string
 	}{
-		"happy path with repos and workflow runs": {
-			handler: func(w http.ResponseWriter, r *http.Request) {
+		"happy path with runs": {
+			repo: map[string]any{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				switch r.URL.Path {
-				case "/orgs/test-org/repos":
-					json.NewEncoder(w).Encode([]map[string]any{
-						{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
-						{"name": "repo2", "owner": map[string]any{"login": "test-org"}},
-					})
-				case "/repos/test-org/repo1/actions/runs":
-					json.NewEncoder(w).Encode(map[string]any{
-						"total_count":   1,
-						"workflow_runs": []map[string]any{{"id": float64(10), "name": "Build"}},
-					})
-				case "/repos/test-org/repo2/actions/runs":
-					json.NewEncoder(w).Encode(map[string]any{
-						"total_count":   1,
-						"workflow_runs": []map[string]any{{"id": float64(20), "name": "Test"}},
-					})
-				}
+				json.NewEncoder(w).Encode(map[string]any{
+					"total_count":   2,
+					"workflow_runs": []map[string]any{{"id": float64(10), "name": "Build"}, {"id": float64(11), "name": "Test"}},
+				})
 			},
 			expectedData: []source.Data{
 				{
@@ -449,56 +437,39 @@ func TestSyncWorkflowRuns(t *testing.T) {
 				{
 					Type:      workflowRunType,
 					Operation: source.DataOperationUpsert,
-					Values:    map[string]any{workflowRunType: map[string]any{"id": float64(20), "name": "Test"}},
+					Values:    map[string]any{workflowRunType: map[string]any{"id": float64(11), "name": "Test"}},
 					Time:      fixedTime,
 				},
 			},
 		},
-		"empty org no repos": {
-			handler: func(w http.ResponseWriter, r *http.Request) {
+		"empty runs returns no data": {
+			repo: map[string]any{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode([]map[string]any{})
+				json.NewEncoder(w).Encode(map[string]any{"total_count": 0, "workflow_runs": []map[string]any{}})
 			},
 			expectedData: nil,
 		},
-		"repo with no runs": {
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				switch r.URL.Path {
-				case "/orgs/test-org/repos":
-					json.NewEncoder(w).Encode([]map[string]any{
-						{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
-					})
-				case "/repos/test-org/repo1/actions/runs":
-					json.NewEncoder(w).Encode(map[string]any{
-						"total_count":   0,
-						"workflow_runs": []map[string]any{},
-					})
-				}
-			},
-			expectedData: nil,
-		},
-		"API error on repos": {
+		"API error on runs returns error": {
+			repo: map[string]any{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"message":"error"}`))
 			},
 			expectErr: ErrRetrievingAssets,
 		},
-		"API error on runs": {
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				switch r.URL.Path {
-				case "/orgs/test-org/repos":
-					json.NewEncoder(w).Encode([]map[string]any{
-						{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
-					})
-				default:
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(`{"message":"error"}`))
-				}
+		"missing owner skips silently": {
+			repo: map[string]any{"name": "repo1"},
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				t.Fatal("no API call should be made when owner is missing")
 			},
-			expectErr: ErrRetrievingAssets,
+			expectedData: nil,
+		},
+		"missing name skips silently": {
+			repo: map[string]any{"owner": map[string]any{"login": "test-org"}},
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				t.Fatal("no API call should be made when name is missing")
+			},
+			expectedData: nil,
 		},
 	}
 
@@ -518,7 +489,7 @@ func TestSyncWorkflowRuns(t *testing.T) {
 			}
 
 			results := make(chan source.Data, 100)
-			err := s.syncWorkflowRuns(t.Context(), source.Extra{"apiVersion": "2026-03-10"}, results)
+			err := s.syncRepositoryWorkflowRuns(t.Context(), tc.repo, "2026-03-10", results)
 			close(results)
 
 			if tc.expectErr != nil {
@@ -538,12 +509,13 @@ func TestSyncWorkflowRuns(t *testing.T) {
 	}
 }
 
-func TestSyncWorkflowRunsContextCancellation(t *testing.T) {
+func TestSyncRepositoryWorkflowRunsContextCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Link", `<http://example.com?page=2>; rel="next"`)
-		json.NewEncoder(w).Encode([]map[string]any{
-			{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
+		json.NewEncoder(w).Encode(map[string]any{
+			"total_count":   1,
+			"workflow_runs": []map[string]any{{"id": float64(1)}},
 		})
 	}))
 	t.Cleanup(server.Close)
@@ -561,8 +533,9 @@ func TestSyncWorkflowRunsContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
+	repo := map[string]any{"name": "repo1", "owner": map[string]any{"login": "test-org"}}
 	results := make(chan source.Data, 100)
-	err := s.syncWorkflowRuns(ctx, source.Extra{}, results)
+	err := s.syncRepositoryWorkflowRuns(ctx, repo, "2026-03-10", results)
 
 	require.ErrorIs(t, err, context.Canceled)
 }

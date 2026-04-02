@@ -91,22 +91,14 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	}
 	defer s.syncLock.Unlock()
 
-	if _, ok := typesToSync[repositoryType]; ok {
-		if err := s.syncRepositories(ctx, typesToSync[repositoryType], results); err != nil {
+	_, wantsRepo := typesToSync[repositoryType]
+	_, wantsRuns := typesToSync[workflowRunType]
+	if wantsRepo || wantsRuns {
+		if err := s.syncRepositoryAssets(ctx, typesToSync, results); err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil
 			}
-			log.Error("error syncing repositories", "error", err.Error())
-			return fmt.Errorf("%w: %w", ErrGitHubSource, err)
-		}
-	}
-
-	if _, ok := typesToSync[workflowRunType]; ok {
-		if err := s.syncWorkflowRuns(ctx, typesToSync[workflowRunType], results); err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return nil
-			}
-			log.Error("error syncing workflow runs", "error", err.Error())
+			log.Error("error syncing repository assets", "error", err.Error())
 			return fmt.Errorf("%w: %w", ErrGitHubSource, err)
 		}
 	}
@@ -124,11 +116,29 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	return nil
 }
 
-// syncRepositories fetches all repositories for the configured organization
-// and pushes each as a source.Data entry onto the results channel.
-func (s *Source) syncRepositories(ctx context.Context, extra source.Extra, results chan<- source.Data) error {
-	apiVersion := apiVersionFromExtra(extra)
-	it := s.client.listRepositories(apiVersion)
+// syncRepositoryAssets iterates all repositories for the configured organization once
+// and, for each repository, emits a repository entry and/or fetches workflow runs
+// depending on which types are present in typesToSync.
+func (s *Source) syncRepositoryAssets(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+	_, syncRepo := typesToSync[repositoryType]
+	_, syncRuns := typesToSync[workflowRunType]
+
+	var repoAPIVersion, runAPIVersion string
+	if syncRepo {
+		repoAPIVersion = apiVersionFromExtra(typesToSync[repositoryType])
+	}
+	if syncRuns {
+		runAPIVersion = apiVersionFromExtra(typesToSync[workflowRunType])
+	}
+
+	// Use repo API version for the repository listing; fall back to run version
+	// when only workflow runs are requested.
+	listAPIVersion := repoAPIVersion
+	if listAPIVersion == "" {
+		listAPIVersion = runAPIVersion
+	}
+
+	it := s.client.listRepositories(listAPIVersion)
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -143,18 +153,30 @@ func (s *Source) syncRepositories(ctx context.Context, extra source.Extra, resul
 		}
 
 		for _, item := range items {
-			fullName, _ := item["full_name"].(string)
-			values := map[string]any{repositoryType: item}
-			if fullName != "" {
-				if langs, err := s.client.getRepositoryLanguages(ctx, fullName, apiVersion); err == nil {
-					values["repositoryLanguages"] = langs
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+
+			if syncRepo {
+				fullName, _ := item["full_name"].(string)
+				values := map[string]any{repositoryType: item}
+				if fullName != "" {
+					if langs, err := s.client.getRepositoryLanguages(ctx, fullName, repoAPIVersion); err == nil {
+						values["repositoryLanguages"] = langs
+					}
+				}
+				results <- source.Data{
+					Type:      repositoryType,
+					Operation: source.DataOperationUpsert,
+					Values:    values,
+					Time:      timeSource(),
 				}
 			}
-			results <- source.Data{
-				Type:      repositoryType,
-				Operation: source.DataOperationUpsert,
-				Values:    values,
-				Time:      timeSource(),
+
+			if syncRuns {
+				if err := s.syncRepositoryWorkflowRuns(ctx, item, runAPIVersion, results); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -172,24 +194,21 @@ func apiVersionFromExtra(extra source.Extra) string {
 	return defaultAPIVersion
 }
 
-// syncWorkflowRuns fetches all workflow runs for every repository in the
-// configured organization and pushes each as a source.Data entry onto the
-// results channel.
-//
-// It iterates repositories page by page, and for each repository on the
-// current page it fetches all workflow runs before moving to the next page
-// of repositories. This keeps memory usage bounded and delivers results
-// to the channel as early as possible.
-func (s *Source) syncWorkflowRuns(ctx context.Context, extra source.Extra, results chan<- source.Data) error {
-	apiVersion := apiVersionFromExtra(extra)
+// syncRepositoryWorkflowRuns fetches all workflow runs for the given repository
+// and pushes each as a source.Data entry onto the results channel.
+func (s *Source) syncRepositoryWorkflowRuns(ctx context.Context, repo map[string]any, apiVersion string, results chan<- source.Data) error {
+	owner, repoName := extractOwnerRepo(repo)
+	if owner == "" || repoName == "" {
+		return nil
+	}
 
-	repoIt := s.client.listRepositories(apiVersion)
+	runIt := s.client.listWorkflowRuns(owner, repoName, apiVersion)
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 
-		repos, err := repoIt.next(ctx)
+		items, err := runIt.next(ctx)
 		if errors.Is(err, ErrIteratorDone) {
 			break
 		}
@@ -197,38 +216,12 @@ func (s *Source) syncWorkflowRuns(ctx context.Context, extra source.Extra, resul
 			return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
 		}
 
-		for _, repo := range repos {
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-
-			owner, repoName := extractOwnerRepo(repo)
-			if owner == "" || repoName == "" {
-				continue
-			}
-
-			runIt := s.client.listWorkflowRuns(owner, repoName, apiVersion)
-			for {
-				if err := ctx.Err(); err != nil {
-					return err
-				}
-
-				items, err := runIt.next(ctx)
-				if errors.Is(err, ErrIteratorDone) {
-					break
-				}
-				if err != nil {
-					return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-				}
-
-				for _, item := range items {
-					results <- source.Data{
-						Type:      workflowRunType,
-						Operation: source.DataOperationUpsert,
-						Values:    map[string]any{workflowRunType: item},
-						Time:      timeSource(),
-					}
-				}
+		for _, item := range items {
+			results <- source.Data{
+				Type:      workflowRunType,
+				Operation: source.DataOperationUpsert,
+				Values:    map[string]any{workflowRunType: item},
+				Time:      timeSource(),
 			}
 		}
 	}
