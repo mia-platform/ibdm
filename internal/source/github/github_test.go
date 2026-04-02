@@ -25,12 +25,12 @@ func TestNewSource(t *testing.T) {
 		"valid configuration": {
 			envVars: map[string]string{
 				"GITHUB_TOKEN": "ghp_test123",
-				"GITHUB_ORG":   "mia-platform",
+				"GITHUB_ORG":   "my-org",
 			},
 		},
 		"missing token": {
 			envVars: map[string]string{
-				"GITHUB_ORG": "mia-platform",
+				"GITHUB_ORG": "my-org",
 			},
 			expectErr: ErrGitHubSource,
 		},
@@ -43,7 +43,7 @@ func TestNewSource(t *testing.T) {
 		"invalid page size": {
 			envVars: map[string]string{
 				"GITHUB_TOKEN":     "ghp_test123",
-				"GITHUB_ORG":       "mia-platform",
+				"GITHUB_ORG":       "my-org",
 				"GITHUB_PAGE_SIZE": "0",
 			},
 			expectErr: ErrGitHubSource,

@@ -20,7 +20,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"valid full configuration": {
 			envVars: map[string]string{
 				"GITHUB_TOKEN":          "ghp_test123",
-				"GITHUB_ORG":            "mia-platform",
+				"GITHUB_ORG":            "my-org",
 				"GITHUB_URL":            "https://github.example.com/api/v3",
 				"GITHUB_HTTP_TIMEOUT":   "10s",
 				"GITHUB_PAGE_SIZE":      "50",
@@ -31,7 +31,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 			expectCfg: &config{
 				URL:           "https://github.example.com/api/v3",
 				Token:         "ghp_test123",
-				Org:           "mia-platform",
+				Org:           "my-org",
 				HTTPTimeout:   10_000_000_000,
 				PageSize:      50,
 				WebhookSecret: "mysecret",
@@ -41,13 +41,13 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"valid minimal configuration uses defaults": {
 			envVars: map[string]string{
 				"GITHUB_TOKEN": "ghp_test123",
-				"GITHUB_ORG":   "mia-platform",
+				"GITHUB_ORG":   "my-org",
 			},
 			expectNoErr: true,
 			expectCfg: &config{
 				URL:         "https://api.github.com",
 				Token:       "ghp_test123",
-				Org:         "mia-platform",
+				Org:         "my-org",
 				HTTPTimeout: 30_000_000_000,
 				PageSize:    100,
 				WebhookPath: "/github/webhook",
@@ -55,7 +55,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		},
 		"missing GITHUB_TOKEN returns error": {
 			envVars: map[string]string{
-				"GITHUB_ORG": "mia-platform",
+				"GITHUB_ORG": "my-org",
 			},
 			expectErr: ErrMissingEnvVariable,
 		},
@@ -68,14 +68,14 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"page size at lower bound is accepted": {
 			envVars: map[string]string{
 				"GITHUB_TOKEN":     "ghp_test123",
-				"GITHUB_ORG":       "mia-platform",
+				"GITHUB_ORG":       "my-org",
 				"GITHUB_PAGE_SIZE": "1",
 			},
 			expectNoErr: true,
 			expectCfg: &config{
 				URL:         "https://api.github.com",
 				Token:       "ghp_test123",
-				Org:         "mia-platform",
+				Org:         "my-org",
 				HTTPTimeout: 30_000_000_000,
 				PageSize:    1,
 				WebhookPath: "/github/webhook",
@@ -84,14 +84,14 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"page size at upper bound is accepted": {
 			envVars: map[string]string{
 				"GITHUB_TOKEN":     "ghp_test123",
-				"GITHUB_ORG":       "mia-platform",
+				"GITHUB_ORG":       "my-org",
 				"GITHUB_PAGE_SIZE": "100",
 			},
 			expectNoErr: true,
 			expectCfg: &config{
 				URL:         "https://api.github.com",
 				Token:       "ghp_test123",
-				Org:         "mia-platform",
+				Org:         "my-org",
 				HTTPTimeout: 30_000_000_000,
 				PageSize:    100,
 				WebhookPath: "/github/webhook",
@@ -100,7 +100,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"page size below lower bound returns error": {
 			envVars: map[string]string{
 				"GITHUB_TOKEN":     "ghp_test123",
-				"GITHUB_ORG":       "mia-platform",
+				"GITHUB_ORG":       "my-org",
 				"GITHUB_PAGE_SIZE": "0",
 			},
 			expectErr: ErrInvalidEnvVariable,
@@ -108,7 +108,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		"page size above upper bound returns error": {
 			envVars: map[string]string{
 				"GITHUB_TOKEN":     "ghp_test123",
-				"GITHUB_ORG":       "mia-platform",
+				"GITHUB_ORG":       "my-org",
 				"GITHUB_PAGE_SIZE": "101",
 			},
 			expectErr: ErrInvalidEnvVariable,
@@ -117,7 +117,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			// t.Setenv is incompatible with t.Parallel()
 			for k, v := range tc.envVars {
 				t.Setenv(k, v)
 			}

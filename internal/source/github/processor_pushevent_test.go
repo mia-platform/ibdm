@@ -122,7 +122,7 @@ func TestPushEventProcessorWithLanguages(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/repos/mia-platform/my-repo/languages":
+		case "/repos/my-org/my-repo/languages":
 			json.NewEncoder(w).Encode(map[string]float64{"Go": 100000})
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -132,14 +132,14 @@ func TestPushEventProcessorWithLanguages(t *testing.T) {
 
 	c := &client{
 		baseURL:    server.URL,
-		org:        "mia-platform",
+		org:        "my-org",
 		token:      "ghp_test",
 		pageSize:   50,
 		httpClient: server.Client(),
 	}
 
 	processor := &pushEventProcessor{client: c}
-	body := []byte(`{"ref":"refs/heads/main","repository":{"id":1,"name":"my-repo","full_name":"mia-platform/my-repo"}}`)
+	body := []byte(`{"ref":"refs/heads/main","repository":{"id":1,"name":"my-repo","full_name":"my-org/my-repo"}}`)
 	typesToStream := map[string]source.Extra{repositoryType: {}}
 
 	data, err := processor.process(t.Context(), typesToStream, body)

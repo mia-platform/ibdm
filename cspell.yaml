@@ -45,6 +45,7 @@ ignoreWords:
   - gomod
   - gopath
   - hclog
+  - mysecret
   - octocat
   - pubsubpb
   - structpb

@@ -235,15 +235,15 @@ func TestHasRelNext(t *testing.T) {
 			expected:   false,
 		},
 		"has rel next": {
-			linkHeader: `<https://api.github.com/orgs/mia-platform/repos?page=2&per_page=100>; rel="next", <https://api.github.com/orgs/mia-platform/repos?page=5&per_page=100>; rel="last"`,
+			linkHeader: `<https://api.github.com/orgs/my-org/repos?page=2&per_page=100>; rel="next", <https://api.github.com/orgs/my-org/repos?page=5&per_page=100>; rel="last"`,
 			expected:   true,
 		},
 		"no rel next only last": {
-			linkHeader: `<https://api.github.com/orgs/mia-platform/repos?page=5&per_page=100>; rel="last"`,
+			linkHeader: `<https://api.github.com/orgs/my-org/repos?page=5&per_page=100>; rel="last"`,
 			expected:   false,
 		},
 		"rel next only": {
-			linkHeader: `<https://api.github.com/orgs/mia-platform/repos?page=2>; rel="next"`,
+			linkHeader: `<https://api.github.com/orgs/my-org/repos?page=2>; rel="next"`,
 			expected:   true,
 		},
 	}

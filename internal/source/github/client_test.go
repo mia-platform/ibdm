@@ -29,7 +29,7 @@ func TestListRepositoriesFactoryURL(t *testing.T) {
 
 	c := &client{
 		baseURL:    server.URL,
-		org:        "mia-platform",
+		org:        "my-org",
 		token:      "ghp_testtoken",
 		pageSize:   50,
 		httpClient: server.Client(),
@@ -41,7 +41,7 @@ func TestListRepositoriesFactoryURL(t *testing.T) {
 	assert.Len(t, items, 1)
 
 	require.NotNil(t, capturedRequest)
-	assert.Equal(t, "/orgs/mia-platform/repos", capturedRequest.URL.Path)
+	assert.Equal(t, "/orgs/my-org/repos", capturedRequest.URL.Path)
 	assert.Equal(t, "all", capturedRequest.URL.Query().Get("type"))
 	assert.Equal(t, "50", capturedRequest.URL.Query().Get("per_page"))
 	assert.Equal(t, "1", capturedRequest.URL.Query().Get("page"))
@@ -99,19 +99,19 @@ func TestListWorkflowRunsFactoryURL(t *testing.T) {
 
 	c := &client{
 		baseURL:    server.URL,
-		org:        "mia-platform",
+		org:        "my-org",
 		token:      "ghp_testtoken",
 		pageSize:   50,
 		httpClient: server.Client(),
 	}
 
-	it := c.listWorkflowRuns("mia-platform", "my-repo", "2026-03-10")
+	it := c.listWorkflowRuns("my-org", "my-repo", "2026-03-10")
 	items, err := it.next(t.Context())
 	require.NoError(t, err)
 	assert.Len(t, items, 1)
 
 	require.NotNil(t, capturedRequest)
-	assert.Equal(t, "/repos/mia-platform/my-repo/actions/runs", capturedRequest.URL.Path)
+	assert.Equal(t, "/repos/my-org/my-repo/actions/runs", capturedRequest.URL.Path)
 	assert.Equal(t, "50", capturedRequest.URL.Query().Get("per_page"))
 	assert.Equal(t, "1", capturedRequest.URL.Query().Get("page"))
 }
@@ -201,13 +201,13 @@ func TestGetRepositoryLanguages(t *testing.T) {
 
 			c := &client{
 				baseURL:    server.URL,
-				org:        "mia-platform",
+				org:        "my-org",
 				token:      "ghp_testtoken",
 				pageSize:   50,
 				httpClient: server.Client(),
 			}
 
-			result, err := c.getRepositoryLanguages(t.Context(), "mia-platform/my-repo", "2026-03-10")
+			result, err := c.getRepositoryLanguages(t.Context(), "my-org/my-repo", "2026-03-10")
 			if tc.wantErr {
 				require.Error(t, err)
 				return
