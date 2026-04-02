@@ -159,7 +159,7 @@ func TestGetRepositoryLanguages(t *testing.T) {
 		wantErr    bool
 		wantResult map[string]float64
 	}{
-		"happy path returns percentages": {
+		"valid path returns percentages": {
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]float64{
