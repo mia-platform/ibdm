@@ -31,7 +31,19 @@ mappings:
     event: "{{ .workflow_run.event }}"
     runNumber: "{{ .workflow_run.run_number }}"
     runAttempt: "{{ .workflow_run.run_attempt }}"
-    url: "{{ .workflow_run.html_url }}"
+    htmlUrl: "{{ .workflow_run.html_url }}"
     created: "{{ .workflow_run.created_at }}"
     updated: "{{ .workflow_run.updated_at }}"
     runStartedAt: "{{ .workflow_run.run_started_at }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "none"
+      identifier: |-
+        {{ printf "relationship-%s-%s-belonging" (printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum) (printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum) | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:WorkflowRun:null:{{ printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:Repository:null:{{ printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:belonging.mia-platform.eu"
+

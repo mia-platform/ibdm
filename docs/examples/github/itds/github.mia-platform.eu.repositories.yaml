@@ -37,10 +37,10 @@ spec:
                 description: A short description of the repository.
                 type: string
                 title: Description
-              url:
+              htmlUrl:
                 description: The URL of the repository on GitHub.
                 type: string
-                title: URL
+                title: HTML URL
               language:
                 description: The primary programming language of the repository.
                 type: string

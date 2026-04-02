@@ -1,12 +1,12 @@
 apiVersion: github.mia-platform.eu/v1alpha1
 itemFamily: repositories
-type: repositorys
+type: repository
 extra:
   apiVersion: "2026-03-10"
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%.0f-%s" .repository.id .repository.url | sha256sum }}
+    {{ printf "%.0f-%s" .repository.id .repository.html_url | sha256sum }}
   metadata:
     title: "{{ .repository.full_name }}"
   spec:
@@ -14,7 +14,7 @@ mappings:
     name: "{{ .repository.name }}"
     fullName: "{{ .repository.full_name }}"
     description: "{{ .repository.description }}"
-    url: "{{ .repository.html_url }}"
+    htmlUrl: "{{ .repository.html_url }}"
     language: "{{ .repository.language }}"
     languages: "{{ .repositoryLanguages | toJSON }}"
     visibility: "{{ .repository.visibility }}"

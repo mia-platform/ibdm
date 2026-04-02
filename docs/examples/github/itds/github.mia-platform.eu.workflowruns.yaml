@@ -77,10 +77,10 @@ spec:
                 description: The attempt number of the run (re-runs increment this).
                 type: integer
                 title: Run Attempt
-              url:
+              htmlUrl:
                 description: The URL of the workflow run on GitHub.
                 type: string
-                title: URL
+                title: HTML URL
               created:
                 description: The time the run was created (RFC 3339).
                 type: string
