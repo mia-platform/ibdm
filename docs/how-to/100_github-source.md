@@ -60,8 +60,38 @@ Required permissions at the organization level:
 | Type | Sync | Webhook |
 | --- | --- | --- |
 | `repository` | ✅ | ✅ |
+| `workflow_run` | ✅ | ✅ |
+| `personal_access_token_request` | ❌ | ✅ |
+| `workflow_dispatch` | ❌ | ✅ |
 
 The same mapping configuration works for both sync and webhook modes.
+
+### Webhook actions per type
+
+| Type | Actions → Upsert | Actions → Delete |
+| --- | --- | --- |
+| `repository` | `created`, `edited`, `renamed`, `archived`, `unarchived`, `transferred`, `publicized`, `privatized` | `deleted` |
+| `workflow_run` | `requested`, `in_progress`, `completed` | — |
+| `personal_access_token_request` | `approved`, `created` | `cancelled`, `denied` |
+| `workflow_dispatch` | _(all — no action field)_ | — |
+
+### Repository languages enrichment
+
+When `repository` data is synced or received via webhook, `ibdm` automatically calls
+`GET /repos/{owner}/{repo}/languages` for each repository and adds a `repositoryLanguages`
+field to the Values map. The value is a JSON object mapping each language name to its
+percentage of the repository's total code (rounded to two decimal places):
+
+```json
+{
+  "Go": 97.50,
+  "Makefile": 2.43,
+  "Dockerfile": 0.07
+}
+```
+
+If the languages API call fails the repository entry is still emitted without the
+`repositoryLanguages` field — the error is silently skipped.
 
 ## Setting Up a GitHub Webhook
 
@@ -71,7 +101,11 @@ To use webhook mode, configure a GitHub organization webhook:
 1. Set the **Payload URL** to your IBDM public URL at the configured webhook path (default: `/webhook/github`).
 1. Set **Content type** to `application/json`.
 1. Enter a **Secret** matching your `GITHUB_WEBHOOK_SECRET` environment variable.
-1. Select the events you want to receive (e.g., **Repositories**).
+1. Select the events you want to receive. Supported events and their corresponding `ibdm` types:
+   - **Repositories** → `repository`
+   - **Workflow runs** → `workflow_run`
+   - **Personal access token requests** → `personal_access_token_request`
+   - **Workflow dispatches** → `workflow_dispatch`
 
 ## GitHub Enterprise Server
 
