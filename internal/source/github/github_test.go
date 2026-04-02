@@ -418,7 +418,7 @@ func TestSyncRepositoryWorkflowRuns(t *testing.T) {
 		expectedData []source.Data
 		expectErr    error
 	}{
-		"happy path with runs": {
+		"valid path with runs": {
 			repo: map[string]any{"name": "repo1", "owner": map[string]any{"login": "test-org"}},
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
