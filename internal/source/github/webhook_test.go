@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
@@ -101,9 +100,6 @@ func TestWebhookHandlerValidSignatureKnownEvent(t *testing.T) {
 	t.Cleanup(func() { timeSource = originalTimeSource })
 	timeSource = func() time.Time { return fixedTime }
 
-	originalAfterGoroutine := afterGoroutine
-	t.Cleanup(func() { afterGoroutine = originalAfterGoroutine })
-
 	secret := "mysecret"
 	body := []byte(`{"action":"created","repository":{"id":1,"name":"repo1"}}`)
 	signature := computeSignature(body, secret)
@@ -124,10 +120,6 @@ func TestWebhookHandlerValidSignatureKnownEvent(t *testing.T) {
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
 	require.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	afterGoroutine = wg.Done
-
 	headers := http.Header{}
 	headers.Set("X-Hub-Signature-256", signature)
 	headers.Set(githubEventHeader, repositoryEventHeaderValue)
@@ -136,20 +128,18 @@ func TestWebhookHandlerValidSignatureKnownEvent(t *testing.T) {
 	err = webhook.Handler(t.Context(), headers, body)
 	require.NoError(t, err)
 
-	wg.Wait()
-
-	require.Len(t, results, 1)
-	data := <-results
-	assert.Equal(t, repositoryType, data.Type)
-	assert.Equal(t, source.DataOperationUpsert, data.Operation)
-	assert.Equal(t, map[string]any{repositoryType: map[string]any{"id": float64(1), "name": "repo1"}}, data.Values)
-	assert.Equal(t, fixedTime, data.Time)
+	select {
+	case data := <-results:
+		assert.Equal(t, repositoryType, data.Type)
+		assert.Equal(t, source.DataOperationUpsert, data.Operation)
+		assert.Equal(t, map[string]any{repositoryType: map[string]any{"id": float64(1), "name": "repo1"}}, data.Values)
+		assert.Equal(t, fixedTime, data.Time)
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for webhook result")
+	}
 }
 
 func TestWebhookHandlerUnknownEvent(t *testing.T) {
-	originalAfterGoroutine := afterGoroutine
-	t.Cleanup(func() { afterGoroutine = originalAfterGoroutine })
-
 	secret := "mysecret"
 	body := []byte(`{"action":"ping"}`)
 	signature := computeSignature(body, secret)
@@ -166,10 +156,6 @@ func TestWebhookHandlerUnknownEvent(t *testing.T) {
 	webhook, err := s.GetWebhook(t.Context(), nil, results)
 	require.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	afterGoroutine = wg.Done
-
 	headers := http.Header{}
 	headers.Set("X-Hub-Signature-256", signature)
 	headers.Set(githubEventHeader, "ping")
@@ -178,15 +164,15 @@ func TestWebhookHandlerUnknownEvent(t *testing.T) {
 	err = webhook.Handler(t.Context(), headers, body)
 	require.NoError(t, err)
 
-	wg.Wait()
-
-	assert.Empty(t, results)
+	select {
+	case d := <-results:
+		t.Fatalf("unexpected data on results channel: %v", d)
+	case <-time.After(100 * time.Millisecond):
+		// no data within the window — correct
+	}
 }
 
 func TestWebhookHandlerProcessorError(t *testing.T) {
-	originalAfterGoroutine := afterGoroutine
-	t.Cleanup(func() { afterGoroutine = originalAfterGoroutine })
-
 	secret := "mysecret"
 	body := []byte(`not json`)
 	signature := computeSignature(body, secret)
@@ -207,10 +193,6 @@ func TestWebhookHandlerProcessorError(t *testing.T) {
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
 	require.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	afterGoroutine = wg.Done
-
 	headers := http.Header{}
 	headers.Set("X-Hub-Signature-256", signature)
 	headers.Set(githubEventHeader, repositoryEventHeaderValue)
@@ -219,10 +201,12 @@ func TestWebhookHandlerProcessorError(t *testing.T) {
 	err = webhook.Handler(t.Context(), headers, body)
 	require.NoError(t, err)
 
-	wg.Wait()
-
-	// Processor failed → no data pushed, but no error returned to caller
-	assert.Empty(t, results)
+	select {
+	case d := <-results:
+		t.Fatalf("unexpected data on results channel: %v", d)
+	case <-time.After(100 * time.Millisecond):
+		// processor failed → no data — correct
+	}
 }
 
 func TestVerifySignature(t *testing.T) {

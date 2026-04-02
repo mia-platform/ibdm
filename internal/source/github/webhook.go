@@ -18,10 +18,6 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
-// afterGoroutine is a test hook invoked via defer at the end of the dispatcher
-// goroutine. Production code leaves it nil.
-var afterGoroutine func()
-
 // GetWebhook implements source.WebhookSource. It validates the webhook
 // configuration and returns a Webhook that verifies HMAC-SHA256 signatures
 // and dispatches events to the processor registry.
@@ -51,12 +47,6 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 			}
 
 			go func(ctx context.Context) {
-				defer func() {
-					if afterGoroutine != nil {
-						afterGoroutine()
-					}
-				}()
-
 				eventType := headers.Get(githubEventHeader)
 				processor, ok := processors[eventType]
 				if !ok {
