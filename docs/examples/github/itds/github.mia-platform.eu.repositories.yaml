@@ -21,6 +21,10 @@ spec:
           spec:
             type: object
             properties:
+              id:
+                description: The unique numeric ID of the repository.
+                type: integer
+                title: ID
               name:
                 description: The name of the repository.
                 type: string
@@ -76,15 +80,13 @@ spec:
                 type: integer
                 title: Open Issues
               license:
-                description: The SPDX identifier of the repository's license.
+                description: The license of the repository, serialized as JSON.
                 type: string
                 title: License
               topics:
-                description: Topics (tags) assigned to the repository.
-                type: array
+                description: Topics (tags) assigned to the repository, serialized as JSON.
+                type: string
                 title: Topics
-                items:
-                  type: string
               created:
                 description: The creation time of the repository (RFC 3339).
                 type: string

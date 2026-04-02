@@ -6,7 +6,7 @@ extra:
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "%v" .workflow_run.id | sha256sum }}
+    {{ printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum }}
   metadata:
     title: |-
       "{{ printf "%s %s #%v" .workflow_run.repository.full_name .workflow_run.name .workflow_run.run_number }}"
@@ -15,7 +15,13 @@ mappings:
     name: "{{ .workflow_run.name }}"
     displayTitle: "{{ .workflow_run.display_title | quote }}"
     status: "{{ .workflow_run.status }}"
-    conclusion: "{{ .workflow_run.conclusion }}"
+    conclusion:  |-
+      {{ $conclusion := (get "conclusion" .workflow_run "") -}}
+      {{- if $conclusion -}}
+        {{- .workflow_run.conclusion -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     workflowId: "{{ .workflow_run.workflow_id }}"
     workflowPath: "{{ .workflow_run.path }}"
     repositoryId: "{{ .workflow_run.repository.id }}"
