@@ -1,0 +1,49 @@
+apiVersion: github.mia-platform.eu/v1alpha1
+itemFamily: workflowruns
+type: workflow_run
+extra:
+  apiVersion: "2026-03-10"
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum }}
+  metadata:
+    title: |-
+      "{{ printf "%s %s #%v" .workflow_run.repository.full_name .workflow_run.name .workflow_run.run_number }}"
+  spec:
+    id : "{{ .workflow_run.id }}"
+    name: "{{ .workflow_run.name }}"
+    displayTitle: "{{ .workflow_run.display_title | quote }}"
+    status: "{{ .workflow_run.status }}"
+    conclusion:  |-
+      {{ $conclusion := (get "conclusion" .workflow_run "") -}}
+      {{- if $conclusion -}}
+        {{- .workflow_run.conclusion -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    workflowId: "{{ .workflow_run.workflow_id }}"
+    workflowPath: "{{ .workflow_run.path }}"
+    repositoryId: "{{ .workflow_run.repository.id }}"
+    repositoryFullName: "{{ .workflow_run.repository.full_name }}"
+    headBranch: "{{ .workflow_run.head_branch }}"
+    headSha: "{{ .workflow_run.head_sha }}"
+    event: "{{ .workflow_run.event }}"
+    runNumber: "{{ .workflow_run.run_number }}"
+    runAttempt: "{{ .workflow_run.run_attempt }}"
+    htmlUrl: "{{ .workflow_run.html_url }}"
+    created: "{{ .workflow_run.created_at }}"
+    updated: "{{ .workflow_run.updated_at }}"
+    runStartedAt: "{{ .workflow_run.run_started_at }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1alpha1
+      itemFamily: relationships
+      deletePolicy: "none"
+      identifier: |-
+        {{ printf "relationship-%s-%s-belonging" (printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum) (printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum) | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:WorkflowRun:null:{{ printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:Repository:null:{{ printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:belonging.mia-platform.eu"
+

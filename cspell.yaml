@@ -12,22 +12,22 @@ words:
   - buildx
   - contoso
   - diber
+  - epss
   - fabrikam
   - golangci
   - healthz
   - ibdm
   - itds
+  - mylib
+  - mytoken
   - postgresqldb
   - postgresqldbs
+  - Sonatype
   - syft
   - sysdig
   - tmpl
   - upserted
   - uuidv
-  - Sonatype
-  - mytoken
-  - mylib
-  - epss
 ignoreWords:
   - acks
   - apiv
@@ -45,6 +45,8 @@ ignoreWords:
   - gomod
   - gopath
   - hclog
+  - mysecret
+  - octocat
   - pubsubpb
   - structpb
   - sysdiglabs
