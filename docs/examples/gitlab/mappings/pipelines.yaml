@@ -6,7 +6,8 @@ mappings:
   identifier: |-
     {{ printf "%s" .pipeline.id | sha256sum }}
   metadata:
-    title: "{{ .pipeline.id }}"
+    title: |-
+      {{ printf "%.0f" .pipeline.id | quote }}
   spec:
     id: "{{ .pipeline.id }}"
     created_at: "{{ get \"created_at\" .pipeline \"\" }}"
@@ -39,5 +40,5 @@ mappings:
       sourceRef: |-
         urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:Project:null:{{ printf "%s" .project.id | sha256sum }}
       targetRef: |-
-        urn:mia-platform-catalog:mia-platform.eu:v1alpha1:Pipeline:null:{{ printf "%s" .pipeline.id | sha256sum }}
+        urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:Pipeline:null:{{ printf "%s" .pipeline.id | sha256sum }}
       typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency.mia-platform.eu"

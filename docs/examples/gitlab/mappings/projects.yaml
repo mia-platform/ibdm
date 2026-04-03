@@ -69,7 +69,7 @@ mappings:
       {{- if $allowMergeOnSkippedPipeline -}}
         {{- .project.allow_merge_on_skipped_pipeline -}}
       {{- else -}}
-        {{- "" | quote -}}
+        {{- false -}}
       {{- end }}
     requestAccessEnabled: "{{ .project.request_access_enabled }}"
     mergeMethod: "{{ .project.merge_method }}"
