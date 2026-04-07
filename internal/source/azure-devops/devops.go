@@ -164,9 +164,9 @@ func (s *Source) webhookHandler(typesToStream map[string]source.Extra, dataChann
 
 			for typeString, extra := range typesToStream {
 				if eventTypes, ok := extra[extraEventNamesKey]; ok {
-					if eventTypesList, ok := eventTypes.([]string); ok {
+					if eventTypesList, ok := eventTypes.([]any); ok {
 						for _, event := range eventTypesList {
-							if strings.EqualFold(eventType, event) {
+							if eventStr, ok := event.(string); ok && strings.EqualFold(eventType, eventStr) {
 								log.Debug("webhook handled", "webhookType", eventType, "resourceType", typeString)
 								if strings.EqualFold(typeString, "gitrepository") {
 									if repo, ok := resource["repository"].(map[string]any); ok {

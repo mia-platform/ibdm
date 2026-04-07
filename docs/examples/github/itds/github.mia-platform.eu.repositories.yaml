@@ -84,13 +84,14 @@ spec:
                 type: string
                 title: License
               topics:
-                description: Topics (tags) assigned to the repository, serialized as JSON.
-                type: string
+                description: The list of topics associated with the project.
+                type: array
                 title: Topics
+                items:
+                  type: string
               created:
                 description: The creation time of the repository (RFC 3339).
-                type: string
-                format: date-time
+                type: number
                 title: Created At
               lastUpdate:
                 description: The last time the repository metadata was updated (RFC 3339).
@@ -99,8 +100,7 @@ spec:
                 title: Last Update
               lastPush:
                 description: The last time a push was made to the repository (RFC 3339).
-                type: string
-                format: date-time
+                type: number
                 title: Last Push
     served: true
     storage: true

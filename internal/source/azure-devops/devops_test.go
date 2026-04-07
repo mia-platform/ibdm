@@ -148,7 +148,7 @@ func TestWebhookHandler(t *testing.T) {
 			},
 			typesToStream: map[string]source.Extra{
 				"gitrepository": {
-					"eventNames": []string{"git.repo.created"},
+					"eventNames": []any{"git.repo.created"},
 				},
 			},
 			body: repoCreatedPayload,
@@ -186,7 +186,7 @@ func TestWebhookHandler(t *testing.T) {
 			},
 			typesToStream: map[string]source.Extra{
 				"gitrepository": {
-					"eventNames": []string{"git.repo.renamed"},
+					"eventNames": []any{"git.repo.renamed"},
 				},
 			},
 			body: repoRenamedPayload,
@@ -221,7 +221,7 @@ func TestWebhookHandler(t *testing.T) {
 			},
 			typesToStream: map[string]source.Extra{
 				"gitrepository": {
-					"eventNames": []string{"git.repo.deleted"},
+					"eventNames": []any{"git.repo.deleted"},
 				},
 			},
 			body: repoDeletedPayload,
