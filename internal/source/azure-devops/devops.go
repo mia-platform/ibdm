@@ -184,6 +184,7 @@ func (s *Source) webhookHandler(typesToStream map[string]source.Extra, dataChann
 									Time:      operationTime,
 									Values:    resource,
 								}
+								return
 							}
 						}
 					}
