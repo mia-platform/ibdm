@@ -16,7 +16,7 @@ mappings:
     description: "{{ .repository.description }}"
     htmlUrl: "{{ .repository.html_url }}"
     language: "{{ .repository.language }}"
-    languages: "{{ .repositoryLanguages | toJSON }}"
+    languages: "{{ get \"repositoryLanguages\" . (object) | toJSON }}"
     visibility: "{{ .repository.visibility }}"
     defaultBranch: "{{ .repository.default_branch }}"
     archived: "{{ .repository.archived }}"
@@ -24,8 +24,20 @@ mappings:
     stargazersCount: "{{ .repository.stargazers_count }}"
     forksCount: "{{ .repository.forks_count }}"
     openIssuesCount: "{{ .repository.open_issues_count }}"
-    license: "{{ .repository.license | toJSON }}"
+    license: |-
+      {{ $license := (get "license" .repository "") -}}
+      {{- if $license -}}
+        {{- .repository.license.spdx_id -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     topics: "{{ .repository.topics | toJSON }}"
     created: "{{ .repository.created_at }}"
-    lastUpdate: "{{ .repository.updated_at }}"
+    lastUpdate: |-
+      {{ $updated := (get "updated_at" .repository "") -}}
+      {{- if $updated -}}
+        {{- .repository.updated_at -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     lastPush: "{{ .repository.pushed_at }}"
