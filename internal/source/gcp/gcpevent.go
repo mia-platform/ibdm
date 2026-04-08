@@ -49,8 +49,7 @@ func (e GCPEvent) Operation() source.DataOperation {
 }
 
 func (e GCPEvent) GetEventTime() time.Time {
-	asset := e.GetAsset()
-	if updateTime, ok := asset["updateTime"].(string); ok {
+	if updateTime, ok := e.Asset["updateTime"].(string); ok {
 		if parsedTime, err := time.Parse(time.RFC3339Nano, updateTime); err == nil {
 			return parsedTime
 		}
