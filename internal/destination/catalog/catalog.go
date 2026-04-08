@@ -101,7 +101,10 @@ func (d *catalogDestination) SendData(ctx context.Context, data *destination.Dat
 
 // DeleteData implements destination.Sender.
 func (d *catalogDestination) DeleteData(ctx context.Context, data *destination.Data) error {
-	return d.handleRequest(ctx, http.MethodDelete, data)
+	// Catalog API does not have a DELETE endpoint, so we use POST with a specific payload to indicate deletion.
+	// DeleteData interface implementation is still provided to allow flexibility in the pipeline and
+	// to enable potential future support for a DELETE endpoint without changing the pipeline logic.
+	return d.handleRequest(ctx, http.MethodPost, data)
 }
 
 // handleRequest issues an HTTP call to the Catalog API using the provided method and payload.
