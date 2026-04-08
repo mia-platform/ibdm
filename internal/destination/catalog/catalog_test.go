@@ -297,7 +297,7 @@ func TestDeleteData(t *testing.T) {
 					defer r.Body.Close()
 				}
 
-				if r.Method != http.MethodDelete {
+				if r.Method != http.MethodPost {
 					http.Error(w, "invalid method", http.StatusMethodNotAllowed)
 					return
 				}
