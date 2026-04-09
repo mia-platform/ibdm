@@ -3,9 +3,9 @@
 apiVersion: mia-platform.eu/v1alpha1
 kind: ItemTypeDefinition
 metadata:
-  name: accesstokens.mia-platform.eu
+  name: accesstokens.gitlab.mia-platform.eu
 spec:
-  group: mia-platform.eu
+  group: gitlab.mia-platform.eu
   names:
     kind: AccessToken
     plural: accesstokens
