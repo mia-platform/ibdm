@@ -65,4 +65,4 @@ mappings:
         urn:mia-platform-catalog:sysdig.mia-platform.eu:v1alpha1:Vulnerability:null:{{ printf "%s" .vuln.name | sha256sum }}
       targetRef: |-
         urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:null:{{ printf "%s" .img.imageReference | sha256sum }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:vulnerability.mia-platform.eu"
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:affect.mia-platform.eu"

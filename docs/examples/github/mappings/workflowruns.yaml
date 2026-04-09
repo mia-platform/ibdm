@@ -45,5 +45,4 @@ mappings:
         urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:WorkflowRun:null:{{ printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum }}
       targetRef: |-
         urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:Repository:null:{{ printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:belonging.mia-platform.eu"
-
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu"

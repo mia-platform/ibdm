@@ -18,4 +18,4 @@ mappings:
         urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:null:{{ printf "%s-%s" .project._id .revision.name | sha256sum }}
       targetRef: |-
         urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Project:null:{{ .project._id }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:belonging.mia-platform.eu"
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu"
