@@ -13,7 +13,10 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ printf "relationship-%s-%s-belonging" (printf "%s-%s" .project._id .revision.name | sha256sum) .project._id | sha256sum }}
+        {{ $src := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:null:%s" (printf "%s-%s" .project._id .revision.name | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Project:null:%s" .project._id -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
         urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:null:{{ printf "%s-%s" .project._id .revision.name | sha256sum }}
       targetRef: |-

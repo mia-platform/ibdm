@@ -49,7 +49,10 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ printf "relationship-%s-%s-belonging" (printf "%s" .asset.id | sha256sum) (printf "%s/%s:%s" .host .name .version | sha256sum) | sha256sum }}
+        {{ $src := printf "urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:ComponentAsset:null:%s" (printf "%s" .asset.id | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:null:%s" (printf "%s/%s:%s" .host .name .version | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
         urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:ComponentAsset:null:{{ printf "%s" .asset.id | sha256sum }}
       targetRef: |-
