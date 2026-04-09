@@ -24,6 +24,12 @@ endif
 .PHONY: lint
 lint:
 
+.PHONY: lint/version
+lint: lint/version
+lint/version: $(GOLANGCI_PATH)
+	$(info Running golangci-lint with version...)
+	$(GOLANGCI_PATH) --version
+
 .PHONY: lint/golangci
 lint: lint/golangci
 lint/golangci: $(GOLANGCI_PATH)
