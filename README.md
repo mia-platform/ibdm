@@ -24,7 +24,7 @@ If yu are here to know how to use `ibdm` in your system go to the
 If you want to contribute or develop `ibdm` you need the following programs installed on your
 machine:
 
-- golang 1.25+
+- golang 1.26+
 - gnumake
 
 We recommend to [install golang] following the official guide for your operating system or use a
