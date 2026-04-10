@@ -1,0 +1,29 @@
+apiVersion: bitbucket.mia-platform.eu/v1alpha1
+itemFamily: repositories
+type: repository
+syncable: true
+mappings:
+  identifier: |-
+    {{ .repository.full_name | sha256sum }}
+  metadata:
+    title: "{{ .repository.full_name }}"
+  spec:
+    fullName: "{{ .repository.full_name }}"
+    name: "{{ .repository.name }}"
+    slug: "{{ .repository.slug }}"
+    description: |-
+      {{ $d := (get "description" .repository "") -}}
+      {{- if $d -}}{{- .repository.description -}}{{- else -}}{{- "" | quote -}}{{- end }}
+    isPrivate: "{{ .repository.is_private }}"
+    scm: "{{ .repository.scm }}"
+    language: |-
+      {{ $l := (get "language" .repository "") -}}
+      {{- if $l -}}{{- .repository.language -}}{{- else -}}{{- "" | quote -}}{{- end }}
+    htmlUrl: |-
+      {{ $links := (get "links" .repository "") -}}
+      {{- if $links -}}{{- .repository.links.html.href -}}{{- else -}}{{- "" | quote -}}{{- end }}
+    defaultBranch: |-
+      {{ $mb := (get "mainbranch" .repository "") -}}
+      {{- if $mb -}}{{- .repository.mainbranch.name -}}{{- else -}}{{- "" | quote -}}{{- end }}
+    createdOn: "{{ .repository.created_on }}"
+    updatedOn: "{{ .repository.updated_on }}"
