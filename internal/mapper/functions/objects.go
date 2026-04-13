@@ -58,3 +58,12 @@ func Set(key string, value any, object map[string]any) map[string]any {
 	object[key] = value
 	return object
 }
+
+// Keys returns the keys of object as a string slice.
+func Keys(object map[string]any) []any {
+	keys := make([]any, 0, len(object))
+	for k := range object {
+		keys = append(keys, k)
+	}
+	return keys
+}
