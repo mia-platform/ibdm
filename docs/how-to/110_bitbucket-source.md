@@ -1,6 +1,7 @@
 # Bitbucket Source
 
-The Bitbucket source connects IBDM to [Bitbucket Cloud](https://bitbucket.org/) to synchronise repository and pipeline data into the Mia-Platform Catalog. It supports both pull-based sync (REST API) and real-time webhook events.
+The Bitbucket source connects IBDM to [Bitbucket Cloud](https://bitbucket.org/) to synchronise repository and
+pipeline data into the Mia-Platform Catalog. It supports both pull-based sync (REST API) and real-time webhook events.
 
 ## Commands
 
@@ -28,13 +29,15 @@ All configuration is read from environment variables.
 
 The Bitbucket source supports two **mutually exclusive** authentication modes. Exactly one must be configured.
 
-**Bearer Token**
+#### Bearer Token
 
-Set `BITBUCKET_ACCESS_TOKEN` to a Bitbucket access token (workspace, project, or repository scope). Sent as `Authorization: Bearer <token>`.
+Set `BITBUCKET_ACCESS_TOKEN` to a Bitbucket access token (workspace, project, or repository scope).
+Sent as `Authorization: Bearer <token>`.
 
-**Basic Auth**
+#### Basic Auth
 
-Set both `BITBUCKET_API_USERNAME` and `BITBUCKET_API_TOKEN`. The username is the Bitbucket username; the token is the app password or repository/project access token. Sent as HTTP Basic Authentication.
+Set both `BITBUCKET_API_USERNAME` and `BITBUCKET_API_TOKEN`. The username is the Bitbucket username;
+the token is the app password or repository/project access token. Sent as HTTP Basic Authentication.
 
 Setting both modes simultaneously is a configuration error.
 
@@ -68,4 +71,6 @@ Setting both modes simultaneously is a configuration error.
 
 ## Workspace Filtering
 
-When `BITBUCKET_WORKSPACE` is set, the sync process is restricted to that single workspace. When empty, IBDM calls `GET /2.0/user/workspaces` to enumerate all accessible workspaces automatically. Setting this variable also means the token does not need workspace-listing permissions.
+When `BITBUCKET_WORKSPACE` is set, the sync process is restricted to that single workspace.
+When empty, IBDM calls `GET /2.0/user/workspaces` to enumerate all accessible workspaces automatically.
+Setting this variable also means the token does not need workspace-listing permissions.

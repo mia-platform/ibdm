@@ -27,3 +27,9 @@ mappings:
       {{- if $mb -}}{{- .repository.mainbranch.name -}}{{- else -}}{{- "" | quote -}}{{- end }}
     createdOn: "{{ .repository.created_on }}"
     updatedOn: "{{ .repository.updated_on }}"
+    projectName: |-
+      {{ $p := (get "project" .repository "") -}}
+      {{- if $p -}}{{- .repository.project.name -}}{{- else -}}{{- "" | quote -}}{{- end }}
+    workspaceName: |-
+      {{ $w := (get "workspace" .repository "") -}}
+      {{- if $w -}}{{- .repository.workspace.name -}}{{- else -}}{{- "" | quote -}}{{- end }}
