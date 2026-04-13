@@ -18,6 +18,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/azure"
 	azuredevops "github.com/mia-platform/ibdm/internal/source/azure-devops"
+	"github.com/mia-platform/ibdm/internal/source/bitbucket"
 	"github.com/mia-platform/ibdm/internal/source/console"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 	"github.com/mia-platform/ibdm/internal/source/github"
@@ -34,6 +35,7 @@ var (
 	availableEventSources = map[string]string{
 		"azure":        "Microsoft Azure integration",
 		"azure-devops": "Microsoft Azure DevOps integration",
+		"bitbucket":    "Bitbucket integration",
 		"console":      "Mia Platform Console integration",
 		"gcp":          "Google Cloud Platform integration",
 		"github":       "GitHub integration",
@@ -43,6 +45,7 @@ var (
 	availableSyncSources = map[string]string{
 		"azure":        "Microsoft Azure integration",
 		"azure-devops": "Microsoft Azure DevOps integration",
+		"bitbucket":    "Bitbucket integration",
 		"gcp":          "Google Cloud Platform integration",
 		"github":       "GitHub integration",
 		"gitlab":       "GitLab integration",
@@ -93,6 +96,8 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 		return azure.NewSource()
 	case "azure-devops":
 		return azuredevops.NewSource()
+	case "bitbucket":
+		return bitbucket.NewSource()
 	case "gcp":
 		return gcp.NewSource()
 	case "github":
