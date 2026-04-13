@@ -4,12 +4,12 @@ type: pipeline
 syncable: true
 mappings:
   identifier: |-
-    {{ .pipeline.uuid | sha256sum }}
+    {{ .pipeline.uuid | trimPrefix "{" | trimSuffix "}" | sha256sum }}
   metadata:
     title: |-
       {{ printf "#%v" .pipeline.build_number | quote }}
   spec:
-    uuid: "{{ .pipeline.uuid }}"
+    uuid: "{{ .pipeline.uuid | trimPrefix \"{\" | trimSuffix \"}\" }}"
     buildNumber: "{{ .pipeline.build_number }}"
     state: |-
       {{ $s := (get "state" .pipeline "") -}}
@@ -22,21 +22,28 @@ mappings:
     completedOn: |-
       {{ $c := (get "completed_on" .pipeline "") -}}
       {{- if $c -}}{{- .pipeline.completed_on -}}{{- else -}}{{- "" | quote -}}{{- end }}
+    durationInSeconds: |-
+      {{ $d := (get "duration_in_seconds" .pipeline "") -}}
+      {{- if $d -}}{{- .pipeline.duration_in_seconds -}}{{- else -}}{{- "" | quote -}}{{- end }}
+    buildSecondsUsed: |-
+      {{ $d := (get "build_seconds_used" .pipeline "") -}}
+      {{- if $d -}}{{- .pipeline.build_seconds_used -}}{{- else -}}{{- "" | quote -}}{{- end }}
     targetRef: |-
       {{ $t := (get "target" .pipeline "") -}}
       {{- if $t -}}{{- .pipeline.target.ref_name -}}{{- else -}}{{- "" | quote -}}{{- end }}
     repositoryFullName: "{{ .repository.full_name }}"
+    repositoryHtmlUrl: "{{ .repository.links.html.href }}"
   extra:
     - apiVersion: mia-platform.eu/v1alpha1
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ $src := printf "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Pipeline:null:%s" (.pipeline.uuid | sha256sum) -}}
+        {{ $src := printf "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Pipeline:null:%s" (.pipeline.uuid | trimPrefix "{" | trimSuffix "}" | sha256sum) -}}
         {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu" -}}
-        {{- $tgt := printf "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Repository:null:%s" (.repository.full_name | sha256sum) -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Repository:null:%s" (.repository.links.html.href | sha256sum) -}}
         {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Pipeline:null:{{ .pipeline.uuid | sha256sum }}
+        urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Pipeline:null:{{ .pipeline.uuid | trimPrefix "{" | trimSuffix "}" | sha256sum }}
       targetRef: |-
-        urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Repository:null:{{ .repository.full_name | sha256sum }}
+        urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Repository:null:{{ .repository.links.html.href | sha256sum }}
       typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu"

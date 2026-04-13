@@ -4,11 +4,12 @@ type: repository
 syncable: true
 mappings:
   identifier: |-
-    {{ .repository.full_name | sha256sum }}
+    {{ .repository.links.html.href | sha256sum }}
   metadata:
     title: "{{ .repository.full_name }}"
   spec:
     fullName: "{{ .repository.full_name }}"
+    uuid: "{{ .repository.uuid | trimPrefix \"{\" | trimSuffix \"}\" }}"
     name: "{{ .repository.name }}"
     slug: "{{ .repository.slug }}"
     description: |-
@@ -19,9 +20,7 @@ mappings:
     language: |-
       {{ $l := (get "language" .repository "") -}}
       {{- if $l -}}{{- .repository.language -}}{{- else -}}{{- "" | quote -}}{{- end }}
-    htmlUrl: |-
-      {{ $links := (get "links" .repository "") -}}
-      {{- if $links -}}{{- .repository.links.html.href -}}{{- else -}}{{- "" | quote -}}{{- end }}
+    htmlUrl: "{{ .repository.links.html.href }}"
     defaultBranch: |-
       {{ $mb := (get "mainbranch" .repository "") -}}
       {{- if $mb -}}{{- .repository.mainbranch.name -}}{{- else -}}{{- "" | quote -}}{{- end }}

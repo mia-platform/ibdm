@@ -25,6 +25,10 @@ spec:
                 description: The full name of the repository (workspace/repo).
                 type: string
                 title: Full Name
+              uuid:
+                description: The UUID of the repository.
+                type: string
+                title: UUID
               name:
                 description: The name of the repository.
                 type: string
@@ -67,5 +71,13 @@ spec:
                 type: string
                 format: date-time
                 title: Updated On
+              projectName:
+                description: The name of the Bitbucket project the repository belongs to.
+                type: string
+                title: Project Name
+              workspaceName:
+                description: The name of the workspace the repository belongs to.
+                type: string
+                title: Workspace Name
     served: true
     storage: true
