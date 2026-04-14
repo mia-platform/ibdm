@@ -7,7 +7,7 @@ mappings:
     {{ .pipeline.uuid | trimPrefix "{" | trimSuffix "}" | sha256sum }}
   metadata:
     title: |-
-      {{ printf "#%v" .pipeline.build_number | quote }}
+      {{ printf "%s #%v" .repository.name .pipeline.build_number | quote }}
   spec:
     uuid: "{{ .pipeline.uuid | trimPrefix \"{\" | trimSuffix \"}\" }}"
     buildNumber: "{{ .pipeline.build_number }}"
