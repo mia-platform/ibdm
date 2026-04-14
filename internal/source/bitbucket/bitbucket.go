@@ -196,7 +196,7 @@ func (s *Source) syncRepositoriesForWorkspace(ctx context.Context, slug string, 
 					Values: map[string]any{
 						"repository": repo,
 					},
-					Time: updatedOnOrNow(repo),
+					Time: timeSource(),
 				}
 			}
 
@@ -240,7 +240,7 @@ func (s *Source) syncRepositoryPipelines(ctx context.Context, workspaceSlug stri
 					"repository": repo,
 					"pipeline":   pipeline,
 				},
-				Time: pipelineTimeOrNow(pipeline),
+				Time: timeSource(),
 			}
 		}
 	}
@@ -272,17 +272,6 @@ func extractRepoSlug(repo map[string]any) string {
 		return name
 	}
 	return ""
-}
-
-// updatedOnOrNow reads the "updated_on" field from a Bitbucket API item and parses it
-// as RFC3339. When absent or unparsable it falls back to timeSource().
-func updatedOnOrNow(item map[string]any) time.Time {
-	if updatedOn, ok := item["updated_on"].(string); ok {
-		if t, err := time.Parse(time.RFC3339, updatedOn); err == nil {
-			return t
-		}
-	}
-	return timeSource()
 }
 
 // pipelineTimeOrNow reads the "completed_on" field from a pipeline object and parses it

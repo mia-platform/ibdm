@@ -493,34 +493,6 @@ func TestExtractRepoSlug(t *testing.T) {
 	}
 }
 
-func TestUpdatedOnOrNow(t *testing.T) {
-	fixedTime := setupFixedTime(t)
-
-	testCases := map[string]struct {
-		input    map[string]any
-		expected time.Time
-	}{
-		"valid updated_on": {
-			input:    map[string]any{"updated_on": "2025-01-10T14:22:33Z"},
-			expected: time.Date(2025, 1, 10, 14, 22, 33, 0, time.UTC),
-		},
-		"missing updated_on": {
-			input:    map[string]any{},
-			expected: fixedTime,
-		},
-		"invalid updated_on": {
-			input:    map[string]any{"updated_on": "not-a-date"},
-			expected: fixedTime,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.expected, updatedOnOrNow(tc.input))
-		})
-	}
-}
-
 func TestPipelineTimeOrNow(t *testing.T) {
 	fixedTime := setupFixedTime(t)
 
