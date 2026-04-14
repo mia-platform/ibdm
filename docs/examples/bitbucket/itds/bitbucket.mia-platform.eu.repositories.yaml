@@ -9,7 +9,9 @@ spec:
   names:
     kind: Repository
     plural: repositories
+    singular: repository
     displayPlural: Bitbucket Repositories
+    displaySingular: Bitbucket Repository
   scope: Organization
   versions:
   - deprecated: false

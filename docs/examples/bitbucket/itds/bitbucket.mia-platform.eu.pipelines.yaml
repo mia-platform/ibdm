@@ -9,7 +9,9 @@ spec:
   names:
     kind: Pipeline
     plural: pipelines
+    singular: pipeline
     displayPlural: Bitbucket Pipelines
+    displaySingular: Bitbucket Pipeline
   scope: Organization
   versions:
   - deprecated: false
