@@ -85,7 +85,6 @@ func TestRepositoryEventProcessorRepoUpdated(t *testing.T) {
 }
 
 func TestRepositoryEventProcessorPullRequestFulfilled(t *testing.T) {
-	// TODO: this needs a review
 	setupFixedTime(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
