@@ -18,17 +18,8 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
-func setupFixedTime(t *testing.T) time.Time {
-	t.Helper()
-	fixedTime := time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC)
-	originalTimeSource := timeSource
-	t.Cleanup(func() { timeSource = originalTimeSource })
-	timeSource = func() time.Time { return fixedTime }
-	return fixedTime
-}
-
 func TestStartSyncProcessRepositoriesOnly(t *testing.T) {
-	fixedTime := setupFixedTime(t)
+	setupFixedTime(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -73,12 +64,12 @@ func TestStartSyncProcessRepositoriesOnly(t *testing.T) {
 	assert.Equal(t, repositoryType, items[0].Type)
 	assert.Equal(t, source.DataOperationUpsert, items[0].Operation)
 	assert.Equal(t, "my-workspace/repo1", items[0].Values["repository"].(map[string]any)["full_name"])
-	assert.Equal(t, fixedTime, items[0].Time)
+	assert.Equal(t, testFixedTime, items[0].Time)
 	assert.Equal(t, "my-workspace/repo2", items[1].Values["repository"].(map[string]any)["full_name"])
 }
 
 func TestStartSyncProcessPipelinesOnly(t *testing.T) {
-	fixedTime := setupFixedTime(t)
+	setupFixedTime(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -129,7 +120,7 @@ func TestStartSyncProcessPipelinesOnly(t *testing.T) {
 	assert.Equal(t, source.DataOperationUpsert, items[0].Operation)
 	assert.Equal(t, "{pipe-1}", items[0].Values["pipeline"].(map[string]any)["uuid"])
 	assert.Equal(t, "ws/repo1", items[0].Values["repository"].(map[string]any)["full_name"])
-	assert.Equal(t, fixedTime, items[0].Time)
+	assert.Equal(t, testFixedTime, items[0].Time)
 }
 
 func TestStartSyncProcessBothTypes(t *testing.T) {
@@ -494,7 +485,7 @@ func TestExtractRepoSlug(t *testing.T) {
 }
 
 func TestPipelineTimeOrNow(t *testing.T) {
-	fixedTime := setupFixedTime(t)
+	setupFixedTime(t)
 
 	testCases := map[string]struct {
 		input    map[string]any
@@ -510,7 +501,7 @@ func TestPipelineTimeOrNow(t *testing.T) {
 		},
 		"fallback to timeSource": {
 			input:    map[string]any{},
-			expected: fixedTime,
+			expected: testFixedTime,
 		},
 	}
 

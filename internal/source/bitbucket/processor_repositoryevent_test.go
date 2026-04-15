@@ -162,7 +162,7 @@ func TestRepositoryEventProcessorMissingRepositoryField(t *testing.T) {
 }
 
 func TestRepositoryEventProcessorEnrichmentFailure(t *testing.T) {
-	fixedTime := setupFixedTime(t)
+	setupFixedTime(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -188,7 +188,7 @@ func TestRepositoryEventProcessorEnrichmentFailure(t *testing.T) {
 	require.Len(t, data, 1)
 	// Falls back to the webhook payload repository
 	assert.Equal(t, "ws/repo1", data[0].Values["repository"].(map[string]any)["full_name"])
-	assert.Equal(t, fixedTime, data[0].Time)
+	assert.Equal(t, testFixedTime, data[0].Time)
 }
 
 func TestRepositoryEventProcessorInvalidFullName(t *testing.T) {
@@ -208,7 +208,7 @@ func TestRepositoryEventProcessorInvalidFullName(t *testing.T) {
 }
 
 func TestUpdatedOnOrNow(t *testing.T) {
-	fixedTime := setupFixedTime(t)
+	setupFixedTime(t)
 
 	testCases := map[string]struct {
 		input    map[string]any
@@ -220,11 +220,11 @@ func TestUpdatedOnOrNow(t *testing.T) {
 		},
 		"missing updated_on": {
 			input:    map[string]any{},
-			expected: fixedTime,
+			expected: testFixedTime,
 		},
 		"invalid updated_on": {
 			input:    map[string]any{"updated_on": "not-a-date"},
-			expected: fixedTime,
+			expected: testFixedTime,
 		},
 	}
 

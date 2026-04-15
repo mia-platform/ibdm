@@ -97,7 +97,7 @@ func TestWebhookHandlerInvalidSignature(t *testing.T) {
 }
 
 func TestWebhookHandlerValidSignatureKnownEvent(t *testing.T) {
-	fixedTime := setupFixedTime(t)
+	setupFixedTime(t)
 
 	secret := "mysecret"
 	body := []byte(`{"repository":{"full_name":"ws/repo1","slug":"repo1"}}`)
@@ -148,7 +148,6 @@ func TestWebhookHandlerValidSignatureKnownEvent(t *testing.T) {
 		assert.Equal(t, source.DataOperationUpsert, data.Operation)
 		repo := data.Values["repository"].(map[string]any)
 		assert.Equal(t, "ws/repo1", repo["full_name"])
-		_ = fixedTime
 	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for webhook result")
 	}
