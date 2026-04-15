@@ -269,6 +269,28 @@ func TestMapper(t *testing.T) {
 				},
 			},
 		},
+		"extract keys from object": {
+			mapper: func() Mapper {
+				m, err := New("{{ .name }}", nil, map[string]string{
+					"key": `{{ keys .obj | first }}`,
+				}, nil)
+				require.NoError(t, err)
+				return m
+			}(),
+			input: map[string]any{
+				"name": "example",
+				"obj": map[string]any{
+					"object_field_example": nil,
+				},
+			},
+			expected: MappedData{
+				Identifier: "example",
+				Metadata:   map[string]any{},
+				Spec: map[string]any{
+					"key": "object_field_example",
+				},
+			},
+		},
 		"simple mapping with metadata": {
 			mapper: func() Mapper {
 				m, err := New("{{ .name }}",

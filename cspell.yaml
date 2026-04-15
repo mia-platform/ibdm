@@ -16,6 +16,7 @@ words:
   - fabrikam
   - golangci
   - healthz
+  - HMAC
   - ibdm
   - itds
   - mylib
@@ -37,6 +38,7 @@ ignoreWords:
   - azeventhubs
   - azidentity
   - azsystemevents
+  - bbtoken
   - errln
   - fakeazcore
   - goarch
@@ -46,6 +48,8 @@ ignoreWords:
   - gopath
   - hclog
   - mysecret
+  - myuser
+  - noprefixhex
   - octocat
   - pubsubpb
   - structpb

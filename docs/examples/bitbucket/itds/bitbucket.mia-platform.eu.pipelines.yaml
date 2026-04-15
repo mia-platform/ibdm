@@ -1,0 +1,73 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: pipelines.bitbucket.mia-platform.eu
+spec:
+  group: bitbucket.mia-platform.eu
+  names:
+    kind: Pipeline
+    plural: pipelines
+    singular: pipeline
+    displayPlural: Bitbucket Pipelines
+    displaySingular: Bitbucket Pipeline
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              uuid:
+                description: The unique UUID of the pipeline run.
+                type: string
+                title: UUID
+              buildNumber:
+                description: The sequential build number of the pipeline.
+                type: integer
+                title: Build Number
+              state:
+                description: "The current state of the pipeline (e.g. COMPLETED, IN_PROGRESS)."
+                type: string
+                title: State
+              result:
+                description: "The result of the pipeline when completed (e.g. SUCCESSFUL, FAILED)."
+                type: string
+                title: Result
+              createdOn:
+                description: The creation time of the pipeline (ISO-8601).
+                type: string
+                format: date-time
+                title: Created On
+              completedOn:
+                description: The completion time of the pipeline (ISO-8601).
+                type: string
+                format: date-time
+                title: Completed On
+              durationInSeconds:
+                description: The total duration of the pipeline run in seconds.
+                type: integer
+                title: Duration In Seconds
+              buildSecondsUsed:
+                description: The build seconds consumed by the pipeline run.
+                type: integer
+                title: Build Seconds Used
+              targetRef:
+                description: The branch or tag name the pipeline ran on.
+                type: string
+                title: Target Ref
+              repositoryFullName:
+                description: The full name (workspace/repo) of the repository the pipeline belongs to.
+                type: string
+                title: Repository
+              repositoryHtmlUrl:
+                description: The HTML URL of the repository the pipeline belongs to.
+                type: string
+                title: Repository HTML URL
+    served: true
+    storage: true

@@ -385,6 +385,7 @@ func templateFunctions() template.FuncMap {
 		"pick":   functions.Pick,
 		"get":    functions.Get,
 		"set":    functions.Set,
+		"keys":   functions.Keys,
 
 		// list functions
 		"list":    functions.List,

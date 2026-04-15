@@ -1,0 +1,85 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: repositories.bitbucket.mia-platform.eu
+spec:
+  group: bitbucket.mia-platform.eu
+  names:
+    kind: Repository
+    plural: repositories
+    singular: repository
+    displayPlural: Bitbucket Repositories
+    displaySingular: Bitbucket Repository
+  scope: Organization
+  versions:
+  - deprecated: false
+    name: v1alpha1
+    schema:
+      openAPIV31Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              fullName:
+                description: The full name of the repository (workspace/repo).
+                type: string
+                title: Full Name
+              uuid:
+                description: The UUID of the repository.
+                type: string
+                title: UUID
+              name:
+                description: The name of the repository.
+                type: string
+                title: Name
+              slug:
+                description: The URL-safe name of the repository.
+                type: string
+                title: Slug
+              description:
+                description: A short description of the repository.
+                type: string
+                title: Description
+              isPrivate:
+                description: Whether the repository is private.
+                type: boolean
+                title: Private
+              scm:
+                description: The source control type (e.g. git).
+                type: string
+                title: SCM
+              language:
+                description: The primary programming language of the repository.
+                type: string
+                title: Language
+              htmlUrl:
+                description: The URL of the repository on Bitbucket.
+                type: string
+                title: HTML URL
+              defaultBranch:
+                description: The default branch of the repository.
+                type: string
+                title: Default Branch
+              createdOn:
+                description: The creation time of the repository (ISO-8601).
+                type: string
+                format: date-time
+                title: Created On
+              updatedOn:
+                description: The last time the repository metadata was updated (ISO-8601).
+                type: string
+                format: date-time
+                title: Updated On
+              projectName:
+                description: The name of the Bitbucket project the repository belongs to.
+                type: string
+                title: Project Name
+              workspaceName:
+                description: The name of the workspace the repository belongs to.
+                type: string
+                title: Workspace Name
+    served: true
+    storage: true

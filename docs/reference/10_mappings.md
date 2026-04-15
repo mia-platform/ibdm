@@ -29,6 +29,7 @@ helper groups:
 	- [pick](#pick)
 	- [get](#get)
 	- [set](#set)
+	- [keys](#keys)
 - Lists:
 	- [list](#list)
 	- [append](#append)
@@ -155,6 +156,15 @@ produces `value1`.
 
 Example: `{{ set "otherKey" .aKey .object | toJSON }}` with `.object` equal to `{"key":"value1"}`
 and `.aKey` equal to `new value` produces `{"key":"value1","otherKey":"new value"}`.
+
+### `keys`
+
+`keys` returns the keys of an object as a list.
+This is useful when a value is encoded as a map key rather than a map value —
+for example, when a UUID is returned as `{"<uuid>": null}`.
+
+Example: `{{ keys .uuidObject | first }}` with `.uuidObject` equal to `{"object_field_example": null}`
+produces `object_field_example`.
 
 ### `list`
 

@@ -47,7 +47,8 @@ When running in sync mode (`ibdm sync console`), the integration requires access
 
 **Authentication:**
 
-The source supports two authentication methods relative to the Console: Client Credentials (Client ID/Secret) or Service Account (JWT).
+The source supports two authentication methods relative to the Console:
+Client Credentials (Client ID/Secret) or Service Account (JWT).
 
 #### Client Credentials
 
