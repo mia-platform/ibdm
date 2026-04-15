@@ -58,8 +58,6 @@ func (c *client) listRepositories(workspaceSlug string) iterator {
 // listPipelines returns an iterator that pages through all pipelines
 // for the given repository.
 func (c *client) listPipelines(workspaceSlug, repoSlug string) iterator {
-	// No pagelen is specified intentionally: the official Bitbucket documentation is ambiguous about the maximum
-	// supported pagelen for this resource, and the actual behaviour is best determined by inspecting real API responses after deployment.
 	initialURL := fmt.Sprintf("%s/2.0/repositories/%s/%s/pipelines",
 		c.baseURL, url.PathEscape(workspaceSlug), url.PathEscape(repoSlug))
 	return &pageIterator{client: c, nextURL: initialURL}
