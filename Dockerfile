@@ -6,6 +6,8 @@ ARG CMD_NAME
 ENV COMMAND_NAME=${CMD_NAME}
 
 RUN apk add --no-cache --upgrade \
+  libcrypto3=3.5.6-r0 \
+  libssl3=3.5.6-r0 \
   zlib=1.3.2-r0
 
 COPY ${TARGETPLATFORM}/${CMD_NAME} /usr/local/bin/
