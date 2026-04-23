@@ -31,11 +31,13 @@ var (
 )
 
 var _ source.SyncableSource = &Source{}
+var _ source.WebhookSource = &Source{}
 
-// Source implements source.SyncableSource for Nexus Repository Manager.
+// Source implements source.SyncableSource and source.WebhookSource for Nexus Repository Manager.
 type Source struct {
-	config config
-	client *client
+	config        config
+	webhookConfig webhookConfig
+	client        *client
 
 	syncLock sync.Mutex
 }
@@ -47,14 +49,20 @@ func NewSource() (*Source, error) {
 		return nil, handleErr(err)
 	}
 
+	whCfg, err := loadWebhookConfigFromEnv()
+	if err != nil {
+		return nil, handleErr(err)
+	}
+
 	c, err := newClient(cfg)
 	if err != nil {
 		return nil, handleErr(err)
 	}
 
 	return &Source{
-		config: cfg,
-		client: c,
+		config:        cfg,
+		webhookConfig: whCfg,
+		client:        c,
 	}, nil
 }
 

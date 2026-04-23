@@ -45,6 +45,9 @@ func newTestSource(t *testing.T, handler http.Handler, specificRepository string
 			HTTPTimeout:        5 * time.Second,
 			SpecificRepository: specificRepository,
 		},
+		webhookConfig: webhookConfig{
+			WebhookPath: "/nexus/webhook",
+		},
 		client: &client{
 			baseURL:       u,
 			tokenName:     "test-token",

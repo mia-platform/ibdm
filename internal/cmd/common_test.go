@@ -31,13 +31,14 @@ func TestCompletion(t *testing.T) {
 		"no args, complete root commands": {
 			args: []string{},
 			expectedCompletion: []string{
-				"azure\tMicrosoft Azure integration",
 				"azure-devops\tMicrosoft Azure DevOps integration",
+				"azure\tMicrosoft Azure integration",
 				"bitbucket\tBitbucket integration",
+				"console\tMia Platform Console integration",
 				"gcp\tGoogle Cloud Platform integration",
 				"github\tGitHub integration",
-				"console\tMia Platform Console integration",
 				"gitlab\tGitLab integration",
+				"nexus\tSonatype Nexus Repository Manager integration",
 			},
 		},
 		"some args, no completions": {
