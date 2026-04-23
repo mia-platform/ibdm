@@ -88,12 +88,12 @@ func TestWebhookHandlerNoSecretAcceptsWithoutSignature(t *testing.T) {
 
 	apiComponent := map[string]any{
 		"id":         "comp-api-id",
-		"repository": "npm-proxy",
-		"format":     "npm",
-		"name":       "angular2",
-		"version":    "0.0.2",
+		"repository": "docker-hosted",
+		"format":     "docker",
+		"name":       "my-image",
+		"version":    "1.0.0",
 		"assets": []any{
-			map[string]any{"id": "asset1", "path": "angular2/0.0.2.tgz"},
+			map[string]any{"id": "asset1", "path": "v2/my-image/manifests/1.0.0"},
 		},
 	}
 
@@ -125,7 +125,7 @@ func TestWebhookHandlerNoSecretAcceptsWithoutSignature(t *testing.T) {
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
 	require.NoError(t, err)
 
-	body := []byte(`{"action":"CREATED","repositoryName":"npm-proxy","component":{"id":"08909bf0","componentId":"comp-api-id","format":"npm","name":"angular2","group":"types","version":"0.0.2"}}`)
+	body := []byte(`{"action":"CREATED","repositoryName":"docker-hosted","component":{"id":"08909bf0","componentId":"comp-api-id","format":"docker","name":"my-image","group":"","version":"1.0.0"}}`)
 	headers := http.Header{}
 	headers.Set(nexusEventHeader, componentEventKey)
 
@@ -147,12 +147,12 @@ func TestWebhookHandlerValidSignatureKnownEventCreated(t *testing.T) {
 	secret := "mysecret"
 	apiComponent := map[string]any{
 		"id":         "comp-api-id",
-		"repository": "npm-proxy",
-		"format":     "npm",
-		"name":       "angular2",
-		"version":    "0.0.2",
+		"repository": "docker-hosted",
+		"format":     "docker",
+		"name":       "my-image",
+		"version":    "1.0.0",
 		"assets": []any{
-			map[string]any{"id": "asset1", "path": "angular2/0.0.2.tgz"},
+			map[string]any{"id": "asset1", "path": "v2/my-image/manifests/1.0.0"},
 		},
 	}
 
@@ -185,7 +185,7 @@ func TestWebhookHandlerValidSignatureKnownEventCreated(t *testing.T) {
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
 	require.NoError(t, err)
 
-	body := []byte(`{"action":"CREATED","repositoryName":"npm-proxy","component":{"id":"08909bf0","componentId":"comp-api-id","format":"npm","name":"angular2","group":"types","version":"0.0.2"}}`)
+	body := []byte(`{"action":"CREATED","repositoryName":"docker-hosted","component":{"id":"08909bf0","componentId":"comp-api-id","format":"docker","name":"my-image","group":"","version":"1.0.0"}}`)
 	signature := computeNexusSignature(body, secret)
 
 	headers := http.Header{}
@@ -209,7 +209,7 @@ func TestWebhookHandlerValidSignatureKnownEventDeleted(t *testing.T) {
 	timeSource = func() time.Time { return testTime }
 
 	secret := "mysecret"
-	body := []byte(`{"action":"DELETED","repositoryName":"npm-proxy","component":{"id":"08909bf0","componentId":"comp-del-id","format":"npm","name":"angular2","group":"types","version":"0.0.2"}}`)
+	body := []byte(`{"action":"DELETED","repositoryName":"docker-hosted","component":{"id":"08909bf0","componentId":"comp-del-id","format":"docker","name":"my-image","group":"","version":"1.0.0"}}`)
 	signature := computeNexusSignature(body, secret)
 
 	s := &Source{

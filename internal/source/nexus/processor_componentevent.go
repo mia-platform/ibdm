@@ -16,6 +16,9 @@ const (
 	actionCreated = "CREATED"
 	// actionDeleted is the Nexus webhook action for deleted components.
 	actionDeleted = "DELETED"
+
+	// dockerFormat is the component format value for Docker images.
+	dockerFormat = "docker"
 )
 
 // componentWebhookPayload is the top-level Nexus webhook payload for rm:repository:component events.
@@ -42,11 +45,15 @@ type webhookComponentPayload struct {
 type componentEventProcessor struct{}
 
 // process implements eventProcessor for rm:repository:component events.
+// Only Docker-format components are processed, matching the sync-mode behaviour.
 // CREATED actions trigger an upsert of all component assets via REST API enrichment.
 // DELETED actions emit a single delete using the webhook payload data.
 func (p *componentEventProcessor) process(ctx context.Context, c *client, host string, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
-	// Guard: caller didn't request componentAsset type → skip.
-	if _, ok := typesToStream[componentAssetType]; !ok {
+	_, wantComponentAsset := typesToStream[componentAssetType]
+	_, wantDockerImage := typesToStream[dockerImageType]
+
+	// Guard: caller didn't request any known type → skip.
+	if !wantComponentAsset && !wantDockerImage {
 		return nil, nil
 	}
 
@@ -55,11 +62,16 @@ func (p *componentEventProcessor) process(ctx context.Context, c *client, host s
 		return nil, err
 	}
 
+	// Only Docker-format components are processed, matching sync-mode behaviour.
+	if payload.Component.Format != dockerFormat {
+		return nil, nil
+	}
+
 	switch payload.Action {
 	case actionCreated:
-		return processComponentCreated(ctx, c, host, payload)
+		return processComponentCreated(ctx, c, host, typesToStream, payload)
 	case actionDeleted:
-		return processComponentDeleted(host, payload)
+		return processComponentDeleted(host, typesToStream, payload)
 	default:
 		return nil, nil
 	}
@@ -75,49 +87,88 @@ func parseComponentEvent(body []byte) (*componentWebhookPayload, error) {
 }
 
 // processComponentCreated fetches the full component from the Nexus REST API and
-// emits one source.Data upsert per asset. If the API call fails, it falls back
-// to the webhook payload data (without asset-level details).
-func processComponentCreated(ctx context.Context, c *client, host string, payload *componentWebhookPayload) ([]source.Data, error) {
+// emits one or more source.Data upserts, mirroring the sync-mode fan-out:
+//   - one dockerimage entry (if requested)
+//   - one componentasset entry per asset (if requested)
+//
+// If the API call fails, it falls back to the webhook payload data.
+func processComponentCreated(ctx context.Context, c *client, host string, typesToStream map[string]source.Extra, payload *componentWebhookPayload) ([]source.Data, error) {
+	_, wantComponentAsset := typesToStream[componentAssetType]
+	_, wantDockerImage := typesToStream[dockerImageType]
+
 	fullComponent, err := c.getComponent(ctx, payload.Component.ComponentID)
 	if err != nil {
 		// Fall back to webhook data if the API call fails.
 		fullComponent = webhookPayloadToComponentMap(host, payload)
 	}
 
-	assets, _ := fullComponent["assets"].([]any)
-	if len(assets) == 0 {
-		// No assets available; emit a single upsert with component-level data.
-		return []source.Data{
-			{
+	var result []source.Data
+
+	if wantDockerImage {
+		result = append(result, source.Data{
+			Type:      dockerImageType,
+			Operation: source.DataOperationUpsert,
+			Values: map[string]any{
+				"host":    host,
+				"name":    fullComponent["name"],
+				"version": fullComponent["version"],
+			},
+			Time: timeSource(),
+		})
+	}
+
+	if wantComponentAsset {
+		assets, _ := fullComponent["assets"].([]any)
+		if len(assets) == 0 {
+			// No assets available; emit a single upsert with component-level data.
+			result = append(result, source.Data{
 				Type:      componentAssetType,
 				Operation: source.DataOperationUpsert,
 				Values:    fullComponent,
 				Time:      timeSource(),
-			},
-		}, nil
+			})
+		} else {
+			for _, rawAsset := range assets {
+				asset, ok := rawAsset.(map[string]any)
+				if !ok {
+					continue
+				}
+				result = append(result, source.Data{
+					Type:      componentAssetType,
+					Operation: source.DataOperationUpsert,
+					Values:    flattenComponentAsset(fullComponent, asset, host),
+					Time:      timeSource(),
+				})
+			}
+		}
 	}
 
-	result := make([]source.Data, 0, len(assets))
-	for _, rawAsset := range assets {
-		asset, ok := rawAsset.(map[string]any)
-		if !ok {
-			continue
-		}
-		result = append(result, source.Data{
-			Type:      componentAssetType,
-			Operation: source.DataOperationUpsert,
-			Values:    flattenComponentAsset(fullComponent, asset, host),
-			Time:      timeSource(),
-		})
-	}
 	return result, nil
 }
 
-// processComponentDeleted emits a single delete source.Data using the component
-// information available in the webhook payload.
-func processComponentDeleted(host string, payload *componentWebhookPayload) ([]source.Data, error) {
-	return []source.Data{
-		{
+// processComponentDeleted emits delete source.Data entries using the component
+// information available in the webhook payload, mirroring the sync-mode types.
+func processComponentDeleted(host string, typesToStream map[string]source.Extra, payload *componentWebhookPayload) ([]source.Data, error) {
+	_, wantComponentAsset := typesToStream[componentAssetType]
+	_, wantDockerImage := typesToStream[dockerImageType]
+
+	var result []source.Data
+
+	if wantDockerImage {
+		result = append(result, source.Data{
+			Type:      dockerImageType,
+			Operation: source.DataOperationDelete,
+			Values: map[string]any{
+				"host":    host,
+				"name":    payload.Component.Name,
+				"version": payload.Component.Version,
+			},
+			Time: timeSource(),
+		})
+	}
+
+	if wantComponentAsset {
+		result = append(result, source.Data{
 			Type:      componentAssetType,
 			Operation: source.DataOperationDelete,
 			Values: map[string]any{
@@ -130,8 +181,10 @@ func processComponentDeleted(host string, payload *componentWebhookPayload) ([]s
 				"version":    payload.Component.Version,
 			},
 			Time: timeSource(),
-		},
-	}, nil
+		})
+	}
+
+	return result, nil
 }
 
 // webhookPayloadToComponentMap converts a componentWebhookPayload to the map shape
