@@ -44,7 +44,7 @@ All configuration is read from environment variables.
 
 | Type | Sync | Webhook |
 | --- | --- | --- |
-| `dockerimage` | ✅ | ❌ |
+| `dockerimage` | ✅ | ✅ |
 | `componentasset` | ✅ | ✅ |
 
 ### `dockerimage` (sync only)
