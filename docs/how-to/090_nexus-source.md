@@ -47,11 +47,10 @@ All configuration is read from environment variables.
 | `dockerimage` | ✅ | ✅ |
 | `componentasset` | ✅ | ✅ |
 
-### `dockerimage` (sync only)
+### `dockerimage`
 
 One entry per Docker component. Each item contains the component-level fields `host`, `name`,
-and `version`. Available in sync mode only — the Nexus webhook payload does not carry the
-information required to populate this type.
+and `version`. Available in both sync and webhook modes.
 
 ### `componentasset` (sync and webhook)
 
@@ -60,8 +59,8 @@ Each item contains the component-level fields (`host`, `id`, `repository`, `form
 `name`, `version`, `tags`) plus a single `asset` object with the asset details. Mapping templates
 access asset fields via `{{ .asset.fieldName }}`.
 
-In sync mode the source operates on Docker repositories only — non-Docker components are skipped.
-In webhook mode all component formats are processed.
+In both sync and webhook modes the source operates on Docker repositories only — non-Docker
+components are skipped.
 
 ## Authentication
 
@@ -81,8 +80,11 @@ All other event types are silently ignored.
 
 | Action | Operation |
 | --- | --- |
-| `CREATED` | Upsert — fetches full component details from the REST API and emits one `componentasset` entry per asset. If the API call fails, the data from the webhook payload is used as a fallback. |
-| `DELETED` | Delete — emits a single `componentasset` delete using the identifiers from the webhook payload. |
+| `CREATED` | Upsert — fetches full component details from the REST API and emits one `dockerimage` entry (if requested) plus one `componentasset` entry per asset (if requested). If the API call fails, the data from the webhook payload is used as a fallback. |
+| `DELETED` | Delete — emits one `dockerimage` delete and/or one `componentasset` delete using the identifiers from the webhook payload, based on the configured types. |
+
+The event time recorded on each emitted item is taken from the `timestamp` field of the
+webhook payload (RFC 3339 format). Events with a missing or unparsable timestamp are skipped.
 
 ### Signature Validation
 
