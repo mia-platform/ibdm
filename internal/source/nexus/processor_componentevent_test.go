@@ -198,7 +198,7 @@ func TestComponentEventProcessorCreatedBothTypes(t *testing.T) {
 	}))
 
 	p := &componentEventProcessor{}
-	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"CREATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"3.0.0"}}`)
+	body := []byte(`{"timestamp":"2025-03-01T12:00:00.073+00:00","action":"CREATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"3.0.0"}}`)
 	typesToStream := map[string]source.Extra{dockerImageType: {}, componentAssetType: {}}
 
 	data, err := p.process(t.Context(), c, "nexus.example.com", typesToStream, body)
