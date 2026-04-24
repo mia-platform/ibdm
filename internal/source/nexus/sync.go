@@ -24,16 +24,16 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	}
 	defer s.syncLock.Unlock()
 
-	_, syncComponentAssets := typesToSync[componentAssetType]
+	_, syncDockerImages := typesToSync[dockerImageType]
 
 	// Log unknown types.
 	for typeKey := range typesToSync {
-		if typeKey != componentAssetType {
+		if typeKey != dockerImageType {
 			log.Debug("unknown type, skipping", "type", typeKey)
 		}
 	}
 
-	if !syncComponentAssets {
+	if !syncDockerImages {
 		log.Debug("no known types requested, nothing to do")
 		return nil
 	}
@@ -54,8 +54,8 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 
 		repoName, _ := repo["name"].(string)
 
-		if err := s.syncComponentAssets(ctx, log, s.config.URLHost, repoName, results); err != nil {
-			log.Error("failed to sync component-assets for repository", "repository", repoName, "error", err)
+		if err := s.syncDockerImages(ctx, log, s.config.URLHost, repoName, results); err != nil {
+			log.Error("failed to sync docker images for repository", "repository", repoName, "error", err)
 			continue
 		}
 	}
@@ -83,9 +83,9 @@ func (s *Source) resolveRepositories(ctx context.Context, log logger.Logger) ([]
 	return repos, nil
 }
 
-// syncComponentAssets fetches all components for a repository with pagination,
+// syncDockerImages fetches all components for a repository with pagination,
 // fans out each component's assets, and pushes one source.Data per asset.
-func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, host, repository string, results chan<- source.Data) error {
+func (s *Source) syncDockerImages(ctx context.Context, log logger.Logger, host, repository string, results chan<- source.Data) error {
 	continuationToken := ""
 	for {
 		if err := ctx.Err(); err != nil {
@@ -110,17 +110,6 @@ func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, hos
 				continue
 			}
 
-			results <- source.Data{
-				Type:      dockerImageType,
-				Operation: source.DataOperationUpsert,
-				Values: map[string]any{
-					"host":    host,
-					"name":    component["name"],
-					"version": component["version"],
-				},
-				Time: timeSource(),
-			}
-
 			for _, rawAsset := range assets {
 				asset, ok := rawAsset.(map[string]any)
 				if !ok {
@@ -129,7 +118,7 @@ func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, hos
 
 				values := flattenComponentAsset(component, asset, host)
 				results <- source.Data{
-					Type:      componentAssetType,
+					Type:      dockerImageType,
 					Operation: source.DataOperationUpsert,
 					Values:    values,
 					Time:      timeSource(),

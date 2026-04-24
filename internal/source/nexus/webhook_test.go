@@ -117,7 +117,7 @@ func TestWebhookHandlerNoSecretAcceptsWithoutSignature(t *testing.T) {
 		},
 	}
 
-	typesToStream := map[string]source.Extra{componentAssetType: {}}
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
@@ -132,7 +132,7 @@ func TestWebhookHandlerNoSecretAcceptsWithoutSignature(t *testing.T) {
 
 	select {
 	case d := <-results:
-		assert.Equal(t, componentAssetType, d.Type)
+		assert.Equal(t, dockerImageType, d.Type)
 		assert.Equal(t, source.DataOperationUpsert, d.Operation)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for result")
@@ -175,7 +175,7 @@ func TestWebhookHandlerValidSignatureKnownEventCreated(t *testing.T) {
 		},
 	}
 
-	typesToStream := map[string]source.Extra{componentAssetType: {}}
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
@@ -193,7 +193,69 @@ func TestWebhookHandlerValidSignatureKnownEventCreated(t *testing.T) {
 
 	select {
 	case d := <-results:
-		assert.Equal(t, componentAssetType, d.Type)
+		assert.Equal(t, dockerImageType, d.Type)
+		assert.Equal(t, source.DataOperationUpsert, d.Operation)
+		assert.Equal(t, testTime, d.Time)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for result")
+	}
+}
+
+func TestWebhookHandlerValidSignatureKnownEventUpdated(t *testing.T) {
+	secret := "mysecret"
+	apiComponent := map[string]any{
+		"id":         "comp-api-id",
+		"repository": "docker-hosted",
+		"format":     "docker",
+		"name":       "my-image",
+		"version":    "1.0.0",
+		"assets": []any{
+			map[string]any{"id": "asset1", "path": "v2/my-image/manifests/1.0.0"},
+		},
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(apiComponent)
+	}))
+	t.Cleanup(server.Close)
+
+	u, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	s := &Source{
+		config: config{URLHost: u.Host},
+		webhookConfig: webhookConfig{
+			WebhookSecret: secret,
+			WebhookPath:   "/nexus/webhook",
+		},
+		client: &client{
+			baseURL:       u,
+			tokenName:     "tok",
+			tokenPasscode: "pass",
+			httpClient:    server.Client(),
+		},
+	}
+
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	results := make(chan source.Data, 10)
+
+	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
+	require.NoError(t, err)
+
+	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"UPDATED","repositoryName":"docker-hosted","component":{"id":"08909bf0","componentId":"comp-api-id","format":"docker","name":"my-image","group":"","version":"1.0.0"}}`)
+	signature := computeNexusSignature(body, secret)
+
+	headers := http.Header{}
+	headers.Set(nexusSignatureHeader, signature)
+	headers.Set(nexusEventHeader, componentEventKey)
+
+	err = webhook.Handler(t.Context(), headers, body)
+	require.NoError(t, err)
+
+	select {
+	case d := <-results:
+		assert.Equal(t, dockerImageType, d.Type)
 		assert.Equal(t, source.DataOperationUpsert, d.Operation)
 		assert.Equal(t, testTime, d.Time)
 	case <-time.After(2 * time.Second):
@@ -215,7 +277,7 @@ func TestWebhookHandlerValidSignatureKnownEventDeleted(t *testing.T) {
 		client: &client{},
 	}
 
-	typesToStream := map[string]source.Extra{componentAssetType: {}}
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
@@ -230,9 +292,11 @@ func TestWebhookHandlerValidSignatureKnownEventDeleted(t *testing.T) {
 
 	select {
 	case d := <-results:
-		assert.Equal(t, componentAssetType, d.Type)
+		assert.Equal(t, dockerImageType, d.Type)
 		assert.Equal(t, source.DataOperationDelete, d.Operation)
-		assert.Equal(t, "comp-del-id", d.Values["id"])
+		assert.Equal(t, "nexus.example.com", d.Values["host"])
+		assert.Equal(t, "my-image", d.Values["name"])
+		assert.Equal(t, "1.0.0", d.Values["version"])
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for result")
 	}
@@ -269,7 +333,7 @@ func TestWebhookHandlerProcessorError(t *testing.T) {
 		client: &client{},
 	}
 
-	typesToStream := map[string]source.Extra{componentAssetType: {}}
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)

@@ -14,8 +14,7 @@ import (
 const (
 	loggerName = "ibdm:source:nexus"
 
-	dockerImageType    = "dockerimage"
-	componentAssetType = "componentasset"
+	dockerImageType = "dockerimage"
 )
 
 var (

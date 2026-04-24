@@ -45,19 +45,14 @@ All configuration is read from environment variables.
 | Type | Sync | Webhook |
 | --- | --- | --- |
 | `dockerimage` | ✅ | ✅ |
-| `componentasset` | ✅ | ✅ |
 
 ### `dockerimage`
 
-One entry per Docker component. Each item contains the component-level fields `host`, `name`,
-and `version`. Available in both sync and webhook modes.
-
-### `componentasset` (sync and webhook)
-
-Component assets with a fan-out design. For each component, the source emits one item per asset.
-Each item contains the component-level fields (`host`, `id`, `repository`, `format`, `group`,
-`name`, `version`, `tags`) plus a single `asset` object with the asset details. Mapping templates
-access asset fields via `{{ .asset.fieldName }}`.
+One entry per Docker image asset. The source fans out component assets: for each Docker component
+it emits one `dockerimage` item per asset. Each item contains component-level fields (`host`,
+`name`, `version`, `repository`, `format`, `tags`) plus a single `asset` object with asset-level
+details (`downloadUrl`, `checksum.sha256`, `lastModified`, `lastDownloaded`, etc.). Mapping
+templates access asset fields via `{{ .asset.fieldName }}`. Available in both sync and webhook modes.
 
 In both sync and webhook modes the source operates on Docker repositories only — non-Docker
 components are skipped.
@@ -80,8 +75,9 @@ All other event types are silently ignored.
 
 | Action | Operation |
 | --- | --- |
-| `CREATED` | Upsert — fetches full component details from the REST API and emits one `dockerimage` entry (if requested) plus one `componentasset` entry per asset (if requested). If the API call fails, the event is logged and skipped. |
-| `DELETED` | Delete — emits one `dockerimage` delete and/or one `componentasset` delete using the identifiers from the webhook payload, based on the configured types. |
+| `CREATED` | Upsert — fetches full component details from the REST API and emits one `dockerimage` entry per asset. If the API call fails, the event is logged and skipped. |
+| `UPDATED` | Upsert — same behaviour as `CREATED`: fetches full component details and emits one `dockerimage` entry per asset. |
+| `DELETED` | Delete — emits one `dockerimage` delete using the `host`, `name`, and `version` from the webhook payload. No API call is made. |
 
 The event time recorded on each emitted item is taken from the `timestamp` field of the
 webhook payload (RFC 3339 format). Events with a missing or unparsable timestamp are skipped.
@@ -102,11 +98,10 @@ in the Nexus administration UI.
 
 Example mapping files are provided in the `docs/examples/nexus/mappings/` directory:
 
-- `dockerimages.yaml` — maps Docker image components to Catalog items.
-- `componentassets.yaml` — maps component assets to Catalog items.
+- `dockerimages.yaml` — maps Docker image assets to Catalog items.
 
-These files can be used as a starting point for your own mapping configurations. Pass the folder
-or a specific file to the `--mapping-file` flag:
+This file can be used as a starting point for your own mapping configuration. Pass the file
+or the folder to the `--mapping-file` flag:
 
 ```sh
 ibdm sync nexus --mapping-file docs/examples/nexus/mappings/

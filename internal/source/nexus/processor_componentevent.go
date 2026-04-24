@@ -16,6 +16,8 @@ import (
 const (
 	// actionCreated is the Nexus webhook action for newly created components.
 	actionCreated = "CREATED"
+	// actionUpdated is the Nexus webhook action for updated components.
+	actionUpdated = "UPDATED"
 	// actionDeleted is the Nexus webhook action for deleted components.
 	actionDeleted = "DELETED"
 
@@ -51,11 +53,10 @@ type componentEventProcessor struct{}
 // CREATED actions trigger an upsert of all component assets via REST API enrichment.
 // DELETED actions emit a single delete using the webhook payload data.
 func (p *componentEventProcessor) process(ctx context.Context, c *client, host string, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
-	_, wantComponentAsset := typesToStream[componentAssetType]
 	_, wantDockerImage := typesToStream[dockerImageType]
 
 	// Guard: caller didn't request any known type → skip.
-	if !wantComponentAsset && !wantDockerImage {
+	if !wantDockerImage {
 		return nil, nil
 	}
 
@@ -75,10 +76,10 @@ func (p *componentEventProcessor) process(ctx context.Context, c *client, host s
 	}
 
 	switch payload.Action {
-	case actionCreated:
-		return processComponentCreated(ctx, c, host, typesToStream, payload, eventTime)
+	case actionCreated, actionUpdated:
+		return processComponentUpserted(ctx, c, host, payload, eventTime)
 	case actionDeleted:
-		return processComponentDeleted(host, typesToStream, payload, eventTime)
+		return processComponentDeleted(host, payload, eventTime)
 	default:
 		return nil, nil
 	}
@@ -93,104 +94,46 @@ func parseComponentEvent(body []byte) (*componentWebhookPayload, error) {
 	return &payload, nil
 }
 
-// processComponentCreated fetches the full component from the Nexus REST API and
-// emits one or more source.Data upserts, mirroring the sync-mode fan-out:
-//   - one dockerimage entry (if requested)
-//   - one componentasset entry per asset (if requested)
-//
+// processComponentUpserted fetches the full component from the Nexus REST API and
+// emits one source.Data upsert per asset, mirroring the sync-mode fan-out.
 // Returns an error if the API call fails so the event is logged and skipped.
-func processComponentCreated(ctx context.Context, c *client, host string, typesToStream map[string]source.Extra, payload *componentWebhookPayload, eventTime time.Time) ([]source.Data, error) {
-	_, wantComponentAsset := typesToStream[componentAssetType]
-	_, wantDockerImage := typesToStream[dockerImageType]
-
+func processComponentUpserted(ctx context.Context, c *client, host string, payload *componentWebhookPayload, eventTime time.Time) ([]source.Data, error) {
 	fullComponent, err := c.getComponent(ctx, payload.Component.ComponentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch component %q from Nexus API: %w", payload.Component.ComponentID, err)
 	}
 
+	assets, _ := fullComponent["assets"].([]any)
 	var result []source.Data
-
-	if wantDockerImage {
+	for _, rawAsset := range assets {
+		asset, ok := rawAsset.(map[string]any)
+		if !ok {
+			continue
+		}
 		result = append(result, source.Data{
 			Type:      dockerImageType,
 			Operation: source.DataOperationUpsert,
-			Values: map[string]any{
-				"host":    host,
-				"name":    fullComponent["name"],
-				"version": fullComponent["version"],
-			},
-			Time: eventTime,
+			Values:    flattenComponentAsset(fullComponent, asset, host),
+			Time:      eventTime,
 		})
-	}
-
-	if wantComponentAsset {
-		assets, _ := fullComponent["assets"].([]any)
-		if len(assets) == 0 {
-			// No assets available; emit a single upsert with component-level data.
-			result = append(result, source.Data{
-				Type:      componentAssetType,
-				Operation: source.DataOperationUpsert,
-				Values:    fullComponent,
-				Time:      eventTime,
-			})
-		} else {
-			for _, rawAsset := range assets {
-				asset, ok := rawAsset.(map[string]any)
-				if !ok {
-					continue
-				}
-				result = append(result, source.Data{
-					Type:      componentAssetType,
-					Operation: source.DataOperationUpsert,
-					Values:    flattenComponentAsset(fullComponent, asset, host),
-					Time:      eventTime,
-				})
-			}
-		}
 	}
 
 	return result, nil
 }
 
-// processComponentDeleted emits delete source.Data entries using the component
-// information available in the webhook payload, mirroring the sync-mode types.
-func processComponentDeleted(host string, typesToStream map[string]source.Extra, payload *componentWebhookPayload, eventTime time.Time) ([]source.Data, error) {
-	_, wantComponentAsset := typesToStream[componentAssetType]
-	_, wantDockerImage := typesToStream[dockerImageType]
-
-	var result []source.Data
-
-	if wantDockerImage {
-		result = append(result, source.Data{
-			Type:      dockerImageType,
-			Operation: source.DataOperationDelete,
-			Values: map[string]any{
-				"host":    host,
-				"name":    payload.Component.Name,
-				"version": payload.Component.Version,
-			},
-			Time: eventTime,
-		})
-	}
-
-	if wantComponentAsset {
-		result = append(result, source.Data{
-			Type:      componentAssetType,
-			Operation: source.DataOperationDelete,
-			Values: map[string]any{
-				"host":       host,
-				"id":         payload.Component.ComponentID,
-				"repository": payload.RepositoryName,
-				"format":     payload.Component.Format,
-				"group":      payload.Component.Group,
-				"name":       payload.Component.Name,
-				"version":    payload.Component.Version,
-			},
-			Time: eventTime,
-		})
-	}
-
-	return result, nil
+// processComponentDeleted emits a single delete source.Data for the dockerimage type
+// using the component identifiers available in the webhook payload (no API call required).
+func processComponentDeleted(host string, payload *componentWebhookPayload, eventTime time.Time) ([]source.Data, error) {
+	return []source.Data{{
+		Type:      dockerImageType,
+		Operation: source.DataOperationDelete,
+		Values: map[string]any{
+			"host":    host,
+			"name":    payload.Component.Name,
+			"version": payload.Component.Version,
+		},
+		Time: eventTime,
+	}}, nil
 }
 
 // parseWebhookTimestamp parses the Nexus webhook timestamp field (RFC 3339) into a time.Time.

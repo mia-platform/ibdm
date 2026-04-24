@@ -85,33 +85,23 @@ func TestStartSyncProcess(t *testing.T) {
 		expectedDataCount  int
 		validateData       func(t *testing.T, data []source.Data)
 	}{
-		"sync component assets from all repos": {
+		"sync docker images from all repos": {
 			handler:     standardMux(),
-			typesToSync: map[string]source.Extra{componentAssetType: {}},
-			// docker-hosted: 1 dockerImageType + 2 componentAssetType; maven-central: 0 (non-docker skipped)
-			expectedDataCount: 3,
+			typesToSync: map[string]source.Extra{dockerImageType: {}},
+			// docker-hosted: 2 dockerImageType (one per asset); maven-central: 0 (non-docker skipped)
+			expectedDataCount: 2,
 			validateData: func(t *testing.T, data []source.Data) {
 				t.Helper()
-				dockerImageCount := 0
-				componentAssetCount := 0
 				for _, d := range data {
+					assert.Equal(t, dockerImageType, d.Type)
 					assert.Equal(t, source.DataOperationUpsert, d.Operation)
 					assert.Equal(t, testTime, d.Time)
 					assert.NotEmpty(t, d.Values["host"])
-					switch d.Type {
-					case dockerImageType:
-						dockerImageCount++
-						assert.Equal(t, "my-image", d.Values["name"])
-						assert.Equal(t, "1.0.0", d.Values["version"])
-					case componentAssetType:
-						componentAssetCount++
-						assert.NotNil(t, d.Values["asset"])
-						assert.Nil(t, d.Values["assets"])
-						assert.Equal(t, "my-image", d.Values["name"])
-					}
+					assert.Equal(t, "my-image", d.Values["name"])
+					assert.Equal(t, "1.0.0", d.Values["version"])
+					assert.NotNil(t, d.Values["asset"])
+					assert.Nil(t, d.Values["assets"])
 				}
-				assert.Equal(t, 1, dockerImageCount)
-				assert.Equal(t, 2, componentAssetCount)
 			},
 		},
 		"sync with specific repository": {
@@ -133,14 +123,15 @@ func TestStartSyncProcess(t *testing.T) {
 				return mux
 			}(),
 			specificRepository: "docker-hosted",
-			typesToSync:        map[string]source.Extra{componentAssetType: {}},
-			// 1 dockerImageType + 2 componentAssetType
-			expectedDataCount: 3,
+			typesToSync:        map[string]source.Extra{dockerImageType: {}},
+			// 2 dockerImageType (one per asset)
+			expectedDataCount: 2,
 			validateData: func(t *testing.T, data []source.Data) {
 				t.Helper()
 				for _, d := range data {
-					assert.Contains(t, []string{dockerImageType, componentAssetType}, d.Type)
+					assert.Equal(t, dockerImageType, d.Type)
 					assert.NotEmpty(t, d.Values["host"])
+					assert.NotNil(t, d.Values["asset"])
 				}
 			},
 		},
@@ -231,29 +222,23 @@ func TestFanOut(t *testing.T) {
 		data = collectData(t, ch)
 	}()
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{componentAssetType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{dockerImageType: {}}, ch)
 	close(ch)
 	<-done
 
 	require.NoError(t, err)
-	// 1 dockerImageType + 3 componentAssetType
-	require.Len(t, data, 4)
+	// 3 dockerImageType (one per asset)
+	require.Len(t, data, 3)
 
-	// First entry is the dockerImageType for the component.
-	assert.Equal(t, dockerImageType, data[0].Type)
-	assert.Equal(t, "my-image", data[0].Values["name"])
-	assert.Equal(t, "2.0.0", data[0].Values["version"])
-	assert.Equal(t, s.config.URLHost, data[0].Values["host"])
-
-	// Remaining entries are componentAssetType, one per asset.
+	// Each entry is a dockerImageType, one per asset, enriched with flattenComponentAsset.
 	expectedAssets := []struct{ id, path string }{
 		{"a1", "v2/my-image/manifests/2.0.0"},
 		{"a2", "v2/my-image/blobs/sha256:aaa"},
 		{"a3", "v2/my-image/blobs/sha256:bbb"},
 	}
 	for i, expected := range expectedAssets {
-		d := data[i+1]
-		assert.Equal(t, componentAssetType, d.Type)
+		d := data[i]
+		assert.Equal(t, dockerImageType, d.Type)
 		assert.Equal(t, "my-image", d.Values["name"])
 		assert.Equal(t, "2.0.0", d.Values["version"])
 		assert.Equal(t, "docker", d.Values["format"])
@@ -307,7 +292,7 @@ func TestZeroAssetsSkipped(t *testing.T) {
 		data = collectData(t, ch)
 	}()
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{componentAssetType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{dockerImageType: {}}, ch)
 	close(ch)
 	<-done
 
@@ -329,7 +314,7 @@ func TestConcurrencyGuard(t *testing.T) {
 	s.syncLock.Lock()
 
 	ch := make(chan source.Data, 100)
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{componentAssetType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{dockerImageType: {}}, ch)
 	close(ch)
 
 	assert.NoError(t, err)
@@ -370,7 +355,7 @@ func TestContextCancellationInSync(t *testing.T) {
 	ch := make(chan source.Data, 100)
 	done := make(chan error, 1)
 	go func() {
-		done <- s.StartSyncProcess(ctx, map[string]source.Extra{componentAssetType: {}}, ch)
+		done <- s.StartSyncProcess(ctx, map[string]source.Extra{dockerImageType: {}}, ch)
 		close(ch)
 	}()
 

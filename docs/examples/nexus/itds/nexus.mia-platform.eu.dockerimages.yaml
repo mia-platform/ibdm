@@ -37,5 +37,32 @@ spec:
                   description: The repository containing this Docker image.
                   type: string
                   title: Repository
+                format:
+                  description: The component format (e.g. docker).
+                  type: string
+                  title: Format
+                tags:
+                  description: Tags associated with this Docker image.
+                  type: array
+                  title: Tags
+                  additionalProperties: true
+                downloadUrl:
+                  description: URL to download the image manifest asset.
+                  type: string
+                  title: Download URL
+                sha256:
+                  description: SHA-256 checksum of the image manifest asset.
+                  type: string
+                  title: SHA-256
+                lastModified:
+                  description: Timestamp of the last modification to the image manifest asset.
+                  type: string
+                  format: date-time
+                  title: Last Modified
+                lastDownloaded:
+                  description: Timestamp of the last download of the image manifest asset.
+                  type: string
+                  format: date-time
+                  title: Last Downloaded
       served: true
       storage: true

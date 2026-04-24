@@ -74,7 +74,7 @@ func TestComponentEventProcessorMalformedBody(t *testing.T) {
 	t.Parallel()
 
 	p := &componentEventProcessor{}
-	typesToStream := map[string]source.Extra{componentAssetType: {}}
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, []byte(`not json`))
 	require.Error(t, err)
@@ -88,7 +88,7 @@ func TestComponentEventProcessorNonDockerFormatSkipped(t *testing.T) {
 	p := &componentEventProcessor{}
 	// npm format — must be skipped regardless of action or requested types.
 	body := []byte(`{"action":"CREATED","repositoryName":"npm-proxy","component":{"componentId":"id1","format":"npm","name":"angular2","version":"0.0.2"}}`)
-	typesToStream := map[string]source.Extra{componentAssetType: {}, dockerImageType: {}}
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, body)
 	require.NoError(t, err)
@@ -99,55 +99,15 @@ func TestComponentEventProcessorUnknownAction(t *testing.T) {
 	t.Parallel()
 
 	p := &componentEventProcessor{}
-	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"UPDATED","repositoryName":"docker-hosted","component":{"componentId":"id1","format":"docker","name":"img","version":"1.0.0"}}`)
-	typesToStream := map[string]source.Extra{componentAssetType: {}}
+	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"PURGED","repositoryName":"docker-hosted","component":{"componentId":"id1","format":"docker","name":"img","version":"1.0.0"}}`)
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, body)
 	require.NoError(t, err)
 	assert.Nil(t, data)
 }
 
-func TestComponentEventProcessorCreatedOnlyComponentAsset(t *testing.T) {
-	componentID := "docker-hosted:component-id-001"
-	apiComponent := map[string]any{
-		"id":         componentID,
-		"repository": "docker-hosted",
-		"format":     "docker",
-		"group":      "",
-		"name":       "my-image",
-		"version":    "1.0.0",
-		"assets": []any{
-			map[string]any{
-				"id":         "asset1",
-				"path":       "v2/my-image/manifests/1.0.0",
-				"repository": "docker-hosted",
-				"format":     "docker",
-			},
-		},
-	}
-
-	c := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(apiComponent)
-	}))
-
-	p := &componentEventProcessor{}
-	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"CREATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"1.0.0"}}`)
-	typesToStream := map[string]source.Extra{componentAssetType: {}}
-
-	data, err := p.process(t.Context(), c, "nexus.example.com", typesToStream, body)
-	require.NoError(t, err)
-	require.Len(t, data, 1)
-	assert.Equal(t, componentAssetType, data[0].Type)
-	assert.Equal(t, source.DataOperationUpsert, data[0].Operation)
-	assert.Equal(t, testTime, data[0].Time)
-	assert.Equal(t, "nexus.example.com", data[0].Values["host"])
-	assert.Equal(t, componentID, data[0].Values["id"])
-	assert.Equal(t, "docker-hosted", data[0].Values["repository"])
-	assert.NotNil(t, data[0].Values["asset"])
-}
-
-func TestComponentEventProcessorCreatedOnlyDockerImage(t *testing.T) {
+func TestComponentEventProcessorCreated(t *testing.T) {
 	componentID := "docker-hosted:component-id-002"
 	apiComponent := map[string]any{
 		"id":         componentID,
@@ -155,7 +115,14 @@ func TestComponentEventProcessorCreatedOnlyDockerImage(t *testing.T) {
 		"format":     "docker",
 		"name":       "my-image",
 		"version":    "2.0.0",
-		"assets":     []any{},
+		"assets": []any{
+			map[string]any{
+				"id":         "asset1",
+				"path":       "v2/my-image/manifests/2.0.0",
+				"repository": "docker-hosted",
+				"format":     "docker",
+			},
+		},
 	}
 
 	c := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -176,10 +143,12 @@ func TestComponentEventProcessorCreatedOnlyDockerImage(t *testing.T) {
 	assert.Equal(t, "nexus.example.com", data[0].Values["host"])
 	assert.Equal(t, "my-image", data[0].Values["name"])
 	assert.Equal(t, "2.0.0", data[0].Values["version"])
+	assert.Equal(t, "docker-hosted", data[0].Values["repository"])
+	assert.NotNil(t, data[0].Values["asset"])
 }
 
-func TestComponentEventProcessorCreatedBothTypes(t *testing.T) {
-	componentID := "docker-hosted:component-id-003"
+func TestComponentEventProcessorUpdated(t *testing.T) {
+	componentID := "docker-hosted:component-id-upd-001"
 	apiComponent := map[string]any{
 		"id":         componentID,
 		"repository": "docker-hosted",
@@ -187,8 +156,12 @@ func TestComponentEventProcessorCreatedBothTypes(t *testing.T) {
 		"name":       "my-image",
 		"version":    "3.0.0",
 		"assets": []any{
-			map[string]any{"id": "asset1", "path": "v2/my-image/manifests/3.0.0"},
-			map[string]any{"id": "asset2", "path": "v2/my-image/blobs/sha256:abc"},
+			map[string]any{
+				"id":         "asset1",
+				"path":       "v2/my-image/manifests/3.0.0",
+				"repository": "docker-hosted",
+				"format":     "docker",
+			},
 		},
 	}
 
@@ -198,27 +171,20 @@ func TestComponentEventProcessorCreatedBothTypes(t *testing.T) {
 	}))
 
 	p := &componentEventProcessor{}
-	body := []byte(`{"timestamp":"2025-03-01T12:00:00.073+00:00","action":"CREATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"3.0.0"}}`)
-	typesToStream := map[string]source.Extra{dockerImageType: {}, componentAssetType: {}}
+	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"UPDATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"3.0.0"}}`)
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), c, "nexus.example.com", typesToStream, body)
 	require.NoError(t, err)
-	// 1 dockerimage + 2 componentasset (one per asset)
-	require.Len(t, data, 3)
-
-	dockerImages := filterByType(data, dockerImageType)
-	componentAssets := filterByType(data, componentAssetType)
-	require.Len(t, dockerImages, 1)
-	require.Len(t, componentAssets, 2)
-
-	assert.Equal(t, source.DataOperationUpsert, dockerImages[0].Operation)
-	assert.Equal(t, "my-image", dockerImages[0].Values["name"])
-	assert.Equal(t, "3.0.0", dockerImages[0].Values["version"])
-
-	for _, ca := range componentAssets {
-		assert.Equal(t, source.DataOperationUpsert, ca.Operation)
-		assert.NotNil(t, ca.Values["asset"])
-	}
+	require.Len(t, data, 1)
+	assert.Equal(t, dockerImageType, data[0].Type)
+	assert.Equal(t, source.DataOperationUpsert, data[0].Operation)
+	assert.Equal(t, testTime, data[0].Time)
+	assert.Equal(t, "nexus.example.com", data[0].Values["host"])
+	assert.Equal(t, "my-image", data[0].Values["name"])
+	assert.Equal(t, "3.0.0", data[0].Values["version"])
+	assert.Equal(t, "docker-hosted", data[0].Values["repository"])
+	assert.NotNil(t, data[0].Values["asset"])
 }
 
 func TestComponentEventProcessorCreatedAPIError(t *testing.T) {
@@ -240,7 +206,7 @@ func TestComponentEventProcessorCreatedAPIError(t *testing.T) {
 	p := &componentEventProcessor{}
 	componentID := "some-component-id"
 	body := []byte(`{"timestamp":"2025-03-01T12:00:00.073+00:00","action":"CREATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"1.0.0"}}`)
-	typesToStream := map[string]source.Extra{componentAssetType: {}}
+	typesToStream := map[string]source.Extra{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), c, "nexus.example.com", typesToStream, body)
 	require.Error(t, err)
@@ -248,27 +214,7 @@ func TestComponentEventProcessorCreatedAPIError(t *testing.T) {
 	assert.Nil(t, data)
 }
 
-func TestComponentEventProcessorDeletedOnlyComponentAsset(t *testing.T) {
-	p := &componentEventProcessor{}
-	componentID := "docker-hosted:component-del-id"
-	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"DELETED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"1.0.0"}}`)
-	typesToStream := map[string]source.Extra{componentAssetType: {}}
-
-	data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, body)
-	require.NoError(t, err)
-	require.Len(t, data, 1)
-	assert.Equal(t, componentAssetType, data[0].Type)
-	assert.Equal(t, source.DataOperationDelete, data[0].Operation)
-	assert.Equal(t, testTime, data[0].Time)
-	assert.Equal(t, "nexus.example.com", data[0].Values["host"])
-	assert.Equal(t, componentID, data[0].Values["id"])
-	assert.Equal(t, "docker-hosted", data[0].Values["repository"])
-	assert.Equal(t, "docker", data[0].Values["format"])
-	assert.Equal(t, "my-image", data[0].Values["name"])
-	assert.Equal(t, "1.0.0", data[0].Values["version"])
-}
-
-func TestComponentEventProcessorDeletedOnlyDockerImage(t *testing.T) {
+func TestComponentEventProcessorDeleted(t *testing.T) {
 	p := &componentEventProcessor{}
 	componentID := "docker-hosted:component-del-id-2"
 	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"DELETED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"2.0.0"}}`)
@@ -282,29 +228,6 @@ func TestComponentEventProcessorDeletedOnlyDockerImage(t *testing.T) {
 	assert.Equal(t, "nexus.example.com", data[0].Values["host"])
 	assert.Equal(t, "my-image", data[0].Values["name"])
 	assert.Equal(t, "2.0.0", data[0].Values["version"])
-}
-
-func TestComponentEventProcessorDeletedBothTypes(t *testing.T) {
-	p := &componentEventProcessor{}
-	componentID := "docker-hosted:component-del-id-3"
-	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"DELETED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"mygroup","version":"3.0.0"}}`)
-	typesToStream := map[string]source.Extra{dockerImageType: {}, componentAssetType: {}}
-
-	data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, body)
-	require.NoError(t, err)
-	require.Len(t, data, 2)
-
-	dockerImages := filterByType(data, dockerImageType)
-	componentAssets := filterByType(data, componentAssetType)
-	require.Len(t, dockerImages, 1)
-	require.Len(t, componentAssets, 1)
-
-	assert.Equal(t, source.DataOperationDelete, dockerImages[0].Operation)
-	assert.Equal(t, "my-image", dockerImages[0].Values["name"])
-
-	assert.Equal(t, source.DataOperationDelete, componentAssets[0].Operation)
-	assert.Equal(t, componentID, componentAssets[0].Values["id"])
-	assert.Equal(t, "mygroup", componentAssets[0].Values["group"])
 }
 
 func TestComponentEventProcessorMissingTimestamp(t *testing.T) {
@@ -328,22 +251,11 @@ func TestComponentEventProcessorMissingTimestamp(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			p := &componentEventProcessor{}
-			typesToStream := map[string]source.Extra{componentAssetType: {}}
+			typesToStream := map[string]source.Extra{dockerImageType: {}}
 			data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, tc.body)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.errText)
 			assert.Nil(t, data)
 		})
 	}
-}
-
-// filterByType returns items from data whose Type matches the given type.
-func filterByType(data []source.Data, typ string) []source.Data {
-	var result []source.Data
-	for _, d := range data {
-		if d.Type == typ {
-			result = append(result, d)
-		}
-	}
-	return result
 }
