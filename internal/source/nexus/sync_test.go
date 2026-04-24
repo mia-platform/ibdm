@@ -8,106 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/source"
 )
-
-var testTime = time.Date(2025, time.March, 1, 12, 0, 0, 0, time.UTC)
-
-func init() {
-	timeSource = func() time.Time {
-		return testTime
-	}
-}
-
-func newTestSource(t *testing.T, handler http.Handler, specificRepository string) *Source {
-	t.Helper()
-
-	server := httptest.NewServer(handler)
-	t.Cleanup(server.Close)
-
-	u, err := url.Parse(server.URL)
-	require.NoError(t, err)
-
-	return &Source{
-		config: config{
-			URLSchema:          u.Scheme,
-			URLHost:            u.Host,
-			TokenName:          "test-token",
-			TokenPasscode:      "test-passcode",
-			HTTPTimeout:        5 * time.Second,
-			SpecificRepository: specificRepository,
-		},
-		webhookConfig: webhookConfig{
-			WebhookPath: "/nexus/webhook",
-		},
-		client: &client{
-			baseURL:       u,
-			tokenName:     "test-token",
-			tokenPasscode: "test-passcode",
-			httpClient: &http.Client{
-				Timeout: 5 * time.Second,
-			},
-		},
-	}
-}
-
-func collectData(t *testing.T, ch <-chan source.Data) []source.Data {
-	t.Helper()
-	var result []source.Data
-	for d := range ch {
-		result = append(result, d)
-	}
-	return result
-}
-
-func TestNewSource(t *testing.T) {
-	testCases := map[string]struct {
-		setupEnv    func(t *testing.T)
-		expectErr   bool
-		expectErrIs error
-	}{
-		"valid configuration": {
-			setupEnv: func(t *testing.T) {
-				t.Helper()
-				t.Setenv("NEXUS_URL_SCHEMA", "https")
-				t.Setenv("NEXUS_URL_HOST", "nexus.example.com")
-				t.Setenv("NEXUS_TOKEN_NAME", "mytoken")
-				t.Setenv("NEXUS_TOKEN_PASSCODE", "secret")
-			},
-		},
-		"missing required env vars": {
-			setupEnv: func(t *testing.T) {
-				t.Helper()
-			},
-			expectErr:   true,
-			expectErrIs: ErrNexusSource,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			tc.setupEnv(t)
-			s, err := NewSource()
-			if tc.expectErr {
-				require.Error(t, err)
-				if tc.expectErrIs != nil {
-					require.ErrorIs(t, err, tc.expectErrIs)
-				}
-				return
-			}
-			require.NoError(t, err)
-			require.NotNil(t, s)
-		})
-	}
-}
 
 func TestStartSyncProcess(t *testing.T) {
 	t.Parallel()
@@ -434,7 +341,6 @@ func TestConcurrencyGuard(t *testing.T) {
 func TestContextCancellationInSync(t *testing.T) {
 	t.Parallel()
 
-	callCount := 0
 	mux := http.NewServeMux()
 	mux.HandleFunc("/service/rest/v1/repositories", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -443,7 +349,6 @@ func TestContextCancellationInSync(t *testing.T) {
 		})
 	})
 	mux.HandleFunc("/service/rest/v1/components", func(w http.ResponseWriter, _ *http.Request) {
-		callCount++
 		w.Header().Set("Content-Type", "application/json")
 		token := "next"
 		_ = json.NewEncoder(w).Encode(componentsPageResponse{
