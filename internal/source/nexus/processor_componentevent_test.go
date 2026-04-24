@@ -221,7 +221,7 @@ func TestComponentEventProcessorCreatedBothTypes(t *testing.T) {
 	}
 }
 
-func TestComponentEventProcessorCreatedAPIFallback(t *testing.T) {
+func TestComponentEventProcessorCreatedAPIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -238,17 +238,14 @@ func TestComponentEventProcessorCreatedAPIFallback(t *testing.T) {
 	}
 
 	p := &componentEventProcessor{}
-	componentID := "fallback-component-id"
+	componentID := "some-component-id"
 	body := []byte(`{"timestamp":"2025-03-01T12:00:00.073+00:00","action":"CREATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"1.0.0"}}`)
 	typesToStream := map[string]source.Extra{componentAssetType: {}}
 
 	data, err := p.process(t.Context(), c, "nexus.example.com", typesToStream, body)
-	require.NoError(t, err)
-	require.Len(t, data, 1)
-	assert.Equal(t, componentAssetType, data[0].Type)
-	assert.Equal(t, source.DataOperationUpsert, data[0].Operation)
-	assert.Equal(t, componentID, data[0].Values["id"])
-	assert.Equal(t, "docker-hosted", data[0].Values["repository"])
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), componentID)
+	assert.Nil(t, data)
 }
 
 func TestComponentEventProcessorDeletedOnlyComponentAsset(t *testing.T) {

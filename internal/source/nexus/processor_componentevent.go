@@ -98,15 +98,14 @@ func parseComponentEvent(body []byte) (*componentWebhookPayload, error) {
 //   - one dockerimage entry (if requested)
 //   - one componentasset entry per asset (if requested)
 //
-// If the API call fails, it falls back to the webhook payload data.
+// Returns an error if the API call fails so the event is logged and skipped.
 func processComponentCreated(ctx context.Context, c *client, host string, typesToStream map[string]source.Extra, payload *componentWebhookPayload, eventTime time.Time) ([]source.Data, error) {
 	_, wantComponentAsset := typesToStream[componentAssetType]
 	_, wantDockerImage := typesToStream[dockerImageType]
 
 	fullComponent, err := c.getComponent(ctx, payload.Component.ComponentID)
 	if err != nil {
-		// Fall back to webhook data if the API call fails.
-		fullComponent = webhookPayloadToComponentMap(host, payload)
+		return nil, fmt.Errorf("failed to fetch component %q from Nexus API: %w", payload.Component.ComponentID, err)
 	}
 
 	var result []source.Data
@@ -194,9 +193,8 @@ func processComponentDeleted(host string, typesToStream map[string]source.Extra,
 	return result, nil
 }
 
-// parseWebhookTimestamp parses the Nexus webhook timestamp field into a UTC time.
-// Returns an error only if the field is empty. When the field is present but cannot
-// be parsed, it falls back to timeSource() so the event is not discarded.
+// parseWebhookTimestamp parses the Nexus webhook timestamp field (RFC 3339) into a time.Time.
+// Returns an error if the field is empty or cannot be parsed.
 func parseWebhookTimestamp(ts string) (time.Time, error) {
 	if ts == "" {
 		return time.Time{}, errors.New("component event timestamp is missing from webhook payload")
@@ -206,18 +204,4 @@ func parseWebhookTimestamp(ts string) (time.Time, error) {
 		return time.Time{}, errors.New("invalid component event timestamp format in webhook payload")
 	}
 	return t, nil
-}
-
-// webhookPayloadToComponentMap converts a componentWebhookPayload to the map shape
-// expected by flattenComponentAsset, used as fallback when the REST API is unavailable.
-func webhookPayloadToComponentMap(host string, payload *componentWebhookPayload) map[string]any {
-	return map[string]any{
-		"host":       host,
-		"id":         payload.Component.ComponentID,
-		"repository": payload.RepositoryName,
-		"format":     payload.Component.Format,
-		"group":      payload.Component.Group,
-		"name":       payload.Component.Name,
-		"version":    payload.Component.Version,
-	}
 }
