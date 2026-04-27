@@ -46,23 +46,30 @@ spec:
                   type: array
                   title: Tags
                   additionalProperties: true
-                downloadUrl:
-                  description: URL to download the image manifest asset.
-                  type: string
-                  title: Download URL
-                sha256:
-                  description: SHA-256 checksum of the image manifest asset.
-                  type: string
-                  title: SHA-256
-                lastModified:
-                  description: Timestamp of the last modification to the image manifest asset.
-                  type: string
-                  format: date-time
-                  title: Last Modified
-                lastDownloaded:
-                  description: Timestamp of the last download of the image manifest asset.
-                  type: string
-                  format: date-time
-                  title: Last Downloaded
+                assets:
+                  description: The list of assets belonging to this Docker image component.
+                  type: array
+                  title: Assets
+                  items:
+                    type: object
+                    properties:
+                      sha256:
+                        description: SHA-256 checksum of the asset.
+                        type: string
+                        title: SHA-256
+                      downloadUrl:
+                        description: URL to download the asset.
+                        type: string
+                        title: Download URL
+                      lastModified:
+                        description: Timestamp of the last modification to the asset.
+                        type: string
+                        format: date-time
+                        title: Last Modified
+                      lastDownloaded:
+                        description: Timestamp of the last download of the asset.
+                        type: string
+                        format: date-time
+                        title: Last Downloaded
       served: true
       storage: true

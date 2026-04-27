@@ -144,7 +144,10 @@ func TestComponentEventProcessorCreated(t *testing.T) {
 	assert.Equal(t, "my-image", data[0].Values["name"])
 	assert.Equal(t, "2.0.0", data[0].Values["version"])
 	assert.Equal(t, "docker-hosted", data[0].Values["repository"])
-	assert.NotNil(t, data[0].Values["asset"])
+	assets, ok := data[0].Values["assets"].([]map[string]any)
+	require.True(t, ok, "assets must be []map[string]any")
+	assert.Len(t, assets, 1)
+	assert.Equal(t, "asset1", assets[0]["id"])
 }
 
 func TestComponentEventProcessorUpdated(t *testing.T) {
@@ -184,7 +187,10 @@ func TestComponentEventProcessorUpdated(t *testing.T) {
 	assert.Equal(t, "my-image", data[0].Values["name"])
 	assert.Equal(t, "3.0.0", data[0].Values["version"])
 	assert.Equal(t, "docker-hosted", data[0].Values["repository"])
-	assert.NotNil(t, data[0].Values["asset"])
+	assets, ok := data[0].Values["assets"].([]map[string]any)
+	require.True(t, ok, "assets must be []map[string]any")
+	assert.Len(t, assets, 1)
+	assert.Equal(t, "asset1", assets[0]["id"])
 }
 
 func TestComponentEventProcessorCreatedAPIError(t *testing.T) {

@@ -15,7 +15,14 @@ mappings:
     repository: "{{ get \"repository\" . \"\" }}"
     format: "{{ get \"format\" . \"\" }}"
     tags: "{{ get \"tags\" . (list) | toJSON }}"
-    downloadUrl: "{{ get \"downloadUrl\" .asset \"\" }}"
-    sha256: "{{ get \"sha256\" .asset.checksum \"\" }}"
-    lastModified: "{{ get \"lastModified\" .asset (now) }}"
-    lastDownloaded: "{{ get \"lastDownloaded\" .asset (now) }}"
+    assets: |-
+      {{ $list := list -}}
+      {{- range .assets -}}
+        {{- $asset := object -}}
+        {{- $asset = set "sha256" (get "sha256" (get "checksum" . (object)) "") $asset -}}
+        {{- $asset = set "downloadUrl" (get "downloadUrl" . "") $asset -}}
+        {{- $asset = set "lastModified" (get "lastModified" . "") $asset -}}
+        {{- $asset = set "lastDownloaded" (get "lastDownloaded" . "") $asset -}}
+        {{- $list = append $list $asset -}}
+      {{- end -}}
+      {{- $list | toJSON }}

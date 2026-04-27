@@ -48,11 +48,11 @@ All configuration is read from environment variables.
 
 ### `dockerimage`
 
-One entry per Docker image asset. The source fans out component assets: for each Docker component
-it emits one `dockerimage` item per asset. Each item contains component-level fields (`host`,
-`name`, `version`, `repository`, `format`, `tags`) plus a single `asset` object with asset-level
-details (`downloadUrl`, `checksum.sha256`, `lastModified`, `lastDownloaded`, etc.). Mapping
-templates access asset fields via `{{ .asset.fieldName }}`. Available in both sync and webhook modes.
+One entry per Docker image component. The source emits one `dockerimage` item per component,
+embedding all of its assets as a list under the `assets` key. Each item contains component-level
+fields (`host`, `name`, `version`, `repository`, `format`, `tags`) plus an `assets` array where
+each element is an asset object from the Nexus REST API. Mapping templates access the asset list
+via `{{ .assets }}`. Components with no assets are skipped. Available in both sync and webhook modes.
 
 In both sync and webhook modes the source operates on Docker repositories only — non-Docker
 components are skipped.

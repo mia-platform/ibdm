@@ -105,24 +105,23 @@ func (s *Source) syncDockerImages(ctx context.Context, log logger.Logger, host, 
 				continue
 			}
 
-			assets, _ := component["assets"].([]any)
+			rawAssets, _ := component["assets"].([]any)
+			assets := make([]map[string]any, 0, len(rawAssets))
+			for _, raw := range rawAssets {
+				if a, ok := raw.(map[string]any); ok {
+					assets = append(assets, a)
+				}
+			}
 			if len(assets) == 0 {
 				continue
 			}
 
-			for _, rawAsset := range assets {
-				asset, ok := rawAsset.(map[string]any)
-				if !ok {
-					continue
-				}
-
-				values := flattenComponentAsset(component, asset, host)
-				results <- source.Data{
-					Type:      dockerImageType,
-					Operation: source.DataOperationUpsert,
-					Values:    values,
-					Time:      timeSource(),
-				}
+			values := componentWrapper(component, assets, host)
+			results <- source.Data{
+				Type:      dockerImageType,
+				Operation: source.DataOperationUpsert,
+				Values:    values,
+				Time:      timeSource(),
 			}
 		}
 
@@ -135,10 +134,10 @@ func (s *Source) syncDockerImages(ctx context.Context, log logger.Logger, host, 
 	return nil
 }
 
-// flattenComponentAsset constructs the flattened map for a single component-asset entry.
-// It copies component-level fields and adds a single "asset" key with the asset data.
-func flattenComponentAsset(component, asset map[string]any, host string) map[string]any {
-	values := map[string]any{
+// componentWrapper constructs the values map for a Docker image component,
+// embedding all its assets as a slice under the "assets" key.
+func componentWrapper(component map[string]any, assets []map[string]any, host string) map[string]any {
+	return map[string]any{
 		"host":       host,
 		"id":         component["id"],
 		"repository": component["repository"],
@@ -147,9 +146,8 @@ func flattenComponentAsset(component, asset map[string]any, host string) map[str
 		"name":       component["name"],
 		"version":    component["version"],
 		"tags":       component["tags"],
-		"asset":      asset,
+		"assets":     assets,
 	}
-	return values
 }
 
 // handleErr wraps non-nil errors with ErrNexusSource, matching the project convention.

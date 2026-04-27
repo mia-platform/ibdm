@@ -95,7 +95,7 @@ func parseComponentEvent(body []byte) (*componentWebhookPayload, error) {
 }
 
 // processComponentUpserted fetches the full component from the Nexus REST API and
-// emits one source.Data upsert per asset, mirroring the sync-mode fan-out.
+// emits a single source.Data upsert with all assets embedded, mirroring the sync-mode behaviour.
 // Returns an error if the API call fails so the event is logged and skipped.
 func processComponentUpserted(ctx context.Context, c *client, host string, payload *componentWebhookPayload, eventTime time.Time) ([]source.Data, error) {
 	fullComponent, err := c.getComponent(ctx, payload.Component.ComponentID)
@@ -103,22 +103,23 @@ func processComponentUpserted(ctx context.Context, c *client, host string, paylo
 		return nil, fmt.Errorf("failed to fetch component %q from Nexus API: %w", payload.Component.ComponentID, err)
 	}
 
-	assets, _ := fullComponent["assets"].([]any)
-	var result []source.Data
-	for _, rawAsset := range assets {
-		asset, ok := rawAsset.(map[string]any)
-		if !ok {
-			continue
+	rawAssets, _ := fullComponent["assets"].([]any)
+	assets := make([]map[string]any, 0, len(rawAssets))
+	for _, raw := range rawAssets {
+		if a, ok := raw.(map[string]any); ok {
+			assets = append(assets, a)
 		}
-		result = append(result, source.Data{
-			Type:      dockerImageType,
-			Operation: source.DataOperationUpsert,
-			Values:    flattenComponentAsset(fullComponent, asset, host),
-			Time:      eventTime,
-		})
+	}
+	if len(assets) == 0 {
+		return nil, nil
 	}
 
-	return result, nil
+	return []source.Data{{
+		Type:      dockerImageType,
+		Operation: source.DataOperationUpsert,
+		Values:    componentWrapper(fullComponent, assets, host),
+		Time:      eventTime,
+	}}, nil
 }
 
 // processComponentDeleted emits a single delete source.Data for the dockerimage type
