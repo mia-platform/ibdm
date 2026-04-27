@@ -83,7 +83,27 @@ func TestWebhookHandlerInvalidSignature(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid webhook signature")
 }
 
-func TestWebhookHandlerNoSecretAcceptsWithoutSignature(t *testing.T) {
+func TestWebhookHandlerSignaturePresentButNoSecretConfigured(t *testing.T) {
+	t.Parallel()
+
+	s := &Source{
+		webhookConfig: webhookConfig{
+			WebhookPath: "/nexus/webhook",
+		},
+	}
+
+	webhook, err := s.GetWebhook(t.Context(), nil, nil)
+	require.NoError(t, err)
+
+	headers := http.Header{}
+	headers.Set(nexusSignatureHeader, "anysignature")
+	err = webhook.Handler(t.Context(), headers, []byte(`{}`))
+	require.ErrorIs(t, err, ErrNexusSource)
+	assert.Contains(t, err.Error(), nexusSignatureHeader)
+	assert.Contains(t, err.Error(), "NEXUS_WEBHOOK_SECRET")
+}
+
+func TestWebhookHandlerNoSecretNoSignatureAccepted(t *testing.T) {
 	apiComponent := map[string]any{
 		"id":         "comp-api-id",
 		"repository": "docker-hosted",
