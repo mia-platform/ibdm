@@ -50,7 +50,7 @@ type componentEventProcessor struct{}
 
 // process implements eventProcessor for rm:repository:component events.
 // Only Docker-format components are processed, matching the sync-mode behaviour.
-// CREATED actions trigger an upsert of all component assets via REST API enrichment.
+// CREATED and UPDATED actions trigger an upsert of all component assets via REST API enrichment.
 // DELETED actions emit a single delete using the webhook payload data.
 func (p *componentEventProcessor) process(ctx context.Context, c *client, host string, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
 	_, wantDockerImage := typesToStream[dockerImageType]
