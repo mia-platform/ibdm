@@ -33,23 +33,24 @@ var (
 
 	// availableEventSources covers event-stream integration sources used for completion and help text.
 	availableEventSources = map[string]string{
-		"azure":        "Microsoft Azure integration",
 		"azure-devops": "Microsoft Azure DevOps integration",
+		"azure":        "Microsoft Azure integration",
 		"bitbucket":    "Bitbucket integration",
 		"console":      "Mia Platform Console integration",
 		"gcp":          "Google Cloud Platform integration",
 		"github":       "GitHub integration",
 		"gitlab":       "GitLab integration",
+		"nexus":        "Sonatype Nexus Repository Manager integration",
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{
-		"azure":        "Microsoft Azure integration",
 		"azure-devops": "Microsoft Azure DevOps integration",
+		"azure":        "Microsoft Azure integration",
 		"bitbucket":    "Bitbucket integration",
+		"console":      "Mia Platform Console integration",
 		"gcp":          "Google Cloud Platform integration",
 		"github":       "GitHub integration",
 		"gitlab":       "GitLab integration",
-		"console":      "Mia Platform Console integration",
 		"nexus":        "Sonatype Nexus Repository Manager integration",
 		"sysdig":       "Sysdig Secure integration",
 	}

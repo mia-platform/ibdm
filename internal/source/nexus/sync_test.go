@@ -8,103 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/source"
 )
-
-var testTime = time.Date(2025, time.March, 1, 12, 0, 0, 0, time.UTC)
-
-func init() {
-	timeSource = func() time.Time {
-		return testTime
-	}
-}
-
-func newTestSource(t *testing.T, handler http.Handler, specificRepository string) *Source {
-	t.Helper()
-
-	server := httptest.NewServer(handler)
-	t.Cleanup(server.Close)
-
-	u, err := url.Parse(server.URL)
-	require.NoError(t, err)
-
-	return &Source{
-		config: config{
-			URLSchema:          u.Scheme,
-			URLHost:            u.Host,
-			TokenName:          "test-token",
-			TokenPasscode:      "test-passcode",
-			HTTPTimeout:        5 * time.Second,
-			SpecificRepository: specificRepository,
-		},
-		client: &client{
-			baseURL:       u,
-			tokenName:     "test-token",
-			tokenPasscode: "test-passcode",
-			httpClient: &http.Client{
-				Timeout: 5 * time.Second,
-			},
-		},
-	}
-}
-
-func collectData(t *testing.T, ch <-chan source.Data) []source.Data {
-	t.Helper()
-	var result []source.Data
-	for d := range ch {
-		result = append(result, d)
-	}
-	return result
-}
-
-func TestNewSource(t *testing.T) {
-	testCases := map[string]struct {
-		setupEnv    func(t *testing.T)
-		expectErr   bool
-		expectErrIs error
-	}{
-		"valid configuration": {
-			setupEnv: func(t *testing.T) {
-				t.Helper()
-				t.Setenv("NEXUS_URL_SCHEMA", "https")
-				t.Setenv("NEXUS_URL_HOST", "nexus.example.com")
-				t.Setenv("NEXUS_TOKEN_NAME", "mytoken")
-				t.Setenv("NEXUS_TOKEN_PASSCODE", "secret")
-			},
-		},
-		"missing required env vars": {
-			setupEnv: func(t *testing.T) {
-				t.Helper()
-			},
-			expectErr:   true,
-			expectErrIs: ErrNexusSource,
-		},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			tc.setupEnv(t)
-			s, err := NewSource()
-			if tc.expectErr {
-				require.Error(t, err)
-				if tc.expectErrIs != nil {
-					require.ErrorIs(t, err, tc.expectErrIs)
-				}
-				return
-			}
-			require.NoError(t, err)
-			require.NotNil(t, s)
-		})
-	}
-}
 
 func TestStartSyncProcess(t *testing.T) {
 	t.Parallel()
@@ -175,33 +85,24 @@ func TestStartSyncProcess(t *testing.T) {
 		expectedDataCount  int
 		validateData       func(t *testing.T, data []source.Data)
 	}{
-		"sync component assets from all repos": {
+		"sync docker images from all repos": {
 			handler:     standardMux(),
-			typesToSync: map[string]source.Extra{componentAssetType: {}},
-			// docker-hosted: 1 dockerImageType + 2 componentAssetType; maven-central: 0 (non-docker skipped)
-			expectedDataCount: 3,
+			typesToSync: map[string]source.Extra{dockerImageType: {}},
+			// docker-hosted: 1 dockerImageType (1 component with 2 assets); maven-central: 0 (non-docker skipped)
+			expectedDataCount: 1,
 			validateData: func(t *testing.T, data []source.Data) {
 				t.Helper()
-				dockerImageCount := 0
-				componentAssetCount := 0
-				for _, d := range data {
-					assert.Equal(t, source.DataOperationUpsert, d.Operation)
-					assert.Equal(t, testTime, d.Time)
-					assert.NotEmpty(t, d.Values["host"])
-					switch d.Type {
-					case dockerImageType:
-						dockerImageCount++
-						assert.Equal(t, "my-image", d.Values["name"])
-						assert.Equal(t, "1.0.0", d.Values["version"])
-					case componentAssetType:
-						componentAssetCount++
-						assert.NotNil(t, d.Values["asset"])
-						assert.Nil(t, d.Values["assets"])
-						assert.Equal(t, "my-image", d.Values["name"])
-					}
-				}
-				assert.Equal(t, 1, dockerImageCount)
-				assert.Equal(t, 2, componentAssetCount)
+				d := data[0]
+				assert.Equal(t, dockerImageType, d.Type)
+				assert.Equal(t, source.DataOperationUpsert, d.Operation)
+				assert.Equal(t, testTime, d.Time)
+				assert.NotEmpty(t, d.Values["host"])
+				assert.Equal(t, "my-image", d.Values["name"])
+				assert.Equal(t, "1.0.0", d.Values["version"])
+				asserts, ok := d.Values["assets"].([]map[string]any)
+				require.True(t, ok, "assets must be []map[string]any")
+				assert.Len(t, asserts, 2)
+				assert.Nil(t, d.Values["asset"])
 			},
 		},
 		"sync with specific repository": {
@@ -223,15 +124,17 @@ func TestStartSyncProcess(t *testing.T) {
 				return mux
 			}(),
 			specificRepository: "docker-hosted",
-			typesToSync:        map[string]source.Extra{componentAssetType: {}},
-			// 1 dockerImageType + 2 componentAssetType
-			expectedDataCount: 3,
+			typesToSync:        map[string]source.Extra{dockerImageType: {}},
+			// 1 dockerImageType (1 component with 2 assets)
+			expectedDataCount: 1,
 			validateData: func(t *testing.T, data []source.Data) {
 				t.Helper()
-				for _, d := range data {
-					assert.Contains(t, []string{dockerImageType, componentAssetType}, d.Type)
-					assert.NotEmpty(t, d.Values["host"])
-				}
+				d := data[0]
+				assert.Equal(t, dockerImageType, d.Type)
+				assert.NotEmpty(t, d.Values["host"])
+				asserts, ok := d.Values["assets"].([]map[string]any)
+				require.True(t, ok, "assets must be []map[string]any")
+				assert.Len(t, asserts, 2)
 			},
 		},
 		"unknown type is skipped": {
@@ -321,39 +224,34 @@ func TestFanOut(t *testing.T) {
 		data = collectData(t, ch)
 	}()
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{componentAssetType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{dockerImageType: {}}, ch)
 	close(ch)
 	<-done
 
 	require.NoError(t, err)
-	// 1 dockerImageType + 3 componentAssetType
-	require.Len(t, data, 4)
+	// 1 dockerImageType (1 component with 3 assets)
+	require.Len(t, data, 1)
 
-	// First entry is the dockerImageType for the component.
-	assert.Equal(t, dockerImageType, data[0].Type)
-	assert.Equal(t, "my-image", data[0].Values["name"])
-	assert.Equal(t, "2.0.0", data[0].Values["version"])
-	assert.Equal(t, s.config.URLHost, data[0].Values["host"])
+	d := data[0]
+	assert.Equal(t, dockerImageType, d.Type)
+	assert.Equal(t, "my-image", d.Values["name"])
+	assert.Equal(t, "2.0.0", d.Values["version"])
+	assert.Equal(t, "docker", d.Values["format"])
+	assert.Equal(t, s.config.URLHost, d.Values["host"])
+	assert.Nil(t, d.Values["asset"], "singular asset key must not be present")
 
-	// Remaining entries are componentAssetType, one per asset.
+	assets, ok := d.Values["assets"].([]map[string]any)
+	require.True(t, ok, "assets must be []map[string]any")
+	require.Len(t, assets, 3)
+
 	expectedAssets := []struct{ id, path string }{
 		{"a1", "v2/my-image/manifests/2.0.0"},
 		{"a2", "v2/my-image/blobs/sha256:aaa"},
 		{"a3", "v2/my-image/blobs/sha256:bbb"},
 	}
 	for i, expected := range expectedAssets {
-		d := data[i+1]
-		assert.Equal(t, componentAssetType, d.Type)
-		assert.Equal(t, "my-image", d.Values["name"])
-		assert.Equal(t, "2.0.0", d.Values["version"])
-		assert.Equal(t, "docker", d.Values["format"])
-		assert.Equal(t, s.config.URLHost, d.Values["host"])
-		assert.Nil(t, d.Values["assets"], "original assets array must not be in the flattened map")
-
-		asset, ok := d.Values["asset"].(map[string]any)
-		require.True(t, ok, "asset must be a map")
-		assert.Equal(t, expected.id, asset["id"])
-		assert.Equal(t, expected.path, asset["path"])
+		assert.Equal(t, expected.id, assets[i]["id"])
+		assert.Equal(t, expected.path, assets[i]["path"])
 	}
 }
 
@@ -397,7 +295,7 @@ func TestZeroAssetsSkipped(t *testing.T) {
 		data = collectData(t, ch)
 	}()
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{componentAssetType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{dockerImageType: {}}, ch)
 	close(ch)
 	<-done
 
@@ -419,7 +317,7 @@ func TestConcurrencyGuard(t *testing.T) {
 	s.syncLock.Lock()
 
 	ch := make(chan source.Data, 100)
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{componentAssetType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{dockerImageType: {}}, ch)
 	close(ch)
 
 	assert.NoError(t, err)
@@ -431,7 +329,6 @@ func TestConcurrencyGuard(t *testing.T) {
 func TestContextCancellationInSync(t *testing.T) {
 	t.Parallel()
 
-	callCount := 0
 	mux := http.NewServeMux()
 	mux.HandleFunc("/service/rest/v1/repositories", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -440,7 +337,6 @@ func TestContextCancellationInSync(t *testing.T) {
 		})
 	})
 	mux.HandleFunc("/service/rest/v1/components", func(w http.ResponseWriter, _ *http.Request) {
-		callCount++
 		w.Header().Set("Content-Type", "application/json")
 		token := "next"
 		_ = json.NewEncoder(w).Encode(componentsPageResponse{
@@ -462,7 +358,7 @@ func TestContextCancellationInSync(t *testing.T) {
 	ch := make(chan source.Data, 100)
 	done := make(chan error, 1)
 	go func() {
-		done <- s.StartSyncProcess(ctx, map[string]source.Extra{componentAssetType: {}}, ch)
+		done <- s.StartSyncProcess(ctx, map[string]source.Extra{dockerImageType: {}}, ch)
 		close(ch)
 	}()
 
@@ -510,7 +406,7 @@ func TestHandleErr(t *testing.T) {
 	}
 }
 
-func TestFlattenComponentAsset(t *testing.T) {
+func TestComponentWrapper(t *testing.T) {
 	t.Parallel()
 
 	component := map[string]any{
@@ -521,17 +417,22 @@ func TestFlattenComponentAsset(t *testing.T) {
 		"name":       "mylib",
 		"version":    "2.0.0",
 		"tags":       []any{"stable"},
-		"assets":     []any{map[string]any{"id": "a1"}, map[string]any{"id": "a2"}},
 	}
 
-	asset := map[string]any{
-		"id":          "a1",
-		"path":        "org/example/mylib/2.0.0/mylib-2.0.0.jar",
-		"downloadUrl": "https://nexus.example.com/repo/mylib-2.0.0.jar",
-		"checksum":    map[string]any{"sha256": "abc"},
+	assets := []map[string]any{
+		{
+			"id":          "a1",
+			"path":        "org/example/mylib/2.0.0/mylib-2.0.0.jar",
+			"downloadUrl": "https://nexus.example.com/repo/mylib-2.0.0.jar",
+			"checksum":    map[string]any{"sha256": "abc"},
+		},
+		{
+			"id":   "a2",
+			"path": "org/example/mylib/2.0.0/mylib-2.0.0.jar.sha256",
+		},
 	}
 
-	result := flattenComponentAsset(component, asset, "nexus.example.com")
+	result := componentWrapper(component, assets, "nexus.example.com")
 
 	assert.Equal(t, "nexus.example.com", result["host"])
 	assert.Equal(t, "comp-id", result["id"])
@@ -541,6 +442,6 @@ func TestFlattenComponentAsset(t *testing.T) {
 	assert.Equal(t, "mylib", result["name"])
 	assert.Equal(t, "2.0.0", result["version"])
 	assert.Equal(t, []any{"stable"}, result["tags"])
-	assert.Equal(t, asset, result["asset"])
-	assert.Nil(t, result["assets"], "original assets array must not be in the flattened map")
+	assert.Equal(t, assets, result["assets"])
+	assert.Nil(t, result["asset"], "singular asset key must not be present")
 }

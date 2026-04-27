@@ -150,3 +150,25 @@ func readErrorResponse(resp *http.Response) error {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
 	return fmt.Errorf("nexus API returned status %d: %s", resp.StatusCode, string(body))
 }
+
+// getComponent fetches a single component by its REST API ID.
+func (c *client) getComponent(ctx context.Context, id string) (map[string]any, error) {
+	path := "/v1/components/" + url.PathEscape(id)
+
+	resp, err := c.doRequest(ctx, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, readErrorResponse(resp)
+	}
+
+	var component map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&component); err != nil {
+		return nil, fmt.Errorf("failed to decode component response: %w", err)
+	}
+
+	return component, nil
+}

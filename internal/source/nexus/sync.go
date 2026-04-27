@@ -7,56 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
-	"time"
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
-
-const (
-	loggerName = "ibdm:source:nexus"
-
-	dockerImageType    = "dockerimage"
-	componentAssetType = "componentasset"
-)
-
-var (
-	// ErrNexusSource wraps errors emitted by the Nexus source implementation.
-	ErrNexusSource = errors.New("nexus source")
-
-	// timeSource is a replaceable function for obtaining the current time.
-	// Tests override this to produce deterministic timestamps.
-	timeSource = time.Now
-)
-
-var _ source.SyncableSource = &Source{}
-
-// Source implements source.SyncableSource for Nexus Repository Manager.
-type Source struct {
-	config config
-	client *client
-
-	syncLock sync.Mutex
-}
-
-// NewSource creates a new Nexus Source reading configuration from environment variables.
-func NewSource() (*Source, error) {
-	cfg, err := loadConfigFromEnv()
-	if err != nil {
-		return nil, handleErr(err)
-	}
-
-	c, err := newClient(cfg)
-	if err != nil {
-		return nil, handleErr(err)
-	}
-
-	return &Source{
-		config: cfg,
-		client: c,
-	}, nil
-}
 
 // StartSyncProcess implements source.SyncableSource.
 // It resolves repositories (one or all), then for each repository fans out
@@ -70,16 +24,16 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	}
 	defer s.syncLock.Unlock()
 
-	_, syncComponentAssets := typesToSync[componentAssetType]
+	_, syncDockerImages := typesToSync[dockerImageType]
 
 	// Log unknown types.
 	for typeKey := range typesToSync {
-		if typeKey != componentAssetType {
+		if typeKey != dockerImageType {
 			log.Debug("unknown type, skipping", "type", typeKey)
 		}
 	}
 
-	if !syncComponentAssets {
+	if !syncDockerImages {
 		log.Debug("no known types requested, nothing to do")
 		return nil
 	}
@@ -100,8 +54,8 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 
 		repoName, _ := repo["name"].(string)
 
-		if err := s.syncComponentAssets(ctx, log, s.config.URLHost, repoName, results); err != nil {
-			log.Error("failed to sync component-assets for repository", "repository", repoName, "error", err)
+		if err := s.syncDockerImages(ctx, log, s.config.URLHost, repoName, results); err != nil {
+			log.Error("failed to sync docker images for repository", "repository", repoName, "error", err)
 			continue
 		}
 	}
@@ -129,9 +83,9 @@ func (s *Source) resolveRepositories(ctx context.Context, log logger.Logger) ([]
 	return repos, nil
 }
 
-// syncComponentAssets fetches all components for a repository with pagination,
+// syncDockerImages fetches all components for a repository with pagination,
 // fans out each component's assets, and pushes one source.Data per asset.
-func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, host, repository string, results chan<- source.Data) error {
+func (s *Source) syncDockerImages(ctx context.Context, log logger.Logger, host, repository string, results chan<- source.Data) error {
 	continuationToken := ""
 	for {
 		if err := ctx.Err(); err != nil {
@@ -151,35 +105,23 @@ func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, hos
 				continue
 			}
 
-			assets, _ := component["assets"].([]any)
+			rawAssets, _ := component["assets"].([]any)
+			assets := make([]map[string]any, 0, len(rawAssets))
+			for _, raw := range rawAssets {
+				if a, ok := raw.(map[string]any); ok {
+					assets = append(assets, a)
+				}
+			}
 			if len(assets) == 0 {
 				continue
 			}
 
+			values := componentWrapper(component, assets, host)
 			results <- source.Data{
 				Type:      dockerImageType,
 				Operation: source.DataOperationUpsert,
-				Values: map[string]any{
-					"host":    host,
-					"name":    component["name"],
-					"version": component["version"],
-				},
-				Time: timeSource(),
-			}
-
-			for _, rawAsset := range assets {
-				asset, ok := rawAsset.(map[string]any)
-				if !ok {
-					continue
-				}
-
-				values := flattenComponentAsset(component, asset, host)
-				results <- source.Data{
-					Type:      componentAssetType,
-					Operation: source.DataOperationUpsert,
-					Values:    values,
-					Time:      timeSource(),
-				}
+				Values:    values,
+				Time:      timeSource(),
 			}
 		}
 
@@ -192,10 +134,10 @@ func (s *Source) syncComponentAssets(ctx context.Context, log logger.Logger, hos
 	return nil
 }
 
-// flattenComponentAsset constructs the flattened map for a single component-asset entry.
-// It copies component-level fields and adds a single "asset" key with the asset data.
-func flattenComponentAsset(component, asset map[string]any, host string) map[string]any {
-	values := map[string]any{
+// componentWrapper constructs the values map for a Docker image component,
+// embedding all its assets as a slice under the "assets" key.
+func componentWrapper(component map[string]any, assets []map[string]any, host string) map[string]any {
+	return map[string]any{
 		"host":       host,
 		"id":         component["id"],
 		"repository": component["repository"],
@@ -204,9 +146,8 @@ func flattenComponentAsset(component, asset map[string]any, host string) map[str
 		"name":       component["name"],
 		"version":    component["version"],
 		"tags":       component["tags"],
-		"asset":      asset,
+		"assets":     assets,
 	}
-	return values
 }
 
 // handleErr wraps non-nil errors with ErrNexusSource, matching the project convention.

@@ -4,6 +4,8 @@ bin/
 local/
 release/
 coverage.txt
+.github/agents
+.github/skills
 
 # End of Custom gitignore rules
 

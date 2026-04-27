@@ -29,6 +29,12 @@ type config struct {
 	SpecificRepository string        `env:"NEXUS_SPECIFIC_REPOSITORY"`
 }
 
+// webhookConfig holds the environment-driven Nexus webhook settings.
+type webhookConfig struct {
+	WebhookSecret string `env:"NEXUS_WEBHOOK_SECRET"`
+	WebhookPath   string `env:"NEXUS_WEBHOOK_PATH" envDefault:"/nexus/webhook"`
+}
+
 // loadConfigFromEnv parses environment variables into a config struct and
 // validates that all required fields are present.
 func loadConfigFromEnv() (config, error) {
@@ -41,6 +47,15 @@ func loadConfigFromEnv() (config, error) {
 		return config{}, err
 	}
 
+	return cfg, nil
+}
+
+// loadWebhookConfigFromEnv parses NEXUS_WEBHOOK_* environment variables into a webhookConfig.
+func loadWebhookConfigFromEnv() (webhookConfig, error) {
+	cfg, err := env.ParseAs[webhookConfig]()
+	if err != nil {
+		return webhookConfig{}, err
+	}
 	return cfg, nil
 }
 
