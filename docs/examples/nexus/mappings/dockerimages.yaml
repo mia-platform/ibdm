@@ -22,7 +22,12 @@ mappings:
         {{- $asset = set "sha256" (get "sha256" (get "checksum" . (object)) "") $asset -}}
         {{- $asset = set "downloadUrl" (get "downloadUrl" . "") $asset -}}
         {{- $asset = set "lastModified" (get "lastModified" . "") $asset -}}
-        {{- $asset = set "lastDownloaded" (get "lastDownloaded" . "") $asset -}}
+        {{ $lastDownloaded := (get "lastDownloaded" . "") -}}
+        {{- if $lastDownloaded -}}
+          {{- $asset = set "lastDownloaded" $lastDownloaded $asset -}}
+        {{- else -}}
+          {{- $asset = set "lastDownloaded" "" $asset -}}
+        {{- end }}
         {{- $list = append $list $asset -}}
       {{- end -}}
       {{- $list | toJSON }}
