@@ -31,7 +31,7 @@ to a string and validated against these rules:
 Metadata templates cover the fields required to populate the `metadata` section that will be sent to
 the Mia-Platform Catalog.  
 The list of the allowed `metadata` that can be set is:
-`annotations`, `creationTimestamp`, `description`, `labels`, `links`, `name`, `namespace`, `tags`, `title`, `uid`.  
+`annotations`, `creationTimestamp`, `description`, `labels`, `links`, `name`, `tags`, `title`, `uid`.  
 Any extra not allowed `metadata` will be ignored and not sent to the catalog.
 
 We restrict template keys to a flat structure and rely on the template engine to build any nested

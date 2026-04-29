@@ -131,7 +131,6 @@ func TestNewMappingsFromPath(t *testing.T) {
 							"labels":            "{{ printf \"%s\" .name }}",
 							"links":             "{{ printf \"%s\" .name }}",
 							"name":              "{{ printf \"%s\" .name }}",
-							"namespace":         "{{ printf \"%s\" .name }}",
 							"tags":              "{{ printf \"%s\" .name }}",
 							"title":             "{{ printf \"%s\" .name }}",
 							"uid":               "{{ printf \"%s\" .name }}",

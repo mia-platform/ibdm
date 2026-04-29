@@ -70,7 +70,6 @@ type MetadataTemplate struct {
 	Labels            string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	Links             string `json:"links,omitempty" yaml:"links,omitempty"`
 	Name              string `json:"name,omitempty" yaml:"name,omitempty"`
-	Namespace         string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
 	Tags              string `json:"tags,omitempty" yaml:"tags,omitempty"`
 	Title             string `json:"title,omitempty" yaml:"title,omitempty"`
 	UID               string `json:"uid,omitempty" yaml:"uid,omitempty"`
