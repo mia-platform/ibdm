@@ -13,12 +13,12 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ $src := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:null:%s" (printf "%s-%s" .project._id .revision.name | sha256sum) -}}
-        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu" -}}
-        {{- $tgt := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Project:null:%s" .project._id -}}
+        {{ $src := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:%s" (printf "%s-%s" .project._id .revision.name | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Project:%s" .project._id -}}
         {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:null:{{ printf "%s-%s" .project._id .revision.name | sha256sum }}
+        urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Revision:{{ printf "%s-%s" .project._id .revision.name | sha256sum }}
       targetRef: |-
-        urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Project:null:{{ .project._id }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu"
+        urn:mia-platform-catalog:console.mia-platform.eu:v1alpha1:Project:{{ .project._id }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:part-of.mia-platform.eu"

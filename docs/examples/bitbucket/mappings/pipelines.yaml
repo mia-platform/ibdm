@@ -38,12 +38,12 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ $src := printf "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Pipeline:null:%s" (.pipeline.uuid | trimPrefix "{" | trimSuffix "}" | sha256sum) -}}
-        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu" -}}
-        {{- $tgt := printf "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Repository:null:%s" (.repository.links.html.href | sha256sum) -}}
+        {{ $src := printf "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Pipeline:%s" (.pipeline.uuid | trimPrefix "{" | trimSuffix "}" | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Repository:%s" (.repository.links.html.href | sha256sum) -}}
         {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Pipeline:null:{{ .pipeline.uuid | trimPrefix "{" | trimSuffix "}" | sha256sum }}
+        urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Pipeline:{{ .pipeline.uuid | trimPrefix "{" | trimSuffix "}" | sha256sum }}
       targetRef: |-
-        urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Repository:null:{{ .repository.links.html.href | sha256sum }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu"
+        urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1alpha1:Repository:{{ .repository.links.html.href | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:part-of.mia-platform.eu"

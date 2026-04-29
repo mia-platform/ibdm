@@ -52,12 +52,12 @@ mappings:
           false
         {{- end }}
       identifier: |-
-        {{ $src := printf "urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:AccessToken:null:%s" (printf "%s" .token.id | sha256sum) -}}
-        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu" -}}
-        {{- $tgt := printf "urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:Project:null:%s" (printf "%s" .project.id | sha256sum) -}}
+        {{ $src := printf "urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:AccessToken:%s" (printf "%s" .token.id | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:Project:%s" (printf "%s" .project.id | sha256sum) -}}
         {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:AccessToken:null:{{ printf "%s" .token.id | sha256sum }}
+        urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:AccessToken:{{ printf "%s" .token.id | sha256sum }}
       targetRef: |-
-        urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:Project:null:{{ printf "%s" .project.id | sha256sum }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:part-of.mia-platform.eu"
+        urn:mia-platform-catalog:gitlab.mia-platform.eu:v1alpha1:Project:{{ printf "%s" .project.id | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:part-of.mia-platform.eu"

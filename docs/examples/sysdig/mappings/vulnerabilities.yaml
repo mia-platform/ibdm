@@ -60,12 +60,12 @@ mappings:
       itemFamily: relationships
       deletePolicy: "none"
       identifier: |-
-        {{ $src := printf "urn:mia-platform-catalog:sysdig.mia-platform.eu:v1alpha1:Vulnerability:null:%s" (printf "%s" .vuln.name | sha256sum) -}}
-        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:affect.mia-platform.eu" -}}
-        {{- $tgt := printf "urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:null:%s" (printf "%s" .img.imageReference | sha256sum) -}}
+        {{ $src := printf "urn:mia-platform-catalog:sysdig.mia-platform.eu:v1alpha1:Vulnerability:%s" (printf "%s" .vuln.name | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:affect.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:%s" (printf "%s" .img.imageReference | sha256sum) -}}
         {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:sysdig.mia-platform.eu:v1alpha1:Vulnerability:null:{{ printf "%s" .vuln.name | sha256sum }}
+        urn:mia-platform-catalog:sysdig.mia-platform.eu:v1alpha1:Vulnerability:{{ printf "%s" .vuln.name | sha256sum }}
       targetRef: |-
-        urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:null:{{ printf "%s" .img.imageReference | sha256sum }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:affect.mia-platform.eu"
+        urn:mia-platform-catalog:nexus.mia-platform.eu:v1alpha1:DockerImage:{{ printf "%s" .img.imageReference | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:affect.mia-platform.eu"
