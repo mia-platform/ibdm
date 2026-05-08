@@ -233,6 +233,23 @@ func Test_DoChain(t *testing.T) {
 			},
 			expectedData: []source.Data{
 				{
+					Type:      projectResource,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Unix(1672531200, 0),
+					Values: map[string]any{
+						"project": map[string]any{
+							"_id":           "p1",
+							"projectId":     "projectId",
+							"name":          "name",
+							"defaultBranch": "r1",
+							"tenantId":      "",
+							"info": map[string]any{
+								"teamContact": "contact",
+							},
+						},
+					},
+				},
+				{
 					Type:      revisionResource,
 					Operation: source.DataOperationUpsert,
 					Time:      time.Unix(1672531200, 0),
@@ -314,6 +331,21 @@ func Test_DoChain(t *testing.T) {
 				}
 			},
 			expectedData: []source.Data{
+				{
+					Type:      projectResource,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Unix(1672531200, 0),
+					Values: map[string]any{
+						"project": map[string]any{
+							"_id":           "p1",
+							"projectId":     "projectId",
+							"name":          "name",
+							"defaultBranch": "r1",
+							"tenantId":      "",
+							"info":          nil,
+						},
+					},
+				},
 				{
 					Type:      revisionResource,
 					Operation: source.DataOperationUpsert,
