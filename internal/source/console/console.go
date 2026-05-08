@@ -281,7 +281,7 @@ func isServiceValid(svc map[string]any) bool {
 }
 
 // createProjectData assembles a [source.Data] upsert entry for a project,
-// embedding the normalised project and revision maps.
+// embedding the normalised project maps.
 func createProjectData(project map[string]any, t time.Time, operation source.DataOperation) source.Data {
 	return source.Data{
 		Type:      projectResource,
