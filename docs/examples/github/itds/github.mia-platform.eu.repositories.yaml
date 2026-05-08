@@ -91,7 +91,8 @@ spec:
                   type: string
               created:
                 description: The creation time of the repository (RFC 3339).
-                type: number
+                type: string
+                format: date-time
                 title: Created At
               lastUpdate:
                 description: The last time the repository metadata was updated (RFC 3339).
@@ -100,7 +101,8 @@ spec:
                 title: Last Update
               lastPush:
                 description: The last time a push was made to the repository (RFC 3339).
-                type: number
+                type: string
+                format: date-time
                 title: Last Push
     served: true
     storage: true
