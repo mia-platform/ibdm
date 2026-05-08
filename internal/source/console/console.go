@@ -39,9 +39,8 @@ var (
 	ErrRetrievingAssets     = errors.New("error retrieving assets")
 	ErrWebhookSecretMissing = errors.New("webhook secret not configured")
 
-	configurationChainTypes       = []string{projectResource, revisionResource, serviceResource}
-	configurationChainTypesStream = []string{revisionResource, serviceResource}
-	timeSource                    = time.Now
+	configurationChainTypes = []string{projectResource, revisionResource, serviceResource}
+	timeSource              = time.Now
 )
 
 // webhookClient wraps the webhook configuration needed to receive and
@@ -183,7 +182,7 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 			for _, typeString := range subtypes {
 				switch typeString {
 				case revisionResource:
-					result = append(result, createRevisionData(project, revName, timeSource()))
+					result = append(result, createRevisionData(project, revName, timeSource(), source.DataOperationUpsert))
 				case serviceResource:
 					defaultBranch, ok := project["defaultBranch"].(string)
 					if !ok {
@@ -196,7 +195,7 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 					for _, svc := range configuration["services"].(map[string]any) {
 						svcMap := svc.(map[string]any)
 						if isServiceValid(svcMap) {
-							result = append(result, createServiceData(project, revName, svcMap, timeSource()))
+							result = append(result, createServiceData(project, revName, svcMap, timeSource(), source.DataOperationUpsert))
 						}
 					}
 				}
@@ -281,12 +280,25 @@ func isServiceValid(svc map[string]any) bool {
 	return typeFound && advancedFound && svcType.(string) == "custom" && !advanced.(bool)
 }
 
+// createProjectData assembles a [source.Data] upsert entry for a project,
+// embedding the normalised project maps.
+func createProjectData(project map[string]any, t time.Time, operation source.DataOperation) source.Data {
+	return source.Data{
+		Type:      projectResource,
+		Operation: operation,
+		Time:      t,
+		Values: map[string]any{
+			"project": project,
+		},
+	}
+}
+
 // createRevisionData assembles a [source.Data] upsert entry for a revision,
 // embedding the normalised project and revision maps.
-func createRevisionData(project map[string]any, revisionName string, t time.Time) source.Data {
+func createRevisionData(project map[string]any, revisionName string, t time.Time, operation source.DataOperation) source.Data {
 	return source.Data{
 		Type:      revisionResource,
-		Operation: source.DataOperationUpsert,
+		Operation: operation,
 		Time:      t,
 		Values: map[string]any{
 			"project":  buildProjectData(project),
@@ -297,10 +309,10 @@ func createRevisionData(project map[string]any, revisionName string, t time.Time
 
 // createServiceData assembles a [source.Data] upsert entry for a service,
 // embedding the normalised project, revision and service maps.
-func createServiceData(project map[string]any, revisionName string, svc map[string]any, t time.Time) source.Data {
+func createServiceData(project map[string]any, revisionName string, svc map[string]any, t time.Time, operation source.DataOperation) source.Data {
 	return source.Data{
 		Type:      serviceResource,
-		Operation: source.DataOperationUpsert,
+		Operation: operation,
 		Time:      t,
 		Values: map[string]any{
 			"project":  buildProjectData(project),
@@ -369,7 +381,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 func (s *Source) handleEvent(ctx context.Context, ev event, types map[string]source.Extra, channel chan<- source.Data) error {
 	switch ev.GetResource() {
 	case configurationResource:
-		subtypes := filterTypes(configurationChainTypesStream, types)
+		subtypes := filterTypes(configurationChainTypes, types)
 		if err := s.configurationEventChain(ctx, ev, subtypes, channel); err != nil {
 			return fmt.Errorf("%w: %w", ErrEventChainProcessing, err)
 		}
@@ -410,8 +422,10 @@ func (s *Source) configurationEventChain(ctx context.Context, ev event, types []
 
 	for _, t := range types {
 		switch t {
+		case projectResource:
+			channel <- createProjectData(project, ev.UnixEventTimestamp(), ev.Operation())
 		case revisionResource:
-			channel <- createRevisionData(project, revisionName, ev.UnixEventTimestamp())
+			channel <- createRevisionData(project, revisionName, ev.UnixEventTimestamp(), ev.Operation())
 		case serviceResource:
 			if revisionName != project["defaultBranch"].(string) {
 				continue
@@ -425,7 +439,7 @@ func (s *Source) configurationEventChain(ctx context.Context, ev event, types []
 			for _, svc := range configuration["services"].(map[string]any) {
 				svcMap := svc.(map[string]any)
 				if isServiceValid(svcMap) {
-					channel <- createServiceData(project, revisionName, svcMap, ev.UnixEventTimestamp())
+					channel <- createServiceData(project, revisionName, svcMap, ev.UnixEventTimestamp(), ev.Operation())
 				}
 			}
 		}
