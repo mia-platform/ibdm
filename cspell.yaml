@@ -41,7 +41,9 @@ ignoreWords:
   - azsystemevents
   - bbtoken
   - errln
+  - errorresultid
   - fakeazcore
+  - Fslash
   - goarch
   - goarm
   - gobin
@@ -49,6 +51,7 @@ ignoreWords:
   - gopath
   - hclog
   - mygroup
+  - myresult
   - mysecret
   - myuser
   - noprefixhex
@@ -58,6 +61,8 @@ ignoreWords:
   - sysdiglabs
   - sysql
   - vtpm
+  - vulns
+  - Vulns
 files:
   - "**/*.go"
   - "**/*.md"

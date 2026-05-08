@@ -41,13 +41,17 @@ var (
 )
 
 var _ source.SyncableSource = &Source{}
+var _ source.WebhookSource = &Source{}
 
-// Source implements [source.SyncableSource] for Sysdig Secure. It queries the
-// SysQL API to fetch vulnerability data and pushes results through the IBDM
-// pipeline.
+// Source implements [source.SyncableSource] and [source.WebhookSource] for
+// Sysdig Secure. It queries the SysQL API to fetch vulnerability data and
+// pushes results through the IBDM pipeline. It also accepts webhook
+// notifications from Sysdig pipeline scans.
 type Source struct {
-	config config
-	client *http.Client
+	config        config
+	webhookConfig webhookConfig
+	client        *http.Client
+	vulnClient    *vulnerabilityClient
 
 	syncLock sync.Mutex
 }
@@ -61,10 +65,25 @@ func NewSource() (*Source, error) {
 		return nil, fmt.Errorf("%w: %w", ErrSysdigSource, err)
 	}
 
+	whCfg, err := loadWebhookConfigFromEnv()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrSysdigSource, err)
+	}
+
+	httpTimeout := cfg.HTTPTimeout
+
 	return &Source{
-		config: *cfg,
+		config:        *cfg,
+		webhookConfig: whCfg,
 		client: &http.Client{
-			Timeout: cfg.HTTPTimeout,
+			Timeout: httpTimeout,
+		},
+		vulnClient: &vulnerabilityClient{
+			baseURL:     whCfg.BaseURL,
+			bearerToken: whCfg.BearerToken,
+			httpClient: &http.Client{
+				Timeout: httpTimeout,
+			},
 		},
 	}, nil
 }
