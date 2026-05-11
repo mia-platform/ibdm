@@ -191,8 +191,10 @@ func TestWebhookHandlerValidEventViaEventID(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, "registry.example.com/my-service:v2.0.0", img["imageReference"])
 
-		_, hasVuln := data.Values["vuln"]
-		assert.True(t, hasVuln)
+		vuln, ok := data.Values["vuln"].(map[string]any)
+		require.True(t, ok, "vuln must be map[string]any")
+		assert.Equal(t, "CVE-2025-99999", vuln["name"])
+		assert.Equal(t, "High", vuln["severity"])
 	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for webhook result")
 	}

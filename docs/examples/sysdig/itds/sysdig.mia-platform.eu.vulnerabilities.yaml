@@ -10,6 +10,8 @@ spec:
     kind: Vulnerability
     plural: vulnerabilities
     singular: vulnerability
+    displayPlural: Sysdig vulnerabilities
+    displaySingular: Sysdig vulnerability
   scope: Organization
   versions:
   - deprecated: false
@@ -21,27 +23,11 @@ spec:
           spec:
             type: object
             properties:
-              acceptedRisk:
-                description: Whether the risk of this vulnerability has been accepted.
-                type: boolean
-                title: Accepted Risk
-              acceptedRiskInPipeline:
-                description: Whether the risk of this vulnerability has been accepted in the pipeline.
-                type: boolean
-                title: Accepted Risk in Pipeline
-              acceptedRiskInRuntime:
-                description: Whether the risk of this vulnerability has been accepted in runtime.
-                type: boolean
-                title: Accepted Risk in Runtime
               createdAt:
                 description: The timestamp when the vulnerability record was created.
                 type: string
                 format: date-time
                 title: Created At
-              customerId:
-                description: The identifier of the customer associated with this vulnerability.
-                type: number
-                title: Customer ID
               cvssScore:
                 description: The CVSS score of the vulnerability.
                 type: number
@@ -58,14 +44,6 @@ spec:
                 description: The version of the CVSS scoring system used.
                 type: string
                 title: CVSS Version
-              epssPercentile:
-                description: The EPSS percentile score indicating exploit prediction.
-                type: number
-                title: EPSS Percentile
-              epssScore:
-                description: The EPSS score indicating exploit prediction.
-                type: number
-                title: EPSS Score
               firstSeen:
                 description: The timestamp when the vulnerability was first seen.
                 type: string
@@ -86,11 +64,11 @@ spec:
                 title: Global ID
               hasExploit:
                 description: Whether a known exploit exists for this vulnerability.
-                type: boolean
+                type: [boolean, "null"]
                 title: Has Exploit
               hasFix:
                 description: Whether a fix is available for this vulnerability.
-                type: boolean
+                type: [boolean, "null"]
                 title: Has Fix
               hash:
                 description: A hash uniquely identifying the vulnerability record.
@@ -98,11 +76,11 @@ spec:
                 title: Hash
               inUse:
                 description: Whether the vulnerable package is currently in use.
-                type: boolean
+                type: [boolean, "null"]
                 title: In Use
               knownRansomwareCampaignUse:
                 description: Whether this vulnerability is known to be used in ransomware campaigns.
-                type: boolean
+                type: [boolean, "null"]
                 title: Known Ransomware Campaign Use
               lastModified:
                 description: The timestamp when the vulnerability record was last modified.
@@ -152,10 +130,6 @@ spec:
                 description: The severity label of the vulnerability (e.g. Critical, High, Medium, Low).
                 type: string
                 title: Severity
-              severityInt:
-                description: The numeric representation of the severity level.
-                type: integer
-                title: Severity (numeric)
               solutionDate:
                 description: The date when a solution was provided.
                 type: string

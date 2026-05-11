@@ -61,6 +61,7 @@ ignoreWords:
   - sysdiglabs
   - sysql
   - vtpm
+  - vulndb
   - vulns
   - Vulns
 files:
