@@ -15,7 +15,13 @@ mappings:
     cvssVector: "{{ .vuln.cvssVector }}"
     cvssVersion: "{{ .vuln.cvssVersion | quote }}"
     firstSeen: "{{ get \"firstSeen\" .vuln (\"\" | quote) }}"
-    fixDate: "{{ get \"fixDate\" .vuln (\"\" | quote) }}"
+    fixDate: |-
+      {{ $fixDate := (get "fixDate" .vuln "") -}}
+      {{- if $fixDate -}}
+        {{- .vuln.fixDate  -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     fixedInVersion: |-
       {{ $fixedInVersion := (get "fixedInVersion" .vuln "") -}}
       {{- if $fixedInVersion -}}
@@ -53,7 +59,13 @@ mappings:
       {{- else -}}
         {{- "" | quote -}}
       {{- end }}
-    suggestedFix: "{{ get \"suggestedFix\" .vuln (\"\" | quote) }}"
+    suggestedFix: |-
+      {{ $suggestedFix := (get "suggestedFix" .vuln "") -}}
+      {{- if $suggestedFix -}}
+        {{- .vuln.suggestedFix  -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
   extra:
     - apiVersion: mia-platform.eu/v1alpha1
       itemFamily: relationships
