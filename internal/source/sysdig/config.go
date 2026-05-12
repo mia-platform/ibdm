@@ -33,6 +33,13 @@ type config struct {
 	PageSize    int           `env:"SYSDIG_PAGE_SIZE"    envDefault:"1000"`
 }
 
+// webhookConfig holds the environment-driven Sysdig webhook settings.
+type webhookConfig struct {
+	WebhookPath string `env:"SYSDIG_WEBHOOK_URL"   envDefault:"/sysdig/webhook"`
+	BaseURL     string `env:"SYSDIG_BASE_URL"`
+	BearerToken string `env:"SYSDIG_BEARER_TOKEN"`
+}
+
 // loadConfigFromEnv parses configuration from environment variables and
 // validates the result.
 func loadConfigFromEnv() (*config, error) {
@@ -44,6 +51,12 @@ func loadConfigFromEnv() (*config, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+// loadWebhookConfigFromEnv parses SYSDIG_WEBHOOK_* and SYSDIG_BASE_*
+// environment variables into a webhookConfig.
+func loadWebhookConfigFromEnv() (webhookConfig, error) {
+	return env.ParseAs[webhookConfig]()
 }
 
 // validate checks that all required fields are present and that optional

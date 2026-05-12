@@ -30,6 +30,15 @@ func TestNewSource(t *testing.T) {
 				"SYSDIG_API_TOKEN": "test-token",
 			},
 		},
+		"valid configuration with webhook envs": {
+			envVars: map[string]string{
+				"SYSDIG_URL":          "https://secure.sysdig.com",
+				"SYSDIG_API_TOKEN":    "test-token",
+				"SYSDIG_BASE_URL":     "https://eu1.app.sysdig.com",
+				"SYSDIG_BEARER_TOKEN": "test-bearer-token",
+				"SYSDIG_WEBHOOK_URL":  "/custom/webhook",
+			},
+		},
 		"missing URL": {
 			envVars: map[string]string{
 				"SYSDIG_API_TOKEN": "test-token",

@@ -108,3 +108,25 @@ func TestConfigValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadWebhookConfigFromEnv(t *testing.T) {
+	t.Run("full configuration", func(t *testing.T) {
+		t.Setenv("SYSDIG_WEBHOOK_URL", "/custom/webhook")
+		t.Setenv("SYSDIG_BASE_URL", "https://eu1.app.sysdig.com")
+		t.Setenv("SYSDIG_BEARER_TOKEN", "my-bearer-token")
+
+		cfg, err := loadWebhookConfigFromEnv()
+		require.NoError(t, err)
+		assert.Equal(t, "/custom/webhook", cfg.WebhookPath)
+		assert.Equal(t, "https://eu1.app.sysdig.com", cfg.BaseURL)
+		assert.Equal(t, "my-bearer-token", cfg.BearerToken)
+	})
+
+	t.Run("defaults only", func(t *testing.T) {
+		cfg, err := loadWebhookConfigFromEnv()
+		require.NoError(t, err)
+		assert.Equal(t, "/sysdig/webhook", cfg.WebhookPath)
+		assert.Empty(t, cfg.BaseURL)
+		assert.Empty(t, cfg.BearerToken)
+	})
+}

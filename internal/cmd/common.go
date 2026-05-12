@@ -41,6 +41,7 @@ var (
 		"github":       "GitHub integration",
 		"gitlab":       "GitLab integration",
 		"nexus":        "Sonatype Nexus Repository Manager integration",
+		"sysdig":       "Sysdig Secure integration",
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{

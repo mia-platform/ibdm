@@ -39,6 +39,7 @@ func TestCompletion(t *testing.T) {
 				"github\tGitHub integration",
 				"gitlab\tGitLab integration",
 				"nexus\tSonatype Nexus Repository Manager integration",
+				"sysdig\tSysdig Secure integration",
 			},
 		},
 		"some args, no completions": {
