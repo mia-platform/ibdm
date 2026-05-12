@@ -85,6 +85,8 @@ func TestWebhookHandlerInvalidJSON(t *testing.T) {
 }
 
 func TestWebhookHandlerUnknownEvent(t *testing.T) {
+	t.Parallel()
+
 	s := &Source{
 		webhookConfig: webhookConfig{
 			WebhookPath: "/sysdig/webhook",
@@ -116,6 +118,8 @@ func TestWebhookHandlerUnknownEvent(t *testing.T) {
 }
 
 func TestWebhookHandlerValidEventViaEventID(t *testing.T) {
+	t.Parallel()
+
 	resultID := "18aad9169a529683f1a57da4199aeb00"
 	eventURL := fmt.Sprintf("https://eu1.app.sysdig.com/secure/#/vulnerabilities/results/%s/overview", resultID)
 	timestampMicros := int64(1777471695260063)
@@ -201,6 +205,8 @@ func TestWebhookHandlerValidEventViaEventID(t *testing.T) {
 }
 
 func TestWebhookHandlerValidEventViaEventDataName(t *testing.T) {
+	t.Parallel()
+
 	resultID := "abcdef1234567890abcdef1234567890"
 	eventURL := fmt.Sprintf("https://app.sysdigcloud.com/secure/#/vulnerabilities/results/%s/overview", resultID)
 	timestampMicros := int64(1777471695260063)
@@ -266,6 +272,8 @@ func TestWebhookHandlerValidEventViaEventDataName(t *testing.T) {
 }
 
 func TestWebhookHandlerProcessorError(t *testing.T) {
+	t.Parallel()
+
 	resultID := "errorresultid1234567890abcdef1234"
 	eventURL := fmt.Sprintf("https://eu1.app.sysdig.com/secure/#/vulnerabilities/results/%s/overview", resultID)
 
