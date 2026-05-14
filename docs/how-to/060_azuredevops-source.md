@@ -9,14 +9,14 @@ The Microsoft Azure Devops Integration of `ibdm` can work in two modes:
 
 Once you have the `ibdm` binary available the run of the integration is straightforward.
 
-If you want to start a new integration with the EventHub subscription yuo can run the following
+If you want to start a new integration with the webhook listener you can run the following
 command:
 
 ```sh
 ibdm run azure-devops --mapping-file <path to mapping file or folder>
 ```
 
-if you want to start a resource graph sync process run this instead:
+if you want to start a REST API sync process run this instead:
 
 ```sh
 ibdm sync azure-devops --mapping-file <path to mapping file or folder>

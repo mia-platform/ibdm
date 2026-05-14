@@ -40,7 +40,7 @@ In addition to other environment variables the GitHub source requires or accepts
 | `GITHUB_HTTP_TIMEOUT` | `30s` | HTTP request timeout (Go duration format). |
 | `GITHUB_PAGE_SIZE` | `100` | Items per API page (1–100). |
 | `GITHUB_WEBHOOK_SECRET` | _(empty)_ | HMAC secret for webhook signature verification. Required for webhook mode. |
-| `GITHUB_WEBHOOK_PATH` | `/webhook/github` | HTTP path for incoming webhook events. |
+| `GITHUB_WEBHOOK_PATH` | `/github/webhook` | HTTP path for incoming webhook events. |
 
 ## Authentication
 
@@ -98,7 +98,7 @@ If the languages API call fails the repository entry is still emitted without th
 To use webhook mode, configure a GitHub organization webhook:
 
 1. Go to your GitHub organization's **Settings > Webhooks > Add webhook**.
-1. Set the **Payload URL** to your IBDM public URL at the configured webhook path (default: `/webhook/github`).
+1. Set the **Payload URL** to your IBDM public URL at the configured webhook path (default: `/github/webhook`).
 1. Set **Content type** to `application/json`.
 1. Enter a **Secret** matching your `GITHUB_WEBHOOK_SECRET` environment variable.
 1. Select the events you want to receive. Supported events and their corresponding `ibdm` types:

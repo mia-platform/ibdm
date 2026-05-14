@@ -22,9 +22,9 @@ This template exposes the same functions as the rest of the mapping, yet its out
 to a string and validated against these rules:
 
 - Length must be between 1 and 253 characters (inclusive).
-- Only alphanumeric characters, `-`, or `.` are allowed.
-- The first character must be alphanumeric.
-- The final character must be alphanumeric.
+- Only lowercase alphanumeric characters, `-`, or `.` are allowed.
+- The first character must be a lowercase alphanumeric character.
+- The final character must be a lowercase alphanumeric character.
 
 ## Metadata Templates
 

@@ -47,8 +47,7 @@ When running in sync mode (`ibdm sync console`), the integration requires access
 
 **Authentication:**
 
-The source supports two authentication methods relative to the Console:
-Client Credentials (Client ID/Secret) or Service Account (JWT).
+The source supports Client Credentials (Client ID/Secret) authentication.
 
 #### Client Credentials
 
@@ -58,17 +57,10 @@ To use Client Credentials, set the following environment variables:
 - `CONSOLE_CLIENT_SECRET`: The Client Secret.
 - `CONSOLE_AUTH_ENDPOINT`: (Optional) The token endpoint (default: `<CONSOLE_ENDPOINT>/oauth/token`).
 
-#### Service Account (JWT)
-
-To use a Service Account with a private key, set the following environment variables:
-
-- `CONSOLE_JWT_SERVICE_ACCOUNT`: Set to `true` to enable this mode.
-- `CONSOLE_PRIVATE_KEY`: The private key for the service account.
-- `CONSOLE_PRIVATE_KEY_ID`: The ID of the private key.
-
 ## Data Types
 
 The Console source can sync the following data types:
 
 - `project`: Information about Console projects.
-- `configuration`: Configurations of the projects (fetched for each revision).
+- `revision`: A named revision of a project.
+- `service`: A microservice within a project's default-branch revision (only services of type `custom` and not marked as `advanced` are emitted).

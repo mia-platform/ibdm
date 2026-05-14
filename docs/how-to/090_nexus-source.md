@@ -75,8 +75,8 @@ All other event types are silently ignored.
 
 | Action | Operation |
 | --- | --- |
-| `CREATED` | Upsert — fetches full component details from the REST API and emits one `dockerimage` entry per asset. If the API call fails, the event is logged and skipped. |
-| `UPDATED` | Upsert — same behaviour as `CREATED`: fetches full component details and emits one `dockerimage` entry per asset. |
+| `CREATED` | Upsert — fetches full component details from the REST API and emits one `dockerimage` item per component with all assets embedded. If the API call fails, the event is logged and skipped. |
+| `UPDATED` | Upsert — same behaviour as `CREATED`: fetches full component details and emits one `dockerimage` item per component with all assets embedded. |
 | `DELETED` | Delete — emits one `dockerimage` delete using the `host`, `name`, and `version` from the webhook payload. No API call is made. |
 
 The event time recorded on each emitted item is taken from the `timestamp` field of the
