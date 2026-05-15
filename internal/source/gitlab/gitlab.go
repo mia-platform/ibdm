@@ -180,8 +180,8 @@ func (s *Source) syncProjectAccessTokens(ctx context.Context, project map[string
 				Type:      accessTokenResource,
 				Operation: source.DataOperationUpsert,
 				Values: map[string]any{
-					"project": project,
-					"token":   token,
+					projectResource: project,
+					"token":         token,
 				},
 				Time: accessTokenTimeOrNow(token),
 			}
@@ -215,8 +215,8 @@ func (s *Source) syncProjectPipelines(ctx context.Context, project map[string]an
 				Type:      pipelineResource,
 				Operation: source.DataOperationUpsert,
 				Values: map[string]any{
-					"project":  project,
-					"pipeline": fullPipeline,
+					projectResource: project,
+					"pipeline":      fullPipeline,
 				},
 				Time: pipelineTimeOrNow(fullPipeline),
 			}

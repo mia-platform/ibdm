@@ -60,7 +60,7 @@ func (p *repositoryEventProcessor) process(ctx context.Context, c *client, types
 			Type:      repositoryType,
 			Operation: source.DataOperationUpsert,
 			Values: map[string]any{
-				"repository": fullRepo,
+				repositoryType: fullRepo,
 			},
 			Time: updatedOnOrNow(fullRepo),
 		},

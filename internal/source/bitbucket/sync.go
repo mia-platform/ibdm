@@ -145,7 +145,7 @@ func (s *Source) syncRepositoriesForWorkspace(ctx context.Context, slug string, 
 					Type:      repositoryType,
 					Operation: source.DataOperationUpsert,
 					Values: map[string]any{
-						"repository": repo,
+						repositoryType: repo,
 					},
 					Time: timeSource(),
 				}
