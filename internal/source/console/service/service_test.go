@@ -6,10 +6,8 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -138,85 +136,6 @@ func TestDoRequest_ContextCanceled(t *testing.T) {
 
 	_, err = svc.GetConfiguration(ctx, "project-id", "resource-id")
 	require.NoError(t, err)
-}
-
-func Test_RealCase(t *testing.T) {
-	// t.Skip("skipping real case test; uncomment to run against real Console instance")
-	// Load configuration JSON
-	cfgBytes, err := os.ReadFile("../../../../local/sources/console/secret/basic/demo.config.json")
-
-	require.NoError(t, err)
-
-	var jc struct {
-		ConsoleEndpoint string `json:"ConsoleEndpoint"`
-		AuthEndpoint    string `json:"AuthEndpoint"`
-		ClientID        string `json:"ClientID"`
-		ClientSecret    string `json:"ClientSecret"`
-	}
-	require.NoError(t, json.Unmarshal(cfgBytes, &jc))
-
-	svc := &ConsoleService{
-		config: config{
-			ConsoleEndpoint: jc.ConsoleEndpoint,
-			AuthEndpoint:    jc.AuthEndpoint,
-			ClientID:        jc.ClientID,
-			ClientSecret:    jc.ClientSecret,
-		},
-	}
-
-	require.NotEmpty(t, svc.ConsoleEndpoint)
-	require.NotEmpty(t, svc.AuthEndpoint)
-	require.NotEmpty(t, svc.ClientID)
-	require.NotEmpty(t, svc.ClientSecret)
-
-	values, err := svc.GetTenants(t.Context())
-	for _, tenant := range values {
-		fmt.Printf("Tenant: %s\n", tenant)
-		// clusters, err := svc.GetClusters(t.Context(), tenant["companyId"].(string))
-		// require.NoError(t, err)
-		// for _, cluster := range clusters {
-		// 	fmt.Printf("  Cluster: %s\n", cluster)
-		// }
-	}
-	require.NoError(t, err)
-}
-
-func Test_RealCase_Cluster(t *testing.T) {
-	// t.Skip("skipping real case test; uncomment to run against real Console instance")
-	// Load configuration JSON
-	cfgBytes, err := os.ReadFile("../../../../local/sources/console/secret/basic/demo.config.json")
-
-	require.NoError(t, err)
-
-	var jc struct {
-		ConsoleEndpoint string `json:"ConsoleEndpoint"`
-		AuthEndpoint    string `json:"AuthEndpoint"`
-		ClientID        string `json:"ClientID"`
-		ClientSecret    string `json:"ClientSecret"`
-	}
-	require.NoError(t, json.Unmarshal(cfgBytes, &jc))
-
-	svc := &ConsoleService{
-		config: config{
-			ConsoleEndpoint: jc.ConsoleEndpoint,
-			AuthEndpoint:    jc.AuthEndpoint,
-			ClientID:        jc.ClientID,
-			ClientSecret:    jc.ClientSecret,
-		},
-	}
-
-	require.NotEmpty(t, svc.ConsoleEndpoint)
-	require.NotEmpty(t, svc.AuthEndpoint)
-	require.NotEmpty(t, svc.ClientID)
-	require.NotEmpty(t, svc.ClientSecret)
-
-	clusters, err := svc.GetClusters(t.Context(), "621d823a-5472-4846-b3b6-49da08b5d8bd")
-	require.NoError(t, err)
-	for _, cluster := range clusters {
-		stringCluster, err := json.Marshal(cluster)
-		require.NoError(t, err)
-		fmt.Printf("  Cluster: %s\n", stringCluster)
-	}
 }
 
 func TestAPIGroupRouting(t *testing.T) {
