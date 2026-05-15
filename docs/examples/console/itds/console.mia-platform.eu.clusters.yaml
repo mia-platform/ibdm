@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: clusters.console.mia-platform.eu
+  description: A Kubernetes cluster registered in the Mia-Platform Console
+spec:
+  group: console.mia-platform.eu
+  names:
+    kind: Cluster
+    plural: clusters
+    singular: cluster
+    displayPlural: Clusters
+    displaySingular: Cluster
+  scope: Organization
+  versions:
+    - name: v1alpha1
+      served: true
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                clusterId:
+                  title: Cluster ID
+                  description: The unique identifier of the cluster as defined in Console.
+                  type: string
+                tenantId:
+                  title: Tenant ID
+                  description: The tenant that owns this cluster.
+                  type: string
+                vendor:
+                  title: Vendor
+                  description: The cloud or infrastructure vendor (e.g. Azure, GCP, AWS).
+                  type: string
+                distribution:
+                  title: Distribution
+                  description: The Kubernetes distribution (e.g. AKS, GKE, EKS).
+                  type: string
+                connection:
+                  title: Connection
+                  description: Connection details for the cluster.
+                  type: object
+                  properties:
+                    url:
+                      title: API Server URL
+                      description: The URL of the Kubernetes API server.
+                      type: string
+                runtimeInfo:
+                  title: Runtime Info
+                  description: Runtime resource information reported by the cluster.
+                  type: object
+                  properties:
+                    cpuCores:
+                      title: CPU Cores
+                      description: Total number of CPU cores available in the cluster.
+                      type: number
+                    nodesCount:
+                      title: Nodes Count
+                      description: Total number of nodes in the cluster.
+                      type: integer
+                    ramMiB:
+                      title: RAM (MiB)
+                      description: Total RAM available in the cluster, expressed in mebibytes.
+                      type: number
+                    version:
+                      title: Kubernetes Version
+                      description: The Kubernetes version running on the cluster.
+                      type: string

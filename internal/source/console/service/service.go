@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"sync/atomic"
 
 	"github.com/mia-platform/ibdm/internal/info"
@@ -16,6 +17,11 @@ import (
 
 const (
 	statusCodeErrorRangeStart = 400
+
+	// API group path prefixes for the Mia-Platform Console API.
+	apiGroupBackend = "/backend"
+	apiGroupUser    = "/user"
+	apiGroupTenants = "/tenants"
 )
 
 // ConsoleService implements consoleServiceInterface against the Mia-Platform Console API.
@@ -36,23 +42,33 @@ func NewConsoleService() (*ConsoleService, error) {
 }
 
 func (c *ConsoleService) GetProjects(ctx context.Context) ([]map[string]any, error) {
-	requestPath := "/projects/"
+	requestPath := apiGroupBackend + "/projects/"
 	return doRequest[[]map[string]any](ctx, c, requestPath)
 }
 
 func (c *ConsoleService) GetRevisions(ctx context.Context, projectID string) ([]map[string]any, error) {
-	requestPath := "/projects/" + projectID + "/revisions"
+	requestPath := apiGroupBackend + "/projects/" + url.PathEscape(projectID) + "/revisions"
 	return doRequest[[]map[string]any](ctx, c, requestPath)
 }
 
 func (c *ConsoleService) GetProject(ctx context.Context, projectID string) (map[string]any, error) {
-	requestPath := "/projects/" + projectID + "?withTenant=true"
+	requestPath := apiGroupBackend + "/projects/" + url.PathEscape(projectID) + "?withTenant=true"
 	return doRequest[map[string]any](ctx, c, requestPath)
 }
 
 func (c *ConsoleService) GetConfiguration(ctx context.Context, projectID, revisionID string) (map[string]any, error) {
-	requestPath := "/projects/" + projectID + "/revisions/" + revisionID + "/configuration"
+	requestPath := apiGroupBackend + "/projects/" + url.PathEscape(projectID) + "/revisions/" + url.PathEscape(revisionID) + "/configuration"
 	return doRequest[map[string]any](ctx, c, requestPath)
+}
+
+func (c *ConsoleService) GetTenants(ctx context.Context) ([]map[string]any, error) {
+	requestPath := apiGroupUser + "/companies"
+	return doRequest[[]map[string]any](ctx, c, requestPath)
+}
+
+func (c *ConsoleService) GetClusters(ctx context.Context, tenantID string) ([]map[string]any, error) {
+	requestPath := apiGroupTenants + "/" + url.PathEscape(tenantID) + "/clusters/"
+	return doRequest[[]map[string]any](ctx, c, requestPath)
 }
 
 func doRequest[T []map[string]any | map[string]any](ctx context.Context, c *ConsoleService, requestPath string) (T, error) {

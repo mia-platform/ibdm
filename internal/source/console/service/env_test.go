@@ -63,7 +63,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 		require.NotNil(t, config)
 		require.Equal(t, "https://console.mia-platform.eu", config.ConsoleEndpoint)
 		// Check inferred AuthEndpoint
-		require.Equal(t, "https://console.mia-platform.eu/oauth/token", config.AuthEndpoint)
+		require.Equal(t, "https://console.mia-platform.eu/m2m/oauth/token", config.AuthEndpoint)
 	})
 
 	t.Run("succeeds with full valid config", func(t *testing.T) {
