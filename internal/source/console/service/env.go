@@ -58,7 +58,6 @@ func (c *config) validate() error {
 
 	if len(c.AuthEndpoint) == 0 {
 		c.AuthEndpoint = c.ConsoleEndpoint + "/m2m/oauth/token"
-		fmt.Println("Using default AuthEndpoint:", c.AuthEndpoint)
 	} else {
 		_, err := url.Parse(c.AuthEndpoint)
 		if err != nil {
