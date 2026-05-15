@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -44,7 +43,7 @@ func TestNewConsoleService(t *testing.T) {
 		t.Setenv("CONSOLE_ENDPOINT", "http://example.com/api/v1")
 		svc, err := NewConsoleService()
 		require.NoError(t, err)
-		require.Equal(t, "http://example.com/oauth/token", svc.AuthEndpoint)
+		require.Equal(t, "http://example.com/api/v1/m2m/oauth/token", svc.AuthEndpoint)
 	})
 }
 
@@ -139,72 +138,74 @@ func TestDoRequest_ContextCanceled(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_RealCase(t *testing.T) {
-	t.Skip("skipping real case test; uncomment to run against real Console instance")
-	// Load configuration JSON
-	cfgBytes, err := os.ReadFile("../../../../local/secret/basic/config.json")
-	require.NoError(t, err)
+func TestAPIGroupRouting(t *testing.T) {
+	t.Parallel()
 
-	var jc struct {
-		ConsoleEndpoint string `json:"ConsoleEndpoint"`
-		AuthEndpoint    string `json:"AuthEndpoint"`
-		ClientID        string `json:"ClientID"`
-		ClientSecret    string `json:"ClientSecret"`
-	}
-	require.NoError(t, json.Unmarshal(cfgBytes, &jc))
-
-	svc := &ConsoleService{
-		config: config{
-			ConsoleEndpoint: jc.ConsoleEndpoint,
-			AuthEndpoint:    jc.AuthEndpoint,
-			ClientID:        jc.ClientID,
-			ClientSecret:    jc.ClientSecret,
+	tests := map[string]struct {
+		call         func(svc *ConsoleService, ctx context.Context) error
+		expectedPath string
+	}{
+		"GetProjects uses /backend": {
+			call: func(svc *ConsoleService, ctx context.Context) error {
+				_, err := svc.GetProjects(ctx)
+				return err
+			},
+			expectedPath: "/backend/projects/",
+		},
+		"GetRevisions uses /backend": {
+			call: func(svc *ConsoleService, ctx context.Context) error {
+				_, err := svc.GetRevisions(ctx, "my-project")
+				return err
+			},
+			expectedPath: "/backend/projects/my-project/revisions",
+		},
+		"GetProject uses /backend": {
+			call: func(svc *ConsoleService, ctx context.Context) error {
+				_, err := svc.GetProject(ctx, "my-project")
+				return err
+			},
+			expectedPath: "/backend/projects/my-project",
+		},
+		"GetConfiguration uses /backend": {
+			call: func(svc *ConsoleService, ctx context.Context) error {
+				_, err := svc.GetConfiguration(ctx, "my-project", "my-revision")
+				return err
+			},
+			expectedPath: "/backend/projects/my-project/revisions/my-revision/configuration",
+		},
+		"GetTenants uses /user": {
+			call: func(svc *ConsoleService, ctx context.Context) error {
+				_, err := svc.GetTenants(ctx)
+				return err
+			},
+			expectedPath: "/user/companies",
+		},
+		"GetClusters uses /tenants": {
+			call: func(svc *ConsoleService, ctx context.Context) error {
+				_, err := svc.GetClusters(ctx, "my-tenant")
+				return err
+			},
+			expectedPath: "/tenants/my-tenant/clusters/",
 		},
 	}
 
-	require.NotEmpty(t, svc.ConsoleEndpoint)
-	require.NotEmpty(t, svc.AuthEndpoint)
-	require.NotEmpty(t, svc.ClientID)
-	require.NotEmpty(t, svc.ClientSecret)
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
 
-	_, err = svc.GetConfiguration(t.Context(), "project-id", "resource-id")
-	require.NoError(t, err)
-}
+			var capturedPath string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				capturedPath = r.URL.Path
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer server.Close()
 
-func Test_RealCase_JWT(t *testing.T) {
-	t.Skip("skipping real case test; uncomment to run against real Console instance")
-	// Load JWT configuration JSON
-	cfgBytes, err := os.ReadFile("../../../../local/secret/jwt/config.json")
-	require.NoError(t, err)
+			svc := &ConsoleService{
+				config: config{ConsoleEndpoint: server.URL},
+			}
 
-	var jc struct {
-		ConsoleEndpoint string `json:"ConsoleEndpoint"`
-		AuthEndpoint    string `json:"AuthEndpoint"`
-		ClientID        string `json:"ClientID"`
-		PrivateKey      string `json:"PrivateKey"`
-		PrivateKeyID    string `json:"PrivateKeyID"`
+			_ = test.call(svc, t.Context())
+			require.Equal(t, test.expectedPath, capturedPath)
+		})
 	}
-	require.NoError(t, json.Unmarshal(cfgBytes, &jc))
-
-	// Load private key file
-	keyBytes, err := os.ReadFile("../../../../local/secret/jwt/private.key")
-	require.NoError(t, err)
-	if jc.PrivateKey == "" {
-		jc.PrivateKey = string(keyBytes)
-	}
-
-	svc := &ConsoleService{
-		config: config{
-			ConsoleEndpoint: jc.ConsoleEndpoint,
-			AuthEndpoint:    jc.AuthEndpoint,
-			ClientID:        jc.ClientID,
-		},
-	}
-
-	require.NotEmpty(t, svc.ConsoleEndpoint)
-	require.NotEmpty(t, svc.AuthEndpoint)
-	require.NotEmpty(t, svc.ClientID)
-
-	_, err = svc.GetConfiguration(t.Context(), "project-id", "resource-id")
-	require.NoError(t, err)
 }

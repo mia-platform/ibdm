@@ -23,12 +23,15 @@ import (
 )
 
 const (
-	loggerName            = "ibdm:source:console"
-	authHeaderName        = "X-Mia-Signature"
-	configurationResource = "configuration"
-	projectResource       = "project"
-	revisionResource      = "revision"
-	serviceResource       = "service"
+	loggerName                         = "ibdm:source:console"
+	authHeaderName                     = "X-Mia-Signature"
+	configurationResource              = "configuration"
+	projectResource                    = "project"
+	revisionResource                   = "revision"
+	serviceResource                    = "service"
+	clusterResource                    = "cluster"
+	clusterProjectRelationshipResource = "clusterProjectRelationship"
+	linkedProjectsField                = "linkedProjects"
 )
 
 var (
@@ -40,6 +43,7 @@ var (
 	ErrWebhookSecretMissing = errors.New("webhook secret not configured")
 
 	configurationChainTypes = []string{projectResource, revisionResource, serviceResource}
+	clusterChainTypes       = []string{clusterResource, clusterProjectRelationshipResource}
 	timeSource              = time.Now
 )
 
@@ -117,22 +121,43 @@ func filterTypes(candidates []string, types map[string]source.Extra) []string {
 	return result
 }
 
-// listAssets resolves the requested typesToSync against the known configuration
-// chain types and delegates to listConfigurations. It returns early with an
-// empty slice when none of the requested types are relevant.
+// listAssets resolves the requested typesToSync against the known resource
+// chain types and delegates to the appropriate listing function. It returns
+// early with an empty slice when none of the requested types are relevant.
 func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.Extra) ([]source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
-	subtypes := filterTypes(configurationChainTypes, typesToSync)
-	if len(subtypes) == 0 {
+	configSubtypes := filterTypes(configurationChainTypes, typesToSync)
+	clusterSubtypes := filterTypes(clusterChainTypes, typesToSync)
+
+	if len(configSubtypes) == 0 && len(clusterSubtypes) == 0 {
 		log.Debug("no known types found, end early")
 		return []source.Data{}, nil
 	}
 
-	log.Trace("fetching resources needed for configuration chain started", "types", subtypes)
-	data, err := s.listConfigurations(ctx, subtypes)
-	log.Trace("fetching resources needed for configuration chain done", "types", subtypes)
-	return data, err
+	var result []source.Data
+
+	if len(configSubtypes) > 0 {
+		log.Trace("fetching resources needed for configuration chain started", "types", configSubtypes)
+		data, err := s.listConfigurations(ctx, configSubtypes)
+		log.Trace("fetching resources needed for configuration chain done", "types", configSubtypes)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, data...)
+	}
+
+	if len(clusterSubtypes) > 0 {
+		log.Trace("fetching resources needed for cluster chain started", "types", clusterSubtypes)
+		data, err := s.listClusters(ctx, clusterSubtypes)
+		log.Trace("fetching resources needed for cluster chain done", "types", clusterSubtypes)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, data...)
+	}
+
+	return result, nil
 }
 
 // listConfigurations fetches all projects from the Console API and, for each
@@ -320,6 +345,83 @@ func createServiceData(project map[string]any, revisionName string, svc map[stri
 			"service":  buildServiceData(svc),
 		},
 	}
+}
+
+// listClusters fetches all tenants from the Console API and, for each tenant,
+// retrieves its clusters. It emits [source.Data] entries for every requested
+// subtype (cluster, clusterProjectRelationship).
+func (s *Source) listClusters(ctx context.Context, subtypes []string) ([]source.Data, error) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	syncClusters := slices.Contains(subtypes, clusterResource)
+	syncRelationships := slices.Contains(subtypes, clusterProjectRelationshipResource)
+
+	tenants, err := s.cs.GetTenants(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+	}
+	log.Trace("fetched tenants", "count", len(tenants))
+
+	var result []source.Data
+	for _, tenant := range tenants {
+		tenantID, ok := tenant["companyId"].(string)
+		if !ok || tenantID == "" {
+			log.Debug("tenant missing companyId, skipping", "tenant", tenant)
+			continue
+		}
+
+		clusters, err := s.cs.GetClusters(ctx, tenantID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+		}
+		log.Trace("fetched clusters", "count", len(clusters), "tenantId", tenantID)
+
+		for _, cluster := range clusters {
+			clusterData := buildClusterData(cluster)
+
+			if syncClusters {
+				result = append(result, source.Data{
+					Type:      clusterResource,
+					Operation: source.DataOperationUpsert,
+					Time:      timeSource(),
+					Values:    map[string]any{clusterResource: clusterData},
+				})
+			}
+
+			if syncRelationships {
+				linkedProjects, _ := cluster[linkedProjectsField].([]any)
+				for _, lp := range linkedProjects {
+					linkedProject, ok := lp.(map[string]any)
+					if !ok {
+						continue
+					}
+					result = append(result, source.Data{
+						Type:      clusterProjectRelationshipResource,
+						Operation: source.DataOperationUpsert,
+						Time:      timeSource(),
+						Values: map[string]any{
+							"project":       linkedProject,
+							clusterResource: clusterData,
+						},
+					})
+				}
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// buildClusterData returns a cluster map with the linkedProjects field removed,
+// since it is not needed in the cluster item payload.
+func buildClusterData(cluster map[string]any) map[string]any {
+	result := make(map[string]any, len(cluster))
+	for k, v := range cluster {
+		if k != linkedProjectsField {
+			result[k] = v
+		}
+	}
+	return result
 }
 
 // GetWebhook returns a [source.Webhook] that validates incoming Console

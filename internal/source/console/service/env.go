@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -40,10 +41,13 @@ func (c *config) validate() error {
 	if c.ConsoleEndpoint == "" {
 		return errors.New("CONSOLE_ENDPOINT is required")
 	}
-	endpointURL, err := url.Parse(c.ConsoleEndpoint)
+	_, err := url.Parse(c.ConsoleEndpoint)
 	if err != nil {
 		return fmt.Errorf("invalid CONSOLE_ENDPOINT: %w", err)
 	}
+
+	// Normalise: remove trailing slash so path concatenation is always correct.
+	c.ConsoleEndpoint = strings.TrimRight(c.ConsoleEndpoint, "/")
 
 	switch {
 	case len(c.ClientID) > 0 && len(c.ClientSecret) == 0:
@@ -53,8 +57,7 @@ func (c *config) validate() error {
 	}
 
 	if len(c.AuthEndpoint) == 0 {
-		endpointURL.Path = "/oauth/token"
-		c.AuthEndpoint = endpointURL.String()
+		c.AuthEndpoint = c.ConsoleEndpoint + "/m2m/oauth/token"
 	} else {
 		_, err := url.Parse(c.AuthEndpoint)
 		if err != nil {

@@ -204,7 +204,7 @@ func Test_DoChain(t *testing.T) {
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
-				case "/projects/p1":
+				case "/backend/projects/p1":
 					json.NewEncoder(w).Encode(map[string]any{
 						"_id":           "p1",
 						"projectId":     "projectId",
@@ -215,7 +215,7 @@ func Test_DoChain(t *testing.T) {
 							"teamContact": "contact",
 						},
 					})
-				case "/projects/p1/revisions/r1/configuration":
+				case "/backend/projects/p1/revisions/r1/configuration":
 					json.NewEncoder(w).Encode(map[string]any{
 						"key": "value",
 						"services": map[string]any{
@@ -305,7 +305,7 @@ func Test_DoChain(t *testing.T) {
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
-				case "/projects/p1":
+				case "/backend/projects/p1":
 					json.NewEncoder(w).Encode(map[string]any{
 						"_id":           "p1",
 						"projectId":     "projectId",
@@ -314,7 +314,7 @@ func Test_DoChain(t *testing.T) {
 						"tenantId":      "",
 						"info":          nil,
 					})
-				case "/projects/p1/revisions/r1/configuration":
+				case "/backend/projects/p1/revisions/r1/configuration":
 					json.NewEncoder(w).Encode(map[string]any{
 						"key": "value",
 						"services": map[string]any{
@@ -553,13 +553,13 @@ func TestSource_listAssets(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			switch r.URL.Path {
-			case "/projects/":
+			case "/backend/projects/":
 				projectResponse := maps.Clone(project1)
 				projectResponse["defaultBranch"] = "r1"
 				json.NewEncoder(w).Encode([]map[string]any{projectResponse})
-			case "/projects/p1/revisions":
+			case "/backend/projects/p1/revisions":
 				json.NewEncoder(w).Encode([]map[string]any{revision1})
-			case "/projects/p1/revisions/r1/configuration":
+			case "/backend/projects/p1/revisions/r1/configuration":
 				json.NewEncoder(w).Encode(map[string]any{
 					"key": "value",
 					"fastDataConfig": map[string]any{
@@ -606,7 +606,7 @@ func TestSource_listAssets(t *testing.T) {
 		},
 		"returns error when GetRevisions fails during configuration sync": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/projects/" {
+				if r.URL.Path == "/backend/projects/" {
 					w.Header().Set("Content-Type", "application/json")
 					json.NewEncoder(w).Encode([]map[string]any{{"_id": "p1"}})
 					return
@@ -619,9 +619,9 @@ func TestSource_listAssets(t *testing.T) {
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
-				case "/projects/":
+				case "/backend/projects/":
 					json.NewEncoder(w).Encode([]map[string]any{{"_id": "p1"}})
-				case "/projects/p1/revisions":
+				case "/backend/projects/p1/revisions":
 					json.NewEncoder(w).Encode([]map[string]any{{"name": "r1"}})
 				default:
 					w.WriteHeader(http.StatusInternalServerError)
@@ -647,6 +647,199 @@ func TestSource_listAssets(t *testing.T) {
 			require.ErrorIs(t, err, ErrRetrievingAssets)
 		})
 	}
+}
+
+func TestSource_listClusters(t *testing.T) {
+	tenant1 := map[string]any{"companyId": "t1", "name": "Tenant One"}
+	cluster1 := map[string]any{
+		"_id":       "c1",
+		"clusterId": "demo-azure",
+		"connection": map[string]any{
+			"url": "https://paas-demo.hcp.northeurope.azmk8s.io",
+		},
+		"distribution": "AKS",
+		"runtimeInfo": map[string]any{
+			"cpuCores":   float64(4),
+			"nodesCount": float64(2),
+		},
+		"tenantId": "t1",
+		"vendor":   "Azure",
+		linkedProjectsField: []any{
+			map[string]any{"_id": "p1", "name": "Project One", "projectId": "proj1"},
+			map[string]any{"_id": "p2", "name": "Project Two", "projectId": "proj2"},
+		},
+	}
+	clusterWithoutLinkedProjects := map[string]any{
+		"_id":       "c1",
+		"clusterId": "demo-azure",
+		"connection": map[string]any{
+			"url": "https://paas-demo.hcp.northeurope.azmk8s.io",
+		},
+		"distribution": "AKS",
+		"runtimeInfo": map[string]any{
+			"cpuCores":   float64(4),
+			"nodesCount": float64(2),
+		},
+		"tenantId": "t1",
+		"vendor":   "Azure",
+	}
+
+	makeHandler := func(tenants []map[string]any, clusters map[string][]map[string]any) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/user/companies":
+				json.NewEncoder(w).Encode(tenants)
+			default:
+				for tenantID, cls := range clusters {
+					if r.URL.Path == "/tenants/"+tenantID+"/clusters/" {
+						json.NewEncoder(w).Encode(cls)
+						return
+					}
+				}
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}
+	}
+
+	t.Run("successfully lists clusters and relationships", func(t *testing.T) {
+		ctx := t.Context()
+
+		handler := makeHandler(
+			[]map[string]any{tenant1},
+			map[string][]map[string]any{"t1": {cluster1}},
+		)
+		server := httptest.NewServer(handler)
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
+		typesToSync := map[string]source.Extra{
+			clusterResource:                    {},
+			clusterProjectRelationshipResource: {},
+		}
+
+		data, err := s.listAssets(ctx, typesToSync)
+		require.NoError(t, err)
+		require.Len(t, data, 3) // 1 cluster + 2 relationships
+
+		clusterItems := []source.Data{}
+		relItems := []source.Data{}
+		for _, d := range data {
+			switch d.Type {
+			case clusterResource:
+				clusterItems = append(clusterItems, d)
+			case clusterProjectRelationshipResource:
+				relItems = append(relItems, d)
+			}
+		}
+		require.Len(t, clusterItems, 1)
+		require.Len(t, relItems, 2)
+
+		assert.Equal(t, map[string]any{clusterResource: clusterWithoutLinkedProjects}, clusterItems[0].Values)
+		assert.Equal(t, clusterProjectRelationshipResource, relItems[0].Type)
+		assert.Equal(t, clusterWithoutLinkedProjects, relItems[0].Values[clusterResource])
+	})
+
+	t.Run("skips tenant with missing companyId", func(t *testing.T) {
+		ctx := t.Context()
+
+		handler := makeHandler(
+			[]map[string]any{{"name": "No ID Tenant"}},
+			map[string][]map[string]any{},
+		)
+		server := httptest.NewServer(handler)
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
+		data, err := s.listAssets(ctx, map[string]source.Extra{clusterResource: {}})
+		require.NoError(t, err)
+		assert.Empty(t, data)
+	})
+
+	t.Run("only cluster type requested omits relationships", func(t *testing.T) {
+		ctx := t.Context()
+
+		handler := makeHandler(
+			[]map[string]any{tenant1},
+			map[string][]map[string]any{"t1": {cluster1}},
+		)
+		server := httptest.NewServer(handler)
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
+		data, err := s.listAssets(ctx, map[string]source.Extra{clusterResource: {}})
+		require.NoError(t, err)
+		require.Len(t, data, 1)
+		assert.Equal(t, clusterResource, data[0].Type)
+	})
+
+	errorTests := map[string]struct {
+		handler http.HandlerFunc
+	}{
+		"returns error when GetTenants fails": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+		},
+		"returns error when GetClusters fails": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/user/companies" {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode([]map[string]any{tenant1})
+					return
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+		},
+	}
+
+	for name, tc := range errorTests {
+		t.Run(name, func(t *testing.T) {
+			ctx := t.Context()
+
+			server := httptest.NewServer(tc.handler)
+			defer server.Close()
+			t.Setenv("CONSOLE_ENDPOINT", server.URL)
+			t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+			s, err := NewSource()
+			require.NoError(t, err)
+
+			_, err = s.listAssets(ctx, map[string]source.Extra{clusterResource: {}})
+			require.ErrorIs(t, err, ErrRetrievingAssets)
+		})
+	}
+}
+
+func Test_buildClusterData(t *testing.T) {
+	t.Parallel()
+
+	input := map[string]any{
+		"_id":               "c1",
+		"clusterId":         "demo",
+		"distribution":      "AKS",
+		linkedProjectsField: []any{map[string]any{"_id": "p1"}},
+		"tenantId":          "t1",
+	}
+
+	result := buildClusterData(input)
+	assert.NotContains(t, result, linkedProjectsField)
+	assert.Equal(t, "c1", result["_id"])
+	assert.Equal(t, "demo", result["clusterId"])
+	assert.Equal(t, "AKS", result["distribution"])
+	assert.Equal(t, "t1", result["tenantId"])
 }
 
 func Test_buildServiceData(t *testing.T) {

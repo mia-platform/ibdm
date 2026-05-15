@@ -43,7 +43,7 @@ When running in sync mode (`ibdm sync console`), the integration requires access
 
 **General Configuration:**
 
-- `CONSOLE_ENDPOINT`: The base URL of the Mia-Platform Console (required).
+- `CONSOLE_ENDPOINT`: The base API URL of the Mia-Platform Console (required). This must include the API path prefix, e.g. `https://console.example.com/api`.
 
 **Authentication:**
 
@@ -55,7 +55,7 @@ To use Client Credentials, set the following environment variables:
 
 - `CONSOLE_CLIENT_ID`: The Client ID.
 - `CONSOLE_CLIENT_SECRET`: The Client Secret.
-- `CONSOLE_AUTH_ENDPOINT`: (Optional) The token endpoint (default: `<CONSOLE_ENDPOINT>/oauth/token`).
+- `CONSOLE_AUTH_ENDPOINT`: (Optional) The token endpoint (default: `<CONSOLE_ENDPOINT>/m2m/oauth/token`).
 
 ## Data Types
 
@@ -64,3 +64,5 @@ The Console source can sync the following data types:
 - `project`: Information about Console projects.
 - `revision`: A named revision of a project.
 - `service`: A microservice within a project's default-branch revision (only services of type `custom` and not marked as `advanced` are emitted).
+- `cluster`: A cluster registered in the Console. Fetched via the tenant/cluster APIs; the `linkedProjects` field is stripped before mapping.
+- `clusterProjectRelationship`: A relationship between a cluster and a linked project. One entry is emitted per project in the cluster's `linkedProjects` list, carrying both the project and the cluster (without `linkedProjects`) as template values.

@@ -1,0 +1,18 @@
+apiVersion: console.mia-platform.eu/v1alpha1
+itemFamily: clusters
+type: cluster
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s" (replace "https://" "" .cluster.connection.url) | sha256sum }}
+  metadata:
+    title: "{{ printf \"%s\" .cluster.clusterId }}"
+  spec:
+    clusterId: "{{ .cluster.clusterId }}"
+    tenantId: "{{ .cluster.tenantId }}"
+    vendor: "{{ get \"vendor\" .cluster \"\" | quote }}"
+    distribution: "{{ get \"distribution\" .cluster \"\" | quote }}"
+    connection: "{{ get \"connection\" .cluster (object) | toJSON }}"
+    runtimeInfo: "{{ get \"runtimeInfo\" .cluster (object) | toJSON }}"
+    url: |-
+      {{ printf "%s" (replace "https://" "" .cluster.connection.url) }}
