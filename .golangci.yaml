@@ -55,6 +55,8 @@ linters:
   - whitespace
   - zerologlint
   settings:
+    goconst:
+      ignore-tests: true
     gocyclo:
       min-complexity: 15
     goheader:

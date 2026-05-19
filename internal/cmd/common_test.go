@@ -31,25 +31,25 @@ func TestCompletion(t *testing.T) {
 		"no args, complete root commands": {
 			args: []string{},
 			expectedCompletion: []string{
-				"azure-devops\tMicrosoft Azure DevOps integration",
-				"azure\tMicrosoft Azure integration",
-				"bitbucket\tBitbucket integration",
-				"console\tMia Platform Console integration",
-				"gcp\tGoogle Cloud Platform integration",
-				"github\tGitHub integration",
-				"gitlab\tGitLab integration",
-				"nexus\tSonatype Nexus Repository Manager integration",
-				"sysdig\tSysdig Secure integration",
+				azureDevOpsSource + "\t" + azureDevOpsDescription,
+				azureSource + "\t" + azureDescription,
+				bitbucketSource + "\t" + bitbucketDescription,
+				consoleSource + "\t" + consoleDescription,
+				gcpSource + "\t" + gcpDescription,
+				githubSource + "\t" + githubDescription,
+				gitlabSource + "\t" + gitlabDescription,
+				nexusSource + "\t" + nexusDescription,
+				sysdigSource + "\t" + sysdigDescription,
 			},
 		},
 		"some args, no completions": {
-			args: []string{"gcp"},
+			args: []string{gcpSource},
 		},
 		"no args, partial string, return filtered commands": {
 			args:       []string{},
 			toComplete: "gc",
 			expectedCompletion: []string{
-				"gcp\tGoogle Cloud Platform integration",
+				gcpSource + "\t" + gcpDescription,
 			},
 		},
 		"no args, partial wrong string, return no command": {
@@ -77,15 +77,15 @@ func TestSourceFromName(t *testing.T) {
 		expectedSourceType any
 	}{
 		"azure integration": {
-			integrationName:    "azure",
+			integrationName:    azureSource,
 			expectedSourceType: (*azure.Source)(nil),
 		},
 		"azure devops integration": {
-			integrationName:    "azure-devops",
+			integrationName:    azureDevOpsSource,
 			expectedSourceType: (*azuredevops.Source)(nil),
 		},
 		"gcp integration": {
-			integrationName:    "gcp",
+			integrationName:    gcpSource,
 			expectedSourceType: (*gcp.Source)(nil),
 		},
 		"invalid integration": {

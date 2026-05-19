@@ -27,33 +27,54 @@ import (
 	"github.com/mia-platform/ibdm/internal/source/sysdig"
 )
 
+const (
+	azureDevOpsSource      = "azure-devops"
+	azureDevOpsDescription = "Microsoft Azure DevOps integration"
+	azureSource            = "azure"
+	azureDescription       = "Microsoft Azure integration"
+	bitbucketSource        = "bitbucket"
+	bitbucketDescription   = "Bitbucket integration"
+	consoleSource          = "console"
+	consoleDescription     = "Mia Platform Console integration"
+	gcpSource              = "gcp"
+	gcpDescription         = "Google Cloud Platform integration"
+	githubSource           = "github"
+	githubDescription      = "GitHub integration"
+	gitlabSource           = "gitlab"
+	gitlabDescription      = "GitLab integration"
+	nexusSource            = "nexus"
+	nexusDescription       = "Sonatype Nexus Repository Manager integration"
+	sysdigSource           = "sysdig"
+	sysdigDescription      = "Sysdig Secure integration"
+)
+
 var (
 	errNoArguments        = errors.New("no integration name provided")
 	errInvalidIntegration = errors.New("invalid integration name provided")
 
 	// availableEventSources covers event-stream integration sources used for completion and help text.
 	availableEventSources = map[string]string{
-		"azure-devops": "Microsoft Azure DevOps integration",
-		"azure":        "Microsoft Azure integration",
-		"bitbucket":    "Bitbucket integration",
-		"console":      "Mia Platform Console integration",
-		"gcp":          "Google Cloud Platform integration",
-		"github":       "GitHub integration",
-		"gitlab":       "GitLab integration",
-		"nexus":        "Sonatype Nexus Repository Manager integration",
-		"sysdig":       "Sysdig Secure integration",
+		azureDevOpsSource: azureDevOpsDescription,
+		azureSource:       azureDescription,
+		bitbucketSource:   bitbucketDescription,
+		consoleSource:     consoleDescription,
+		gcpSource:         gcpDescription,
+		githubSource:      githubDescription,
+		gitlabSource:      gitlabDescription,
+		nexusSource:       nexusDescription,
+		sysdigSource:      sysdigDescription,
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
 	availableSyncSources = map[string]string{
-		"azure-devops": "Microsoft Azure DevOps integration",
-		"azure":        "Microsoft Azure integration",
-		"bitbucket":    "Bitbucket integration",
-		"console":      "Mia Platform Console integration",
-		"gcp":          "Google Cloud Platform integration",
-		"github":       "GitHub integration",
-		"gitlab":       "GitLab integration",
-		"nexus":        "Sonatype Nexus Repository Manager integration",
-		"sysdig":       "Sysdig Secure integration",
+		azureDevOpsSource: azureDevOpsDescription,
+		azureSource:       azureDescription,
+		bitbucketSource:   bitbucketDescription,
+		consoleSource:     consoleDescription,
+		gcpSource:         gcpDescription,
+		githubSource:      githubDescription,
+		gitlabSource:      gitlabDescription,
+		nexusSource:       nexusDescription,
+		sysdigSource:      sysdigDescription,
 	}
 )
 
@@ -94,23 +115,23 @@ func validArgsFunc(sources map[string]string) cobra.CompletionFunc {
 // sourceFromIntegrationName returns the pipeline source matching integrationName.
 func sourceFromIntegrationName(integrationName string) (any, error) {
 	switch integrationName {
-	case "azure":
+	case azureSource:
 		return azure.NewSource()
-	case "azure-devops":
+	case azureDevOpsSource:
 		return azuredevops.NewSource()
-	case "bitbucket":
+	case bitbucketSource:
 		return bitbucket.NewSource()
-	case "gcp":
+	case gcpSource:
 		return gcp.NewSource()
-	case "github":
+	case githubSource:
 		return github.NewSource()
-	case "console":
+	case consoleSource:
 		return console.NewSource()
-	case "gitlab":
+	case gitlabSource:
 		return gitlab.NewSource()
-	case "nexus":
+	case nexusSource:
 		return nexus.NewSource()
-	case "sysdig":
+	case sysdigSource:
 		return sysdig.NewSource()
 	}
 	return nil, nil

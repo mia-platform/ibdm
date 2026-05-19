@@ -89,8 +89,8 @@ func (p *pipelineEventProcessor) process(ctx context.Context, c *gitLabClient, t
 		Type:      pipelineResource,
 		Operation: source.DataOperationUpsert,
 		Values: map[string]any{
-			"pipeline": ev.pipeline,
-			"project":  ev.project["project"],
+			"pipeline":      ev.pipeline,
+			projectResource: ev.project[projectResource],
 		},
 		Time: ev.EventTime(),
 	})

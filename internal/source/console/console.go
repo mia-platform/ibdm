@@ -182,7 +182,7 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 				Type:      projectResource,
 				Operation: source.DataOperationUpsert,
 				Time:      timeSource(),
-				Values:    map[string]any{"project": project},
+				Values:    map[string]any{projectResource: project},
 			})
 		}
 
@@ -313,7 +313,7 @@ func createProjectData(project map[string]any, t time.Time, operation source.Dat
 		Operation: operation,
 		Time:      t,
 		Values: map[string]any{
-			"project": project,
+			projectResource: project,
 		},
 	}
 }
@@ -326,8 +326,8 @@ func createRevisionData(project map[string]any, revisionName string, t time.Time
 		Operation: operation,
 		Time:      t,
 		Values: map[string]any{
-			"project":  buildProjectData(project),
-			"revision": buildRevisionData(revisionName),
+			projectResource: buildProjectData(project),
+			"revision":      buildRevisionData(revisionName),
 		},
 	}
 }
@@ -400,7 +400,7 @@ func (s *Source) listClusters(ctx context.Context, subtypes []string) ([]source.
 						Operation: source.DataOperationUpsert,
 						Time:      timeSource(),
 						Values: map[string]any{
-							"project":       linkedProject,
+							projectResource: linkedProject,
 							clusterResource: clusterData,
 						},
 					})
