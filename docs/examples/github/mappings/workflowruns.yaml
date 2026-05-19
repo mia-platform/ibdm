@@ -32,9 +32,42 @@ mappings:
     runNumber: "{{ .workflow_run.run_number }}"
     runAttempt: "{{ .workflow_run.run_attempt }}"
     htmlUrl: "{{ .workflow_run.html_url }}"
-    created: "{{ .workflow_run.created_at }}"
-    updated: "{{ .workflow_run.updated_at }}"
-    runStartedAt: "{{ .workflow_run.run_started_at }}"
+    created: |-
+      {{ $created := (get "created_at" .workflow_run "") -}}
+      {{- if $created -}}
+        {{- $isNumberCheck := isNumber .workflow_run.created_at -}}
+        {{- if $isNumberCheck -}}
+          {{- convertFromTimestamp .workflow_run.created_at -}}
+        {{- else -}}
+          {{- .workflow_run.created_at -}}
+        {{- end -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    updated: |-
+      {{ $updated := (get "updated_at" .workflow_run "") -}}
+      {{- if $updated -}}
+        {{- $isNumberCheck := isNumber .workflow_run.updated_at -}}
+        {{- if $isNumberCheck -}}
+          {{- convertFromTimestamp .workflow_run.updated_at -}}
+        {{- else -}}
+          {{- .workflow_run.updated_at -}}
+        {{- end -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    runStartedAt: |-
+      {{ $runStartedAt := (get "run_started_at" .workflow_run "") -}}
+      {{- if $runStartedAt -}}
+        {{- $isNumberCheck := isNumber .workflow_run.run_started_at -}}
+        {{- if $isNumberCheck -}}
+          {{- convertFromTimestamp .workflow_run.run_started_at -}}
+        {{- else -}}
+          {{- .workflow_run.run_started_at -}}
+        {{- end -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
   extra:
     - apiVersion: mia-platform.eu/v1alpha1
       itemFamily: relationships

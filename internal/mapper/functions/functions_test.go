@@ -223,6 +223,17 @@ func TestObjectsFunctions(t *testing.T) {
 func TestStringsFunctions(t *testing.T) {
 	t.Parallel()
 
+	t.Run("isString function", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsString("hello"))
+		assert.True(t, IsString(""))
+		assert.False(t, IsString(42))
+		assert.False(t, IsString(3.14))
+		assert.False(t, IsString(true))
+		assert.False(t, IsString(nil))
+		assert.False(t, IsString([]string{"a", "b"}))
+	})
+
 	t.Run("quote function", func(t *testing.T) {
 		t.Parallel()
 		assert.Equal(t, `"Hello, \"World\"!"`, Quote(`Hello, "World"!`))
@@ -318,6 +329,22 @@ func TestStringsFunctions(t *testing.T) {
 	})
 }
 
+func TestNumbersFunctions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("isNumber function", func(t *testing.T) {
+		t.Parallel()
+		// JSON numbers always decode to float64; int64 is the convenience integer type.
+		assert.True(t, IsNumber(float64(42)))
+		assert.True(t, IsNumber(float64(3.14)))
+		assert.True(t, IsNumber(int64(42)))
+		assert.False(t, IsNumber("42"))
+		assert.False(t, IsNumber(true))
+		assert.False(t, IsNumber(nil))
+		assert.False(t, IsNumber([]float64{1, 2}))
+	})
+}
+
 func TestDateFunctions(t *testing.T) {
 	t.Parallel()
 
@@ -330,6 +357,41 @@ func TestDateFunctions(t *testing.T) {
 
 		expected := "2024-06-10T14:04:05Z"
 		assert.Equal(t, expected, Now())
+	})
+
+	t.Run("convertFromTimestamp with float64", func(t *testing.T) {
+		t.Parallel()
+		// float64 is what JSON decoding always produces for numbers.
+		result, err := ConvertFromTimestamp(float64(0))
+		require.NoError(t, err)
+		assert.Equal(t, "1970-01-01T00:00:00Z", result)
+	})
+
+	t.Run("convertFromTimestamp fractional part is truncated", func(t *testing.T) {
+		t.Parallel()
+		result, err := ConvertFromTimestamp(float64(86400.9))
+		require.NoError(t, err)
+		assert.Equal(t, "1970-01-02T00:00:00Z", result)
+	})
+
+	t.Run("convertFromTimestamp with int64", func(t *testing.T) {
+		t.Parallel()
+		// int64 is accepted as a convenience for values set in source code.
+		result, err := ConvertFromTimestamp(int64(86400))
+		require.NoError(t, err)
+		assert.Equal(t, "1970-01-02T00:00:00Z", result)
+	})
+
+	t.Run("convertFromTimestamp with unsupported type", func(t *testing.T) {
+		t.Parallel()
+		_, err := ConvertFromTimestamp("1717977845")
+		require.Error(t, err)
+	})
+
+	t.Run("convertFromTimestamp with nil", func(t *testing.T) {
+		t.Parallel()
+		_, err := ConvertFromTimestamp(nil)
+		require.Error(t, err)
 	})
 }
 

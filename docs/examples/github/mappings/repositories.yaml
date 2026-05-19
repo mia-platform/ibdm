@@ -15,7 +15,13 @@ mappings:
     fullName: "{{ .repository.full_name }}"
     description: "{{ .repository.description }}"
     htmlUrl: "{{ .repository.html_url }}"
-    language: "{{ .repository.language }}"
+    language: |-
+      {{ $language := (get "language" .repository "") -}}
+      {{- if $language -}}
+        {{- .repository.language -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     languages: "{{ get \"repositoryLanguages\" . (object) | toJSON }}"
     visibility: "{{ .repository.visibility }}"
     defaultBranch: "{{ .repository.default_branch }}"
@@ -32,12 +38,39 @@ mappings:
         {{- "" | quote -}}
       {{- end }}
     topics: "{{ .repository.topics | toJSON }}"
-    created: "{{ .repository.created_at }}"
-    lastUpdate: |-
-      {{ $updated := (get "updated_at" .repository "") -}}
-      {{- if $updated -}}
-        {{- .repository.updated_at -}}
+    created: |-
+      {{ $created := (get "created_at" .repository "") -}}
+      {{- if $created -}}
+        {{- $isNumberCheck := isNumber .repository.created_at -}}
+        {{- if $isNumberCheck -}}
+          {{- convertFromTimestamp .repository.created_at -}}
+        {{- else -}}
+          {{- .repository.created_at -}}
+        {{- end -}}
       {{- else -}}
         {{- "" | quote -}}
       {{- end }}
-    lastPush: "{{ .repository.pushed_at }}"
+    lastUpdate: |-
+      {{ $updated := (get "updated_at" .repository "") -}}
+      {{- if $updated -}}
+        {{- $isNumberCheck := isNumber .repository.updated_at -}}
+        {{- if $isNumberCheck -}}
+          {{- convertFromTimestamp .repository.updated_at -}}
+        {{- else -}}
+          {{- .repository.updated_at -}}
+        {{- end -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    lastPush: |-
+      {{ $pushed := (get "pushed_at" .repository "") -}}
+      {{- if $pushed -}}
+        {{- $isNumberCheck := isNumber .repository.pushed_at -}}
+        {{- if $isNumberCheck -}}
+          {{- convertFromTimestamp .repository.pushed_at -}}
+        {{- else -}}
+          {{- .repository.pushed_at -}}
+        {{- end -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}

@@ -378,6 +378,7 @@ func templateFunctions() template.FuncMap {
 		"split":      functions.Split,
 		"encode64":   functions.EncodeBase64,
 		"decode64":   functions.DecodeBase64,
+		"isString":   functions.IsString,
 
 		// object functions
 		"object": functions.Object,
@@ -394,8 +395,12 @@ func templateFunctions() template.FuncMap {
 		"first":   functions.First,
 		"last":    functions.Last,
 
+		// number functions
+		"isNumber": functions.IsNumber,
+
 		// time functions
-		"now": functions.Now,
+		"now":                  functions.Now,
+		"convertFromTimestamp": functions.ConvertFromTimestamp,
 
 		// cryptographic functions
 		"sha256sum": functions.Sha256Sum,

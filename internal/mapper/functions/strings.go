@@ -82,6 +82,12 @@ func DecodeBase64(input string) (string, error) {
 	return string(decoded), nil
 }
 
+// IsString reports whether v is a string value.
+func IsString(v any) bool {
+	_, ok := v.(string)
+	return ok
+}
+
 // castToString converts obj to its string representation.
 func castToString(obj any) string {
 	switch v := obj.(type) {
