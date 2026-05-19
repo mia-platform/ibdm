@@ -23,6 +23,9 @@ helper groups:
 	- [split](#split)
 	- [encode64](#encode64)
 	- [decode64](#decode64)
+	- [isString](#isstring)
+- Numbers:
+	- [isNumber](#isnumber)
 - Objects:
 	- [object](#object)
 	- [toJSON](#tojson)
@@ -38,6 +41,7 @@ helper groups:
 	- [last](#last)
 - Time:
 	- [now](#now)
+	- [convertFromTimestamp](#convertfromtimestamp)
 - Crypto:
 	- [sha256sum](#sha256sum)
 	- [sha512sum](#sha512sum)
@@ -120,6 +124,19 @@ Example: `{{ .aKey | encode64 }}` with `.aKey` equal to `hello world!` produces 
 `decode64` decodes a base64-encoded string.
 
 Example: `{{ .aKey | decode64 }}` with `.aKey` equal to `aGVsbG8gd29ybGQh` produces `hello world!`.
+
+### `isString`
+
+`isString` reports whether the provided value is a string.
+
+Example: `{{ if isString .aKey }}...{{ end }}` evaluates the branch only when `.aKey` holds a string value.
+
+### `isNumber`
+
+`isNumber` reports whether the provided value is a numeric value.
+It returns `true` for all integer, unsigned-integer, and floating-point values.
+
+Example: `{{ if isNumber .aKey }}...{{ end }}` evaluates the branch only when `.aKey` holds a numeric value.
 
 ### `object`
 
@@ -205,6 +222,16 @@ Example: `{{ .items | last }}` with `.items` equal to `[1,2,3]` produces `3`.
 `now` returns the current UTC timestamp formatted according to [RFC3339].
 
 Example: `{{ now }}` might produce `1969-07-20T20:17:40Z`.
+
+### `convertFromTimestamp`
+
+`convertFromTimestamp` converts a Unix timestamp (seconds since epoch) to a UTC time string formatted
+according to [RFC3339], the same format produced by `now`.
+It accepts any integer or floating-point numeric value; the fractional part of floating-point inputs
+is truncated. It returns an error for unsupported types.
+
+Example: `{{ convertFromTimestamp .createdAt }}` with `.createdAt` equal to `1717977845` produces
+`2024-06-10T14:04:05Z`.
 
 ### `sha256sum`
 
