@@ -887,3 +887,385 @@ func Test_buildServiceData(t *testing.T) {
 		})
 	}
 }
+
+func Test_isCustomResourceValid(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		input    map[string]any
+		expected bool
+	}{
+		"type custom-resource is valid": {
+			input:    map[string]any{"name": "cr-1", "type": "custom-resource"},
+			expected: true,
+		},
+		"type custom is not valid": {
+			input:    map[string]any{"name": "svc-1", "type": "custom", "advanced": false},
+			expected: false,
+		},
+		"no type field is not valid": {
+			input:    map[string]any{"name": "cr-2"},
+			expected: false,
+		},
+		"type plugin is not valid": {
+			input:    map[string]any{"name": "plugin-1", "type": "plugin"},
+			expected: false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.expected, isCustomResourceValid(tc.input))
+		})
+	}
+}
+
+func TestSource_listAssets_customResources(t *testing.T) {
+	t.Run("lists custom-resources from the default branch", func(t *testing.T) {
+		ctx := t.Context()
+
+		project1 := map[string]any{
+			"_id":       "p1",
+			"projectId": "project-1",
+			"name":      "name",
+			"tenantId":  "tenant-1",
+			"info": map[string]any{
+				"teamContact": "contact",
+			},
+		}
+
+		revision1 := map[string]any{"name": "r1"}
+
+		cr1 := map[string]any{
+			"name": "example-custom-resource",
+			"type": "custom-resource",
+			"meta": map[string]any{
+				"kind":       "ExampleCustomKind",
+				"apiVersion": "custom-generator.console.mia-platform.eu/v1",
+			},
+			"spec": map[string]any{
+				"example_spec_key": float64(42),
+				"parsed":           true,
+			},
+		}
+
+		// a plain "custom" service that must NOT appear in custom-resource results
+		svc1 := map[string]any{
+			"name":     "service-1",
+			"type":     "custom",
+			"advanced": false,
+		}
+
+		expectedData := []source.Data{
+			{
+				Type:      customResourceResource,
+				Operation: source.DataOperationUpsert,
+				Time:      testTime,
+				Values: map[string]any{
+					"project":        project1,
+					"revision":       revision1,
+					"customResource": cr1,
+				},
+			},
+		}
+
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/backend/projects/":
+				projectResponse := maps.Clone(project1)
+				projectResponse["defaultBranch"] = "r1"
+				json.NewEncoder(w).Encode([]map[string]any{projectResponse})
+			case "/backend/projects/p1/revisions":
+				json.NewEncoder(w).Encode([]map[string]any{revision1})
+			case "/backend/projects/p1/revisions/r1/configuration":
+				json.NewEncoder(w).Encode(map[string]any{
+					"services": map[string]any{
+						"example-custom-resource": cr1,
+						"service-1":               svc1,
+					},
+				})
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
+		typesToSync := map[string]source.Extra{
+			customResourceResource: {},
+		}
+
+		data, err := s.listAssets(ctx, typesToSync)
+		require.NoError(t, err)
+		assert.Equal(t, expectedData, data)
+	})
+
+	t.Run("skips custom-resources from non-default branches", func(t *testing.T) {
+		ctx := t.Context()
+
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/backend/projects/":
+				json.NewEncoder(w).Encode([]map[string]any{{
+					"_id":           "p1",
+					"projectId":     "project-1",
+					"name":          "name",
+					"tenantId":      "tenant-1",
+					"defaultBranch": "main",
+				}})
+			case "/backend/projects/p1/revisions":
+				json.NewEncoder(w).Encode([]map[string]any{{"name": "feature-branch"}})
+			case "/backend/projects/p1/revisions/feature-branch/configuration":
+				json.NewEncoder(w).Encode(map[string]any{
+					"services": map[string]any{
+						"cr-1": map[string]any{"name": "cr-1", "type": "custom-resource"},
+					},
+				})
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
+		data, err := s.listAssets(ctx, map[string]source.Extra{customResourceResource: {}})
+		require.NoError(t, err)
+		assert.Empty(t, data)
+	})
+}
+
+func TestSource_configurationEventChain_customResource(t *testing.T) {
+	t.Run("emits custom-resource items on configuration event", func(t *testing.T) {
+		ctx := t.Context()
+
+		cr1 := map[string]any{
+			"name": "example-custom-resource",
+			"type": "custom-resource",
+			"meta": map[string]any{
+				"kind":       "ExampleCustomKind",
+				"apiVersion": "custom-generator.console.mia-platform.eu/v1",
+			},
+		}
+
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/backend/projects/p1":
+				json.NewEncoder(w).Encode(map[string]any{
+					"_id":           "p1",
+					"projectId":     "projectId",
+					"name":          "name",
+					"defaultBranch": "r1",
+					"tenantId":      "",
+					"info":          nil,
+				})
+			case "/backend/projects/p1/revisions/r1/configuration":
+				json.NewEncoder(w).Encode(map[string]any{
+					"services": map[string]any{
+						"example-custom-resource": cr1,
+						"svc-1": map[string]any{
+							"name":     "svc-1",
+							"type":     "custom",
+							"advanced": false,
+						},
+					},
+				})
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+
+		cs, err := service.NewConsoleService()
+		require.NoError(t, err)
+		src := Source{cs: cs}
+
+		ev := event{
+			EventName:      "configuration_created",
+			EventTimestamp: 1672531200000,
+			Payload: map[string]any{
+				"projectId":    "p1",
+				"revisionName": "r1",
+			},
+		}
+
+		ch := make(chan source.Data, 5)
+		typesToStream := map[string]source.Extra{
+			customResourceResource: {},
+		}
+
+		err = src.handleEvent(ctx, ev, typesToStream, ch)
+		require.NoError(t, err)
+		close(ch)
+
+		var data []source.Data
+		for d := range ch {
+			data = append(data, d)
+		}
+
+		require.Len(t, data, 1)
+		assert.Equal(t, customResourceResource, data[0].Type)
+		assert.Equal(t, source.DataOperationUpsert, data[0].Operation)
+		assert.Equal(t, cr1, data[0].Values["customResource"])
+	})
+
+	t.Run("custom-resource type in typesToStream subscribes to configuration webhook events", func(t *testing.T) {
+		ctx := t.Context()
+
+		// Provide a server so the async goroutine can call GetProject + GetConfiguration
+		// without panicking on a nil ConsoleService.
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/backend/projects/p1":
+				json.NewEncoder(w).Encode(map[string]any{
+					"_id":           "p1",
+					"projectId":     "projectId",
+					"name":          "name",
+					"defaultBranch": "r1",
+					"tenantId":      "",
+					"info":          nil,
+				})
+			case "/backend/projects/p1/revisions/r1/configuration":
+				// No custom-resource services — nothing emitted but no panic either.
+				json.NewEncoder(w).Encode(map[string]any{
+					"services": map[string]any{},
+				})
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+
+		cs, err := service.NewConsoleService()
+		require.NoError(t, err)
+
+		s := Source{
+			cs: cs,
+			c: &webhookClient{
+				config: webhookConfig{
+					WebhookPath:   "/webhook",
+					WebhookSecret: "secret",
+				},
+			},
+		}
+
+		results := make(chan source.Data, 1)
+		typesToStream := map[string]source.Extra{customResourceResource: {}}
+
+		webhook, err := s.GetWebhook(ctx, typesToStream, results)
+		require.NoError(t, err)
+		require.NotNil(t, webhook.Handler)
+
+		body, err := json.Marshal(map[string]any{
+			"eventName": "configuration_created",
+			"payload": map[string]any{
+				"projectId":    "p1",
+				"revisionName": "r1",
+			},
+		})
+		require.NoError(t, err)
+
+		headers := signedHeaders(body, "secret", "sha256=")
+		// The handler dispatches async; it returns nil immediately.
+		err = webhook.Handler(ctx, headers, body)
+		require.NoError(t, err)
+
+		// The configuration has no custom-resource services, so nothing is emitted.
+		// Give the goroutine a moment to run and confirm the channel stays empty.
+		waitCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+
+		select {
+		case <-results:
+			t.Fatal("did not expect data in channel")
+		case <-waitCtx.Done():
+			// expected: goroutine completed, nothing emitted
+		}
+	})
+}
+
+func TestSource_processConfigurationServices_noRelevantTypes(t *testing.T) {
+	t.Run("returns early when neither service nor custom-resource is requested", func(t *testing.T) {
+		ctx := t.Context()
+
+		// No server needed — the function must return before making any API call.
+		s := Source{}
+
+		ev := event{
+			EventName:      "configuration_created",
+			EventTimestamp: 1672531200000,
+			Payload:        map[string]any{},
+		}
+
+		project := map[string]any{"_id": "p1", "defaultBranch": "r1"}
+		ch := make(chan source.Data, 1)
+
+		// types contains only projectResource — neither service nor custom-resource
+		err := s.processConfigurationServices(ctx, project, "p1", "r1", ev, []string{projectResource}, ch)
+		require.NoError(t, err)
+		assert.Empty(t, ch)
+	})
+}
+
+func TestSource_listConfigurations_customResourceNilDefaultBranch(t *testing.T) {
+	t.Run("skips custom-resource when project defaultBranch is not a string", func(t *testing.T) {
+		ctx := t.Context()
+
+		// Project has no defaultBranch field at all — type assertion will fail.
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			switch r.URL.Path {
+			case "/backend/projects/":
+				json.NewEncoder(w).Encode([]map[string]any{{
+					"_id":      "p1",
+					"tenantId": "t1",
+					// defaultBranch intentionally absent
+				}})
+			case "/backend/projects/p1/revisions":
+				json.NewEncoder(w).Encode([]map[string]any{{"name": "r1"}})
+			case "/backend/projects/p1/revisions/r1/configuration":
+				json.NewEncoder(w).Encode(map[string]any{
+					"services": map[string]any{
+						"cr-1": map[string]any{"name": "cr-1", "type": "custom-resource"},
+					},
+				})
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+		t.Setenv("CONSOLE_ENDPOINT", server.URL)
+		t.Setenv("CONSOLE_WEBHOOK_PATH", "/webhook")
+
+		s, err := NewSource()
+		require.NoError(t, err)
+
+		data, err := s.listAssets(ctx, map[string]source.Extra{customResourceResource: {}})
+		require.NoError(t, err)
+		assert.Empty(t, data)
+	})
+}

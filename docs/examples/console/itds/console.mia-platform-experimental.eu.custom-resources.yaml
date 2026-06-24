@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: custom-resources.console.mia-platform-experimental.eu
+  description: A custom resource generated from a Mia-Platform Console project configuration
+spec:
+  group: console.mia-platform-experimental.eu
+  names:
+    kind: CustomResource
+    plural: custom-resources
+    displayPlural: Custom Resources
+  scope: Organization
+  versions:
+    - name: v1alpha1
+      served: true
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                projectUniqueId:
+                  title: Console project unique ID
+                  description: The unique identifier for the project.
+                  type: string
+                projectId:
+                  title: Console project ID
+                  description: The project ID used to identify the project in Console.
+                  type: string
+                tenantId:
+                  title: Console tenant ID
+                  description: The tenant ID used to identify the tenant in Console.
+                  type: string
+                revisionName:
+                  title: Console project revision name
+                  description: The user visible name for the revision.
+                  type: string
+                resourceName:
+                  title: Resource name
+                  description: The name of the custom resource as defined in the Console project.
+                  type: string
+                resourceKind:
+                  title: Resource kind
+                  description: The kind of the custom resource as defined in meta.kind.
+                  type: string
+                resourceApiVersion:
+                  title: Resource API version
+                  description: The API version of the custom resource as defined in meta.apiVersion.
+                  type: string
+                sourceMarketplaceItem:
+                  title: Source marketplace item
+                  description: The marketplace item from which this resource was generated.
+                  type: object
+                  properties:
+                    itemId:
+                      type: string
+                    version:
+                      type: string
+                    tenantId:
+                      type: string
+                configuration:
+                  title: Configuration
+                  description: The full spec of the custom resource as defined in the Console project.
+                  type: object
+                  additionalProperties: true

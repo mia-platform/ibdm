@@ -29,6 +29,7 @@ const (
 	projectResource                    = "project"
 	revisionResource                   = "revision"
 	serviceResource                    = "service"
+	customResourceResource             = "custom-resource"
 	clusterResource                    = "cluster"
 	clusterProjectRelationshipResource = "clusterProjectRelationship"
 	linkedProjectsField                = "linkedProjects"
@@ -42,7 +43,7 @@ var (
 	ErrRetrievingAssets     = errors.New("error retrieving assets")
 	ErrWebhookSecretMissing = errors.New("webhook secret not configured")
 
-	configurationChainTypes = []string{projectResource, revisionResource, serviceResource}
+	configurationChainTypes = []string{projectResource, revisionResource, serviceResource, customResourceResource}
 	clusterChainTypes       = []string{clusterResource, clusterProjectRelationshipResource}
 	timeSource              = time.Now
 )
@@ -217,12 +218,17 @@ func (s *Source) listConfigurations(ctx context.Context, subtypes []string) ([]s
 					if revName != defaultBranch {
 						continue
 					}
-					for _, svc := range configuration["services"].(map[string]any) {
-						svcMap := svc.(map[string]any)
-						if isServiceValid(svcMap) {
-							result = append(result, createServiceData(project, revName, svcMap, timeSource(), source.DataOperationUpsert))
-						}
+					result = append(result, collectServicesFromConfiguration(project, revName, configuration, timeSource())...)
+				case customResourceResource:
+					defaultBranch, ok := project["defaultBranch"].(string)
+					if !ok {
+						log.Trace("nil defaultBranch for project", "_id", project["_id"], "projectId", project["projectId"], "revisionName", revName)
+						continue
 					}
+					if revName != defaultBranch {
+						continue
+					}
+					result = append(result, collectCustomResourcesFromConfiguration(project, revName, configuration, timeSource())...)
 				}
 			}
 		}
@@ -305,6 +311,13 @@ func isServiceValid(svc map[string]any) bool {
 	return typeFound && advancedFound && svcType.(string) == "custom" && !advanced.(bool)
 }
 
+// isCustomResourceValid reports whether svc qualifies as a custom resource for
+// synchronisation. A service is a custom resource when its type is "custom-resource".
+func isCustomResourceValid(svc map[string]any) bool {
+	svcType, typeFound := svc["type"]
+	return typeFound && svcType.(string) == customResourceResource
+}
+
 // createProjectData assembles a [source.Data] upsert entry for a project,
 // embedding the normalised project maps.
 func createProjectData(project map[string]any, t time.Time, operation source.DataOperation) source.Data {
@@ -332,6 +345,32 @@ func createRevisionData(project map[string]any, revisionName string, t time.Time
 	}
 }
 
+// collectServicesFromConfiguration returns a [source.Data] upsert entry for
+// every service in configuration that passes isServiceValid.
+func collectServicesFromConfiguration(project map[string]any, revName string, configuration map[string]any, t time.Time) []source.Data {
+	var result []source.Data
+	for _, svc := range configuration["services"].(map[string]any) {
+		svcMap := svc.(map[string]any)
+		if isServiceValid(svcMap) {
+			result = append(result, createServiceData(project, revName, svcMap, t, source.DataOperationUpsert))
+		}
+	}
+	return result
+}
+
+// collectCustomResourcesFromConfiguration returns a [source.Data] upsert entry
+// for every service in configuration that passes isCustomResourceValid.
+func collectCustomResourcesFromConfiguration(project map[string]any, revName string, configuration map[string]any, t time.Time) []source.Data {
+	var result []source.Data
+	for _, svc := range configuration["services"].(map[string]any) {
+		svcMap := svc.(map[string]any)
+		if isCustomResourceValid(svcMap) {
+			result = append(result, createCustomResourceData(project, revName, svcMap, t, source.DataOperationUpsert))
+		}
+	}
+	return result
+}
+
 // createServiceData assembles a [source.Data] upsert entry for a service,
 // embedding the normalised project, revision and service maps.
 func createServiceData(project map[string]any, revisionName string, svc map[string]any, t time.Time, operation source.DataOperation) source.Data {
@@ -343,6 +382,21 @@ func createServiceData(project map[string]any, revisionName string, svc map[stri
 			"project":  buildProjectData(project),
 			"revision": buildRevisionData(revisionName),
 			"service":  buildServiceData(svc),
+		},
+	}
+}
+
+// createCustomResourceData assembles a [source.Data] upsert entry for a custom
+// resource, embedding the normalised project, revision and raw custom resource maps.
+func createCustomResourceData(project map[string]any, revisionName string, svc map[string]any, t time.Time, operation source.DataOperation) source.Data {
+	return source.Data{
+		Type:      customResourceResource,
+		Operation: operation,
+		Time:      t,
+		Values: map[string]any{
+			"project":        buildProjectData(project),
+			"revision":       buildRevisionData(revisionName),
+			"customResource": svc,
 		},
 	}
 }
@@ -440,7 +494,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 		switch t {
 		case projectResource:
 			webhookTypes = append(webhookTypes, t)
-		case revisionResource, serviceResource:
+		case revisionResource, serviceResource, customResourceResource:
 			webhookTypes = append(webhookTypes, configurationResource)
 		}
 	}
@@ -528,25 +582,41 @@ func (s *Source) configurationEventChain(ctx context.Context, ev event, types []
 			channel <- createProjectData(project, ev.UnixEventTimestamp(), ev.Operation())
 		case revisionResource:
 			channel <- createRevisionData(project, revisionName, ev.UnixEventTimestamp(), ev.Operation())
-		case serviceResource:
-			if revisionName != project["defaultBranch"].(string) {
-				continue
-			}
-
-			configuration, err := s.cs.GetConfiguration(ctx, projectID, revisionName)
-			if err != nil {
-				return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
-			}
-
-			for _, svc := range configuration["services"].(map[string]any) {
-				svcMap := svc.(map[string]any)
-				if isServiceValid(svcMap) {
-					channel <- createServiceData(project, revisionName, svcMap, ev.UnixEventTimestamp(), ev.Operation())
-				}
-			}
+		case serviceResource, customResourceResource:
+			// processed together after the loop to share one GetConfiguration call
 		}
 	}
 
+	return s.processConfigurationServices(ctx, project, projectID, revisionName, ev, types, channel)
+}
+
+// processConfigurationServices fetches the project configuration once and emits
+// service and custom-resource items for the given event to channel. Only the
+// project's default branch is processed; non-default revisions are skipped.
+func (s *Source) processConfigurationServices(ctx context.Context, project map[string]any, projectID, revisionName string, ev event, types []string, channel chan<- source.Data) error {
+	syncServices := slices.Contains(types, serviceResource)
+	syncCustomResources := slices.Contains(types, customResourceResource)
+	if !syncServices && !syncCustomResources {
+		return nil
+	}
+	if revisionName != project["defaultBranch"].(string) {
+		return nil
+	}
+
+	configuration, err := s.cs.GetConfiguration(ctx, projectID, revisionName)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrRetrievingAssets, err)
+	}
+
+	for _, svc := range configuration["services"].(map[string]any) {
+		svcMap := svc.(map[string]any)
+		if syncServices && isServiceValid(svcMap) {
+			channel <- createServiceData(project, revisionName, svcMap, ev.UnixEventTimestamp(), ev.Operation())
+		}
+		if syncCustomResources && isCustomResourceValid(svcMap) {
+			channel <- createCustomResourceData(project, revisionName, svcMap, ev.UnixEventTimestamp(), ev.Operation())
+		}
+	}
 	return nil
 }
 
