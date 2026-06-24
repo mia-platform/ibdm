@@ -1,5 +1,5 @@
 apiVersion: console.mia-platform-experimental.eu/v1alpha1
-itemFamily: custom-resources
+itemFamily: customresources
 type: custom-resource
 syncable: true
 mappings:
