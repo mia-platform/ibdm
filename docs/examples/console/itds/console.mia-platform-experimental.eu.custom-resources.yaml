@@ -3,13 +3,13 @@
 apiVersion: mia-platform.eu/v1alpha1
 kind: ItemTypeDefinition
 metadata:
-  name: custom-resources.console.mia-platform-experimental.eu
+  name: customresources.console.mia-platform-experimental.eu
   description: A custom resource generated from a Mia-Platform Console project configuration
 spec:
   group: console.mia-platform-experimental.eu
   names:
     kind: CustomResource
-    plural: custom-resources
+    plural: customresources
     displayPlural: Custom Resources
   scope: Organization
   versions:
