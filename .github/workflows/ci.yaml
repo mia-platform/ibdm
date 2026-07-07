@@ -46,24 +46,24 @@ jobs:
       run: make ci
     - name: Run build
       run: make build
-    - name: Send coverage to Coveralls (parallel)
-      uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
-      with:
-        parallel: true
-        flag-name: run-${{ join(matrix.*, '-') }}
-        format: golang
-        files: coverage.txt
+    # - name: Send coverage to Coveralls (parallel)
+    #   uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+    #   with:
+    #     parallel: true
+    #     flag-name: run-${{ join(matrix.*, '-') }}
+    #     format: golang
+    #     files: coverage.txt
 
-  upload-coverage:
-    needs: test
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-    - name: Coveralls Finished
-      uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
-      with:
-        parallel-finished: true
-        carryforward: "run-ubuntu-latest,run-macos-latest"
+  # upload-coverage:
+  #   needs: test
+  #   if: ${{ always() }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Coveralls Finished
+  #     uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+  #     with:
+  #       parallel-finished: true
+  #       carryforward: "run-ubuntu-latest,run-macos-latest"
 
   release:
     name: Release Artifacts
