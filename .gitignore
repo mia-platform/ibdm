@@ -6,6 +6,8 @@ release/
 coverage.txt
 .github/agents
 .github/skills
+.claude/
+CLAUDE.md
 
 # End of Custom gitignore rules
 
