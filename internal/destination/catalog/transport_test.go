@@ -13,9 +13,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
-	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +63,11 @@ func TestNewTransportWithoutCredentials(t *testing.T) {
 	assert.Same(t, http.DefaultTransport, transport)
 }
 
-func TestPrivateKeyFlow(t *testing.T) {
+// TestNewTransportPrivateKeyJWTWiring verifies that NewTransport wires the client-ID/private-key
+// case to a jwtclientcredential provider by exercising a full token exchange plus authenticated
+// request through the resulting transport. The JWT assertion contents and provider-level failure
+// modes are covered by the jwtclientcredential package's own tests.
+func TestNewTransportPrivateKeyJWTWiring(t *testing.T) {
 	t.Parallel()
 
 	key := generateTestRSAKey(t)
@@ -75,35 +77,10 @@ func TestPrivateKeyFlow(t *testing.T) {
 		switch r.URL.Path {
 		case "/oauth/token":
 			require.NoError(t, r.ParseForm())
-			assert.Equal(t, "client_credentials", r.FormValue("grant_type"))
-			assert.Equal(t, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", r.FormValue("client_assertion_type"))
 			assert.Equal(t, clientID, r.FormValue("client_id"))
-			assert.Equal(t, "private_key_jwt", r.FormValue("token_endpoint_auth_method"))
-
-			assertion := r.FormValue("client_assertion")
-			require.NotEmpty(t, assertion)
-
-			parsed, err := jwt.Parse([]byte(assertion), jwt.WithKey(jwa.RS256(), key.Public()))
-			require.NoError(t, err)
-
-			issuer, ok := parsed.Issuer()
-			require.True(t, ok)
-			assert.Equal(t, clientID, issuer)
-
-			subject, ok := parsed.Subject()
-			require.True(t, ok)
-			assert.Equal(t, clientID, subject)
-
-			audience, ok := parsed.Audience()
-			require.True(t, ok)
-			assert.Equal(t, []string{"console-client-credentials"}, audience)
-
-			jti, ok := parsed.JwtID()
-			require.True(t, ok)
-			assert.NotEmpty(t, jti)
 
 			w.Header().Set("Content-Type", "application/json")
-			err = json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"access_token": "generated-jwt-bearer-token",
 				"token_type":   "Bearer",
 				"expires_in":   3600,
@@ -126,52 +103,4 @@ func TestPrivateKeyFlow(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
-}
-
-func TestPrivateKeyFlowTokenEndpointError(t *testing.T) {
-	t.Parallel()
-
-	key := generateTestRSAKey(t)
-
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	defer testServer.Close()
-
-	client := &http.Client{
-		Transport: NewTransport(t.Context(), "", testServer.URL, "client-id", "", newTestKeys(t, key)),
-	}
-
-	resp, err := client.Get(testServer.URL + "/")
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "upstream token exchange failed")
-	assert.ErrorContains(t, err, "boom")
-}
-
-func TestPrivateKeyFlowMalformedTokenResponse(t *testing.T) {
-	t.Parallel()
-
-	key := generateTestRSAKey(t)
-
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte("not-json"))
-		require.NoError(t, err)
-	}))
-	defer testServer.Close()
-
-	client := &http.Client{
-		Transport: NewTransport(t.Context(), "", testServer.URL, "client-id", "", newTestKeys(t, key)),
-	}
-
-	resp, err := client.Get(testServer.URL + "/")
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "failed to decode token response")
 }

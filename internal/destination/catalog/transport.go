@@ -9,6 +9,8 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
+
+	"github.com/mia-platform/ibdm/internal/tokenprovider/jwtclientcredential"
 )
 
 // NewTransport creates an HTTP transport configured with either a static token, private-key JWT
@@ -31,7 +33,7 @@ func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret s
 
 		source = config.TokenSource(ctx)
 	case len(clientID) > 0 && keys != nil && keys.PrivateKey != nil:
-		source = newPrivateKeyJWTTokenSource(ctx, clientID, tokenURL, keys.PrivateKey)
+		source = jwtclientcredential.NewProvider(ctx, clientID, tokenURL, keys.PrivateKey)
 	}
 
 	if source == nil {

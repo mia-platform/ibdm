@@ -1,11 +1,12 @@
 // Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
-package catalog
+package jwtclientcredential
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +19,8 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"golang.org/x/oauth2"
+
+	"github.com/mia-platform/ibdm/internal/tokenprovider"
 )
 
 const (
@@ -41,16 +44,20 @@ const (
 	maxTokenErrorBodyBytes = 1024
 )
 
-var _ oauth2.TokenSource = &privateKeyJWTTokenSource{}
+// ErrTokenExchange wraps failures encountered while building the JWT assertion or exchanging it
+// with the token endpoint for an access token.
+var ErrTokenExchange = errors.New("jwtclientcredential token exchange")
 
-// privateKeyJWTTokenSource implements oauth2.TokenSource by authenticating with a JWT assertion
-// signed with a private key, following the private_key_jwt client authentication method defined
-// in RFC 7523 section 2.2.
+var _ tokenprovider.Provider = &provider{}
+
+// provider implements tokenprovider.Provider by authenticating with a JWT assertion signed with
+// a private key, following the private_key_jwt client authentication method defined in RFC 7523
+// section 2.2.
 //
 // The oauth2.TokenSource interface does not accept a context on Token(), so the context used for
 // outgoing token requests is captured once at construction time, mirroring the behaviour of
 // golang.org/x/oauth2/clientcredentials.Config.TokenSource.
-type privateKeyJWTTokenSource struct {
+type provider struct {
 	ctx        context.Context //nolint:containedctx // Token() has no context parameter, see doc comment above.
 	clientID   string
 	tokenURL   string
@@ -58,12 +65,11 @@ type privateKeyJWTTokenSource struct {
 	httpClient *http.Client
 }
 
-// newPrivateKeyJWTTokenSource parses privateKey — either a PEM block or a raw JWK JSON document —
-// and returns an oauth2.TokenSource that signs and exchanges a JWT assertion for an access token.
-// Parsing errors are stored and surfaced on the first call to Token, since the constructor itself
-// cannot return an error without changing the oauth2.TokenSource construction pattern.
-func newPrivateKeyJWTTokenSource(ctx context.Context, clientID, tokenURL string, privateKey jwk.Key) oauth2.TokenSource {
-	return &privateKeyJWTTokenSource{
+// NewProvider returns a tokenprovider.Provider that signs a JWT assertion with privateKey and
+// exchanges it with tokenURL for an access token, authenticating as clientID via the
+// private_key_jwt method defined in RFC 7523 section 2.2.
+func NewProvider(ctx context.Context, clientID, tokenURL string, privateKey jwk.Key) tokenprovider.Provider {
+	return &provider{
 		ctx:        ctx,
 		clientID:   clientID,
 		tokenURL:   tokenURL,
@@ -77,10 +83,10 @@ func newPrivateKeyJWTTokenSource(ctx context.Context, clientID, tokenURL string,
 // Token implements oauth2.TokenSource. It builds a signed JWT assertion and exchanges it with the
 // configured token endpoint for an access token using the client_credentials grant, authenticated
 // via the private_key_jwt method.
-func (ts *privateKeyJWTTokenSource) Token() (*oauth2.Token, error) {
+func (p *provider) Token() (*oauth2.Token, error) {
 	now := time.Now()
 
-	assertion, err := ts.signedAssertion(now)
+	assertion, err := p.signedAssertion(now)
 	if err != nil {
 		return nil, err
 	}
@@ -89,24 +95,24 @@ func (ts *privateKeyJWTTokenSource) Token() (*oauth2.Token, error) {
 	form.Set("grant_type", clientCredentialsGrantType)
 	form.Set("client_assertion_type", jwtBearerClientAssertionType)
 	form.Set("client_assertion", assertion)
-	form.Set("client_id", ts.clientID)
+	form.Set("client_id", p.clientID)
 	form.Set("token_endpoint_auth_method", privateKeyJWTAuthMethod)
 
-	req, err := http.NewRequestWithContext(ts.ctx, http.MethodPost, ts.tokenURL, strings.NewReader(form.Encode()))
+	req, err := http.NewRequestWithContext(p.ctx, http.MethodPost, p.tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to build token request: %w", err)
+		return nil, fmt.Errorf("%w: failed to build token request: %w", ErrTokenExchange, err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := ts.httpClient.Do(req)
+	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to exchange jwt assertion: %w", err)
+		return nil, fmt.Errorf("%w: failed to exchange jwt assertion: %w", ErrTokenExchange, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxTokenErrorBodyBytes))
-		return nil, fmt.Errorf("upstream token exchange failed: status %s: %s", resp.Status, body)
+		return nil, fmt.Errorf("%w: upstream token exchange failed: status %s: %s", ErrTokenExchange, resp.Status, body)
 	}
 
 	var tokenResp struct {
@@ -115,7 +121,7 @@ func (ts *privateKeyJWTTokenSource) Token() (*oauth2.Token, error) {
 		ExpiresIn   int64  `json:"expires_in"`   //nolint:tagliatelle // OAuth2 token response uses snake_case
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to decode token response: %w", err)
+		return nil, fmt.Errorf("%w: failed to decode token response: %w", ErrTokenExchange, err)
 	}
 
 	return &oauth2.Token{
@@ -128,34 +134,34 @@ func (ts *privateKeyJWTTokenSource) Token() (*oauth2.Token, error) {
 // signedAssertion builds and signs the JWT assertion sent to the token endpoint, using the
 // signature algorithm advertised by the key, or defaulting to RS256 when the key does not
 // declare one.
-func (ts *privateKeyJWTTokenSource) signedAssertion(now time.Time) (string, error) {
+func (p *provider) signedAssertion(now time.Time) (string, error) {
 	jti, err := uuid.NewRandom()
 	if err != nil {
-		return "", fmt.Errorf("failed to generate jti: %w", err)
+		return "", fmt.Errorf("%w: failed to generate jti: %w", ErrTokenExchange, err)
 	}
 
 	signAlg := jwa.RS256()
-	if alg, ok := ts.privateKey.Algorithm(); ok {
+	if alg, ok := p.privateKey.Algorithm(); ok {
 		if sa, ok := jwa.LookupSignatureAlgorithm(alg.String()); ok {
 			signAlg = sa
 		}
 	}
 
 	tok, err := jwt.NewBuilder().
-		Issuer(ts.clientID).
-		Subject(ts.clientID).
+		Issuer(p.clientID).
+		Subject(p.clientID).
 		Audience([]string{consoleClientCredentialsAudience}).
 		JwtID(jti.String()).
 		IssuedAt(now).
 		Expiration(now.Add(jwtAssertionLifetime)).
 		Build()
 	if err != nil {
-		return "", fmt.Errorf("failed to build token payload: %w", err)
+		return "", fmt.Errorf("%w: failed to build token payload: %w", ErrTokenExchange, err)
 	}
 
-	signed, err := jwt.Sign(tok, jwt.WithKey(signAlg, ts.privateKey))
+	signed, err := jwt.Sign(tok, jwt.WithKey(signAlg, p.privateKey))
 	if err != nil {
-		return "", fmt.Errorf("failed to sign token: %w", err)
+		return "", fmt.Errorf("%w: failed to sign token: %w", ErrTokenExchange, err)
 	}
 
 	return string(signed), nil
