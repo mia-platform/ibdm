@@ -57,9 +57,10 @@ type catalogDestination struct {
 	Token           string `env:"MIA_CATALOG_TOKEN"`
 	ClientID        string `env:"MIA_CATALOG_CLIENT_ID"`
 	ClientSecret    string `env:"MIA_CATALOG_CLIENT_SECRET"`
-	PrivateKey      string `env:"MIA_CATALOG_PRIVATE_KEY"`
+	PrivateKeyPath  string `env:"MIA_CATALOG_PRIVATE_KEY_PATH"`
 	AuthEndpoint    string `env:"MIA_CATALOG_AUTH_ENDPOINT"`
 
+	keys   *Keys
 	client atomic.Pointer[http.Client]
 }
 
@@ -79,6 +80,14 @@ func NewDestination() (destination.Sender, error) {
 		return nil, handleError(err)
 	}
 
+	if len(destination.PrivateKeyPath) > 0 {
+		keys, err := LoadKeys(destination.PrivateKeyPath)
+		if err != nil {
+			return nil, handleError(err)
+		}
+		destination.keys = keys
+	}
+
 	if len(destination.AuthEndpoint) == 0 {
 		endpointURL.Path = "/oauth/token"
 		destination.AuthEndpoint = endpointURL.String()
@@ -96,13 +105,13 @@ func NewDestination() (destination.Sender, error) {
 // configured method has all of its required environment variables set.
 func (d *catalogDestination) validateAuthConfig() error {
 	switch {
-	case len(d.Token) > 0 && (len(d.ClientID) > 0 || len(d.ClientSecret) > 0 || len(d.PrivateKey) > 0):
+	case len(d.Token) > 0 && (len(d.ClientID) > 0 || len(d.ClientSecret) > 0 || len(d.PrivateKeyPath) > 0):
 		return errMultipleAuthMethods
-	case len(d.PrivateKey) > 0 && len(d.ClientSecret) > 0:
+	case len(d.PrivateKeyPath) > 0 && len(d.ClientSecret) > 0:
 		return errPrivateKeyWithClientSecret
-	case len(d.PrivateKey) > 0 && len(d.ClientID) == 0:
+	case len(d.PrivateKeyPath) > 0 && len(d.ClientID) == 0:
 		return errMissingClientIDForPrivKey
-	case len(d.ClientID) > 0 && len(d.ClientSecret) == 0 && len(d.PrivateKey) == 0:
+	case len(d.ClientID) > 0 && len(d.ClientSecret) == 0 && len(d.PrivateKeyPath) == 0:
 		return errMissingClientSecret
 	case len(d.ClientSecret) > 0 && len(d.ClientID) == 0:
 		return errMissingClientID
@@ -197,7 +206,7 @@ func (d *catalogDestination) getClient(ctx context.Context) *http.Client {
 	}
 
 	client = &http.Client{}
-	client.Transport = NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.PrivateKey)
+	client.Transport = NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.keys)
 	d.client.Store(client)
 	return client
 }

@@ -11,25 +11,16 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwk"
 )
 
-type JWKKeys struct {
+type Keys struct {
 	PrivateKey jwk.Key
 	JWKSBytes  []byte
-}
-
-// CredentialsConfig describes how the private key is provided.
-// Type is "file" (key read from a mounted path) or "env" (key read from an env var).
-// Path and Key are mutually exclusive.
-type CredentialsConfig struct {
-	Type string `yaml:"type"`
-	Path string `yaml:"path"`
-	Key  string `yaml:"key"`
 }
 
 // LoadKeys reads the private key from the source described by cfg, builds the
 // corresponding public JWKS, and returns the result. It fails fast — any
 // missing file, malformed PEM, or serialization error is returned as an error.
-func LoadKeys(cfg *CredentialsConfig) (*JWKKeys, error) {
-	pemBytes, err := readKeyMaterial(cfg)
+func LoadKeys(privateKeyPath string) (*Keys, error) {
+	pemBytes, err := readKeyMaterial(privateKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +58,7 @@ func LoadKeys(cfg *CredentialsConfig) (*JWKKeys, error) {
 		return nil, fmt.Errorf("cannot serialize JWKS to JSON: %w", err)
 	}
 
-	return &JWKKeys{
+	return &Keys{
 		PrivateKey: privateKey,
 		JWKSBytes:  jwksBytes,
 	}, nil
@@ -75,23 +66,10 @@ func LoadKeys(cfg *CredentialsConfig) (*JWKKeys, error) {
 
 // readKeyMaterial resolves the raw PEM bytes from the configured source.
 // "file": reads from the path mounted as a Kubernetes Secret volume.
-// "env":  reads from the named environment variable (PEM value, not a path).
-func readKeyMaterial(cfg *CredentialsConfig) ([]byte, error) {
-	switch cfg.Type {
-	case "file":
-		data, err := os.ReadFile(cfg.Path)
-		if err != nil {
-			return nil, fmt.Errorf("cannot read private key from %q: %w", cfg.Path, err)
-		}
-		return data, nil
-	case "env":
-		val := os.Getenv(cfg.Key)
-		if val == "" {
-			return nil, fmt.Errorf("environment variable %q is not set or empty", cfg.Key)
-		}
-		return []byte(val), nil
-	default:
-		// Unreachable: config validation rejects unsupported types at startup.
-		return nil, fmt.Errorf("unsupported credentials type %q", cfg.Type)
+func readKeyMaterial(privateKeyPath string) ([]byte, error) {
+	data, err := os.ReadFile(privateKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read private key from %q: %w", privateKeyPath, err)
 	}
+	return data, nil
 }

@@ -140,7 +140,7 @@ func TestInitialization(t *testing.T) {
 		require.True(t, ok)
 
 		assert.Equal(t, "client-id", catalogDestination.ClientID)
-		assert.Equal(t, "fictional-private-key", catalogDestination.PrivateKey)
+		assert.Equal(t, "fictional-private-key", catalogDestination.PrivateKeyPath)
 		assert.Empty(t, catalogDestination.ClientSecret)
 	})
 
