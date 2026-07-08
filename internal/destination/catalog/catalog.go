@@ -20,9 +20,11 @@ import (
 )
 
 var (
-	errMultipleAuthMethods = errors.New("MIA_CATALOG_TOKEN cannot be used with MIA_CATALOG_CLIENT_ID or MIA_CATALOG_CLIENT_SECRET")
-	errMissingClientID     = errors.New("MIA_CATALOG_CLIENT_ID is required when MIA_CATALOG_CLIENT_SECRET is set")
-	errMissingClientSecret = errors.New("MIA_CATALOG_CLIENT_SECRET is required when MIA_CATALOG_CLIENT_ID is set")
+	errMultipleAuthMethods        = errors.New("MIA_CATALOG_TOKEN cannot be used with MIA_CATALOG_CLIENT_ID, MIA_CATALOG_CLIENT_SECRET or MIA_CATALOG_PRIVATE_KEY")
+	errMissingClientID            = errors.New("MIA_CATALOG_CLIENT_ID is required when MIA_CATALOG_CLIENT_SECRET is set")
+	errMissingClientSecret        = errors.New("MIA_CATALOG_CLIENT_SECRET is required when MIA_CATALOG_CLIENT_ID is set")
+	errMissingClientIDForPrivKey  = errors.New("MIA_CATALOG_CLIENT_ID is required when MIA_CATALOG_PRIVATE_KEY is set")
+	errPrivateKeyWithClientSecret = errors.New("MIA_CATALOG_PRIVATE_KEY cannot be used with MIA_CATALOG_CLIENT_SECRET")
 )
 
 var _ destination.Sender = &catalogDestination{}
@@ -55,6 +57,7 @@ type catalogDestination struct {
 	Token           string `env:"MIA_CATALOG_TOKEN"`
 	ClientID        string `env:"MIA_CATALOG_CLIENT_ID"`
 	ClientSecret    string `env:"MIA_CATALOG_CLIENT_SECRET"`
+	PrivateKey      string `env:"MIA_CATALOG_PRIVATE_KEY"`
 	AuthEndpoint    string `env:"MIA_CATALOG_AUTH_ENDPOINT"`
 
 	client atomic.Pointer[http.Client]
@@ -72,13 +75,8 @@ func NewDestination() (destination.Sender, error) {
 		return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_ENDPOINT: %w", err))
 	}
 
-	switch {
-	case len(destination.Token) > 0 && (len(destination.ClientID) > 0 || len(destination.ClientSecret) > 0):
-		return nil, handleError(errMultipleAuthMethods)
-	case len(destination.ClientID) > 0 && len(destination.ClientSecret) == 0:
-		return nil, handleError(errMissingClientSecret)
-	case len(destination.ClientSecret) > 0 && len(destination.ClientID) == 0:
-		return nil, handleError(errMissingClientID)
+	if err := destination.validateAuthConfig(); err != nil {
+		return nil, handleError(err)
 	}
 
 	if len(destination.AuthEndpoint) == 0 {
@@ -92,6 +90,25 @@ func NewDestination() (destination.Sender, error) {
 	}
 
 	return destination, nil
+}
+
+// validateAuthConfig ensures that at most one authentication method is configured and that each
+// configured method has all of its required environment variables set.
+func (d *catalogDestination) validateAuthConfig() error {
+	switch {
+	case len(d.Token) > 0 && (len(d.ClientID) > 0 || len(d.ClientSecret) > 0 || len(d.PrivateKey) > 0):
+		return errMultipleAuthMethods
+	case len(d.PrivateKey) > 0 && len(d.ClientSecret) > 0:
+		return errPrivateKeyWithClientSecret
+	case len(d.PrivateKey) > 0 && len(d.ClientID) == 0:
+		return errMissingClientIDForPrivKey
+	case len(d.ClientID) > 0 && len(d.ClientSecret) == 0 && len(d.PrivateKey) == 0:
+		return errMissingClientSecret
+	case len(d.ClientSecret) > 0 && len(d.ClientID) == 0:
+		return errMissingClientID
+	}
+
+	return nil
 }
 
 // SendData implements destination.Sender.
@@ -180,7 +197,7 @@ func (d *catalogDestination) getClient(ctx context.Context) *http.Client {
 	}
 
 	client = &http.Client{}
-	client.Transport = NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret)
+	client.Transport = NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.PrivateKey)
 	d.client.Store(client)
 	return client
 }
