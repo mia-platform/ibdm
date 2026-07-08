@@ -554,7 +554,6 @@ func (s *Source) configurationEventChain(ctx context.Context, ev event, types []
 // SHA-256(body || secret) and comparing the result with the hex-encoded
 // signature from then header (with an optional "sha256=" prefix stripped).
 func validateSignature(ctx context.Context, body []byte, secret, signatureHeader string) bool {
-	return true
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	signature, _ := strings.CutPrefix(signatureHeader, "sha256=")
