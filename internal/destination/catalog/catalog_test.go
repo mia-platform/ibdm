@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -131,22 +132,36 @@ func TestInitialization(t *testing.T) {
 	})
 
 	t.Run("with private key and client id", func(t *testing.T) {
+		keyPath := filepath.Join(t.TempDir(), "private-key.pem")
+		writeTestFile(t, keyPath, encodePKCS8PEM(t, generateTestRSAKey(t)))
+
 		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
 		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
-		t.Setenv("MIA_CATALOG_PRIVATE_KEY", "fictional-private-key")
+		t.Setenv("MIA_CATALOG_PRIVATE_KEY_PATH", keyPath)
 		dest, err := NewDestination()
 		require.NoError(t, err)
 		catalogDestination, ok := dest.(*catalogDestination)
 		require.True(t, ok)
 
 		assert.Equal(t, "client-id", catalogDestination.ClientID)
-		assert.Equal(t, "fictional-private-key", catalogDestination.PrivateKeyPath)
+		assert.Equal(t, keyPath, catalogDestination.PrivateKeyPath)
 		assert.Empty(t, catalogDestination.ClientSecret)
+		require.NotNil(t, catalogDestination.keys)
+		assert.NotNil(t, catalogDestination.keys.PrivateKey)
+	})
+
+	t.Run("private key with unreadable file", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
+		t.Setenv("MIA_CATALOG_PRIVATE_KEY_PATH", filepath.Join(t.TempDir(), "does-not-exist.pem"))
+		dest, err := NewDestination()
+		assert.ErrorContains(t, err, "cannot read private key from")
+		assert.Nil(t, dest)
 	})
 
 	t.Run("private key without client id", func(t *testing.T) {
 		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
-		t.Setenv("MIA_CATALOG_PRIVATE_KEY", "fictional-private-key")
+		t.Setenv("MIA_CATALOG_PRIVATE_KEY_PATH", "fictional-private-key-path")
 		dest, err := NewDestination()
 		assert.ErrorIs(t, err, errMissingClientIDForPrivKey)
 		assert.Nil(t, dest)
@@ -156,7 +171,7 @@ func TestInitialization(t *testing.T) {
 		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
 		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
 		t.Setenv("MIA_CATALOG_CLIENT_SECRET", "client-secret")
-		t.Setenv("MIA_CATALOG_PRIVATE_KEY", "fictional-private-key")
+		t.Setenv("MIA_CATALOG_PRIVATE_KEY_PATH", "fictional-private-key-path")
 		dest, err := NewDestination()
 		assert.ErrorIs(t, err, errPrivateKeyWithClientSecret)
 		assert.Nil(t, dest)
@@ -165,7 +180,7 @@ func TestInitialization(t *testing.T) {
 	t.Run("private key with fixed token", func(t *testing.T) {
 		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
 		t.Setenv("MIA_CATALOG_TOKEN", "test-token")
-		t.Setenv("MIA_CATALOG_PRIVATE_KEY", "fictional-private-key")
+		t.Setenv("MIA_CATALOG_PRIVATE_KEY_PATH", "fictional-private-key-path")
 		dest, err := NewDestination()
 		assert.ErrorIs(t, err, errMultipleAuthMethods)
 		assert.Nil(t, dest)

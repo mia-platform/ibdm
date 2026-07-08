@@ -14,7 +14,7 @@ To enable this destination no flags are needed but only a series of environment 
 	availbale during the integration setup
 - `MIA_CATALOG_CLIENT_SECRET`: the client id for validating the requests to the Mia-Platform Catalog,
 	availbale during the integration setup
-- `MIA_CATALOG_PRIVATE_KEY`: a private key (PEM or JWK JSON) used, together with
+- `MIA_CATALOG_PRIVATE_KEY_PATH`: path to a PEM-encoded private key file, used together with
 	`MIA_CATALOG_CLIENT_ID`, to authenticate via private-key JWT client authentication
 	(RFC 7523 section 2.2) instead of `MIA_CATALOG_CLIENT_SECRET`
 - `MIA_CATALOG_AUTH_ENDPOINT`: a custom endpoint for authentication, if you don’t set the variable

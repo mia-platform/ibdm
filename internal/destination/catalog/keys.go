@@ -11,9 +11,13 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwk"
 )
 
+// Keys holds the private key used to sign JWT assertions and the corresponding public JWKS
+// document, derived from it by LoadKeys.
 type Keys struct {
+	// PrivateKey is used to sign the JWT assertion sent to the token endpoint.
 	PrivateKey jwk.Key
-	JWKSBytes  []byte
+	// JWKSBytes is the JSON-serialized public JWK set matching PrivateKey.
+	JWKSBytes []byte
 }
 
 // LoadKeys reads the private key from the source described by cfg, builds the

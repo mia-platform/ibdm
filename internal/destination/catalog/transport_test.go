@@ -47,22 +47,21 @@ func encodePKCS8PEM(t *testing.T, key *rsa.PrivateKey) string {
 	return string(pem.EncodeToMemory(block))
 }
 
-// encodeJWKJSON serializes key as a raw JWK JSON document.
-func encodeJWKJSON(t *testing.T, key *rsa.PrivateKey) string {
+// newTestKeys parses key into a jwk.Key and wraps it into the *Keys shape consumed by
+// NewTransport, mirroring what LoadKeys would produce for a valid private key file.
+func newTestKeys(t *testing.T, key *rsa.PrivateKey) *Keys {
 	t.Helper()
 
 	jwkKey, err := jwk.Import(key)
 	require.NoError(t, err)
 
-	raw, err := json.Marshal(jwkKey)
-	require.NoError(t, err)
-	return string(raw)
+	return &Keys{PrivateKey: jwkKey}
 }
 
 func TestNewTransportWithoutCredentials(t *testing.T) {
 	t.Parallel()
 
-	transport := NewTransport(t.Context(), "", "", "", "", "")
+	transport := NewTransport(t.Context(), "", "", "", "", nil)
 	assert.Same(t, http.DefaultTransport, transport)
 }
 
@@ -70,101 +69,63 @@ func TestPrivateKeyFlow(t *testing.T) {
 	t.Parallel()
 
 	key := generateTestRSAKey(t)
+	const clientID = "jwt-bearer-client"
 
-	testCases := map[string]struct {
-		usePEM bool
-	}{
-		"PEM encoded key": {
-			usePEM: true,
-		},
-		"raw JWK JSON key": {
-			usePEM: false,
-		},
-	}
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/oauth/token":
+			require.NoError(t, r.ParseForm())
+			assert.Equal(t, "client_credentials", r.FormValue("grant_type"))
+			assert.Equal(t, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", r.FormValue("client_assertion_type"))
+			assert.Equal(t, clientID, r.FormValue("client_id"))
+			assert.Equal(t, "private_key_jwt", r.FormValue("token_endpoint_auth_method"))
 
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			assertion := r.FormValue("client_assertion")
+			require.NotEmpty(t, assertion)
 
-			const clientID = "jwt-bearer-client"
-
-			privateKey := encodeJWKJSON(t, key)
-			if tc.usePEM {
-				privateKey = encodePKCS8PEM(t, key)
-			}
-
-			testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				switch r.URL.Path {
-				case "/oauth/token":
-					require.NoError(t, r.ParseForm())
-					assert.Equal(t, "client_credentials", r.FormValue("grant_type"))
-					assert.Equal(t, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", r.FormValue("client_assertion_type"))
-					assert.Equal(t, clientID, r.FormValue("client_id"))
-					assert.Equal(t, "private_key_jwt", r.FormValue("token_endpoint_auth_method"))
-
-					assertion := r.FormValue("client_assertion")
-					require.NotEmpty(t, assertion)
-
-					parsed, err := jwt.Parse([]byte(assertion), jwt.WithKey(jwa.RS256(), key.Public()))
-					require.NoError(t, err)
-
-					issuer, ok := parsed.Issuer()
-					require.True(t, ok)
-					assert.Equal(t, clientID, issuer)
-
-					subject, ok := parsed.Subject()
-					require.True(t, ok)
-					assert.Equal(t, clientID, subject)
-
-					audience, ok := parsed.Audience()
-					require.True(t, ok)
-					assert.Equal(t, []string{"console-client-credentials"}, audience)
-
-					jti, ok := parsed.JwtID()
-					require.True(t, ok)
-					assert.NotEmpty(t, jti)
-
-					w.Header().Set("Content-Type", "application/json")
-					err = json.NewEncoder(w).Encode(map[string]any{
-						"access_token": "generated-jwt-bearer-token",
-						"token_type":   "Bearer",
-						"expires_in":   3600,
-					})
-					require.NoError(t, err)
-				case "/":
-					assert.Equal(t, "Bearer generated-jwt-bearer-token", r.Header.Get("Authorization"))
-					w.WriteHeader(http.StatusNoContent)
-				default:
-					http.NotFound(w, r)
-				}
-			}))
-			defer testServer.Close()
-
-			client := &http.Client{
-				Transport: NewTransport(t.Context(), "", testServer.URL+"/oauth/token", clientID, "", privateKey),
-			}
-
-			resp, err := client.Get(testServer.URL + "/")
+			parsed, err := jwt.Parse([]byte(assertion), jwt.WithKey(jwa.RS256(), key.Public()))
 			require.NoError(t, err)
-			defer resp.Body.Close()
-			assert.Equal(t, http.StatusNoContent, resp.StatusCode)
-		})
-	}
-}
 
-func TestPrivateKeyFlowInvalidKey(t *testing.T) {
-	t.Parallel()
+			issuer, ok := parsed.Issuer()
+			require.True(t, ok)
+			assert.Equal(t, clientID, issuer)
+
+			subject, ok := parsed.Subject()
+			require.True(t, ok)
+			assert.Equal(t, clientID, subject)
+
+			audience, ok := parsed.Audience()
+			require.True(t, ok)
+			assert.Equal(t, []string{"console-client-credentials"}, audience)
+
+			jti, ok := parsed.JwtID()
+			require.True(t, ok)
+			assert.NotEmpty(t, jti)
+
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(map[string]any{
+				"access_token": "generated-jwt-bearer-token",
+				"token_type":   "Bearer",
+				"expires_in":   3600,
+			})
+			require.NoError(t, err)
+		case "/":
+			assert.Equal(t, "Bearer generated-jwt-bearer-token", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer testServer.Close()
 
 	client := &http.Client{
-		Transport: NewTransport(t.Context(), "", "http://unused.invalid/oauth/token", "client-id", "", "not-a-valid-key"),
+		Transport: NewTransport(t.Context(), "", testServer.URL+"/oauth/token", clientID, "", newTestKeys(t, key)),
 	}
 
-	resp, err := client.Get("http://unused.invalid/")
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "jwk initialization failed")
+	resp, err := client.Get(testServer.URL + "/")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 }
 
 func TestPrivateKeyFlowTokenEndpointError(t *testing.T) {
@@ -178,7 +139,7 @@ func TestPrivateKeyFlowTokenEndpointError(t *testing.T) {
 	defer testServer.Close()
 
 	client := &http.Client{
-		Transport: NewTransport(t.Context(), "", testServer.URL, "client-id", "", encodePKCS8PEM(t, key)),
+		Transport: NewTransport(t.Context(), "", testServer.URL, "client-id", "", newTestKeys(t, key)),
 	}
 
 	resp, err := client.Get(testServer.URL + "/")
@@ -204,7 +165,7 @@ func TestPrivateKeyFlowMalformedTokenResponse(t *testing.T) {
 	defer testServer.Close()
 
 	client := &http.Client{
-		Transport: NewTransport(t.Context(), "", testServer.URL, "client-id", "", encodePKCS8PEM(t, key)),
+		Transport: NewTransport(t.Context(), "", testServer.URL, "client-id", "", newTestKeys(t, key)),
 	}
 
 	resp, err := client.Get(testServer.URL + "/")
