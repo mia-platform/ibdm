@@ -16,22 +16,22 @@ import (
 )
 
 // MockRSAPEM generates a test-only private key PEM.
-func MockRSAPEM(t testing.TB) string {
-	t.Helper()
+func MockRSAPEM(tb testing.TB) string {
+	tb.Helper()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		t.Fatalf("cannot generate mock RSA key: %v", err)
+		tb.Fatalf("cannot generate mock RSA key: %v", err)
 	}
 
 	pkcs8Bytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	if err != nil {
-		t.Fatalf("cannot marshal mock RSA key: %v", err)
+		tb.Fatalf("cannot marshal mock RSA key: %v", err)
 	}
 
 	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8Bytes})
 	if pemBytes == nil {
-		t.Fatal("cannot encode mock RSA key to PEM")
+		tb.Fatal("cannot encode mock RSA key to PEM")
 	}
 
 	return string(pemBytes)

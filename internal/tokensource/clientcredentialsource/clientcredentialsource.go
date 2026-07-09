@@ -95,10 +95,6 @@ func (p *source) Token() (*oauth2.Token, error) {
 	form.Set("client_id", p.clientID)
 	form.Set("token_endpoint_auth_method", privateKeyJWTAuthMethod)
 
-	// TODO: Remove debug prints after testing
-	fmt.Printf("\n\nBefore request\n")
-	fmt.Printf("\nForm: %v\n", form.Encode())
-
 	req, err := http.NewRequestWithContext(p.ctx, http.MethodPost, p.tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to build token request: %w", ErrTokenExchange, err)
@@ -113,13 +109,8 @@ func (p *source) Token() (*oauth2.Token, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxTokenErrorBodyBytes))
-		// TODO: Remove debug prints after testing
-		fmt.Printf("\n\nToken response body: %v\n", string(body))
 		return nil, fmt.Errorf("%w: upstream token exchange failed: status %s: %s", ErrTokenExchange, resp.Status, body)
 	}
-
-	// TODO: Remove debug prints after testing
-	fmt.Printf("\n\nToken response: %v\n", resp)
 
 	var tokenResp struct {
 		AccessToken string `json:"access_token"` //nolint:tagliatelle // OAuth2 token response uses snake_case
@@ -143,8 +134,6 @@ func (p *source) Token() (*oauth2.Token, error) {
 func (p *source) signedAssertion(now time.Time) (string, error) {
 	jti, err := uuid.NewRandom()
 
-	// TODO: Remove debug prints after testing
-	fmt.Printf("\n\nJTI: %v\n", jti.String())
 	if err != nil {
 		return "", fmt.Errorf("%w: failed to generate jti: %w", ErrTokenExchange, err)
 	}
@@ -164,11 +153,6 @@ func (p *source) signedAssertion(now time.Time) (string, error) {
 		IssuedAt(now).
 		Expiration(now.Add(jwtAssertionLifetime)).
 		Build()
-
-	// TODO: Remove debug prints after testing
-	if tokJSON, marshalErr := json.MarshalIndent(tok, "", "  "); marshalErr == nil {
-		fmt.Printf("\n\nJWT assertion: %s\n", tokJSON)
-	}
 
 	if err != nil {
 		return "", fmt.Errorf("%w: failed to build token payload: %w", ErrTokenExchange, err)
