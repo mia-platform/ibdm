@@ -1,7 +1,7 @@
 // Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
-package catalog
+package jwk
 
 import (
 	"encoding/json"

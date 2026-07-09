@@ -5,7 +5,11 @@ package catalog
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +25,33 @@ import (
 	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/info"
 )
+
+const rsaKeyBits = 4096
+
+// generateTestRSAKey creates a fresh RSA key pair to be used as fictional test material. It is
+// never used outside of this test file.
+func generateTestRSAKey(t *testing.T) *rsa.PrivateKey {
+	t.Helper()
+
+	key, err := rsa.GenerateKey(rand.Reader, rsaKeyBits)
+	require.NoError(t, err)
+	return key
+}
+
+// encodePKCS8PEM PEM-encodes key using the PKCS8 container, matching the format most identity
+// providers expect for a "private key" credential.
+func encodePKCS8PEM(t *testing.T, key *rsa.PrivateKey) string {
+	t.Helper()
+
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	require.NoError(t, err)
+
+	block := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: der,
+	}
+	return string(pem.EncodeToMemory(block))
+}
 
 func TestInitialization(t *testing.T) {
 	t.Run("without envs", func(t *testing.T) {

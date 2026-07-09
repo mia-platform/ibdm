@@ -10,12 +10,13 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 
-	"github.com/mia-platform/ibdm/internal/tokensource/jwtclientcredential"
+	"github.com/mia-platform/ibdm/internal/jwk"
+	"github.com/mia-platform/ibdm/internal/tokensource/clientcredentialsource"
 )
 
 // NewTransport creates an HTTP transport configured with either a static token, private-key JWT
 // client authentication, or client-credentials flow.
-func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret string, keys *Keys) http.RoundTripper {
+func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret string, keys *jwk.Keys) http.RoundTripper {
 	var source oauth2.TokenSource
 	switch {
 	case len(token) > 0:
@@ -33,7 +34,7 @@ func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret s
 
 		source = config.TokenSource(ctx)
 	case len(clientID) > 0 && keys != nil && keys.PrivateKey != nil:
-		source = jwtclientcredential.NewSource(ctx, clientID, tokenURL, keys.PrivateKey)
+		source = clientcredentialsource.NewSource(ctx, clientID, tokenURL, keys.PrivateKey)
 	}
 
 	if source == nil {

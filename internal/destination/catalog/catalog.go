@@ -17,6 +17,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/info"
+	"github.com/mia-platform/ibdm/internal/jwk"
 )
 
 var (
@@ -60,7 +61,7 @@ type catalogDestination struct {
 	PrivateKeyPath  string `env:"MIA_CATALOG_PRIVATE_KEY_PATH"`
 	AuthEndpoint    string `env:"MIA_CATALOG_AUTH_ENDPOINT"`
 
-	keys   *Keys
+	keys   *jwk.Keys
 	client atomic.Pointer[http.Client]
 }
 
@@ -81,7 +82,7 @@ func NewDestination() (destination.Sender, error) {
 	}
 
 	if len(destination.PrivateKeyPath) > 0 {
-		keys, err := LoadKeys(destination.PrivateKeyPath)
+		keys, err := jwk.LoadKeys(destination.PrivateKeyPath)
 		if err != nil {
 			return nil, handleError(err)
 		}

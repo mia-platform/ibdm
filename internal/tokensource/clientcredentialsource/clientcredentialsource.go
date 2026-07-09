@@ -1,7 +1,7 @@
 // Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
-package jwtclientcredential
+package clientcredentialsource
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"golang.org/x/oauth2"
 
-	tokenprovider "github.com/mia-platform/ibdm/internal/tokensource"
+	"github.com/mia-platform/ibdm/internal/tokensource"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 	clientCredentialsGrantType = "client_credentials"
 	// jwtBearerClientAssertionType identifies a JWT bearer assertion used for client
 	// authentication, as defined by RFC 7523 section 2.2.
-	jwtBearerClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" //nolint:gosec // this is an OAuth2 assertion type identifier, not a credential
+	jwtBearerClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" //nolint:gosec
 	// privateKeyJWTAuthMethod identifies the client authentication method used when exchanging a
 	// JWT assertion signed with a private key for an access token.
 	privateKeyJWTAuthMethod = "private_key_jwt"
@@ -48,9 +48,9 @@ const (
 // with the token endpoint for an access token.
 var ErrTokenExchange = errors.New("jwtclientcredential token exchange")
 
-var _ tokenprovider.Source = &source{}
+var _ tokensource.Source = &source{}
 
-// source implements tokenprovider.Source by authenticating with a JWT assertion signed with
+// source implements tokensource.Source by authenticating with a JWT assertion signed with
 // a private key, following the private_key_jwt client authentication method defined in RFC 7523
 // section 2.2.
 //
@@ -65,10 +65,10 @@ type source struct {
 	httpClient *http.Client
 }
 
-// NewSource returns a tokenprovider.Source that signs a JWT assertion with privateKey and
+// NewSource returns a tokensource.Source that signs a JWT assertion with privateKey and
 // exchanges it with tokenURL for an access token, authenticating as clientID via the
 // private_key_jwt method defined in RFC 7523 section 2.2.
-func NewSource(ctx context.Context, clientID, tokenURL string, privateKey jwk.Key) tokenprovider.Source {
+func NewSource(ctx context.Context, clientID, tokenURL string, privateKey jwk.Key) tokensource.Source {
 	return &source{
 		ctx:        ctx,
 		clientID:   clientID,
@@ -80,9 +80,6 @@ func NewSource(ctx context.Context, clientID, tokenURL string, privateKey jwk.Ke
 	}
 }
 
-// Token implements oauth2.TokenSource. It builds a signed JWT assertion and exchanges it with the
-// configured token endpoint for an access token using the client_credentials grant, authenticated
-// via the private_key_jwt method.
 func (p *source) Token() (*oauth2.Token, error) {
 	now := time.Now()
 
@@ -98,6 +95,10 @@ func (p *source) Token() (*oauth2.Token, error) {
 	form.Set("client_id", p.clientID)
 	form.Set("token_endpoint_auth_method", privateKeyJWTAuthMethod)
 
+	// TODO: Remove debug prints after testing
+	fmt.Printf("\n\nBefore request\n")
+	fmt.Printf("\nForm: %v\n", form.Encode())
+
 	req, err := http.NewRequestWithContext(p.ctx, http.MethodPost, p.tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to build token request: %w", ErrTokenExchange, err)
@@ -112,8 +113,13 @@ func (p *source) Token() (*oauth2.Token, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxTokenErrorBodyBytes))
+		// TODO: Remove debug prints after testing
+		fmt.Printf("\n\nToken response body: %v\n", string(body))
 		return nil, fmt.Errorf("%w: upstream token exchange failed: status %s: %s", ErrTokenExchange, resp.Status, body)
 	}
+
+	// TODO: Remove debug prints after testing
+	fmt.Printf("\n\nToken response: %v\n", resp)
 
 	var tokenResp struct {
 		AccessToken string `json:"access_token"` //nolint:tagliatelle // OAuth2 token response uses snake_case
@@ -136,6 +142,9 @@ func (p *source) Token() (*oauth2.Token, error) {
 // declare one.
 func (p *source) signedAssertion(now time.Time) (string, error) {
 	jti, err := uuid.NewRandom()
+
+	// TODO: Remove debug prints after testing
+	fmt.Printf("\n\nJTI: %v\n", jti.String())
 	if err != nil {
 		return "", fmt.Errorf("%w: failed to generate jti: %w", ErrTokenExchange, err)
 	}
@@ -155,6 +164,12 @@ func (p *source) signedAssertion(now time.Time) (string, error) {
 		IssuedAt(now).
 		Expiration(now.Add(jwtAssertionLifetime)).
 		Build()
+
+	// TODO: Remove debug prints after testing
+	if tokJSON, marshalErr := json.MarshalIndent(tok, "", "  "); marshalErr == nil {
+		fmt.Printf("\n\nJWT assertion: %s\n", tokJSON)
+	}
+
 	if err != nil {
 		return "", fmt.Errorf("%w: failed to build token payload: %w", ErrTokenExchange, err)
 	}
