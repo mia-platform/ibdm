@@ -5,10 +5,10 @@ package tokenprovider
 
 import "golang.org/x/oauth2"
 
-// Provider is implemented by every client-authentication strategy able to produce an
+// Source is implemented by every client-authentication strategy able to produce an
 // oauth2.TokenSource for authenticating outgoing requests. Each strategy lives in its own
-// sub-package under internal/tokenprovider and exposes a constructor returning a Provider, e.g.
+// sub-package under internal/tokensource and exposes a constructor returning a Source, e.g.
 // jwtclientcredential.NewProvider.
-type Provider interface {
+type Source interface {
 	oauth2.TokenSource
 }

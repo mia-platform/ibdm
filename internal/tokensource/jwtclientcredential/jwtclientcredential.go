@@ -20,7 +20,7 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"golang.org/x/oauth2"
 
-	"github.com/mia-platform/ibdm/internal/tokenprovider"
+	tokenprovider "github.com/mia-platform/ibdm/internal/tokensource"
 )
 
 const (
@@ -48,16 +48,16 @@ const (
 // with the token endpoint for an access token.
 var ErrTokenExchange = errors.New("jwtclientcredential token exchange")
 
-var _ tokenprovider.Provider = &provider{}
+var _ tokenprovider.Source = &source{}
 
-// provider implements tokenprovider.Provider by authenticating with a JWT assertion signed with
+// source implements tokenprovider.Source by authenticating with a JWT assertion signed with
 // a private key, following the private_key_jwt client authentication method defined in RFC 7523
 // section 2.2.
 //
 // The oauth2.TokenSource interface does not accept a context on Token(), so the context used for
 // outgoing token requests is captured once at construction time, mirroring the behaviour of
 // golang.org/x/oauth2/clientcredentials.Config.TokenSource.
-type provider struct {
+type source struct {
 	ctx        context.Context //nolint:containedctx // Token() has no context parameter, see doc comment above.
 	clientID   string
 	tokenURL   string
@@ -65,11 +65,11 @@ type provider struct {
 	httpClient *http.Client
 }
 
-// NewProvider returns a tokenprovider.Provider that signs a JWT assertion with privateKey and
+// NewSource returns a tokenprovider.Source that signs a JWT assertion with privateKey and
 // exchanges it with tokenURL for an access token, authenticating as clientID via the
 // private_key_jwt method defined in RFC 7523 section 2.2.
-func NewProvider(ctx context.Context, clientID, tokenURL string, privateKey jwk.Key) tokenprovider.Provider {
-	return &provider{
+func NewSource(ctx context.Context, clientID, tokenURL string, privateKey jwk.Key) tokenprovider.Source {
+	return &source{
 		ctx:        ctx,
 		clientID:   clientID,
 		tokenURL:   tokenURL,
@@ -83,7 +83,7 @@ func NewProvider(ctx context.Context, clientID, tokenURL string, privateKey jwk.
 // Token implements oauth2.TokenSource. It builds a signed JWT assertion and exchanges it with the
 // configured token endpoint for an access token using the client_credentials grant, authenticated
 // via the private_key_jwt method.
-func (p *provider) Token() (*oauth2.Token, error) {
+func (p *source) Token() (*oauth2.Token, error) {
 	now := time.Now()
 
 	assertion, err := p.signedAssertion(now)
@@ -134,7 +134,7 @@ func (p *provider) Token() (*oauth2.Token, error) {
 // signedAssertion builds and signs the JWT assertion sent to the token endpoint, using the
 // signature algorithm advertised by the key, or defaulting to RS256 when the key does not
 // declare one.
-func (p *provider) signedAssertion(now time.Time) (string, error) {
+func (p *source) signedAssertion(now time.Time) (string, error) {
 	jti, err := uuid.NewRandom()
 	if err != nil {
 		return "", fmt.Errorf("%w: failed to generate jti: %w", ErrTokenExchange, err)

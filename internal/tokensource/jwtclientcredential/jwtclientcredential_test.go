@@ -90,7 +90,7 @@ func TestPrivateKeyFlow(t *testing.T) {
 
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewProvider(t.Context(), clientID, testServer.URL+"/oauth/token", jwkKey),
+			Source: NewSource(t.Context(), clientID, testServer.URL+"/oauth/token", jwkKey),
 		},
 	}
 
@@ -112,7 +112,7 @@ func TestPrivateKeyFlowTokenEndpointError(t *testing.T) {
 
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewProvider(t.Context(), "client-id", testServer.URL, jwkKey),
+			Source: NewSource(t.Context(), "client-id", testServer.URL, jwkKey),
 		},
 	}
 
@@ -141,7 +141,7 @@ func TestPrivateKeyFlowMalformedTokenResponse(t *testing.T) {
 
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewProvider(t.Context(), "client-id", testServer.URL, jwkKey),
+			Source: NewSource(t.Context(), "client-id", testServer.URL, jwkKey),
 		},
 	}
 
