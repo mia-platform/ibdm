@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: ips.easm.mia-platform.eu
+spec:
+  group: easm.mia-platform.eu
+  names:
+    kind: Ip
+    plural: ips
+    displayPlural: IPs
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                ip:
+                  description: The IP address.
+                  type: string
+                  title: IP
+                ptr:
+                  description: The PTR (reverse DNS) record for the IP.
+                  type: string
+                  title: PTR
+                ports:
+                  description: The open ports discovered on the IP.
+                  type: array
+                  title: Ports
+                  items:
+                    type: integer
+                geo:
+                  description: Geographic and network attribution for the IP.
+                  type: object
+                  title: Geo
+                  properties:
+                    provider:
+                      type: string
+                      title: Provider
+                    org:
+                      type: string
+                      title: Organization
+                    asn:
+                      type: string
+                      title: ASN
+                    region:
+                      type: string
+                      title: Region
+                    country:
+                      type: string
+                      title: Country
+      served: true
+      storage: true

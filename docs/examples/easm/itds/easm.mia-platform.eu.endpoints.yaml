@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: endpoints.easm.mia-platform.eu
+spec:
+  group: easm.mia-platform.eu
+  names:
+    kind: Endpoint
+    plural: endpoints
+    displayPlural: Endpoints
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                host:
+                  description: The host the endpoint belongs to.
+                  type: string
+                  title: Host
+                port:
+                  description: The port the endpoint listens on.
+                  type: integer
+                  title: Port
+                http:
+                  description: HTTP response details for the endpoint (absent when no HTTP answer).
+                  type: object
+                  title: HTTP
+                  properties:
+                    url:
+                      type: string
+                      title: URL
+                    scheme:
+                      type: string
+                      title: Scheme
+                    status_codes:
+                      type: array
+                      title: Status Codes
+                      items:
+                        type: integer
+                    content_length:
+                      type: integer
+                      title: Content Length
+                    title:
+                      type: string
+                      title: Title
+                    technologies:
+                      type: array
+                      title: Technologies
+                      items:
+                        type: string
+                tls:
+                  description: TLS report for the endpoint (success shape or an error; stored as-is).
+                  type: object
+                  title: TLS
+                  additionalProperties: true
+      served: true
+      storage: true

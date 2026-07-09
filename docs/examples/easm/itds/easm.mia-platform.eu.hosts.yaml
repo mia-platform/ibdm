@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: hosts.easm.mia-platform.eu
+spec:
+  group: easm.mia-platform.eu
+  names:
+    kind: Host
+    plural: hosts
+    displayPlural: Hosts
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                fqdn:
+                  description: The fully qualified domain name of the host.
+                  type: string
+                  title: FQDN
+                status_code:
+                  description: The DNS response status observed for the host.
+                  type: string
+                  title: Status Code
+                a:
+                  description: The IPv4 (A) records the host resolves to.
+                  type: array
+                  title: A Records
+                  items:
+                    type: string
+                aaaa:
+                  description: The IPv6 (AAAA) records the host resolves to.
+                  type: array
+                  title: AAAA Records
+                  items:
+                    type: string
+                cname:
+                  description: The CNAME records for the host.
+                  type: array
+                  title: CNAME Records
+                  items:
+                    type: string
+      served: true
+      storage: true
