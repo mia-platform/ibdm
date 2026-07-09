@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,57 +34,74 @@ const (
 	// privateKeyJWTAuthMethod identifies the client authentication method used when exchanging a
 	// JWT assertion signed with a private key for an access token.
 	privateKeyJWTAuthMethod = "private_key_jwt"
-	// consoleClientCredentialsAudience is the fixed audience expected by the Mia-Platform Console
-	// token endpoint when authenticating with a private-key JWT assertion.
-	consoleClientCredentialsAudience = "console-client-credentials"
 	// jwtAssertionLifetime is the validity window of the JWT assertion sent to the token endpoint.
 	jwtAssertionLifetime = 5 * time.Minute
-	// tokenRequestTimeout bounds how long a single token exchange request is allowed to take.
+	// tokenRequestTimeout bounds how long a single token exchange request or discovery request is
+	// allowed to take.
 	tokenRequestTimeout = 30 * time.Second
 	// maxTokenErrorBodyBytes caps how much of a non-2xx token response body is read into memory.
 	maxTokenErrorBodyBytes = 1024
+	// oidcDiscoveryPath is the well-known path suffix used to discover OIDC provider metadata, as
+	// defined by the OpenID Connect Discovery specification.
+	oidcDiscoveryPath = ".well-known/openid-configuration"
 )
 
 // ErrTokenExchange wraps failures encountered while building the JWT assertion or exchanging it
 // with the token endpoint for an access token.
-var ErrTokenExchange = errors.New("jwtclientcredential token exchange")
+var ErrTokenExchange = errors.New("oauth2source token exchange")
+
+// ErrDiscovery wraps failures encountered while resolving the token endpoint via OIDC discovery.
+var ErrDiscovery = errors.New("oauth2source discovery")
 
 var _ tokensource.Source = &source{}
 
 // source implements tokensource.Source by authenticating with a JWT assertion signed with
 // a private key, following the private_key_jwt client authentication method defined in RFC 7523
-// section 2.2.
+// section 2.2. The token endpoint and the JWT audience are resolved lazily via OIDC discovery
+// against issuerURL.
 //
 // The oauth2.TokenSource interface does not accept a context on Token(), so the context used for
-// outgoing token requests is captured once at construction time, mirroring the behaviour of
-// golang.org/x/oauth2/clientcredentials.Config.TokenSource.
+// outgoing token and discovery requests is captured once at construction time, mirroring the
+// behaviour of golang.org/x/oauth2/clientcredentials.Config.TokenSource.
 type source struct {
 	ctx        context.Context //nolint:containedctx // Token() has no context parameter, see doc comment above.
 	clientID   string
-	tokenURL   string
+	issuerURL  string
 	privateKey jwk.Key
 	httpClient *http.Client
+
+	mu            sync.Mutex
+	tokenEndpoint string
 }
 
 // NewSource returns a tokensource.Source that signs a JWT assertion with privateKey and
-// exchanges it with tokenURL for an access token, authenticating as clientID via the
-// private_key_jwt method defined in RFC 7523 section 2.2.
-func NewSource(ctx context.Context, clientID, tokenURL string, privateKey jwk.Key) tokensource.Source {
-	return &source{
+// exchanges it, via the private_key_jwt method defined in RFC 7523 section 2.2, for an access
+// token authenticating as clientID. The token endpoint and the JWT audience are resolved via
+// OIDC discovery against issuerURL. The returned source automatically reuses tokens until near
+// expiry, see oauth2.ReuseTokenSource.
+func NewSource(ctx context.Context, clientID, issuerURL string, privateKey jwk.Key) tokensource.Source {
+	inner := &source{
 		ctx:        ctx,
 		clientID:   clientID,
-		tokenURL:   tokenURL,
+		issuerURL:  issuerURL,
 		privateKey: privateKey,
 		httpClient: &http.Client{
 			Timeout: tokenRequestTimeout,
 		},
 	}
+
+	return oauth2.ReuseTokenSource(nil, inner)
 }
 
 func (p *source) Token() (*oauth2.Token, error) {
 	now := time.Now()
 
-	assertion, err := p.signedAssertion(now)
+	tokenEndpoint, err := p.resolveTokenEndpoint(p.ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	assertion, err := p.signedAssertion(now, tokenEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -95,11 +113,7 @@ func (p *source) Token() (*oauth2.Token, error) {
 	form.Set("client_id", p.clientID)
 	form.Set("token_endpoint_auth_method", privateKeyJWTAuthMethod)
 
-	// TODO: Remove debug prints after testing
-	fmt.Printf("\n\nBefore request\n")
-	fmt.Printf("\nForm: %v\n", form.Encode())
-
-	req, err := http.NewRequestWithContext(p.ctx, http.MethodPost, p.tokenURL, strings.NewReader(form.Encode()))
+	req, err := http.NewRequestWithContext(p.ctx, http.MethodPost, tokenEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to build token request: %w", ErrTokenExchange, err)
 	}
@@ -113,13 +127,8 @@ func (p *source) Token() (*oauth2.Token, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxTokenErrorBodyBytes))
-		// TODO: Remove debug prints after testing
-		fmt.Printf("\n\nToken response body: %v\n", string(body))
 		return nil, fmt.Errorf("%w: upstream token exchange failed: status %s: %s", ErrTokenExchange, resp.Status, body)
 	}
-
-	// TODO: Remove debug prints after testing
-	fmt.Printf("\n\nToken response: %v\n", resp)
 
 	var tokenResp struct {
 		AccessToken string `json:"access_token"` //nolint:tagliatelle // OAuth2 token response uses snake_case
@@ -137,14 +146,12 @@ func (p *source) Token() (*oauth2.Token, error) {
 	}, nil
 }
 
-// signedAssertion builds and signs the JWT assertion sent to the token endpoint, using the
+// signedAssertion builds and signs the JWT assertion sent to tokenEndpoint, using the
 // signature algorithm advertised by the key, or defaulting to RS256 when the key does not
-// declare one.
-func (p *source) signedAssertion(now time.Time) (string, error) {
+// declare one. tokenEndpoint is used as the assertion's audience, as required by RFC 7523
+// section 3.
+func (p *source) signedAssertion(now time.Time, tokenEndpoint string) (string, error) {
 	jti, err := uuid.NewRandom()
-
-	// TODO: Remove debug prints after testing
-	fmt.Printf("\n\nJTI: %v\n", jti.String())
 	if err != nil {
 		return "", fmt.Errorf("%w: failed to generate jti: %w", ErrTokenExchange, err)
 	}
@@ -159,17 +166,11 @@ func (p *source) signedAssertion(now time.Time) (string, error) {
 	tok, err := jwt.NewBuilder().
 		Issuer(p.clientID).
 		Subject(p.clientID).
-		Audience([]string{consoleClientCredentialsAudience}).
+		Audience([]string{tokenEndpoint}).
 		JwtID(jti.String()).
 		IssuedAt(now).
 		Expiration(now.Add(jwtAssertionLifetime)).
 		Build()
-
-	// TODO: Remove debug prints after testing
-	if tokJSON, marshalErr := json.MarshalIndent(tok, "", "  "); marshalErr == nil {
-		fmt.Printf("\n\nJWT assertion: %s\n", tokJSON)
-	}
-
 	if err != nil {
 		return "", fmt.Errorf("%w: failed to build token payload: %w", ErrTokenExchange, err)
 	}
@@ -180,4 +181,80 @@ func (p *source) signedAssertion(now time.Time) (string, error) {
 	}
 
 	return string(signed), nil
+}
+
+// discoveryDocument is the minimal subset of OIDC provider metadata, as defined by the OpenID
+// Connect Discovery specification, that this package relies on.
+type discoveryDocument struct {
+	Issuer        string `json:"issuer"`
+	TokenEndpoint string `json:"token_endpoint"` //nolint:tagliatelle // OIDC discovery document uses snake_case
+}
+
+// resolveTokenEndpoint returns the token endpoint advertised by the issuer's OIDC discovery
+// document, fetching and validating it on first use and caching the result for subsequent calls.
+// A failed discovery is never cached, so a later call retries it from scratch.
+func (p *source) resolveTokenEndpoint(ctx context.Context) (string, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.tokenEndpoint != "" {
+		return p.tokenEndpoint, nil
+	}
+
+	discoveryURL, err := url.JoinPath(p.issuerURL, oidcDiscoveryPath)
+	if err != nil {
+		return "", fmt.Errorf("%w: failed to build discovery url: %w", ErrDiscovery, err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("%w: failed to build discovery request: %w", ErrDiscovery, err)
+	}
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("%w: failed to fetch discovery document: %w", ErrDiscovery, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxTokenErrorBodyBytes))
+		return "", fmt.Errorf("%w: upstream discovery failed: status %s: %s", ErrDiscovery, resp.Status, body)
+	}
+
+	var doc discoveryDocument
+	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
+		return "", fmt.Errorf("%w: failed to decode discovery document: %w", ErrDiscovery, err)
+	}
+
+	if normalizeIssuer(doc.Issuer) != normalizeIssuer(p.issuerURL) {
+		return "", fmt.Errorf("%w: issuer mismatch: expected %q, got %q", ErrDiscovery, p.issuerURL, doc.Issuer)
+	}
+
+	if doc.TokenEndpoint == "" {
+		return "", fmt.Errorf("%w: discovery document is missing token_endpoint", ErrDiscovery)
+	}
+
+	p.tokenEndpoint = doc.TokenEndpoint
+
+	return p.tokenEndpoint, nil
+}
+
+// normalizeIssuer canonicalizes an issuer identifier for the OIDC issuer check, tolerating the
+// differences that commonly arise between a configured issuer URL and the value advertised in a
+// discovery document without weakening the check: a trailing slash and differing case in the
+// scheme or host, none of which are significant per RFC 3986. The path is left case-sensitive,
+// as OIDC issuer paths (such as Keycloak realm names) are. If the value does not parse as a URL
+// it is compared verbatim, minus any trailing slash.
+func normalizeIssuer(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return strings.TrimRight(raw, "/")
+	}
+
+	parsed.Scheme = strings.ToLower(parsed.Scheme)
+	parsed.Host = strings.ToLower(parsed.Host)
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+
+	return parsed.String()
 }
