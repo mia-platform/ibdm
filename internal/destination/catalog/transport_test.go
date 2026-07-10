@@ -3,21 +3,21 @@
 
 package catalog
 
-/*
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewTransportWithoutCredentials(t *testing.T) {
 	t.Parallel()
 
-	transport := NewTransport(t.Context(), "", "", "", "", nil)
+	transport, err := NewTransport(t.Context(), "", "", "", "", "", "", nil)
+	assert.NoError(t, err)
 	assert.Same(t, http.DefaultTransport, transport)
 }
 
@@ -53,8 +53,11 @@ func TestNewTransportPrivateKeyJWTWiring(t *testing.T) {
 	}))
 	defer testServer.Close()
 
+	transport, err := NewTransport(t.Context(), "", "", clientID, "", "", testServer.URL+"/oauth/token", newTestPrivateKeyFor(t, key))
+	require.NoError(t, err)
+
 	client := &http.Client{
-		Transport: NewTransport(t.Context(), "", testServer.URL+"/oauth/token", clientID, "", newTestKeys(t, key)),
+		Transport: transport,
 	}
 
 	resp, err := client.Get(testServer.URL + "/")
@@ -62,4 +65,3 @@ func TestNewTransportPrivateKeyJWTWiring(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 }
-*/
