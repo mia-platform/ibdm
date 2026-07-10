@@ -16,14 +16,18 @@ To enable this destination no flags are needed but only a series of environment 
 	availbale during the integration setup
 - `MIA_CATALOG_PRIVATE_KEY_PATH`: path to a PEM-encoded private key file, used together with
 	`MIA_CATALOG_CLIENT_ID`, to authenticate via private-key JWT client authentication
-	(RFC 7523 section 2.2) instead of `MIA_CATALOG_CLIENT_SECRET`
-- `MIA_CATALOG_AUTH_ENDPOINT`: a custom endpoint for authentication, if you don’t set the variable
-	the endpoint used will be the host present in MIA_CATALOG_ENDPOINT with the `/oauth/token`
-	endpoint
-- `MIA_CATALOG_AUTH_ENDPOINT_METADATA`: a custom URL for the OIDC discovery document used to
-	resolve the token endpoint when authenticating via private-key JWT client authentication, if
-	you don’t set the variable the discovery document is looked up relative to
-	`MIA_CATALOG_AUTH_ENDPOINT`
+	(RFC 7523 section 2.2) instead of `MIA_CATALOG_CLIENT_SECRET`. When this variable is set you
+	must also configure at least one of `MIA_CATALOG_ISSUER`, `MIA_CATALOG_ISSUER_METADATA` or
+	`MIA_CATALOG_TOKEN_ENDPOINT`
+- `MIA_CATALOG_AUTH_ENDPOINT`: the token endpoint used by the client-credentials flow
+	(`MIA_CATALOG_CLIENT_ID` + `MIA_CATALOG_CLIENT_SECRET`), if you don’t set the variable the
+	endpoint used will be the host present in MIA_CATALOG_ENDPOINT with the `/oauth/token` endpoint
+- `MIA_CATALOG_ISSUER`: the OIDC issuer URL used as the discovery base and expected issuer when
+	authenticating via private-key JWT client authentication, the discovery document is looked up
+	relative to this value
+- `MIA_CATALOG_ISSUER_METADATA`: a custom URL for the OIDC discovery document used to resolve the
+	token endpoint when authenticating via private-key JWT client authentication, if you don’t set
+	the variable the discovery document is looked up relative to `MIA_CATALOG_ISSUER`
 - `MIA_CATALOG_TOKEN_ENDPOINT`: a custom token endpoint used when authenticating via private-key
 	JWT client authentication, if you set the variable OIDC discovery is skipped entirely and this
 	endpoint is used directly

@@ -16,15 +16,15 @@ import (
 func TestNewTransportWithoutCredentials(t *testing.T) {
 	t.Parallel()
 
-	transport, err := NewTransport(t.Context(), "", "", "", "", "", "", nil)
+	transport, err := NewTransport(t.Context(), "", "", "", "", "", "", "", nil)
 	assert.NoError(t, err)
 	assert.Same(t, http.DefaultTransport, transport)
 }
 
 // TestNewTransportPrivateKeyJWTWiring verifies that NewTransport wires the client-ID/private-key
-// case to a jwtclientcredential provider by exercising a full token exchange plus authenticated
+// case to an oauth2source provider by exercising a full token exchange plus authenticated
 // request through the resulting transport. The JWT assertion contents and provider-level failure
-// modes are covered by the jwtclientcredential package's own tests.
+// modes are covered by the oauth2source package's own tests.
 func TestNewTransportPrivateKeyJWTWiring(t *testing.T) {
 	t.Parallel()
 
@@ -53,7 +53,7 @@ func TestNewTransportPrivateKeyJWTWiring(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	transport, err := NewTransport(t.Context(), "", "", clientID, "", "", testServer.URL+"/oauth/token", newTestPrivateKeyFor(t, key))
+	transport, err := NewTransport(t.Context(), "", "", clientID, "", "", "", testServer.URL+"/oauth/token", newTestPrivateKeyFor(t, key))
 	require.NoError(t, err)
 
 	client := &http.Client{

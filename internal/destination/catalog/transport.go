@@ -15,9 +15,10 @@ import (
 )
 
 // NewTransport creates an HTTP transport configured with either a static token, private-key JWT
-// client authentication, or client-credentials flow. authEndpointMetadata and catalogTokenEndpoint
-// are only used by the private-key JWT branch: see oauth2source.NewSource for their meaning.
-func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret, authEndpointMetadata, catalogTokenEndpoint string, keys *jwk.Keys) (http.RoundTripper, error) {
+// client authentication, or client-credentials flow. authEndpoint is the token URL used by the
+// client-credentials flow. issuer, issuerMetadata and tokenEndpoint are only used by the
+// private-key JWT branch: see oauth2source.NewSource for their meaning.
+func NewTransport(ctx context.Context, token, authEndpoint, clientID, clientSecret, issuer, issuerMetadata, tokenEndpoint string, keys *jwk.Keys) (http.RoundTripper, error) {
 	var source oauth2.TokenSource
 	switch {
 	case len(token) > 0:
@@ -29,13 +30,13 @@ func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret, 
 		config := clientcredentials.Config{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
-			TokenURL:     tokenURL,
+			TokenURL:     authEndpoint,
 			AuthStyle:    oauth2.AuthStyleInHeader,
 		}
 
 		source = config.TokenSource(ctx)
 	case len(clientID) > 0 && keys != nil && keys.PrivateKey != nil:
-		oauth2Source, err := oauth2source.NewSource(ctx, clientID, tokenURL, authEndpointMetadata, catalogTokenEndpoint, keys.PrivateKey)
+		oauth2Source, err := oauth2source.NewSource(ctx, clientID, issuer, issuerMetadata, tokenEndpoint, keys.PrivateKey)
 		if err != nil {
 			return nil, err
 		}
