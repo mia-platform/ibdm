@@ -69,6 +69,35 @@ func TestLoadKeys(t *testing.T) {
 		require.Equal(t, entry["kid"], kid)
 	})
 
+	t.Run("uses custom key ID when provided", func(t *testing.T) {
+		f, err := os.CreateTemp(t.TempDir(), "key-*.pem")
+		require.NoError(t, err)
+		_, err = f.WriteString(MockRSAPEM(t))
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+
+		const customKID = "my-custom-kid"
+		t.Setenv("CUSTOM_KEY_ID", customKID)
+
+		keys, err := LoadKeys(f.Name())
+		require.NoError(t, err)
+
+		// The public key in the JWKS must carry the custom kid.
+		var jwks map[string]any
+		require.NoError(t, json.Unmarshal(keys.JWKSBytes, &jwks))
+		keysArr, ok := jwks["keys"].([]any)
+		require.True(t, ok, "JWKS must have a 'keys' array")
+		require.Len(t, keysArr, 1)
+
+		entry := keysArr[0].(map[string]any)
+		require.Equal(t, customKID, entry["kid"])
+
+		// The private key must carry the same custom kid.
+		kid, ok := keys.PrivateKey.KeyID()
+		require.True(t, ok)
+		require.Equal(t, customKID, kid)
+	})
+
 	t.Run("missing file returns error", func(t *testing.T) {
 		_, err := LoadKeys("/nonexistent/key.pem")
 		require.ErrorContains(t, err, "cannot read private key")
