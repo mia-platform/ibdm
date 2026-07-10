@@ -93,6 +93,9 @@ func NewSource(ctx context.Context, clientID, issuerURL string, privateKey jwk.K
 	return oauth2.ReuseTokenSource(nil, inner)
 }
 
+// Token implements oauth2.TokenSource by signing a JWT assertion with the private key and
+// exchanging it with the token endpoint for an access token. The token endpoint is resolved via
+// OIDC discovery against issuerURL on first use and cached for subsequent calls.
 func (p *source) Token() (*oauth2.Token, error) {
 	now := time.Now()
 
