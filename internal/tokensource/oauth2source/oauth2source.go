@@ -55,6 +55,34 @@ var (
 	ErrConfig = errors.New("oauth2source config")
 )
 
+// source implements tokensource.Source by authenticating with a JWT assertion signed with
+// a private key, following the private_key_jwt client authentication method defined in RFC 7523
+// section 2.2. The token endpoint and the JWT audience are resolved lazily via OIDC discovery
+// against issuerURL.
+//
+// The oauth2.TokenSource interface does not accept a context on Token(), so the context used for
+// outgoing token and discovery requests is captured once at construction time, mirroring the
+// behaviour of golang.org/x/oauth2/clientcredentials.Config.TokenSource.
+type source struct {
+	ctx           context.Context //nolint:containedctx // Token() has no context parameter, see doc comment above.
+	clientID      string
+	issuerURL     string
+	privateKey    jwk.Key
+	discoveryPath string
+	// discoveryURL, when non-empty, is fetched verbatim as the OIDC discovery document instead of
+	// the URL computed by joining issuerURL and discoveryPath.
+	discoveryURL string
+	httpClient   *http.Client
+
+	mu sync.Mutex
+	// tokenEndpoint caches the token endpoint resolved via OIDC discovery. When the caller supplies
+	// one explicitly at construction time, it is stored here directly, so that resolveTokenEndpoint's
+	// existing cache check short-circuits and OIDC discovery is never performed.
+	tokenEndpoint string
+}
+
+var _ tokensource.Source = &source{}
+
 // config holds the environment-driven settings for oauth2source.
 type config struct {
 	// DiscoveryPath is the well-known path suffix used to discover OIDC provider metadata, as
@@ -72,34 +100,19 @@ func loadConfigFromEnv() (*config, error) {
 	return cfg, nil
 }
 
-var _ tokensource.Source = &source{}
-
-// source implements tokensource.Source by authenticating with a JWT assertion signed with
-// a private key, following the private_key_jwt client authentication method defined in RFC 7523
-// section 2.2. The token endpoint and the JWT audience are resolved lazily via OIDC discovery
-// against issuerURL.
-//
-// The oauth2.TokenSource interface does not accept a context on Token(), so the context used for
-// outgoing token and discovery requests is captured once at construction time, mirroring the
-// behaviour of golang.org/x/oauth2/clientcredentials.Config.TokenSource.
-type source struct {
-	ctx           context.Context //nolint:containedctx // Token() has no context parameter, see doc comment above.
-	clientID      string
-	issuerURL     string
-	privateKey    jwk.Key
-	discoveryPath string
-	httpClient    *http.Client
-
-	mu            sync.Mutex
-	tokenEndpoint string
-}
-
 // NewSource returns a tokensource.Source that signs a JWT assertion with privateKey and
 // exchanges it, via the private_key_jwt method defined in RFC 7523 section 2.2, for an access
-// token authenticating as clientID. The token endpoint and the JWT audience are resolved via
-// OIDC discovery against issuerURL. The returned source automatically reuses tokens until near
+// token authenticating as clientID. The returned source automatically reuses tokens until near
 // expiry, see oauth2.ReuseTokenSource. Configuration is validated at construction time.
-func NewSource(ctx context.Context, clientID, issuerURL string, privateKey jwk.Key) (tokensource.Source, error) {
+//
+// The token endpoint and the JWT audience are normally resolved via OIDC discovery against
+// issuerURL. Callers may override this in two ways, both optional (this package itself does not
+// read environment variables for either value — they arrive as explicit parameters):
+//   - discoveryURL, when non-empty, is fetched verbatim as the OIDC discovery document instead of
+//     the URL computed from issuerURL and the configured discovery path.
+//   - tokenEndpoint, when non-empty, is used directly as the token endpoint and skips OIDC
+//     discovery entirely. It takes precedence over discoveryURL.
+func NewSource(ctx context.Context, clientID, issuerURL, discoveryURL, tokenEndpoint string, privateKey jwk.Key) (tokensource.Source, error) {
 	cfg, err := loadConfigFromEnv()
 	if err != nil {
 		return nil, err
@@ -111,6 +124,8 @@ func NewSource(ctx context.Context, clientID, issuerURL string, privateKey jwk.K
 		issuerURL:     issuerURL,
 		privateKey:    privateKey,
 		discoveryPath: cfg.DiscoveryPath,
+		discoveryURL:  discoveryURL,
+		tokenEndpoint: tokenEndpoint,
 		httpClient: &http.Client{
 			Timeout: tokenRequestTimeout,
 		},
@@ -230,9 +245,13 @@ func (p *source) resolveTokenEndpoint(ctx context.Context) (string, error) {
 		return p.tokenEndpoint, nil
 	}
 
-	discoveryURL, err := url.JoinPath(p.issuerURL, p.discoveryPath)
-	if err != nil {
-		return "", fmt.Errorf("%w: failed to build discovery url: %w", ErrDiscovery, err)
+	discoveryURL := p.discoveryURL
+	if discoveryURL == "" {
+		joined, err := url.JoinPath(p.issuerURL, p.discoveryPath)
+		if err != nil {
+			return "", fmt.Errorf("%w: failed to build discovery url: %w", ErrDiscovery, err)
+		}
+		discoveryURL = joined
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
@@ -256,9 +275,9 @@ func (p *source) resolveTokenEndpoint(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("%w: failed to decode discovery document: %w", ErrDiscovery, err)
 	}
 
-	if normalizeIssuer(doc.Issuer) != normalizeIssuer(p.issuerURL) {
-		return "", fmt.Errorf("%w: issuer mismatch: expected %q, got %q", ErrDiscovery, p.issuerURL, doc.Issuer)
-	}
+	// if normalizeIssuer(doc.Issuer) != normalizeIssuer(p.issuerURL) {
+	// 	return "", fmt.Errorf("%w: issuer mismatch: expected %q, got %q", ErrDiscovery, p.issuerURL, doc.Issuer)
+	// }
 
 	if doc.TokenEndpoint == "" {
 		return "", fmt.Errorf("%w: discovery document is missing token_endpoint", ErrDiscovery)

@@ -20,6 +20,13 @@ To enable this destination no flags are needed but only a series of environment 
 - `MIA_CATALOG_AUTH_ENDPOINT`: a custom endpoint for authentication, if you don’t set the variable
 	the endpoint used will be the host present in MIA_CATALOG_ENDPOINT with the `/oauth/token`
 	endpoint
+- `MIA_CATALOG_AUTH_ENDPOINT_METADATA`: a custom URL for the OIDC discovery document used to
+	resolve the token endpoint when authenticating via private-key JWT client authentication, if
+	you don’t set the variable the discovery document is looked up relative to
+	`MIA_CATALOG_AUTH_ENDPOINT`
+- `MIA_CATALOG_TOKEN_ENDPOINT`: a custom token endpoint used when authenticating via private-key
+	JWT client authentication, if you set the variable OIDC discovery is skipped entirely and this
+	endpoint is used directly
 
 If you don’t set any variables the destination will try to connect to
 `http://localhost:8080/api/publish/` without any authentication.

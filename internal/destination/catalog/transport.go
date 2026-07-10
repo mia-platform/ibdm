@@ -5,6 +5,7 @@ package catalog
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"golang.org/x/oauth2"
@@ -15,8 +16,9 @@ import (
 )
 
 // NewTransport creates an HTTP transport configured with either a static token, private-key JWT
-// client authentication, or client-credentials flow.
-func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret string, keys *jwk.Keys) (http.RoundTripper, error) {
+// client authentication, or client-credentials flow. authEndpointMetadata and catalogTokenEndpoint
+// are only used by the private-key JWT branch: see oauth2source.NewSource for their meaning.
+func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret, authEndpointMetadata, catalogTokenEndpoint string, keys *jwk.Keys) (http.RoundTripper, error) {
 	var source oauth2.TokenSource
 	switch {
 	case len(token) > 0:
@@ -34,7 +36,7 @@ func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret s
 
 		source = config.TokenSource(ctx)
 	case len(clientID) > 0 && keys != nil && keys.PrivateKey != nil:
-		oauth2Source, err := oauth2source.NewSource(ctx, clientID, tokenURL, keys.PrivateKey)
+		oauth2Source, err := oauth2source.NewSource(ctx, clientID, tokenURL, authEndpointMetadata, catalogTokenEndpoint, keys.PrivateKey)
 		if err != nil {
 			return nil, err
 		}

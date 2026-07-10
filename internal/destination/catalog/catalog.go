@@ -60,6 +60,14 @@ type catalogDestination struct {
 	ClientSecret    string `env:"MIA_CATALOG_CLIENT_SECRET"`
 	PrivateKeyPath  string `env:"MIA_CATALOG_PRIVATE_KEY_PATH"`
 	AuthEndpoint    string `env:"MIA_CATALOG_AUTH_ENDPOINT"`
+	// AuthEndpointMetadata, when set, overrides the OIDC discovery document URL used to resolve the
+	// token endpoint for private-key JWT authentication. It is only meaningful together with
+	// MIA_CATALOG_CLIENT_ID and MIA_CATALOG_PRIVATE_KEY_PATH.
+	AuthEndpointMetadata string `env:"MIA_CATALOG_AUTH_ENDPOINT_METADATA"`
+	// TokenEndpoint, when set, is used directly as the token endpoint for private-key JWT
+	// authentication, skipping OIDC discovery entirely. It is only meaningful together with
+	// MIA_CATALOG_CLIENT_ID and MIA_CATALOG_PRIVATE_KEY_PATH.
+	TokenEndpoint string `env:"MIA_CATALOG_TOKEN_ENDPOINT"`
 
 	keys   *jwk.Keys
 	client atomic.Pointer[http.Client]
@@ -89,13 +97,27 @@ func NewDestination() (destination.Sender, error) {
 		destination.keys = keys
 	}
 
-	if len(destination.AuthEndpoint) == 0 {
+	if len(destination.AuthEndpoint) == 0 && len(destination.PrivateKeyPath) == 0 && destination.keys == nil {
 		endpointURL.Path = "/oauth/token"
 		destination.AuthEndpoint = endpointURL.String()
 	} else {
 		_, err := url.Parse(destination.AuthEndpoint)
 		if err != nil {
 			return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_AUTH_ENDPOINT: %w", err))
+		}
+	}
+
+	if len(destination.AuthEndpointMetadata) > 0 {
+		_, err := url.Parse(destination.AuthEndpointMetadata)
+		if err != nil {
+			return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_AUTH_ENDPOINT_METADATA: %w", err))
+		}
+	}
+
+	if len(destination.TokenEndpoint) > 0 {
+		_, err := url.Parse(destination.TokenEndpoint)
+		if err != nil {
+			return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_TOKEN_ENDPOINT: %w", err))
 		}
 	}
 
@@ -211,7 +233,7 @@ func (d *catalogDestination) getClient(ctx context.Context) (*http.Client, error
 		return client, nil
 	}
 
-	transport, err := NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.keys)
+	transport, err := NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.AuthEndpointMetadata, d.TokenEndpoint, d.keys)
 	if err != nil {
 		return nil, err
 	}
