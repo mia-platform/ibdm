@@ -5,7 +5,6 @@ package catalog
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"golang.org/x/oauth2"
