@@ -16,7 +16,7 @@ import (
 
 // NewTransport creates an HTTP transport configured with either a static token, private-key JWT
 // client authentication, or client-credentials flow.
-func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret string, keys *jwk.Keys) http.RoundTripper {
+func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret string, keys *jwk.Keys) (http.RoundTripper, error) {
 	var source oauth2.TokenSource
 	switch {
 	case len(token) > 0:
@@ -34,14 +34,18 @@ func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret s
 
 		source = config.TokenSource(ctx)
 	case len(clientID) > 0 && keys != nil && keys.PrivateKey != nil:
-		source = oauth2source.NewSource(ctx, clientID, tokenURL, keys.PrivateKey)
+		oauth2Source, err := oauth2source.NewSource(ctx, clientID, tokenURL, keys.PrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		source = oauth2Source
 	}
 
 	if source == nil {
-		return http.DefaultTransport
+		return http.DefaultTransport, nil
 	}
 
 	return &oauth2.Transport{
 		Source: source,
-	}
+	}, nil
 }

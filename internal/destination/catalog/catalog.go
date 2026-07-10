@@ -153,7 +153,12 @@ func (d *catalogDestination) handleRequest(ctx context.Context, method string, d
 	}
 
 	//nolint:contextcheck // need a new context because it will be used in token requests
-	resp, err := d.getClient(context.Background()).Do(request)
+	client, err := d.getClient(context.Background())
+	if err != nil {
+		return handleError(err)
+	}
+
+	resp, err := client.Do(request)
 	if err != nil {
 		return handleError(err)
 	}
@@ -200,14 +205,18 @@ func handleError(err error) error {
 	}
 }
 
-func (d *catalogDestination) getClient(ctx context.Context) *http.Client {
+func (d *catalogDestination) getClient(ctx context.Context) (*http.Client, error) {
 	client := d.client.Load()
 	if client != nil {
-		return client
+		return client, nil
 	}
 
-	client = &http.Client{}
-	client.Transport = NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.keys)
+	transport, err := NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.keys)
+	if err != nil {
+		return nil, err
+	}
+
+	client = &http.Client{Transport: transport}
 	d.client.Store(client)
-	return client
+	return client, nil
 }

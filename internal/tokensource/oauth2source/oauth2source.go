@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/caarlos0/env/v11"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
@@ -41,17 +42,35 @@ const (
 	tokenRequestTimeout = 30 * time.Second
 	// maxTokenErrorBodyBytes caps how much of a non-2xx token response body is read into memory.
 	maxTokenErrorBodyBytes = 1024
-	// oidcDiscoveryPath is the well-known path suffix used to discover OIDC provider metadata, as
-	// defined by the OpenID Connect Discovery specification.
-	oidcDiscoveryPath = ".well-known/openid-configuration"
 )
 
-// ErrTokenExchange wraps failures encountered while building the JWT assertion or exchanging it
-// with the token endpoint for an access token.
-var ErrTokenExchange = errors.New("oauth2source token exchange")
+var (
+	// ErrTokenExchange wraps failures encountered while exchanging a JWT assertion for an access token.
+	ErrTokenExchange = errors.New("oauth2source token exchange")
 
-// ErrDiscovery wraps failures encountered while resolving the token endpoint via OIDC discovery.
-var ErrDiscovery = errors.New("oauth2source discovery")
+	// ErrDiscovery wraps failures encountered while resolving the token endpoint via OIDC discovery.
+	ErrDiscovery = errors.New("oauth2source discovery")
+
+	// ErrConfig wraps failures encountered while loading oauth2source configuration from the environment.
+	ErrConfig = errors.New("oauth2source config")
+)
+
+// config holds the environment-driven settings for oauth2source.
+type config struct {
+	// DiscoveryPath is the well-known path suffix used to discover OIDC provider metadata, as
+	// defined by the OpenID Connect Discovery specification. It is configurable to accommodate
+	// issuers that serve their discovery document at a non-standard path.
+	DiscoveryPath string `env:"OIDC_DISCOVERY_PATH" envDefault:".well-known/openid-configuration"`
+}
+
+// loadConfigFromEnv parses the oauth2source configuration from environment variables.
+func loadConfigFromEnv() (*config, error) {
+	cfg := new(config)
+	if err := env.Parse(cfg); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrConfig, err)
+	}
+	return cfg, nil
+}
 
 var _ tokensource.Source = &source{}
 
@@ -64,11 +83,12 @@ var _ tokensource.Source = &source{}
 // outgoing token and discovery requests is captured once at construction time, mirroring the
 // behaviour of golang.org/x/oauth2/clientcredentials.Config.TokenSource.
 type source struct {
-	ctx        context.Context //nolint:containedctx // Token() has no context parameter, see doc comment above.
-	clientID   string
-	issuerURL  string
-	privateKey jwk.Key
-	httpClient *http.Client
+	ctx           context.Context //nolint:containedctx // Token() has no context parameter, see doc comment above.
+	clientID      string
+	issuerURL     string
+	privateKey    jwk.Key
+	discoveryPath string
+	httpClient    *http.Client
 
 	mu            sync.Mutex
 	tokenEndpoint string
@@ -78,19 +98,25 @@ type source struct {
 // exchanges it, via the private_key_jwt method defined in RFC 7523 section 2.2, for an access
 // token authenticating as clientID. The token endpoint and the JWT audience are resolved via
 // OIDC discovery against issuerURL. The returned source automatically reuses tokens until near
-// expiry, see oauth2.ReuseTokenSource.
-func NewSource(ctx context.Context, clientID, issuerURL string, privateKey jwk.Key) tokensource.Source {
+// expiry, see oauth2.ReuseTokenSource. Configuration is validated at construction time.
+func NewSource(ctx context.Context, clientID, issuerURL string, privateKey jwk.Key) (tokensource.Source, error) {
+	cfg, err := loadConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	inner := &source{
-		ctx:        ctx,
-		clientID:   clientID,
-		issuerURL:  issuerURL,
-		privateKey: privateKey,
+		ctx:           ctx,
+		clientID:      clientID,
+		issuerURL:     issuerURL,
+		privateKey:    privateKey,
+		discoveryPath: cfg.DiscoveryPath,
 		httpClient: &http.Client{
 			Timeout: tokenRequestTimeout,
 		},
 	}
 
-	return oauth2.ReuseTokenSource(nil, inner)
+	return oauth2.ReuseTokenSource(nil, inner), nil
 }
 
 // Token implements oauth2.TokenSource by signing a JWT assertion with the private key and
@@ -204,7 +230,7 @@ func (p *source) resolveTokenEndpoint(ctx context.Context) (string, error) {
 		return p.tokenEndpoint, nil
 	}
 
-	discoveryURL, err := url.JoinPath(p.issuerURL, oidcDiscoveryPath)
+	discoveryURL, err := url.JoinPath(p.issuerURL, p.discoveryPath)
 	if err != nil {
 		return "", fmt.Errorf("%w: failed to build discovery url: %w", ErrDiscovery, err)
 	}

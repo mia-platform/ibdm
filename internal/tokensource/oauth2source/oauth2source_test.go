@@ -145,9 +145,12 @@ func TestPrivateKeyFlow(t *testing.T) {
 
 	testServer, discoveryHits, tokenHits := newHappyPathServer(t, key, 3600)
 
+	source, err := NewSource(t.Context(), clientID, testServer.URL, jwkKey)
+	require.NoError(t, err)
+
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewSource(t.Context(), clientID, testServer.URL, jwkKey),
+			Source: source,
 		},
 	}
 
@@ -160,6 +163,62 @@ func TestPrivateKeyFlow(t *testing.T) {
 	assert.Equal(t, int32(1), tokenHits.Load())
 }
 
+func TestNewSourceCustomDiscoveryPath(t *testing.T) {
+	// Not parallel: mutates the process environment via t.Setenv.
+	key, jwkKey := generateTestKey(t)
+
+	const customDiscoveryPath = "custom/discovery/document"
+	t.Setenv("OIDC_DISCOVERY_PATH", customDiscoveryPath)
+
+	var testServer *httptest.Server
+	testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/" + customDiscoveryPath:
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(map[string]string{
+				"issuer":         testServer.URL,
+				"token_endpoint": testServer.URL + "/oauth/token",
+			})
+			require.NoError(t, err)
+		case "/oauth/token":
+			require.NoError(t, r.ParseForm())
+			parsed, err := jwt.Parse([]byte(r.FormValue("client_assertion")), jwt.WithKey(jwa.RS256(), key.Public()))
+			require.NoError(t, err)
+			audience, ok := parsed.Audience()
+			require.True(t, ok)
+			assert.Equal(t, []string{testServer.URL + "/oauth/token"}, audience)
+
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(map[string]any{
+				"access_token": "generated-jwt-bearer-token",
+				"token_type":   "Bearer",
+				"expires_in":   3600,
+			})
+			require.NoError(t, err)
+		case "/protected":
+			assert.Equal(t, "Bearer generated-jwt-bearer-token", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(testServer.Close)
+
+	source, err := NewSource(t.Context(), clientID, testServer.URL, jwkKey)
+	require.NoError(t, err)
+
+	client := &http.Client{
+		Transport: &oauth2.Transport{
+			Source: source,
+		},
+	}
+
+	resp, err := client.Get(testServer.URL + "/protected")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+}
+
 func TestDiscoveryCaching(t *testing.T) {
 	t.Parallel()
 
@@ -170,9 +229,12 @@ func TestDiscoveryCaching(t *testing.T) {
 	// rather than the outer token cache.
 	testServer, discoveryHits, tokenHits := newHappyPathServer(t, key, 0)
 
+	source, err := NewSource(t.Context(), clientID, testServer.URL, jwkKey)
+	require.NoError(t, err)
+
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewSource(t.Context(), clientID, testServer.URL, jwkKey),
+			Source: source,
 		},
 	}
 
@@ -197,9 +259,12 @@ func TestTokenReuse(t *testing.T) {
 
 	testServer, discoveryHits, tokenHits := newHappyPathServer(t, key, 3600)
 
+	source, err := NewSource(t.Context(), clientID, testServer.URL, jwkKey)
+	require.NoError(t, err)
+
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewSource(t.Context(), clientID, testServer.URL, jwkKey),
+			Source: source,
 		},
 	}
 
@@ -226,9 +291,12 @@ func TestPrivateKeyFlowTokenEndpointError(t *testing.T) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	})
 
+	source, err := NewSource(t.Context(), "client-id", testServer.URL, jwkKey)
+	require.NoError(t, err)
+
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewSource(t.Context(), "client-id", testServer.URL, jwkKey),
+			Source: source,
 		},
 	}
 
@@ -254,9 +322,12 @@ func TestPrivateKeyFlowMalformedTokenResponse(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	source, err := NewSource(t.Context(), "client-id", testServer.URL, jwkKey)
+	require.NoError(t, err)
+
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewSource(t.Context(), "client-id", testServer.URL, jwkKey),
+			Source: source,
 		},
 	}
 
@@ -314,9 +385,12 @@ func TestResolveTokenEndpointDiscoveryFailures(t *testing.T) {
 			}))
 			t.Cleanup(testServer.Close)
 
+			source, err := NewSource(t.Context(), "client-id", testServer.URL, jwkKey)
+			require.NoError(t, err)
+
 			client := &http.Client{
 				Transport: &oauth2.Transport{
-					Source: NewSource(t.Context(), "client-id", testServer.URL, jwkKey),
+					Source: source,
 				},
 			}
 
@@ -349,9 +423,12 @@ func TestResolveTokenEndpointMissingTokenEndpoint(t *testing.T) {
 	}))
 	t.Cleanup(testServer.Close)
 
+	source, err := NewSource(t.Context(), "client-id", testServer.URL, jwkKey)
+	require.NoError(t, err)
+
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewSource(t.Context(), "client-id", testServer.URL, jwkKey),
+			Source: source,
 		},
 	}
 
@@ -374,9 +451,12 @@ func TestResolveTokenEndpointIssuerTrailingSlash(t *testing.T) {
 	// must be accepted.
 	testServer, _, tokenHits := newHappyPathServer(t, key, 3600)
 
+	source, err := NewSource(t.Context(), clientID, testServer.URL+"/", jwkKey)
+	require.NoError(t, err)
+
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewSource(t.Context(), clientID, testServer.URL+"/", jwkKey),
+			Source: source,
 		},
 	}
 
@@ -406,9 +486,12 @@ func TestResolveTokenEndpointIssuerMismatch(t *testing.T) {
 	}))
 	t.Cleanup(testServer.Close)
 
+	source, err := NewSource(t.Context(), "client-id", testServer.URL, jwkKey)
+	require.NoError(t, err)
+
 	client := &http.Client{
 		Transport: &oauth2.Transport{
-			Source: NewSource(t.Context(), "client-id", testServer.URL, jwkKey),
+			Source: source,
 		},
 	}
 
