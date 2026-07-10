@@ -15,8 +15,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	lestrratjwk "github.com/lestrrat-go/jwx/v3/jwk"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/stretchr/testify/assert"
@@ -24,6 +27,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/info"
+	"github.com/mia-platform/ibdm/internal/jwk"
 )
 
 const rsaKeyBits = 4096
@@ -162,6 +166,22 @@ func TestInitialization(t *testing.T) {
 		assert.Nil(t, dest)
 	})
 
+	t.Run("invalid auth endpoint metadata", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_AUTH_ENDPOINT_METADATA", "http://%41:8080/") // invalid URL
+		dest, err := NewDestination()
+		assert.ErrorIs(t, err, url.EscapeError("%41"))
+		assert.Nil(t, dest)
+	})
+
+	t.Run("invalid token endpoint", func(t *testing.T) {
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_TOKEN_ENDPOINT", "http://%41:8080/") // invalid URL
+		dest, err := NewDestination()
+		assert.ErrorIs(t, err, url.EscapeError("%41"))
+		assert.Nil(t, dest)
+	})
+
 	t.Run("with private key and client id", func(t *testing.T) {
 		keyPath := filepath.Join(t.TempDir(), "private-key.pem")
 		writeTestFile(t, keyPath, encodePKCS8PEM(t, generateTestRSAKey(t)))
@@ -179,6 +199,24 @@ func TestInitialization(t *testing.T) {
 		assert.Empty(t, catalogDestination.ClientSecret)
 		require.NotNil(t, catalogDestination.keys)
 		assert.NotNil(t, catalogDestination.keys.PrivateKey)
+	})
+
+	t.Run("with private key, client id and custom discovery metadata/token endpoint", func(t *testing.T) {
+		keyPath := filepath.Join(t.TempDir(), "private-key.pem")
+		writeTestFile(t, keyPath, encodePKCS8PEM(t, generateTestRSAKey(t)))
+
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
+		t.Setenv("MIA_CATALOG_PRIVATE_KEY_PATH", keyPath)
+		t.Setenv("MIA_CATALOG_AUTH_ENDPOINT_METADATA", "http://localhost:8081/custom/metadata")
+		t.Setenv("MIA_CATALOG_TOKEN_ENDPOINT", "http://localhost:8081/custom/token")
+		dest, err := NewDestination()
+		require.NoError(t, err)
+		catalogDestination, ok := dest.(*catalogDestination)
+		require.True(t, ok)
+
+		assert.Equal(t, "http://localhost:8081/custom/metadata", catalogDestination.AuthEndpointMetadata)
+		assert.Equal(t, "http://localhost:8081/custom/token", catalogDestination.TokenEndpoint)
 	})
 
 	t.Run("private key with unreadable file", func(t *testing.T) {
@@ -504,4 +542,191 @@ func TestClientCredentialFlow(t *testing.T) {
 
 	err := dest.SendData(ctx, &destination.Data{})
 	assert.NoError(t, err)
+}
+
+// newTestPrivateKeyFor wraps key into a jwk.Keys usable as catalogDestination.keys, to be used as
+// fictional test material. It is never used outside of this test file.
+func newTestPrivateKeyFor(t *testing.T, key *rsa.PrivateKey) *jwk.Keys {
+	t.Helper()
+
+	jwkKey, err := lestrratjwk.Import(key)
+	require.NoError(t, err)
+
+	return &jwk.Keys{PrivateKey: jwkKey}
+}
+
+// TestPrivateKeyJWTFlowWithExplicitTokenEndpoint verifies that a catalogDestination configured
+// with MIA_CATALOG_TOKEN_ENDPOINT reaches oauth2source.NewSource with that value, skipping OIDC
+// discovery entirely: the discovery endpoint is registered but never hit, and the token exchange
+// goes straight to the configured token endpoint.
+func TestPrivateKeyJWTFlowWithExplicitTokenEndpoint(t *testing.T) {
+	t.Parallel()
+
+	key := generateTestRSAKey(t)
+	var discoveryHits atomic.Int32
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			defer r.Body.Close()
+		}
+
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/.well-known/openid-configuration":
+			discoveryHits.Add(1)
+			http.NotFound(w, r)
+		case r.Method == http.MethodPost && r.URL.Path == "/custom/token":
+			require.NoError(t, r.ParseForm())
+			assert.Equal(t, "test-client-id", r.FormValue("client_id"))
+			assert.Equal(t, "private_key_jwt", r.FormValue("token_endpoint_auth_method"))
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(map[string]any{
+				"access_token": "generated-jwt-bearer-token",
+				"token_type":   "Bearer",
+				"expires_in":   3600,
+			})
+			require.NoError(t, err)
+		case r.Method == http.MethodPost && r.URL.Path == "/":
+			assert.Equal(t, "Bearer generated-jwt-bearer-token", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer testServer.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	dest := &catalogDestination{
+		CatalogEndpoint: testServer.URL + "/",
+		ClientID:        "test-client-id",
+		AuthEndpoint:    testServer.URL,
+		TokenEndpoint:   testServer.URL + "/custom/token",
+		keys:            newTestPrivateKeyFor(t, key),
+	}
+
+	err := dest.SendData(ctx, &destination.Data{})
+	require.NoError(t, err)
+	assert.Equal(t, int32(0), discoveryHits.Load())
+}
+
+// TestPrivateKeyJWTFlowWithCustomDiscoveryMetadata verifies that a catalogDestination configured
+// with MIA_CATALOG_AUTH_ENDPOINT_METADATA reaches oauth2source.NewSource with that value, so
+// discovery is fetched from the custom URL rather than the default well-known path.
+func TestPrivateKeyJWTFlowWithCustomDiscoveryMetadata(t *testing.T) {
+	t.Parallel()
+
+	key := generateTestRSAKey(t)
+	var defaultDiscoveryHits atomic.Int32
+
+	var testServer *httptest.Server
+	testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			defer r.Body.Close()
+		}
+
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/.well-known/openid-configuration":
+			defaultDiscoveryHits.Add(1)
+			http.NotFound(w, r)
+		case r.Method == http.MethodGet && r.URL.Path == "/custom/metadata":
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(map[string]string{
+				"issuer":         testServer.URL,
+				"token_endpoint": testServer.URL + "/oauth/token",
+			})
+			require.NoError(t, err)
+		case r.Method == http.MethodPost && r.URL.Path == "/oauth/token":
+			require.NoError(t, r.ParseForm())
+			assert.Equal(t, "test-client-id", r.FormValue("client_id"))
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(map[string]any{
+				"access_token": "generated-jwt-bearer-token",
+				"token_type":   "Bearer",
+				"expires_in":   3600,
+			})
+			require.NoError(t, err)
+		case r.Method == http.MethodPost && r.URL.Path == "/":
+			assert.Equal(t, "Bearer generated-jwt-bearer-token", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer testServer.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	dest := &catalogDestination{
+		CatalogEndpoint:      testServer.URL + "/",
+		ClientID:             "test-client-id",
+		AuthEndpoint:         testServer.URL,
+		AuthEndpointMetadata: testServer.URL + "/custom/metadata",
+		keys:                 newTestPrivateKeyFor(t, key),
+	}
+
+	err := dest.SendData(ctx, &destination.Data{})
+	require.NoError(t, err)
+	assert.Equal(t, int32(0), defaultDiscoveryHits.Load())
+}
+
+// TestPrivateKeyJWTFlowWithMetadataOnlyNoAuthEndpoint verifies that a catalogDestination
+// configured with MIA_CATALOG_AUTH_ENDPOINT_METADATA but without MIA_CATALOG_AUTH_ENDPOINT still
+// completes the private-key JWT flow: with no configured auth endpoint there is no expected
+// issuer to validate the discovery document against, so the discovery document's issuer (which
+// here has no relationship to the test server at all) must not cause a failure.
+func TestPrivateKeyJWTFlowWithMetadataOnlyNoAuthEndpoint(t *testing.T) {
+	t.Parallel()
+
+	key := generateTestRSAKey(t)
+
+	var testServer *httptest.Server
+	testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			defer r.Body.Close()
+		}
+
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/custom/metadata":
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(map[string]string{
+				"issuer":         "https://unrelated-issuer.example.com",
+				"token_endpoint": testServer.URL + "/oauth/token",
+			})
+			require.NoError(t, err)
+		case r.Method == http.MethodPost && r.URL.Path == "/oauth/token":
+			require.NoError(t, r.ParseForm())
+			assert.Equal(t, "test-client-id", r.FormValue("client_id"))
+
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(map[string]any{
+				"access_token": "generated-jwt-bearer-token",
+				"token_type":   "Bearer",
+				"expires_in":   3600,
+			})
+			require.NoError(t, err)
+		case r.Method == http.MethodPost && r.URL.Path == "/":
+			assert.Equal(t, "Bearer generated-jwt-bearer-token", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer testServer.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	dest := &catalogDestination{
+		CatalogEndpoint:      testServer.URL + "/",
+		ClientID:             "test-client-id",
+		AuthEndpointMetadata: testServer.URL + "/custom/metadata",
+		keys:                 newTestPrivateKeyFor(t, key),
+	}
+
+	err := dest.SendData(ctx, &destination.Data{})
+	require.NoError(t, err)
 }

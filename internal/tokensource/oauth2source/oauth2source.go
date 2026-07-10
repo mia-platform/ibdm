@@ -112,6 +112,11 @@ func loadConfigFromEnv() (*config, error) {
 //     the URL computed from issuerURL and the configured discovery path.
 //   - tokenEndpoint, when non-empty, is used directly as the token endpoint and skips OIDC
 //     discovery entirely. It takes precedence over discoveryURL.
+//
+// issuerURL itself is optional: when non-empty, the fetched discovery document's issuer must
+// match it or discovery fails, guarding against a misconfigured or unexpected discovery endpoint.
+// When issuerURL is empty (for example, only discoveryURL was supplied), there is nothing to
+// validate the document against, so this check is skipped.
 func NewSource(ctx context.Context, clientID, issuerURL, discoveryURL, tokenEndpoint string, privateKey jwk.Key) (tokensource.Source, error) {
 	cfg, err := loadConfigFromEnv()
 	if err != nil {
@@ -275,9 +280,13 @@ func (p *source) resolveTokenEndpoint(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("%w: failed to decode discovery document: %w", ErrDiscovery, err)
 	}
 
-	// if normalizeIssuer(doc.Issuer) != normalizeIssuer(p.issuerURL) {
-	// 	return "", fmt.Errorf("%w: issuer mismatch: expected %q, got %q", ErrDiscovery, p.issuerURL, doc.Issuer)
-	// }
+	// The issuer check is only meaningful when the caller configured an expected issuer: when
+	// p.issuerURL is empty (e.g. only a discoveryURL or tokenEndpoint override was supplied), there
+	// is nothing to validate the discovery document against, so it is skipped rather than rejecting
+	// an otherwise valid document.
+	if p.issuerURL != "" && normalizeIssuer(doc.Issuer) != normalizeIssuer(p.issuerURL) {
+		return "", fmt.Errorf("%w: issuer mismatch: expected %q, got %q", ErrDiscovery, p.issuerURL, doc.Issuer)
+	}
 
 	if doc.TokenEndpoint == "" {
 		return "", fmt.Errorf("%w: discovery document is missing token_endpoint", ErrDiscovery)
