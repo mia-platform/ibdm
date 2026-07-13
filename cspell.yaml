@@ -71,5 +71,5 @@ files:
   - ".devcontainer/devcontainer.json"
   - ".github/*.yml"
   - ".github/**/*.yaml"
-  - "docs/examples/**/*.yaml"
+  - "docs/mappings/**/*.yaml"
   - Makefile
