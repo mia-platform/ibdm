@@ -1,0 +1,47 @@
+apiVersion: azure.mia-platform.eu/v1
+itemFamily: managedclusters
+type: Microsoft.ContainerService/managedClusters
+extra:
+  apiVersion: "2025-10-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ .name }}"
+  spec:
+    name: "{{ .name }}"
+    location: "{{ .location | lower }}"
+    provisioningState: "{{ .properties.provisioningState | lower }}"
+    currentKubernetesVersion: "{{ .properties.currentKubernetesVersion | quote }}"
+    supportPlan: "{{ .properties.supportPlan }}"
+    publicNetworkAccess: "{{ get \"publicNetworkAccess\" .properties \"Disabled\" | lower }}"
+    disableLocalAccounts: "{{ .properties.disableLocalAccounts }}"
+    dnsPrefix: "{{ .properties.dnsPrefix }}"
+    fqdn: "{{ .properties.fqdn }}"
+    enableRBAC: "{{ .properties.enableRBAC }}"
+    skuTier: "{{ .sku.tier | lower }}"
+    podCidrs: "{{ get \"podCidrs\" .properties.networkProfile (list) | toJSON }}"
+    serviceCidrs: "{{ .properties.networkProfile.serviceCidrs | toJSON }}"
+    networkPlugin: "{{ .properties.networkProfile.networkPlugin | lower }}"
+    outboundType: "{{ .properties.networkProfile.outboundType | lower }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Cluster:%s" (printf "%s" .properties.fqdn | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:azure.mia-platform.eu:v1:ManagedCluster:%s" (printf "%s" .id | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1:Cluster:{{ printf "%s" .properties.fqdn | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:azure.mia-platform.eu:v1:ManagedCluster:{{ (printf "%s" .id | sha256sum) }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"

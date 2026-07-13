@@ -1,0 +1,80 @@
+apiVersion: console.mia-platform.eu/v1
+itemFamily: services
+type: service
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum }}
+  metadata:
+    title: "{{ printf \"%s\" .service.name }}"
+  spec:
+    projectUniqueId: "{{ .project._id }}"
+    projectId: "{{ get \"projectId\" .project \"\" | quote }}"
+    tenantId: "{{ .project.tenantId }}"
+    revisionName: "{{ .revision.name }}"
+    configuration: "{{ .service | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:%s" (printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:%s" .project._id -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:{{ printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:{{ .project._id }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:%s" (printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Revision:%s" (printf "%s-%s" .project._id .revision.name | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:{{ printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1:Revision:{{ printf "%s-%s" .project._id .revision.name | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info nil) -}}
+        {{- if $teamContact -}}
+          true
+        {{- else -}}
+          false
+        {{- end }}
+      identifier: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info "") -}}
+        {{- $src := printf "urn:mia-platform-catalog:iam.mia-platform.eu:v1:User:%s" ($teamContact | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:ownership.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:%s" (printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info "") -}}
+        urn:mia-platform-catalog:iam.mia-platform.eu:v1:User:{{ $teamContact | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:{{ printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:ownership.mia-platform.eu"
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "none"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:%s" (printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:nexus.mia-platform.eu:v1:DockerImage:%s" (printf "%s" .service.dockerImage | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:{{ printf "%s-%s-%s" .project._id .revision.name .service.name | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:nexus.mia-platform.eu:v1:DockerImage:{{ printf "%s" .service.dockerImage | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"

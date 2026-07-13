@@ -1,0 +1,32 @@
+apiVersion: azure.mia-platform.eu/v1
+itemFamily: virtualnetworks
+type: Microsoft.Network/virtualNetworks
+extra:
+  apiVersion: "2025-03-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ .name }}"
+  spec:
+    name: "{{ .name }}"
+    location: "{{ .location | lower }}"
+    provisioningState: "{{ .properties.provisioningState | lower }}"
+    addressPrefixes: "{{ .properties.addressSpace.addressPrefixes | toJSON }}"
+    subnets: |-
+      {{ $subs := list }}
+      {{- $subnets := .properties.subnets -}}
+      {{- range $subnets -}}
+        {{- $obj := object "name" .name -}}
+        {{- $obj = set "addressPrefix" .properties.addressPrefix $obj -}}
+        {{- $obj = set "provisioningState" (.properties.provisioningState | lower) $obj -}}
+        {{- $subs = append $subs $obj -}}
+      {{- end -}}
+      {{- $subs | toJSON }}
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}

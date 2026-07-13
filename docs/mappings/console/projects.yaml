@@ -1,0 +1,63 @@
+apiVersion: console.mia-platform.eu/v1
+itemFamily: projects
+type: project
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s" .project._id }}
+  metadata:
+    title: "{{ printf \"%s\" .project.name }}"
+  spec:
+    projectUniqueId: "{{ .project._id }}"
+    projectId: "{{ .project.projectId }}"
+    tenantId: "{{ .project.tenantId }}"
+    tenantName: "{{ get \"tenantName\" .project \"\" | quote }}"
+    name: "{{ .project.name }}"
+    repository: "{{ .project.repository | toJSON }}"
+    repositoryUrl: "{{ get \"repositoryUrl\" .project \"\" | quote }}"
+    availableNamespaces: "{{ get \"availableNamespaces\" .project (list) | toJSON }}"
+    configurationGitPath: "{{ .project.configurationGitPath }}"
+    containerRegistries: "{{ get \"containerRegistries\" .project (list) | toJSON }}"
+    defaultBranch: "{{ get \"defaultBranch\" .project \"\" | quote }}"
+    deploy: "{{ get \"deploy\" .project (object) | toJSON }}"
+    description: "{{ get \"description\" .project \"\" | quote }}"
+    dockerImageNameSuggestion: "{{ get \"dockerImageNameSuggestion\" .project (object) | toJSON }}"
+    enabledSecurityFeatures: "{{ get \"enabledSecurityFeatures\" .project (object) | toJSON }}"
+    enabledServices: "{{ get \"enabledServices\" .project (object) | toJSON }}"
+    environments: "{{ .project.environments | toJSON }}"
+    environmentsVariables: "{{ get \"environmentsVariables\" .project (object) | toJSON }}"
+    flavor: "{{ get \"flavor\" .project \"\" | quote }}"
+    info: "{{ get \"info\" .project (object) | toJSON }}"
+    imagePullSecretNames: "{{ get \"imagePullSecretNames\" .project (list) | toJSON }}"
+    links: "{{ get \"links\" .project (object) | toJSON }}"
+    logicalScopeLayers: "{{ get \"logicalScopeLayers\" .project (list) | toJSON }}"
+    originalTemplate: "{{ get \"originalTemplate\" .project (object) | toJSON }}"
+    pipelines: "{{ get \"pipelines\" .project (object) | toJSON }}"
+    projectNamespaceVariable: "{{ get \"projectNamespaceVariable\" .project \"\" | quote }}"
+    lastUpdate: "{{ get \"lastUpdate\" .project (now) }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info nil) -}}
+        {{- if $teamContact -}}
+          true
+        {{- else -}}
+          false
+        {{- end }}
+      identifier: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info "") -}}
+        {{- $src := printf "urn:mia-platform-catalog:iam.mia-platform.eu:v1:User:%s" ($teamContact | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:ownership.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:%s" (printf "%s" .project._id) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        {{ $info := (get "info" .project (object)) -}}
+        {{- $teamContact := (get "teamContact" $info "") -}}
+        urn:mia-platform-catalog:iam.mia-platform.eu:v1:User:{{ $teamContact | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:{{ printf "%s" .project._id }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:ownership.mia-platform.eu"

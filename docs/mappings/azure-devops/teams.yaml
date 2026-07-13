@@ -1,0 +1,12 @@
+apiVersion: azuredevops.mia-platform.eu/v1
+itemFamily: teams
+type: team
+syncable: true
+mappings:
+  identifier: "{{ .url | sha256sum }}"
+  metadata:
+    title: "{{ .name }}"
+  spec:
+    name: "{{ .name }}"
+    projectName: "{{ .projectName }}"
+    description: "{{ get \"description\" . \"\" | quote }}"
