@@ -21,7 +21,6 @@ words:
   - itds
   - mylib
   - mytoken
-  - jwtclientcredential
   - postgresqldb
   - postgresqldbs
   - Sonatype
