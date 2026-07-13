@@ -1,0 +1,84 @@
+apiVersion: github.mia-platform.eu/v1
+itemFamily: workflowruns
+type: workflow_run
+extra:
+  apiVersion: "2026-03-10"
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum }}
+  metadata:
+    title: |-
+      "{{ printf "%s %s #%v" .workflow_run.repository.full_name .workflow_run.name .workflow_run.run_number }}"
+  spec:
+    id : "{{ .workflow_run.id }}"
+    name: "{{ .workflow_run.name }}"
+    displayTitle: "{{ .workflow_run.display_title | quote }}"
+    status: "{{ .workflow_run.status }}"
+    conclusion:  |-
+      {{ $conclusion := (get "conclusion" .workflow_run "") -}}
+      {{- if $conclusion -}}
+        {{- .workflow_run.conclusion -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    workflowId: "{{ .workflow_run.workflow_id }}"
+    workflowPath: "{{ .workflow_run.path }}"
+    repositoryId: "{{ .workflow_run.repository.id }}"
+    repositoryFullName: "{{ .workflow_run.repository.full_name }}"
+    headBranch: "{{ .workflow_run.head_branch }}"
+    headSha: "{{ .workflow_run.head_sha }}"
+    event: "{{ .workflow_run.event }}"
+    runNumber: "{{ .workflow_run.run_number }}"
+    runAttempt: "{{ .workflow_run.run_attempt }}"
+    htmlUrl: "{{ .workflow_run.html_url }}"
+    created: |-
+      {{ $created := (get "created_at" .workflow_run "") -}}
+      {{- if $created -}}
+        {{- $isNumberCheck := isNumber .workflow_run.created_at -}}
+        {{- if $isNumberCheck -}}
+          {{- convertFromTimestamp .workflow_run.created_at -}}
+        {{- else -}}
+          {{- .workflow_run.created_at -}}
+        {{- end -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    updated: |-
+      {{ $updated := (get "updated_at" .workflow_run "") -}}
+      {{- if $updated -}}
+        {{- $isNumberCheck := isNumber .workflow_run.updated_at -}}
+        {{- if $isNumberCheck -}}
+          {{- convertFromTimestamp .workflow_run.updated_at -}}
+        {{- else -}}
+          {{- .workflow_run.updated_at -}}
+        {{- end -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    runStartedAt: |-
+      {{ $runStartedAt := (get "run_started_at" .workflow_run "") -}}
+      {{- if $runStartedAt -}}
+        {{- $isNumberCheck := isNumber .workflow_run.run_started_at -}}
+        {{- if $isNumberCheck -}}
+          {{- convertFromTimestamp .workflow_run.run_started_at -}}
+        {{- else -}}
+          {{- .workflow_run.run_started_at -}}
+        {{- end -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "none"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:github.mia-platform.eu:v1:WorkflowRun:%s" (printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:github.mia-platform.eu:v1:Repository:%s" (printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:github.mia-platform.eu:v1:WorkflowRun:{{ printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:github.mia-platform.eu:v1:Repository:{{ printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

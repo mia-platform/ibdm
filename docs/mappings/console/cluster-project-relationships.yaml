@@ -1,0 +1,16 @@
+apiVersion: mia-platform.eu/v1
+itemFamily: relationships
+type: clusterProjectRelationship
+syncable: true
+mappings:
+  identifier: |-
+    {{ $src := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:%s" .project._id -}}
+    {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+    {{- $tgt := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Cluster:%s" (printf "%s" (replace "https://" "" .cluster.connection.url) | sha256sum) -}}
+    {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+  spec:
+    sourceRef: |-
+      urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:{{ .project._id }}
+    targetRef: |-
+      urn:mia-platform-catalog:console.mia-platform.eu:v1:Cluster:{{ printf "%s" (replace "https://" "" .cluster.connection.url) | sha256sum }}
+    typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

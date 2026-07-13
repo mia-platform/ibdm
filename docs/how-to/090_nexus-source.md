@@ -96,7 +96,7 @@ in the Nexus administration UI.
 
 ## Example Mapping Files
 
-Example mapping files are provided in the `docs/examples/nexus/mappings/` directory:
+Example mapping files are provided in the `docs/mappings/nexus/` directory:
 
 - `dockerimages.yaml` — maps Docker image assets to Catalog items.
 
@@ -104,11 +104,11 @@ This file can be used as a starting point for your own mapping configuration. Pa
 or the folder to the `--mapping-file` flag:
 
 ```sh
-ibdm sync nexus --mapping-file docs/examples/nexus/mappings/
+ibdm sync nexus --mapping-file docs/mappings/nexus/
 ```
 
 For local development and debugging, add the `--local-output` flag to send results to stdout:
 
 ```sh
-ibdm sync nexus --mapping-file docs/examples/nexus/mappings/ --local-output
+ibdm sync nexus --mapping-file docs/mappings/nexus/ --local-output
 ```

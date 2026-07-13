@@ -53,7 +53,7 @@ will map the sent relationship anyway.
 
 ``` yaml
 extra:
-  - apiVersion: mia-platform.eu/v1alpha1
+  - apiVersion: mia-platform.eu/v1
     itemFamily: relationships
     deletePolicy: "cascade"
     createIf: |-
@@ -69,12 +69,12 @@ extra:
       {{- $otherValue := (get "otherValue" $value nil) -}}
       {{- printf "relationship-%s-%s-example-type" $otherValue .directValue | sha256sum}}
     sourceRef:
-      apiVersion: "mia-platform.eu/v1alpha1"
+      apiVersion: "mia-platform.eu/v1"
       family: "family-example"
       name:  |-
         {{- printf "family-example-%s-example" .anotherId | sha256sum}}  
     typeRef:
-      apiVersion: "mia-platform.eu/v1alpha1"
+      apiVersion: "mia-platform.eu/v1"
       family: "relationship-types"
       name: "example-type.mia-platform.eu"
 ```

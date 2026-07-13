@@ -374,7 +374,7 @@ func TestMapper(t *testing.T) {
 							"identifier":   "{{ .name }}",
 							"sourceRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .otherKey.value }}",
 							"targetRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .name }}",
-							"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
+							"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:null:dependency",
 						},
 						{
 							"apiVersion":   "api/v1",
@@ -384,7 +384,7 @@ func TestMapper(t *testing.T) {
 							"identifier":   "{{ .name }}",
 							"sourceRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .otherKey.value }}",
 							"targetRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .name }}",
-							"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
+							"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:null:dependency",
 						},
 						{
 							"apiVersion":   "api/v1",
@@ -394,7 +394,7 @@ func TestMapper(t *testing.T) {
 							"identifier":   "{{ .name }}-create",
 							"sourceRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .otherKey.value }}",
 							"targetRef":    "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:{{ .name }}",
-							"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
+							"typeRef":      "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:null:dependency",
 						},
 					},
 				)
@@ -442,7 +442,7 @@ func TestMapper(t *testing.T) {
 					Spec: map[string]any{
 						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:42",
 						"targetRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:example",
-						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:null:dependency",
 					},
 				},
 				{
@@ -452,7 +452,7 @@ func TestMapper(t *testing.T) {
 					Spec: map[string]any{
 						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:42",
 						"targetRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:example",
-						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:null:dependency",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:null:dependency",
 					},
 				},
 			},

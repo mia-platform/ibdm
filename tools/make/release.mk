@@ -60,9 +60,9 @@ $(RELEASE_DIR)/%.sigstore.json: $(RELEASE_DIR)/% $(COSIGN_PATH)
 	$(info Signing $* with cosign...)
 	$(COSIGN_PATH) sign-blob $< --key $(COSIGN_PRIVATE_KEY) --bundle $@ --yes
 
-$(RELEASE_DIR)/default-itds-mappings.tar.gz: docs/examples/*
-	$(info Creating the default ItemTypeDefinitions and mappings tarball...)
-	tar -czf $@ -C docs/examples .
+$(RELEASE_DIR)/default-itds-mappings.tar.gz: docs/mappings/*
+	$(info Creating the default mappings tarball...)
+	tar -czf $@ -C docs/mappings .
 
 $(TOOLS_BIN)/cosign: $(TOOLS_DIR)/COSIGN_VERSION
 	$(eval COSIGN_VERSION:= $(shell cat $<))
