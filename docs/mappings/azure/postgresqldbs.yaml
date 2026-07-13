@@ -1,4 +1,4 @@
-apiVersion: azure.mia-platform.eu/v1alpha1
+apiVersion: azure.mia-platform.eu/v1
 itemFamily: postgresqldbs
 type: Microsoft.DBforPostgreSQL/flexibleServers
 extra:

@@ -1,4 +1,4 @@
-apiVersion: gitlab.mia-platform.eu/v1alpha1
+apiVersion: gitlab.mia-platform.eu/v1
 itemFamily: projects
 type: project
 syncable: true

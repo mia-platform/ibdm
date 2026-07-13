@@ -1,4 +1,4 @@
-apiVersion: gcp.mia-platform.eu/v1alpha1
+apiVersion: gcp.mia-platform.eu/v1
 itemFamily: virtualmachines
 type: compute.googleapis.com/Instance
 syncable: true

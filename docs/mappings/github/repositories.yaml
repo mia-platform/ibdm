@@ -1,4 +1,4 @@
-apiVersion: github.mia-platform.eu/v1alpha1
+apiVersion: github.mia-platform.eu/v1
 itemFamily: repositories
 type: repository
 extra:

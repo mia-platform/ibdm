@@ -1,4 +1,4 @@
-apiVersion: github.mia-platform.eu/v1alpha1
+apiVersion: github.mia-platform.eu/v1
 itemFamily: workflowruns
 type: workflow_run
 extra:
@@ -69,16 +69,16 @@ mappings:
         {{- "" | quote -}}
       {{- end }}
   extra:
-    - apiVersion: mia-platform.eu/v1alpha1
+    - apiVersion: mia-platform.eu/v1
       itemFamily: relationships
       deletePolicy: "none"
       identifier: |-
-        {{ $src := printf "urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:WorkflowRun:%s" (printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum) -}}
-        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:part-of.mia-platform.eu" -}}
-        {{- $tgt := printf "urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:Repository:%s" (printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum) -}}
+        {{ $src := printf "urn:mia-platform-catalog:github.mia-platform.eu:v1:WorkflowRun:%s" (printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:github.mia-platform.eu:v1:Repository:%s" (printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum) -}}
         {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:WorkflowRun:{{ printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum }}
+        urn:mia-platform-catalog:github.mia-platform.eu:v1:WorkflowRun:{{ printf "%.0f-%s" .workflow_run.id .workflow_run.html_url | sha256sum }}
       targetRef: |-
-        urn:mia-platform-catalog:github.mia-platform.eu:v1alpha1:Repository:{{ printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1alpha1:RelationshipType:part-of.mia-platform.eu"
+        urn:mia-platform-catalog:github.mia-platform.eu:v1:Repository:{{ printf "%.0f-%s" .workflow_run.repository.id .workflow_run.repository.html_url | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

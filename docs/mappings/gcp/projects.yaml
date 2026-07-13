@@ -1,4 +1,4 @@
-apiVersion: gcp.mia-platform.eu/v1alpha1
+apiVersion: gcp.mia-platform.eu/v1
 itemFamily: projects
 type: cloudresourcemanager.googleapis.com/Project
 syncable: true

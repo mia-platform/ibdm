@@ -1,4 +1,4 @@
-apiVersion: azure.mia-platform.eu/v1alpha1
+apiVersion: azure.mia-platform.eu/v1
 itemFamily: resourcegroups
 type: Microsoft.Resources/resourceGroups
 extra:

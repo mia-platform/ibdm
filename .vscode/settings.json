@@ -1,5 +1,5 @@
 {
 	"yaml.schemas": {
-		"https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json": "docs/example/**/itds/*.{yaml,yml}",
+		"https://cdn.mia-platform.eu/catalog/v1/mia-platform.eu.v1.ItemTypeDefinition.json": "docs/example/**/itds/*.{yaml,yml}",
 	}
 }

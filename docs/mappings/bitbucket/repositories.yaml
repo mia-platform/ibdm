@@ -1,4 +1,4 @@
-apiVersion: bitbucket.mia-platform.eu/v1alpha1
+apiVersion: bitbucket.mia-platform.eu/v1
 itemFamily: repositories
 type: repository
 syncable: true

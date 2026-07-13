@@ -1,4 +1,4 @@
-apiVersion: azuredevops.mia-platform.eu/v1alpha1
+apiVersion: azuredevops.mia-platform.eu/v1
 itemFamily: teams
 type: team
 syncable: true
