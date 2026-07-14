@@ -79,7 +79,7 @@ type catalogDestination struct {
 	TokenEndpoint string `env:"MIA_CATALOG_TOKEN_ENDPOINT"`
 	// CustomScope, when set, is used as the scope for private-key JWT authentication. It is only
 	// meaningful together with MIA_CATALOG_CLIENT_ID and MIA_CATALOG_PRIVATE_KEY_PATH.
-	CustomScope string `env:"MIA_CATALOG_CUSTOM_SCOPE" envDefault:"organization:*"`
+	CustomScope string `env:"MIA_CATALOG_CUSTOM_SCOPE"`
 
 	keys   *jwk.Keys
 	client atomic.Pointer[http.Client]
