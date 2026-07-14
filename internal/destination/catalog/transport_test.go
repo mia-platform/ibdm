@@ -16,7 +16,7 @@ import (
 func TestNewTransportWithoutCredentials(t *testing.T) {
 	t.Parallel()
 
-	transport, err := NewTransport(t.Context(), "", "", "", "", "", "", "", nil)
+	transport, err := NewTransport(t.Context(), "", "", "", "", "", "", "", "", nil)
 	assert.NoError(t, err)
 	assert.Same(t, http.DefaultTransport, transport)
 }
@@ -53,7 +53,7 @@ func TestNewTransportPrivateKeyJWTWiring(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	transport, err := NewTransport(t.Context(), "", "", clientID, "", "", "", testServer.URL+"/oauth/token", newTestPrivateKeyFor(t, key))
+	transport, err := NewTransport(t.Context(), "", "", clientID, "", "", "", testServer.URL+"/oauth/token", "organization:*", newTestPrivateKeyFor(t, key))
 	require.NoError(t, err)
 
 	client := &http.Client{

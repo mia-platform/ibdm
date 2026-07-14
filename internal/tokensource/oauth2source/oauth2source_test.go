@@ -145,7 +145,7 @@ func TestPrivateKeyFlow(t *testing.T) {
 
 	testServer, discoveryHits, tokenHits := newHappyPathServer(t, key, 3600)
 
-	source, err := NewSource(t.Context(), clientID, testServer.URL, "", "", jwkKey)
+	source, err := NewSource(t.Context(), clientID, testServer.URL, "", "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -204,7 +204,7 @@ func TestNewSourceCustomDiscoveryPath(t *testing.T) {
 	}))
 	t.Cleanup(testServer.Close)
 
-	source, err := NewSource(t.Context(), clientID, testServer.URL, "", "", jwkKey)
+	source, err := NewSource(t.Context(), clientID, testServer.URL, "", "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -267,7 +267,7 @@ func TestNewSourceCustomDiscoveryURL(t *testing.T) {
 	}))
 	t.Cleanup(testServer.Close)
 
-	source, err := NewSource(t.Context(), clientID, testServer.URL, testServer.URL+customDiscoveryPath, "", jwkKey)
+	source, err := NewSource(t.Context(), clientID, testServer.URL, testServer.URL+customDiscoveryPath, "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -325,7 +325,7 @@ func TestNewSourceExplicitTokenEndpoint(t *testing.T) {
 	// issuerURL is deliberately left pointing at the test server so that, if discovery were ever
 	// attempted, it would hit the (404-returning) default discovery path above rather than the
 	// discoveryURL used by other tests, making an accidental discovery call detectable.
-	source, err := NewSource(t.Context(), clientID, testServer.URL, "", testServer.URL+"/oauth/token", jwkKey)
+	source, err := NewSource(t.Context(), clientID, testServer.URL, "", testServer.URL+"/oauth/token", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -353,7 +353,7 @@ func TestDiscoveryCaching(t *testing.T) {
 	// rather than the outer token cache.
 	testServer, discoveryHits, tokenHits := newHappyPathServer(t, key, 0)
 
-	source, err := NewSource(t.Context(), clientID, testServer.URL, "", "", jwkKey)
+	source, err := NewSource(t.Context(), clientID, testServer.URL, "", "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -383,7 +383,7 @@ func TestTokenReuse(t *testing.T) {
 
 	testServer, discoveryHits, tokenHits := newHappyPathServer(t, key, 3600)
 
-	source, err := NewSource(t.Context(), clientID, testServer.URL, "", "", jwkKey)
+	source, err := NewSource(t.Context(), clientID, testServer.URL, "", "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -415,7 +415,7 @@ func TestPrivateKeyFlowTokenEndpointError(t *testing.T) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	})
 
-	source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", jwkKey)
+	source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -446,7 +446,7 @@ func TestPrivateKeyFlowMalformedTokenResponse(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", jwkKey)
+	source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -509,7 +509,7 @@ func TestResolveTokenEndpointDiscoveryFailures(t *testing.T) {
 			}))
 			t.Cleanup(testServer.Close)
 
-			source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", jwkKey)
+			source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", "", jwkKey)
 			require.NoError(t, err)
 
 			client := &http.Client{
@@ -547,7 +547,7 @@ func TestResolveTokenEndpointMissingTokenEndpoint(t *testing.T) {
 	}))
 	t.Cleanup(testServer.Close)
 
-	source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", jwkKey)
+	source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -575,7 +575,7 @@ func TestResolveTokenEndpointIssuerTrailingSlash(t *testing.T) {
 	// must be accepted.
 	testServer, _, tokenHits := newHappyPathServer(t, key, 3600)
 
-	source, err := NewSource(t.Context(), clientID, testServer.URL+"/", "", "", jwkKey)
+	source, err := NewSource(t.Context(), clientID, testServer.URL+"/", "", "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -637,7 +637,7 @@ func TestResolveTokenEndpointNoIssuerConfiguredSkipsMismatchCheck(t *testing.T) 
 
 	// issuerURL is deliberately left empty, as it would be when only a discovery metadata URL is
 	// configured and no issuer/auth endpoint is set.
-	source, err := NewSource(t.Context(), clientID, "", testServer.URL+customDiscoveryPath, "", jwkKey)
+	source, err := NewSource(t.Context(), clientID, "", testServer.URL+customDiscoveryPath, "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{
@@ -671,7 +671,7 @@ func TestResolveTokenEndpointIssuerMismatch(t *testing.T) {
 	}))
 	t.Cleanup(testServer.Close)
 
-	source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", jwkKey)
+	source, err := NewSource(t.Context(), "client-id", testServer.URL, "", "", "", jwkKey)
 	require.NoError(t, err)
 
 	client := &http.Client{

@@ -18,7 +18,7 @@ import (
 // client authentication, or client-credentials flow. authEndpoint is the token URL used by the
 // client-credentials flow. issuer, issuerMetadata and tokenEndpoint are only used by the
 // private-key JWT branch: see oauth2source.NewSource for their meaning.
-func NewTransport(ctx context.Context, token, authEndpoint, clientID, clientSecret, issuer, issuerMetadata, tokenEndpoint string, keys *jwk.Keys) (http.RoundTripper, error) {
+func NewTransport(ctx context.Context, token, authEndpoint, clientID, clientSecret, issuer, issuerMetadata, tokenEndpoint, customScope string, keys *jwk.Keys) (http.RoundTripper, error) {
 	var source oauth2.TokenSource
 	switch {
 	case len(token) > 0:
@@ -36,7 +36,7 @@ func NewTransport(ctx context.Context, token, authEndpoint, clientID, clientSecr
 
 		source = config.TokenSource(ctx)
 	case len(clientID) > 0 && keys != nil && keys.PrivateKey != nil:
-		oauth2Source, err := oauth2source.NewSource(ctx, clientID, issuer, issuerMetadata, tokenEndpoint, keys.PrivateKey)
+		oauth2Source, err := oauth2source.NewSource(ctx, clientID, issuer, issuerMetadata, tokenEndpoint, customScope, keys.PrivateKey)
 		if err != nil {
 			return nil, err
 		}

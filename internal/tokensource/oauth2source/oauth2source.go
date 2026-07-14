@@ -69,10 +69,9 @@ type source struct {
 	issuerURL     string
 	privateKey    jwk.Key
 	discoveryPath string
-	// discoveryURL, when non-empty, is fetched verbatim as the OIDC discovery document instead of
-	// the URL computed by joining issuerURL and discoveryPath.
-	discoveryURL string
-	httpClient   *http.Client
+	discoveryURL  string
+	customScope   string
+	httpClient    *http.Client
 
 	mu sync.Mutex
 	// tokenEndpoint caches the token endpoint resolved via OIDC discovery. When the caller supplies
@@ -117,7 +116,7 @@ func loadConfigFromEnv() (*config, error) {
 // match it or discovery fails, guarding against a misconfigured or unexpected discovery endpoint.
 // When issuerURL is empty (for example, only discoveryURL was supplied), there is nothing to
 // validate the document against, so this check is skipped.
-func NewSource(ctx context.Context, clientID, issuerURL, discoveryURL, tokenEndpoint string, privateKey jwk.Key) (tokensource.Source, error) {
+func NewSource(ctx context.Context, clientID, issuerURL, discoveryURL, tokenEndpoint, customScope string, privateKey jwk.Key) (tokensource.Source, error) {
 	cfg, err := loadConfigFromEnv()
 	if err != nil {
 		return nil, err
@@ -130,6 +129,7 @@ func NewSource(ctx context.Context, clientID, issuerURL, discoveryURL, tokenEndp
 		privateKey:    privateKey,
 		discoveryPath: cfg.DiscoveryPath,
 		discoveryURL:  discoveryURL,
+		customScope:   customScope,
 		tokenEndpoint: tokenEndpoint,
 		httpClient: &http.Client{
 			Timeout: tokenRequestTimeout,
@@ -161,6 +161,9 @@ func (p *source) Token() (*oauth2.Token, error) {
 	form.Set("client_assertion", assertion)
 	form.Set("client_id", p.clientID)
 	form.Set("token_endpoint_auth_method", privateKeyJWTAuthMethod)
+	if p.customScope != "" {
+		form.Set("scope", p.customScope)
+	}
 
 	req, err := http.NewRequestWithContext(p.ctx, http.MethodPost, tokenEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -180,9 +183,12 @@ func (p *source) Token() (*oauth2.Token, error) {
 	}
 
 	var tokenResp struct {
-		AccessToken string `json:"access_token"` //nolint:tagliatelle // OAuth2 token response uses snake_case
-		TokenType   string `json:"token_type"`   //nolint:tagliatelle // OAuth2 token response uses snake_case
-		ExpiresIn   int64  `json:"expires_in"`   //nolint:tagliatelle // OAuth2 token response uses snake_case
+		AccessToken      string `json:"access_token"`       //nolint:tagliatelle // OAuth2 token response uses snake_case
+		ExpiresIn        int64  `json:"expires_in"`         //nolint:tagliatelle // OAuth2 token response uses snake_case
+		RefreshExpiresIn int64  `json:"refresh_expires_in"` //nolint:tagliatelle // OAuth2 token response uses snake_case
+		TokenType        string `json:"token_type"`         //nolint:tagliatelle // OAuth2 token response uses snake_case
+		NotBeforePolicy  int64  `json:"not-before-policy"`
+		Scope            string `json:"scope"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return nil, fmt.Errorf("%w: failed to decode token response: %w", ErrTokenExchange, err)

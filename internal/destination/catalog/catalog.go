@@ -77,6 +77,9 @@ type catalogDestination struct {
 	// authentication, skipping OIDC discovery entirely. It is only meaningful together with
 	// MIA_CATALOG_CLIENT_ID and MIA_CATALOG_PRIVATE_KEY_PATH.
 	TokenEndpoint string `env:"MIA_CATALOG_TOKEN_ENDPOINT"`
+	// CustomScope, when set, is used as the scope for private-key JWT authentication. It is only
+	// meaningful together with MIA_CATALOG_CLIENT_ID and MIA_CATALOG_PRIVATE_KEY_PATH.
+	CustomScope string `env:"MIA_CATALOG_CUSTOM_SCOPE" envDefault:"organization:*"`
 
 	keys   *jwk.Keys
 	client atomic.Pointer[http.Client]
@@ -269,7 +272,7 @@ func (d *catalogDestination) getClient(ctx context.Context) (*http.Client, error
 		return client, nil
 	}
 
-	transport, err := NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.Issuer, d.IssuerMetadata, d.TokenEndpoint, d.keys)
+	transport, err := NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.Issuer, d.IssuerMetadata, d.TokenEndpoint, d.CustomScope, d.keys)
 	if err != nil {
 		return nil, err
 	}
