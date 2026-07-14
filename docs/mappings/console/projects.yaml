@@ -7,6 +7,15 @@ mappings:
     {{ printf "%s" .project._id }}
   metadata:
     title: "{{ printf \"%s\" .project.name }}"
+    owner: |-
+      {{ $info := (get "info" .project (object)) -}}
+      {{- $teamContact := (get "teamContact" $info nil) -}}
+      {{- if $teamContact -}}
+        {{- $owner := object -}}
+        {{- $owner = set "type" "email" $owner -}}
+        {{- $owner = set "ref" (get "teamContact" $info "") $owner -}}
+        {{- $owner | toJSON -}}
+      {{- end }}
   spec:
     projectUniqueId: "{{ .project._id }}"
     projectId: "{{ .project.projectId }}"
@@ -35,29 +44,3 @@ mappings:
     pipelines: "{{ get \"pipelines\" .project (object) | toJSON }}"
     projectNamespaceVariable: "{{ get \"projectNamespaceVariable\" .project \"\" | quote }}"
     lastUpdate: "{{ get \"lastUpdate\" .project (now) }}"
-  extra:
-    - apiVersion: mia-platform.eu/v1
-      itemFamily: relationships
-      deletePolicy: "cascade"
-      createIf: |-
-        {{ $info := (get "info" .project (object)) -}}
-        {{- $teamContact := (get "teamContact" $info nil) -}}
-        {{- if $teamContact -}}
-          true
-        {{- else -}}
-          false
-        {{- end }}
-      identifier: |-
-        {{ $info := (get "info" .project (object)) -}}
-        {{- $teamContact := (get "teamContact" $info "") -}}
-        {{- $src := printf "urn:mia-platform-catalog:iam.mia-platform.eu:v1:User:%s" ($teamContact | sha256sum) -}}
-        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:ownership.mia-platform.eu" -}}
-        {{- $tgt := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:%s" (printf "%s" .project._id) -}}
-        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
-      sourceRef: |-
-        {{ $info := (get "info" .project (object)) -}}
-        {{- $teamContact := (get "teamContact" $info "") -}}
-        urn:mia-platform-catalog:iam.mia-platform.eu:v1:User:{{ $teamContact | sha256sum }}
-      targetRef: |-
-        urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:{{ printf "%s" .project._id }}
-      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:ownership.mia-platform.eu"
