@@ -55,11 +55,20 @@ func (e *CatalogError) Is(target error) bool {
 
 // catalogDestination implements destination.Sender against the Mia-Platform Catalog API.
 type catalogDestination struct {
+	// CatalogEndpoint is the base URL of the Mia-Platform Catalog API that receives sent data.
 	CatalogEndpoint string `env:"MIA_CATALOG_ENDPOINT,required"`
-	Token           string `env:"MIA_CATALOG_TOKEN"`
-	ClientID        string `env:"MIA_CATALOG_CLIENT_ID"`
-	ClientSecret    string `env:"MIA_CATALOG_CLIENT_SECRET"`
-	PrivateKeyPath  string `env:"MIA_CATALOG_PRIVATE_KEY_PATH"`
+	// Token, when set, is used as a static bearer token for authentication. It cannot be combined
+	// with MIA_CATALOG_CLIENT_ID, MIA_CATALOG_CLIENT_SECRET or MIA_CATALOG_PRIVATE_KEY_PATH.
+	Token string `env:"MIA_CATALOG_TOKEN"`
+	// ClientID is the OAuth2 client identifier used for either the client-credentials flow (with
+	// MIA_CATALOG_CLIENT_SECRET) or private-key JWT authentication (with MIA_CATALOG_PRIVATE_KEY_PATH).
+	ClientID string `env:"MIA_CATALOG_CLIENT_ID"`
+	// ClientSecret is the OAuth2 client secret used together with MIA_CATALOG_CLIENT_ID for the
+	// client-credentials flow. It cannot be combined with MIA_CATALOG_PRIVATE_KEY_PATH.
+	ClientSecret string `env:"MIA_CATALOG_CLIENT_SECRET"`
+	// PrivateKeyPath is the filesystem path to the private key used for private-key JWT
+	// authentication together with MIA_CATALOG_CLIENT_ID.
+	PrivateKeyPath string `env:"MIA_CATALOG_PRIVATE_KEY_PATH"`
 	// AuthEndpoint is the token endpoint used by the client-credentials flow. It is only meaningful
 	// together with MIA_CATALOG_CLIENT_ID and MIA_CATALOG_CLIENT_SECRET. When unset it defaults to
 	// the host of MIA_CATALOG_ENDPOINT with the /oauth/token path.

@@ -226,6 +226,40 @@ func TestInitialization(t *testing.T) {
 		assert.Nil(t, dest)
 	})
 
+	t.Run("with custom scope", func(t *testing.T) {
+		keyPath := filepath.Join(t.TempDir(), "private-key.pem")
+		writeTestFile(t, keyPath, encodePKCS8PEM(t, generateTestRSAKey(t)))
+
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
+		t.Setenv("MIA_CATALOG_PRIVATE_KEY_PATH", keyPath)
+		t.Setenv("MIA_CATALOG_ISSUER", "http://localhost:8081/issuer")
+		t.Setenv("MIA_CATALOG_CUSTOM_SCOPE", "organization:custom")
+		dest, err := NewDestination()
+		require.NoError(t, err)
+		catalogDestination, ok := dest.(*catalogDestination)
+		require.True(t, ok)
+
+		assert.Equal(t, "organization:custom", catalogDestination.CustomScope)
+	})
+
+	t.Run("without custom scope", func(t *testing.T) {
+		keyPath := filepath.Join(t.TempDir(), "private-key.pem")
+		writeTestFile(t, keyPath, encodePKCS8PEM(t, generateTestRSAKey(t)))
+
+		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
+		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
+		t.Setenv("MIA_CATALOG_PRIVATE_KEY_PATH", keyPath)
+		t.Setenv("MIA_CATALOG_ISSUER", "http://localhost:8081/issuer")
+		dest, err := NewDestination()
+		require.NoError(t, err)
+		catalogDestination, ok := dest.(*catalogDestination)
+		require.True(t, ok)
+
+		// MIA_CATALOG_CUSTOM_SCOPE has no default: when unset the scope must remain empty.
+		assert.Empty(t, catalogDestination.CustomScope)
+	})
+
 	t.Run("with private key, client id and custom issuer metadata/token endpoint", func(t *testing.T) {
 		keyPath := filepath.Join(t.TempDir(), "private-key.pem")
 		writeTestFile(t, keyPath, encodePKCS8PEM(t, generateTestRSAKey(t)))
@@ -636,6 +670,77 @@ func TestPrivateKeyJWTFlowWithExplicitTokenEndpoint(t *testing.T) {
 	err := dest.SendData(ctx, &destination.Data{})
 	require.NoError(t, err)
 	assert.Equal(t, int32(0), discoveryHits.Load())
+}
+
+// TestPrivateKeyJWTFlowWithCustomScope verifies that a catalogDestination configured with a custom
+// scope forwards it through NewTransport to the token request as the "scope" form field, and that
+// when no custom scope is configured the token request carries no scope (the default was removed).
+func TestPrivateKeyJWTFlowWithCustomScope(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		customScope   string
+		expectedScope string
+	}{
+		"with custom scope": {
+			customScope:   "organization:custom",
+			expectedScope: "organization:custom",
+		},
+		"without custom scope": {
+			customScope:   "",
+			expectedScope: "",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			key := generateTestRSAKey(t)
+
+			testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Body != nil {
+					defer r.Body.Close()
+				}
+
+				switch {
+				case r.Method == http.MethodPost && r.URL.Path == "/custom/token":
+					require.NoError(t, r.ParseForm())
+					assert.Equal(t, "test-client-id", r.FormValue("client_id"))
+					assert.Equal(t, tc.expectedScope, r.FormValue("scope"))
+
+					w.Header().Set("Content-Type", "application/json")
+					err := json.NewEncoder(w).Encode(map[string]any{
+						"access_token": "generated-jwt-bearer-token",
+						"token_type":   "Bearer",
+						"expires_in":   3600,
+					})
+					require.NoError(t, err)
+				case r.Method == http.MethodPost && r.URL.Path == "/":
+					assert.Equal(t, "Bearer generated-jwt-bearer-token", r.Header.Get("Authorization"))
+					w.WriteHeader(http.StatusNoContent)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer testServer.Close()
+
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			defer cancel()
+
+			dest := &catalogDestination{
+				CatalogEndpoint: testServer.URL + "/",
+				ClientID:        "test-client-id",
+				Issuer:          testServer.URL,
+				TokenEndpoint:   testServer.URL + "/custom/token",
+				CustomScope:     tc.customScope,
+				keys:            newTestPrivateKeyFor(t, key),
+			}
+
+			err := dest.SendData(ctx, &destination.Data{})
+			require.NoError(t, err)
+		})
+	}
 }
 
 // TestPrivateKeyJWTFlowWithCustomDiscoveryMetadata verifies that a catalogDestination configured

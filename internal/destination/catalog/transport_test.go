@@ -36,6 +36,7 @@ func TestNewTransportPrivateKeyJWTWiring(t *testing.T) {
 		case "/oauth/token":
 			require.NoError(t, r.ParseForm())
 			assert.Equal(t, clientID, r.FormValue("client_id"))
+			assert.Equal(t, "organization:*", r.FormValue("scope"))
 
 			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode(map[string]any{

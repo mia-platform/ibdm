@@ -10,10 +10,13 @@ To enable this destination no flags are needed but only a series of environment 
 
 - `MIA_CATALOG_ENDPOINT`: the destination endpoint for the data, available during the integration
 	setup
+- `MIA_CATALOG_TOKEN`: a static bearer token used to authenticate requests to the Mia-Platform
+	Catalog. It cannot be combined with `MIA_CATALOG_CLIENT_ID`, `MIA_CATALOG_CLIENT_SECRET` or
+	`MIA_CATALOG_PRIVATE_KEY_PATH`
 - `MIA_CATALOG_CLIENT_ID`: the client id for validating the requests to the Mia-Platform Catalog,
-	availbale during the integration setup
-- `MIA_CATALOG_CLIENT_SECRET`: the client id for validating the requests to the Mia-Platform Catalog,
-	availbale during the integration setup
+	available during the integration setup
+- `MIA_CATALOG_CLIENT_SECRET`: the client secret for validating the requests to the Mia-Platform
+	Catalog, available during the integration setup
 - `MIA_CATALOG_PRIVATE_KEY_PATH`: path to a PEM-encoded private key file, used together with
 	`MIA_CATALOG_CLIENT_ID`, to authenticate via private-key JWT client authentication
 	(RFC 7523 section 2.2) instead of `MIA_CATALOG_CLIENT_SECRET`. When this variable is set you
