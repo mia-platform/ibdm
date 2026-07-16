@@ -187,7 +187,7 @@ func (p *source) Token() (*oauth2.Token, error) {
 		ExpiresIn        int64  `json:"expires_in"`         //nolint:tagliatelle // OAuth2 token response uses snake_case
 		RefreshExpiresIn int64  `json:"refresh_expires_in"` //nolint:tagliatelle // OAuth2 token response uses snake_case
 		TokenType        string `json:"token_type"`         //nolint:tagliatelle // OAuth2 token response uses snake_case
-		NotBeforePolicy  int64  `json:"not-before-policy"`
+		NotBeforePolicy  int64  `json:"not-before-policy"`  //nolint:tagliatelle
 		Scope            string `json:"scope"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
