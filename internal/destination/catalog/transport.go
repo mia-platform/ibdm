@@ -9,10 +9,16 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
+
+	"github.com/mia-platform/ibdm/internal/jwk"
+	"github.com/mia-platform/ibdm/internal/tokensource/oauth2source"
 )
 
-// NewTransport creates an HTTP transport configured with either a static token or a client-credentials flow.
-func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret string) http.RoundTripper {
+// NewTransport creates an HTTP transport configured with either a static token, private-key JWT
+// client authentication, or client-credentials flow. authEndpoint is the token URL used by the
+// client-credentials flow. issuer, issuerMetadata and tokenEndpoint are only used by the
+// private-key JWT branch: see oauth2source.NewSource for their meaning.
+func NewTransport(ctx context.Context, token, authEndpoint, clientID, clientSecret, issuer, issuerMetadata, tokenEndpoint, customScope string, keys *jwk.Keys) (http.RoundTripper, error) {
 	var source oauth2.TokenSource
 	switch {
 	case len(token) > 0:
@@ -24,18 +30,24 @@ func NewTransport(ctx context.Context, token, tokenURL, clientID, clientSecret s
 		config := clientcredentials.Config{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
-			TokenURL:     tokenURL,
+			TokenURL:     authEndpoint,
 			AuthStyle:    oauth2.AuthStyleInHeader,
 		}
 
 		source = config.TokenSource(ctx)
+	case len(clientID) > 0 && keys != nil && keys.PrivateKey != nil:
+		oauth2Source, err := oauth2source.NewSource(ctx, clientID, issuer, issuerMetadata, tokenEndpoint, customScope, keys.PrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		source = oauth2Source
 	}
 
 	if source == nil {
-		return http.DefaultTransport
+		return http.DefaultTransport, nil
 	}
 
 	return &oauth2.Transport{
 		Source: source,
-	}
+	}, nil
 }
