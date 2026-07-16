@@ -34,9 +34,21 @@ To enable this destination no flags are needed but only a series of environment 
 - `MIA_CATALOG_TOKEN_ENDPOINT`: a custom token endpoint used when authenticating via private-key
 	JWT client authentication, if you set the variable OIDC discovery is skipped entirely and this
 	endpoint is used directly
+- `MIA_CATALOG_CUSTOM_SCOPE`: a custom scope requested during the token exchange when authenticating
+	via private-key JWT client authentication, if you don’t set the variable no scope is sent
 
 If you don’t set any variables the destination will try to connect to
 `http://localhost:8080/api/publish/` without any authentication.
+
+### OIDC discovery path
+
+The following variable is not specific to this destination but applies to any OIDC discovery
+performed during private-key JWT client authentication:
+
+- `OIDC_DISCOVERY_PATH`: the well-known path suffix joined to `MIA_CATALOG_ISSUER` to fetch the OIDC
+	discovery document, it defaults to `.well-known/openid-configuration` and should only be changed
+	when the issuer serves its discovery document at a non-standard path. It has no effect when
+	`MIA_CATALOG_ISSUER_METADATA` or `MIA_CATALOG_TOKEN_ENDPOINT` is set, as those skip discovery
 
 ## Local Output
 
