@@ -2,6 +2,9 @@
 
 bin/
 local/
+.local/
+tmp/
+.tmp/
 release/
 coverage.txt
 .github/agents

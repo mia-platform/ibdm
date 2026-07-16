@@ -17,12 +17,16 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/destination"
 	"github.com/mia-platform/ibdm/internal/info"
+	"github.com/mia-platform/ibdm/internal/jwk"
 )
 
 var (
-	errMultipleAuthMethods = errors.New("MIA_CATALOG_TOKEN cannot be used with MIA_CATALOG_CLIENT_ID or MIA_CATALOG_CLIENT_SECRET")
-	errMissingClientID     = errors.New("MIA_CATALOG_CLIENT_ID is required when MIA_CATALOG_CLIENT_SECRET is set")
-	errMissingClientSecret = errors.New("MIA_CATALOG_CLIENT_SECRET is required when MIA_CATALOG_CLIENT_ID is set")
+	errMultipleAuthMethods        = errors.New("MIA_CATALOG_TOKEN cannot be used with MIA_CATALOG_CLIENT_ID, MIA_CATALOG_CLIENT_SECRET or MIA_CATALOG_PRIVATE_KEY")
+	errMissingClientID            = errors.New("MIA_CATALOG_CLIENT_ID is required when MIA_CATALOG_CLIENT_SECRET is set")
+	errMissingClientSecret        = errors.New("MIA_CATALOG_CLIENT_SECRET is required when MIA_CATALOG_CLIENT_ID is set")
+	errMissingClientIDForPrivKey  = errors.New("MIA_CATALOG_CLIENT_ID is required when MIA_CATALOG_PRIVATE_KEY is set")
+	errPrivateKeyWithClientSecret = errors.New("MIA_CATALOG_PRIVATE_KEY cannot be used with MIA_CATALOG_CLIENT_SECRET")
+	errMissingIssuerConfig        = errors.New("private-key JWT authentication requires one of MIA_CATALOG_ISSUER, MIA_CATALOG_ISSUER_METADATA or MIA_CATALOG_TOKEN_ENDPOINT")
 )
 
 var _ destination.Sender = &catalogDestination{}
@@ -51,12 +55,42 @@ func (e *CatalogError) Is(target error) bool {
 
 // catalogDestination implements destination.Sender against the Mia-Platform Catalog API.
 type catalogDestination struct {
+	// CatalogEndpoint is the base URL of the Mia-Platform Catalog API that receives sent data.
 	CatalogEndpoint string `env:"MIA_CATALOG_ENDPOINT,required"`
-	Token           string `env:"MIA_CATALOG_TOKEN"`
-	ClientID        string `env:"MIA_CATALOG_CLIENT_ID"`
-	ClientSecret    string `env:"MIA_CATALOG_CLIENT_SECRET"`
-	AuthEndpoint    string `env:"MIA_CATALOG_AUTH_ENDPOINT"`
+	// Token, when set, is used as a static bearer token for authentication. It cannot be combined
+	// with MIA_CATALOG_CLIENT_ID, MIA_CATALOG_CLIENT_SECRET or MIA_CATALOG_PRIVATE_KEY_PATH.
+	Token string `env:"MIA_CATALOG_TOKEN"`
+	// ClientID is the OAuth2 client identifier used for either the client-credentials flow (with
+	// MIA_CATALOG_CLIENT_SECRET) or private-key JWT authentication (with MIA_CATALOG_PRIVATE_KEY_PATH).
+	ClientID string `env:"MIA_CATALOG_CLIENT_ID"`
+	// ClientSecret is the OAuth2 client secret used together with MIA_CATALOG_CLIENT_ID for the
+	// client-credentials flow. It cannot be combined with MIA_CATALOG_PRIVATE_KEY_PATH.
+	ClientSecret string `env:"MIA_CATALOG_CLIENT_SECRET"`
+	// PrivateKeyPath is the filesystem path to the private key used for private-key JWT
+	// authentication together with MIA_CATALOG_CLIENT_ID.
+	PrivateKeyPath string `env:"MIA_CATALOG_PRIVATE_KEY_PATH"`
+	// AuthEndpoint is the token endpoint used by the client-credentials flow. It is only meaningful
+	// together with MIA_CATALOG_CLIENT_ID and MIA_CATALOG_CLIENT_SECRET. When unset it defaults to
+	// the host of MIA_CATALOG_ENDPOINT with the /oauth/token path.
+	AuthEndpoint string `env:"MIA_CATALOG_AUTH_ENDPOINT"`
+	// Issuer is the OIDC issuer URL used as the discovery base and expected issuer for private-key
+	// JWT authentication. It is only meaningful together with MIA_CATALOG_CLIENT_ID and
+	// MIA_CATALOG_PRIVATE_KEY_PATH.
+	Issuer string `env:"MIA_CATALOG_ISSUER"`
+	// IssuerMetadata, when set, is fetched verbatim as the OIDC discovery document instead of the
+	// URL derived from MIA_CATALOG_ISSUER, to resolve the token endpoint for private-key JWT
+	// authentication. It is only meaningful together with MIA_CATALOG_CLIENT_ID and
+	// MIA_CATALOG_PRIVATE_KEY_PATH.
+	IssuerMetadata string `env:"MIA_CATALOG_ISSUER_METADATA"`
+	// TokenEndpoint, when set, is used directly as the token endpoint for private-key JWT
+	// authentication, skipping OIDC discovery entirely. It is only meaningful together with
+	// MIA_CATALOG_CLIENT_ID and MIA_CATALOG_PRIVATE_KEY_PATH.
+	TokenEndpoint string `env:"MIA_CATALOG_TOKEN_ENDPOINT"`
+	// CustomScope, when set, is used as the scope for private-key JWT authentication. It is only
+	// meaningful together with MIA_CATALOG_CLIENT_ID and MIA_CATALOG_PRIVATE_KEY_PATH.
+	CustomScope string `env:"MIA_CATALOG_CUSTOM_SCOPE"`
 
+	keys   *jwk.Keys
 	client atomic.Pointer[http.Client]
 }
 
@@ -72,13 +106,16 @@ func NewDestination() (destination.Sender, error) {
 		return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_ENDPOINT: %w", err))
 	}
 
-	switch {
-	case len(destination.Token) > 0 && (len(destination.ClientID) > 0 || len(destination.ClientSecret) > 0):
-		return nil, handleError(errMultipleAuthMethods)
-	case len(destination.ClientID) > 0 && len(destination.ClientSecret) == 0:
-		return nil, handleError(errMissingClientSecret)
-	case len(destination.ClientSecret) > 0 && len(destination.ClientID) == 0:
-		return nil, handleError(errMissingClientID)
+	if err := destination.validateAuthConfig(); err != nil {
+		return nil, handleError(err)
+	}
+
+	if len(destination.PrivateKeyPath) > 0 {
+		keys, err := jwk.LoadKeys(destination.PrivateKeyPath)
+		if err != nil {
+			return nil, handleError(err)
+		}
+		destination.keys = keys
 	}
 
 	if len(destination.AuthEndpoint) == 0 {
@@ -91,7 +128,67 @@ func NewDestination() (destination.Sender, error) {
 		}
 	}
 
+	if len(destination.Issuer) > 0 {
+		_, err := url.Parse(destination.Issuer)
+		if err != nil {
+			return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_ISSUER: %w", err))
+		}
+	}
+
+	if len(destination.IssuerMetadata) > 0 {
+		_, err := url.Parse(destination.IssuerMetadata)
+		if err != nil {
+			return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_ISSUER_METADATA: %w", err))
+		}
+	}
+
+	if len(destination.TokenEndpoint) > 0 {
+		_, err := url.Parse(destination.TokenEndpoint)
+		if err != nil {
+			return nil, handleError(fmt.Errorf("invalid MIA_CATALOG_TOKEN_ENDPOINT: %w", err))
+		}
+	}
+
 	return destination, nil
+}
+
+// validateAuthConfig ensures that at most one authentication method is configured and that each
+// configured method has all of its required environment variables set.
+func (d *catalogDestination) validateAuthConfig() error {
+	hasToken := len(d.Token) > 0
+	hasClientID := len(d.ClientID) > 0
+	hasClientSecret := len(d.ClientSecret) > 0
+	hasPrivateKey := len(d.PrivateKeyPath) > 0
+
+	switch {
+	case hasToken && (hasClientID || hasClientSecret || hasPrivateKey):
+		return errMultipleAuthMethods
+	case hasPrivateKey:
+		return d.validatePrivateKeyAuthConfig()
+	case hasClientID && !hasClientSecret:
+		return errMissingClientSecret
+	case hasClientSecret && !hasClientID:
+		return errMissingClientID
+	}
+
+	return nil
+}
+
+// validatePrivateKeyAuthConfig validates the environment variables required by the private-key
+// JWT authentication method. It assumes MIA_CATALOG_PRIVATE_KEY_PATH is set.
+func (d *catalogDestination) validatePrivateKeyAuthConfig() error {
+	hasIssuerSource := len(d.Issuer) > 0 || len(d.IssuerMetadata) > 0 || len(d.TokenEndpoint) > 0
+
+	switch {
+	case len(d.ClientSecret) > 0:
+		return errPrivateKeyWithClientSecret
+	case len(d.ClientID) == 0:
+		return errMissingClientIDForPrivKey
+	case !hasIssuerSource:
+		return errMissingIssuerConfig
+	}
+
+	return nil
 }
 
 // SendData implements destination.Sender.
@@ -126,7 +223,12 @@ func (d *catalogDestination) handleRequest(ctx context.Context, method string, d
 	}
 
 	//nolint:contextcheck // need a new context because it will be used in token requests
-	resp, err := d.getClient(context.Background()).Do(request)
+	client, err := d.getClient(context.Background())
+	if err != nil {
+		return handleError(err)
+	}
+
+	resp, err := client.Do(request)
 	if err != nil {
 		return handleError(err)
 	}
@@ -173,14 +275,18 @@ func handleError(err error) error {
 	}
 }
 
-func (d *catalogDestination) getClient(ctx context.Context) *http.Client {
+func (d *catalogDestination) getClient(ctx context.Context) (*http.Client, error) {
 	client := d.client.Load()
 	if client != nil {
-		return client
+		return client, nil
 	}
 
-	client = &http.Client{}
-	client.Transport = NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret)
+	transport, err := NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.Issuer, d.IssuerMetadata, d.TokenEndpoint, d.CustomScope, d.keys)
+	if err != nil {
+		return nil, err
+	}
+
+	client = &http.Client{Transport: transport}
 	d.client.Store(client)
-	return client
+	return client, nil
 }
