@@ -235,8 +235,10 @@ func (d *catalogDestination) handleRequest(ctx context.Context, method string, d
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
-	case http.StatusForbidden, http.StatusUnauthorized:
-		return handleError(errors.New("invalid token or insufficient permissions"))
+	case http.StatusUnauthorized:
+		return handleError(errors.New("invalid credentials"))
+	case http.StatusForbidden:
+		return handleError(errors.New("insufficient permissions"))
 	case http.StatusNotFound:
 		return handleError(errors.New("integration registration not found"))
 	case http.StatusNoContent:
