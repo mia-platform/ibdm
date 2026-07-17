@@ -14,18 +14,13 @@ import (
 	"github.com/mia-platform/ibdm/internal/tokensource/oauth2source"
 )
 
-// NewTransport creates an HTTP transport configured with either a static token, private-key JWT
-// client authentication, or client-credentials flow. authEndpoint is the token URL used by the
+// NewTransport creates an HTTP transport configured with either private-key JWT client
+// authentication or the client-credentials flow. authEndpoint is the token URL used by the
 // client-credentials flow. issuer, issuerMetadata and tokenEndpoint are only used by the
 // private-key JWT branch: see oauth2source.NewSource for their meaning.
-func NewTransport(ctx context.Context, token, authEndpoint, clientID, clientSecret, issuer, issuerMetadata, tokenEndpoint, customScope string, keys *jwk.Keys) (http.RoundTripper, error) {
+func NewTransport(ctx context.Context, authEndpoint, clientID, clientSecret, issuer, issuerMetadata, tokenEndpoint, customScope string, keys *jwk.Keys) (http.RoundTripper, error) {
 	var source oauth2.TokenSource
 	switch {
-	case len(token) > 0:
-		source = oauth2.StaticTokenSource(&oauth2.Token{
-			AccessToken: token,
-			TokenType:   "Bearer",
-		})
 	case len(clientID) > 0 && len(clientSecret) > 0:
 		config := clientcredentials.Config{
 			ClientID:     clientID,

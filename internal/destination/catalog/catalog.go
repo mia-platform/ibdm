@@ -21,7 +21,6 @@ import (
 )
 
 var (
-	errMultipleAuthMethods        = errors.New("MIA_CATALOG_TOKEN cannot be used with MIA_CATALOG_CLIENT_ID, MIA_CATALOG_CLIENT_SECRET or MIA_CATALOG_PRIVATE_KEY")
 	errMissingClientID            = errors.New("MIA_CATALOG_CLIENT_ID is required when MIA_CATALOG_CLIENT_SECRET is set")
 	errMissingClientSecret        = errors.New("MIA_CATALOG_CLIENT_SECRET is required when MIA_CATALOG_CLIENT_ID is set")
 	errMissingClientIDForPrivKey  = errors.New("MIA_CATALOG_CLIENT_ID is required when MIA_CATALOG_PRIVATE_KEY is set")
@@ -57,9 +56,6 @@ func (e *CatalogError) Is(target error) bool {
 type catalogDestination struct {
 	// CatalogEndpoint is the base URL of the Mia-Platform Catalog API that receives sent data.
 	CatalogEndpoint string `env:"MIA_CATALOG_ENDPOINT,required"`
-	// Token, when set, is used as a static bearer token for authentication. It cannot be combined
-	// with MIA_CATALOG_CLIENT_ID, MIA_CATALOG_CLIENT_SECRET or MIA_CATALOG_PRIVATE_KEY_PATH.
-	Token string `env:"MIA_CATALOG_TOKEN"`
 	// ClientID is the OAuth2 client identifier used for either the client-credentials flow (with
 	// MIA_CATALOG_CLIENT_SECRET) or private-key JWT authentication (with MIA_CATALOG_PRIVATE_KEY_PATH).
 	ClientID string `env:"MIA_CATALOG_CLIENT_ID"`
@@ -152,17 +148,14 @@ func NewDestination() (destination.Sender, error) {
 	return destination, nil
 }
 
-// validateAuthConfig ensures that at most one authentication method is configured and that each
-// configured method has all of its required environment variables set.
+// validateAuthConfig ensures that the configured authentication method has all of its required
+// environment variables set.
 func (d *catalogDestination) validateAuthConfig() error {
-	hasToken := len(d.Token) > 0
 	hasClientID := len(d.ClientID) > 0
 	hasClientSecret := len(d.ClientSecret) > 0
 	hasPrivateKey := len(d.PrivateKeyPath) > 0
 
 	switch {
-	case hasToken && (hasClientID || hasClientSecret || hasPrivateKey):
-		return errMultipleAuthMethods
 	case hasPrivateKey:
 		return d.validatePrivateKeyAuthConfig()
 	case hasClientID && !hasClientSecret:
@@ -283,7 +276,7 @@ func (d *catalogDestination) getClient(ctx context.Context) (*http.Client, error
 		return client, nil
 	}
 
-	transport, err := NewTransport(ctx, d.Token, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.Issuer, d.IssuerMetadata, d.TokenEndpoint, d.CustomScope, d.keys)
+	transport, err := NewTransport(ctx, d.AuthEndpoint, d.ClientID, d.ClientSecret, d.Issuer, d.IssuerMetadata, d.TokenEndpoint, d.CustomScope, d.keys)
 	if err != nil {
 		return nil, err
 	}
