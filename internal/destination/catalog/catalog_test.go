@@ -72,22 +72,6 @@ func TestInitialization(t *testing.T) {
 		require.True(t, ok)
 
 		assert.Equal(t, "http://localhost:8080/custom-catalog", catalogDestination.CatalogEndpoint)
-		assert.Empty(t, catalogDestination.Token)
-		assert.Empty(t, catalogDestination.ClientID)
-		assert.Empty(t, catalogDestination.ClientSecret)
-		assert.Equal(t, "http://localhost:8080/oauth/token", catalogDestination.AuthEndpoint)
-	})
-
-	t.Run("with all envs", func(t *testing.T) {
-		t.Setenv("MIA_CATALOG_TOKEN", "test-token2")
-		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
-		dest, err := NewDestination()
-		require.NoError(t, err)
-		catalogDestination, ok := dest.(*catalogDestination)
-		require.True(t, ok)
-
-		assert.Equal(t, "http://localhost:8080/custom-catalog", catalogDestination.CatalogEndpoint)
-		assert.Equal(t, "test-token2", catalogDestination.Token)
 		assert.Empty(t, catalogDestination.ClientID)
 		assert.Empty(t, catalogDestination.ClientSecret)
 		assert.Equal(t, "http://localhost:8080/oauth/token", catalogDestination.AuthEndpoint)
@@ -103,7 +87,6 @@ func TestInitialization(t *testing.T) {
 		require.True(t, ok)
 
 		assert.Equal(t, "http://localhost:8080/custom-catalog", catalogDestination.CatalogEndpoint)
-		assert.Empty(t, catalogDestination.Token)
 		assert.Equal(t, "client-id", catalogDestination.ClientID)
 		assert.Equal(t, "client-secret", catalogDestination.ClientSecret)
 		assert.Equal(t, "http://localhost:8080/oauth/token", catalogDestination.AuthEndpoint)
@@ -120,7 +103,6 @@ func TestInitialization(t *testing.T) {
 		require.True(t, ok)
 
 		assert.Equal(t, "http://localhost:8080/custom-catalog", catalogDestination.CatalogEndpoint)
-		assert.Empty(t, catalogDestination.Token)
 		assert.Equal(t, "client-id", catalogDestination.ClientID)
 		assert.Equal(t, "client-secret", catalogDestination.ClientSecret)
 		assert.Equal(t, "http://localhost:8081/custom/auth", catalogDestination.AuthEndpoint)
@@ -130,15 +112,6 @@ func TestInitialization(t *testing.T) {
 		t.Setenv("MIA_CATALOG_ENDPOINT", "http://%41:8080/") // invalid URL
 		dest, err := NewDestination()
 		assert.ErrorIs(t, err, url.EscapeError("%41"))
-		assert.Nil(t, dest)
-	})
-
-	t.Run("with both env for fixed token and client credentials", func(t *testing.T) {
-		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
-		t.Setenv("MIA_CATALOG_TOKEN", "test-token")
-		t.Setenv("MIA_CATALOG_CLIENT_ID", "client-id")
-		dest, err := NewDestination()
-		assert.ErrorIs(t, err, errMultipleAuthMethods)
 		assert.Nil(t, dest)
 	})
 
@@ -306,15 +279,6 @@ func TestInitialization(t *testing.T) {
 		assert.ErrorIs(t, err, errPrivateKeyWithClientSecret)
 		assert.Nil(t, dest)
 	})
-
-	t.Run("private key with fixed token", func(t *testing.T) {
-		t.Setenv("MIA_CATALOG_ENDPOINT", "http://localhost:8080/custom-catalog")
-		t.Setenv("MIA_CATALOG_TOKEN", "test-token")
-		t.Setenv("MIA_CATALOG_PRIVATE_KEY_PATH", "fictional-private-key-path")
-		dest, err := NewDestination()
-		assert.ErrorIs(t, err, errMultipleAuthMethods)
-		assert.Nil(t, dest)
-	})
 }
 
 func TestSendData(t *testing.T) {
@@ -358,7 +322,14 @@ func TestSendData(t *testing.T) {
 			data: &destination.Data{
 				APIVersion: "v1",
 			},
-			expectedError: &CatalogError{err: errors.New("invalid token or insufficient permissions")},
+			expectedError: &CatalogError{err: errors.New("invalid credentials")},
+		},
+		"forbidden send": {
+			endpoint: "/forbidden-endpoint",
+			data: &destination.Data{
+				APIVersion: "v1",
+			},
+			expectedError: &CatalogError{err: errors.New("insufficient permissions")},
 		},
 		"not found send": {
 			endpoint: "/not-found-endpoint",
@@ -391,8 +362,10 @@ func TestSendData(t *testing.T) {
 
 				// check headers
 				assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-				assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 				assert.Equal(t, info.AppName+"/"+info.Version, r.Header.Get("User-Agent"))
+				// with no authentication configured the destination must not send an
+				// Authorization header (unauthenticated fallback).
+				assert.Empty(t, r.Header.Get("Authorization"))
 
 				switch r.RequestURI {
 				case "/valid-endpoint":
@@ -409,6 +382,8 @@ func TestSendData(t *testing.T) {
 					http.Error(w, "unexpected error", http.StatusBadGateway)
 				case "/unauthorized-endpoint":
 					http.Error(w, "unauthorized", http.StatusUnauthorized)
+				case "/forbidden-endpoint":
+					http.Error(w, "forbidden", http.StatusForbidden)
 				default:
 					errCode := http.StatusInternalServerError
 					w.WriteHeader(errCode)
@@ -430,7 +405,6 @@ func TestSendData(t *testing.T) {
 
 			dest := &catalogDestination{
 				CatalogEndpoint: testServer.URL + tc.endpoint,
-				Token:           "test-token",
 			}
 
 			err := dest.SendData(ctx, tc.data)
@@ -490,7 +464,6 @@ func TestDeleteData(t *testing.T) {
 
 				// check headers
 				assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-				assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 				assert.Equal(t, info.AppName+"/"+info.Version, r.Header.Get("User-Agent"))
 
 				switch r.RequestURI {
@@ -523,7 +496,6 @@ func TestDeleteData(t *testing.T) {
 
 			dest := &catalogDestination{
 				CatalogEndpoint: testServer.URL + tc.endpoint,
-				Token:           "test-token",
 			}
 
 			err := dest.DeleteData(ctx, tc.data)

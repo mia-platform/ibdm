@@ -10,9 +10,6 @@ To enable this destination no flags are needed but only a series of environment 
 
 - `MIA_CATALOG_ENDPOINT`: the destination endpoint for the data, available during the integration
 	setup
-- `MIA_CATALOG_TOKEN`: a static bearer token used to authenticate requests to the Mia-Platform
-	Catalog. It cannot be combined with `MIA_CATALOG_CLIENT_ID`, `MIA_CATALOG_CLIENT_SECRET` or
-	`MIA_CATALOG_PRIVATE_KEY_PATH`
 - `MIA_CATALOG_CLIENT_ID`: the client id for validating the requests to the Mia-Platform Catalog,
 	available during the integration setup
 - `MIA_CATALOG_CLIENT_SECRET`: the client secret for validating the requests to the Mia-Platform
