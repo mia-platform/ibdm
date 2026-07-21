@@ -37,7 +37,8 @@ In addition to other environment variables the GitLab source requires or accepts
 
 The first two variables are used for both sync and run modes.
 `GITLAB_WEBHOOK_PATH` and `GITLAB_WEBHOOK_TOKEN` are only needed when running in webhook mode
-(`run`). If `GITLAB_WEBHOOK_TOKEN` is not set, the webhook endpoint will not be registered.
+(`run`). `GITLAB_WEBHOOK_TOKEN` is required in that mode: if it is not set, `ibdm run gitlab`
+fails to start with a `webhook token not configured` error.
 
 ## Supported Data Types
 
