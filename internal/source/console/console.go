@@ -339,8 +339,8 @@ func createRevisionData(project map[string]any, revisionName string, t time.Time
 		Operation: operation,
 		Time:      t,
 		Values: map[string]any{
-			projectResource: buildProjectData(project),
-			"revision":      buildRevisionData(revisionName),
+			projectResource:  buildProjectData(project),
+			revisionResource: buildRevisionData(revisionName),
 		},
 	}
 }
