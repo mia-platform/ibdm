@@ -1,4 +1,4 @@
-apiVersion: console.mia-platform-experimental.eu/v1
+apiVersion: console.mia-platform.eu/v1
 itemFamily: customresources
 type: custom-resource
 syncable: true
