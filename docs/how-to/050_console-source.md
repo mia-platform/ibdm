@@ -64,5 +64,6 @@ The Console source can sync the following data types:
 - `project`: Information about Console projects.
 - `revision`: A named revision of a project.
 - `service`: A microservice within a project's default-branch revision (only services of type `custom` and not marked as `advanced` are emitted).
+- `custom-resource`: A custom resource within a project's default-branch revision (only services of type `custom-resource` are emitted).
 - `cluster`: A cluster registered in the Console. Fetched via the tenant/cluster APIs; the `linkedProjects` field is stripped before mapping.
 - `clusterProjectRelationship`: A relationship between a cluster and a linked project. One entry is emitted per project in the cluster's `linkedProjects` list, carrying both the project and the cluster (without `linkedProjects`) as template values.
