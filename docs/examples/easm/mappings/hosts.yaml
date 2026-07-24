@@ -1,0 +1,14 @@
+apiVersion: easm.mia-platform.eu/v1alpha1
+itemFamily: hosts
+type: host
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ get \"fqdn\" . .id | quote }}"
+  spec:
+    fqdn: "{{ get \"fqdn\" . \"\" | quote }}"
+    status_code: "{{ get \"status_code\" . \"\" | quote }}"
+    a: "{{ get \"a\" . (list) | toJSON }}"
+    aaaa: "{{ get \"aaaa\" . (list) | toJSON }}"
+    cname: "{{ get \"cname\" . (list) | toJSON }}"

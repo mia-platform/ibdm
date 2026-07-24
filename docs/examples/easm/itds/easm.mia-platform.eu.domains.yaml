@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: domains.easm.mia-platform.eu
+spec:
+  group: easm.mia-platform.eu
+  names:
+    kind: Domain
+    plural: domains
+    displayPlural: Domains
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                domain:
+                  description: The registered domain name.
+                  type: string
+                  title: Domain
+                dns:
+                  description: DNS records found for the domain.
+                  type: object
+                  title: DNS
+                  properties:
+                    dmarc:
+                      type: string
+                      title: DMARC
+                    spf:
+                      type: string
+                      title: SPF
+                    mx:
+                      type: array
+                      title: MX
+                      items:
+                        type: string
+                    ns:
+                      type: array
+                      title: NS
+                      items:
+                        type: string
+                whois:
+                  description: The raw WHOIS record for the domain (irregular structure, stored as-is).
+                  type: object
+                  title: WHOIS
+                  additionalProperties: true
+                zonetransfer:
+                  description: AXFR zone-transfer lines ("name\ttype\trdata"); absent when blocked.
+                  type: array
+                  title: Zone Transfer
+                  items:
+                    type: string
+                azure:
+                  description: Azure tenant attribution for the domain (absent when skipped or nothing found).
+                  type: object
+                  title: Azure
+                  properties:
+                    tenant_id:
+                      type: string
+                      title: Tenant ID
+                    namespace_type:
+                      type: string
+                      title: Namespace Type
+                    brand:
+                      type: string
+                      title: Brand
+                    federation_url:
+                      type: string
+                      title: Federation URL
+                    m365:
+                      type: boolean
+                      title: Microsoft 365
+                    admin_consent_exposed:
+                      type: boolean
+                      title: Admin Consent Exposed
+                misconfig:
+                  description: Cloud service misconfigurations discovered for the domain.
+                  type: array
+                  title: Misconfigurations
+                  items:
+                    type: object
+                    properties:
+                      service:
+                        type: string
+                        title: Service
+                      url:
+                        type: string
+                        title: URL
+                      status:
+                        type: integer
+                        title: Status
+      served: true
+      storage: true

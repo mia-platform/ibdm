@@ -1,0 +1,13 @@
+apiVersion: easm.mia-platform.eu/v1alpha1
+itemFamily: ips
+type: ip
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ get \"ip\" . .id | quote }}"
+  spec:
+    ip: "{{ get \"ip\" . \"\" | quote }}"
+    ptr: "{{ get \"ptr\" . \"\" | quote }}"
+    ports: "{{ get \"ports\" . (list) | toJSON }}"
+    geo: "{{ get \"geo\" . (object) | toJSON }}"

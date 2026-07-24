@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: mia-platform.eu/v1alpha1
+kind: ItemTypeDefinition
+metadata:
+  name: vulnerabilities.easm.mia-platform.eu
+spec:
+  group: easm.mia-platform.eu
+  names:
+    kind: Vulnerability
+    plural: vulnerabilities
+    displayPlural: Vulnerabilities
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1alpha1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                template_id:
+                  description: Identifier of the detection rule that produced the finding.
+                  type: string
+                  title: Template ID
+                name:
+                  description: The name of the finding.
+                  type: string
+                  title: Name
+                severity:
+                  description: The severity of the finding (info, low, medium, high, critical).
+                  type: string
+                  title: Severity
+                target:
+                  description: The target the finding was matched on.
+                  type: string
+                  title: Target
+                description:
+                  description: A human-readable description of the finding.
+                  type: string
+                  title: Description
+                tags:
+                  description: The tags associated with the finding.
+                  type: array
+                  title: Tags
+                  items:
+                    type: string
+                extracted_results:
+                  description: Values extracted by the detection rule (when any).
+                  type: array
+                  title: Extracted Results
+                  items:
+                    type: string
+                matcher_name:
+                  description: Name of the matcher that triggered the finding.
+                  type: string
+                  title: Matcher Name
+                scheme:
+                  description: The scheme the finding was observed on.
+                  type: string
+                  title: Scheme
+                meta:
+                  description: Additional rule-specific metadata for the finding (free-form).
+                  type: object
+                  title: Meta
+                  additionalProperties: true
+                owasp:
+                  description: The OWASP Top 10 category associated with the finding.
+                  type: object
+                  title: OWASP
+                  properties:
+                    code:
+                      type: string
+                      title: Code
+                    name:
+                      type: string
+                      title: Name
+                    url:
+                      type: string
+                      title: URL
+      served: true
+      storage: true

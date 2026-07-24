@@ -1,0 +1,15 @@
+apiVersion: easm.mia-platform.eu/v1alpha1
+itemFamily: domains
+type: domain
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ get \"domain\" . .id | quote }}"
+  spec:
+    domain: "{{ get \"domain\" . \"\" | quote }}"
+    dns: "{{ get \"dns\" . (object) | toJSON }}"
+    whois: "{{ get \"whois\" . (object) | toJSON }}"
+    zonetransfer: "{{ get \"zonetransfer\" . (list) | toJSON }}"
+    azure: "{{ get \"azure\" . (object) | toJSON }}"
+    misconfig: "{{ get \"misconfig\" . (list) | toJSON }}"

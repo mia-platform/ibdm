@@ -1,0 +1,20 @@
+apiVersion: easm.mia-platform.eu/v1alpha1
+itemFamily: vulnerabilities
+type: vulnerability
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ get \"name\" . .id | quote }}"
+  spec:
+    template_id: "{{ get \"template_id\" . \"\" | quote }}"
+    name: "{{ get \"name\" . \"\" | quote }}"
+    severity: "{{ get \"severity\" . \"\" | quote }}"
+    target: "{{ get \"target\" . \"\" | quote }}"
+    description: "{{ get \"description\" . \"\" | quote }}"
+    tags: "{{ get \"tags\" . (list) | toJSON }}"
+    extracted_results: "{{ get \"extracted_results\" . (list) | toJSON }}"
+    matcher_name: "{{ get \"matcher_name\" . \"\" | quote }}"
+    scheme: "{{ get \"scheme\" . \"\" | quote }}"
+    meta: "{{ get \"meta\" . (object) | toJSON }}"
+    owasp: "{{ get \"owasp\" . (object) | toJSON }}"
