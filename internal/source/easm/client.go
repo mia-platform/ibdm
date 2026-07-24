@@ -74,8 +74,9 @@ func (c *client) fetchDataPage(ctx context.Context, cursor string) (*dataPage, e
 	}
 
 	req.Header.Set("Accept", "application/json")
-	// Customer scoping travels as a credential. Prod sends a bearer token; the
-	// no-auth mock sends X-Customer. The request is otherwise identical.
+	// X-Customer scopes the request to a single customer and is always set.
+	// The bearer token authenticates the caller and is sent only once
+	// configured — the backend has no auth yet.
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}

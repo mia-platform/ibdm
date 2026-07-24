@@ -24,9 +24,11 @@ type config struct {
 	BaseURL string `env:"EASM_BASE_URL"`
 	// DataPath is the path of the read endpoint appended to BaseURL.
 	DataPath string `env:"EASM_DATA_PATH" envDefault:"/data"`
-	// Customer scopes the request via the X-Customer header (mock / no-auth topology).
+	// Customer scopes the request to a single customer via the X-Customer
+	// header. Always required: it selects whose scan results to read.
 	Customer string `env:"EASM_CUSTOMER"`
-	// Token scopes the request via the Authorization: Bearer header (prod topology).
+	// Token authenticates the caller to the backend via Authorization: Bearer.
+	// Optional for now — the backend has no auth yet; set it once auth lands.
 	Token string `env:"EASM_TOKEN"`
 	// HTTPTimeout bounds each request to the endpoint.
 	HTTPTimeout time.Duration `env:"EASM_HTTP_TIMEOUT" envDefault:"30s"`
@@ -48,16 +50,17 @@ func loadConfigFromEnv() (config, error) {
 }
 
 // validateConfig checks that the required config fields are non-empty. Customer
-// scoping must travel as a credential, so at least one of Customer or Token is
-// required; the endpoint resolves the customer from whichever is provided.
+// is always required: it scopes the request to a single customer via the
+// X-Customer header. Token is optional for now (the backend has no auth yet)
+// and, once set, authenticates the caller via Authorization: Bearer.
 func validateConfig(cfg config) error {
 	missing := make([]string, 0)
 
 	if cfg.BaseURL == "" {
 		missing = append(missing, "EASM_BASE_URL")
 	}
-	if cfg.Customer == "" && cfg.Token == "" {
-		missing = append(missing, "EASM_CUSTOMER or EASM_TOKEN")
+	if cfg.Customer == "" {
+		missing = append(missing, "EASM_CUSTOMER")
 	}
 
 	if len(missing) > 0 {
