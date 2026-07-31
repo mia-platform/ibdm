@@ -10,6 +10,7 @@ mappings:
     title: "{{ .name }}"
   spec:
     name: "{{ .name }}"
+    id: "{{ .id }}"
     displayName: "{{ get \"displayName\" . \"\" | quote }}"
     state: "{{ .properties.state | lower }}"
     tags: |-

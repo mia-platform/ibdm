@@ -10,6 +10,7 @@ mappings:
     title: "{{ .name }}"
   spec:
     name: "{{ .name }}"
+    id: "{{ .id }}"
     provisioningState: "{{ .properties.provisioningState | lower }}"
     allowBlobPublicAccess: "{{ get \"allowBlobPublicAccess\" .properties false }}"
     publicNetworkAccess: "{{ get \"publicNetworkAccess\" .properties \"Disabled\" | lower }}"
