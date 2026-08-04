@@ -72,38 +72,15 @@ The two values are therefore identical for `ibdm sync azure` and `ibdm run azure
 `{{ .id | sha256sum }}` a stable identifier and lets a delete event target the item a previous
 import created.
 
-### Mapping a resource type with case-sensitive names
+This is also in part suggested by Azure, since it is stated that various APIs can return names with different casing,
+therefore in order to perform meaningful matches a case-insensitive comparison is recommended.
+For a more in-depth explanation refer to [Naming rules and restrictions for Azure resources].
 
-The normalisation is safe only while every mapped resource type has **case-insensitive** names,
-which Microsoft Azure documents for all the types shipped in `docs/mappings/azure`. Blob
-containers and Log Analytics solutions are the two documented exceptions: their names *are*
-case-sensitive, so Azure can hold two distinct resources whose IDs differ only by case. Lowercasing
-would collapse them onto a single Catalog `metadata.name` and the second import would silently
-overwrite the first. Review this behaviour before adding a mapping for such a type — nothing
-detects the situation at runtime.
+### Consequences for the mappings and items
 
-### Consequences for the mappings
-
-`id` is lowercase and no longer matches the casing shown in the Azure portal. Use `.name` wherever
-display casing matters. The spelling Azure reported is deliberately not exposed to the mappings: it
-is written to the source logs at the `Debug` level whenever it differs from the normalised value,
-so the resource providers returning non canonical IDs stay observable without any template being
-able to hash the unstable value by mistake.
-
-### Upgrading from a release without the normalisation
-
-Canonical Azure IDs contain uppercase characters, so lowercasing changes `sha256sum` for **every**
-Azure resource, not only the ones affected by the divergence. Each item therefore receives a new
-identifier, the destination inserts it as a new Catalog item and the previous one is left behind as
-an orphan, together with the relationship items that cascade from it.
-
-1. Capture the current list of Azure items **before** upgrading: identifiers are opaque hashes, so
-	afterwards a stale item is indistinguishable from a fresh one.
-1. Run `ibdm sync azure` right after deploying so that the new items exist.
-1. Delete the items captured at step 1 and their cascaded relationships. This cleanup is manual.
-
-Expect the item count to grow slightly as well: resources whose events spelled the resource type
-with a casing different from the mapping file were previously dropped and now get imported.
+`id` is lowercase and could no longer match the casing shown in the Azure portal.
+Use `.name` wherever available to display casing matters, its availability is dependant on the specific resource APIs.
+The spelling Azure reported, if needed, is written to the source logs at the `Debug` level whenever it differs from the normalised value.
 
 ## Authentication
 
@@ -111,9 +88,11 @@ The source is using the [`DefaultAzureCredential` chain of authentication] so yo
 your preferred method of login.  
 This authentication will be used for reading data from the REST APIs so it will need the read
 permissions on the resources you want to import.
+Both `sync` and `run` modes use APIs to fetch the full resource, for this reason an authentication method of choice is always needed.
 
 If you choose to don’t use the `*_CONNECTION_STING` variables the same authentication will be used
 to receive data from the configured EventHub and to manage object inside the StorageAccount blob
 storage.
 
 [`DefaultAzureCredential` chain of authentication]: https://learn.microsoft.com/en-gb/azure/developer/go/sdk/authentication/credential-chains#defaultazurecredential-overview
+[Naming rules and restrictions for Azure resources]: https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
