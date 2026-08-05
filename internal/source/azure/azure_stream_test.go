@@ -132,6 +132,81 @@ func TestPartitionEventHandler(t *testing.T) {
 				},
 			},
 		},
+		"resource provider returning a divergently cased id": {
+			contextFunc: func(tb testing.TB) (context.Context, context.CancelFunc) {
+				tb.Helper()
+				return context.WithTimeout(tb.Context(), 1*time.Second)
+			},
+			typesToFilter: map[string]source.Extra{
+				managedClustersType: {"apiVersion": managedClustersAPIVersion},
+			},
+			azureData: &azeventhubs.ReceivedEventData{
+				EventData: azeventhubs.EventData{
+					Body: eventDataManagedClusterWriteBody,
+				},
+			},
+			expectedData: []source.Data{
+				{
+					Type:      managedClustersType,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Values: map[string]any{
+						"id":   normalizedManagedClusterID,
+						"type": managedClustersType,
+					},
+				},
+			},
+		},
+		"non canonical subject type is not dropped": {
+			contextFunc: func(tb testing.TB) (context.Context, context.CancelFunc) {
+				tb.Helper()
+				return context.WithTimeout(tb.Context(), 1*time.Second)
+			},
+			typesToFilter: map[string]source.Extra{
+				managedClustersType: {"apiVersion": managedClustersAPIVersion},
+			},
+			azureData: &azeventhubs.ReceivedEventData{
+				EventData: azeventhubs.EventData{
+					Body: eventDataLowerTypeManagedClusterWriteBody,
+				},
+			},
+			expectedData: []source.Data{
+				{
+					Type:      managedClustersType,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Values: map[string]any{
+						"id":   normalizedManagedClusterID,
+						"type": managedClustersType,
+					},
+				},
+			},
+		},
+		"delete with non canonical subject casing": {
+			contextFunc: func(tb testing.TB) (context.Context, context.CancelFunc) {
+				tb.Helper()
+				return context.WithTimeout(tb.Context(), 1*time.Second)
+			},
+			typesToFilter: map[string]source.Extra{
+				managedClustersType: {"apiVersion": managedClustersAPIVersion},
+			},
+			azureData: &azeventhubs.ReceivedEventData{
+				EventData: azeventhubs.EventData{
+					Body: eventDataManagedClusterDeleteBody,
+				},
+			},
+			expectedData: []source.Data{
+				{
+					Type:      managedClustersType,
+					Operation: source.DataOperationDelete,
+					Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Values: map[string]any{
+						"id":   normalizedManagedClusterID,
+						"type": managedClustersType,
+					},
+				},
+			},
+		},
 	}
 
 	for testName, test := range testCases {
@@ -159,6 +234,9 @@ func TestPartitionEventHandler(t *testing.T) {
 			}
 
 			require.NotErrorIs(t, ctx.Err(), context.DeadlineExceeded)
+			// a fake branch keyed on the wrong resource ID silently emits nothing, so assert the
+			// received count before comparing the elements
+			require.Len(t, receivedData, len(test.expectedData))
 			assert.ElementsMatch(t, test.expectedData, receivedData)
 		})
 	}
@@ -185,31 +263,98 @@ func handleResourcesGetByIDRequest(tb testing.TB, resourceID, apiVersion string)
 	tb.Helper()
 
 	switch resourceID {
-	case "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG":
+	case "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg":
 		assert.Equal(tb, "2021-04-01", apiVersion)
 		resp = &armresources.ClientGetByIDResponse{
 			GenericResource: armresources.GenericResource{
-				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG"),
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg"),
 				Type: to.Ptr("Microsoft.Resources/resourceGroups"),
 			},
 		}
 		return resp, nil
-	case "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG/providers/Microsoft.Compute/virtualMachines/myVM":
+	case "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Compute/virtualMachines/my-vm":
 		assert.Equal(tb, "2021-07-01", apiVersion)
 		return nil, assert.AnError
+	case managedClusterGetByIDPath:
+		assert.Equal(tb, managedClustersAPIVersion, apiVersion)
+		// Microsoft.ContainerService builds its own id form and answers with a lowercase
+		// resourcegroups literal even though the request carried the camelCase one
+		resp = &armresources.ClientGetByIDResponse{
+			GenericResource: armresources.GenericResource{
+				ID:   to.Ptr(bodyManagedClusterID),
+				Type: to.Ptr("microsoft.containerservice/managedclusters"),
+			},
+		}
+		return resp, nil
+	case lowerTypeManagedClusterGetByIDPath:
+		assert.Equal(tb, managedClustersAPIVersion, apiVersion)
+		resp = &armresources.ClientGetByIDResponse{
+			GenericResource: armresources.GenericResource{
+				ID:   to.Ptr("/" + lowerTypeManagedClusterGetByIDPath),
+				Type: to.Ptr("microsoft.containerservice/managedclusters"),
+			},
+		}
+		return resp, nil
 	}
 
 	return nil, nil
 }
 
+const (
+	managedClustersAPIVersion = "2025-10-01"
+
+	// armresources.Client strips the leading slash before calling the server, and
+	// arm.ParseResourceID rewrites the resourcegroups literal of the subject to camelCase while
+	// leaving the provider and type segments at the casing the subject used, so these are the keys
+	// the fake actually receives.
+	managedClusterGetByIDPath          = "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.ContainerService/managedClusters/my-cluster"
+	lowerTypeManagedClusterGetByIDPath = "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/microsoft.containerservice/managedclusters/my-cluster"
+)
+
 var (
+	// eventDataManagedClusterWriteBody carries a lowercase resourcegroups literal and a canonically
+	// cased provider and type.
+	eventDataManagedClusterWriteBody = json.RawMessage(`[
+	{
+		"id": "00000000-0000-0000-0000-000000000000",
+		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
+		"specversion": "1.0",
+		"type": "Microsoft.Resources.ResourceWriteSuccess",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg/providers/Microsoft.ContainerService/managedClusters/my-cluster",
+		"time": "2020-01-01T00:00:00.0000000Z"
+	}]`)
+
+	// eventDataLowerTypeManagedClusterWriteBody spells the provider and the type in lowercase, a
+	// casing the configured key does not use.
+	eventDataLowerTypeManagedClusterWriteBody = json.RawMessage(`[
+	{
+		"id": "00000000-0000-0000-0000-000000000000",
+		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
+		"specversion": "1.0",
+		"type": "Microsoft.Resources.ResourceWriteSuccess",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/microsoft.containerservice/managedclusters/my-cluster",
+		"time": "2020-01-01T00:00:00.0000000Z"
+	}]`)
+
+	// eventDataManagedClusterDeleteBody spells the resource group literal, the provider and the
+	// type in lowercase.
+	eventDataManagedClusterDeleteBody = json.RawMessage(`[
+	{
+		"id": "00000000-0000-0000-0000-000000000000",
+		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
+		"specversion": "1.0",
+		"type": "Microsoft.Resources.ResourceDeleteSuccess",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg/providers/microsoft.containerservice/managedclusters/my-cluster",
+		"time": "2020-01-01T00:00:00.0000000Z"
+	}]`)
+
 	eventDataResourcesTestBody = json.RawMessage(`[
 	{
 		"id": "00000000-0000-0000-0000-000000000000",
 		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
 		"specversion": "1.0",
 		"type": "Microsoft.Resources.ResourceDeleteSuccess",
-		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/myRG",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg",
 		"time": "2020-01-01T00:00:00.0000000Z",
 		"data": {
 			"authorization": {},
@@ -217,7 +362,7 @@ var (
 			"correlationId": "00000000-0000-0000-0000-000000000000",
 			"httpRequest": {},
 			"resourceProvider": "Microsoft.Resources",
-			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/myRG",
+			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg",
 			"operationName": "Microsoft.Resources/subscriptions/resourcegroups/delete",
 			"status": "Succeeded",
 			"subscriptionId": "00000000-0000-0000-0000-000000000000",
@@ -229,7 +374,7 @@ var (
 		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
 		"specversion": "1.0",
 		"type": "Microsoft.Resources.ResourceWriteSuccess",
-		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/myRG",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg",
 		"time": "2020-01-01T00:00:00.0000000Z",
 		"data": {
 			"authorization": {},
@@ -237,7 +382,7 @@ var (
 			"correlationId": "00000000-0000-0000-0000-000000000000",
 			"httpRequest": {},
 			"resourceProvider": "Microsoft.Resources",
-			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/myRG",
+			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg",
 			"operationName": "Microsoft.Resources/subscriptions/resourceGroups/write",
 			"status": "Succeeded",
 			"subscriptionId": "00000000-0000-0000-0000-000000000000",
@@ -249,7 +394,7 @@ var (
 		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
 		"specversion": "1.0",
 		"type": "Microsoft.Resources.ResourceWriteCancel",
-		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/myRG",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg",
 		"time": "2020-01-01T00:00:00.0000000Z",
 		"data": {
 			"authorization": {},
@@ -257,7 +402,7 @@ var (
 			"correlationId": "00000000-0000-0000-0000-000000000000",
 			"httpRequest": {},
 			"resourceProvider": "Microsoft.Resources",
-			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/myRG",
+			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg",
 			"operationName": "Microsoft.Resources/subscriptions/resourceGroups/write",
 			"status": "Canceled",
 			"subscriptionId": "00000000-0000-0000-0000-000000000000",
@@ -269,7 +414,7 @@ var (
 		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
 		"specversion": "1.0",
 		"type": "Microsoft.Resources.ResourceWriteSuccess",
-		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG/providers/Microsoft.Compute/virtualMachines/myVM",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Compute/virtualMachines/my-vm",
 		"time": "2020-01-01T00:00:00.0000000Z",
 		"data": {
 			"authorization": {},
@@ -277,7 +422,7 @@ var (
 			"correlationId": "00000000-0000-0000-0000-000000000000",
 			"httpRequest": {},
 			"resourceProvider": "Microsoft.Resources",
-			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG/providers/Microsoft.Compute/virtualMachines/myVM",
+			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Compute/virtualMachines/my-vm",
 			"operationName": "Microsoft.Resources/tags/write",
 			"status": "Succeeded",
 			"subscriptionId": "00000000-0000-0000-0000-000000000000",
@@ -289,7 +434,7 @@ var (
 		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
 		"specversion": "1.0",
 		"type": "Microsoft.Resources.ResourceWriteSuccess",
-		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/myRG/providers/Microsoft.Storage/storageAccounts/account",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg/providers/Microsoft.Storage/storageAccounts/account",
 		"time": "2020-01-01T00:00:00.0000000Z",
 		"data": {
 			"authorization": {},
@@ -297,7 +442,7 @@ var (
 			"correlationId": "00000000-0000-0000-0000-000000000000",
 			"httpRequest": {},
 			"resourceProvider": "Microsoft.Resources",
-			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/myRG/providers/Microsoft.Storage/storageAccounts/account",
+			"resourceUri": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg/providers/Microsoft.Storage/storageAccounts/account",
 			"operationName": "Microsoft.Resources/tags/write",
 			"status": "Succeeded",
 			"subscriptionId": "00000000-0000-0000-0000-000000000000",
@@ -311,7 +456,8 @@ var (
 			Operation: source.DataOperationDelete,
 			Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 			Values: map[string]any{
-				"id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG",
+				// the source lowercases every id so that all the ingestion paths converge
+				"id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg",
 				"type": "Microsoft.Resources/resourceGroups",
 			},
 		},
@@ -320,7 +466,8 @@ var (
 			Operation: source.DataOperationUpsert,
 			Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 			Values: map[string]any{
-				"id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/myRG",
+				// the source lowercases every id so that all the ingestion paths converge
+				"id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg",
 				"type": "Microsoft.Resources/resourceGroups",
 			},
 		},

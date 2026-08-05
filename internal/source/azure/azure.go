@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -143,7 +142,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 			if data, ok := response.Data.([]any); ok {
 				for _, item := range data {
 					if values, ok := item.(map[string]any); ok {
-						values["type"] = resType // ensure type is case-normalized, and resourceGroup is normalized too
+						normalizeResourceValues(logger, values, resType)
 						dataChannel <- source.Data{
 							Type:      resType,
 							Operation: source.DataOperationUpsert,
@@ -224,18 +223,21 @@ func partitionEventHandler(client *armresources.Client, typesToFilter map[string
 				continue
 			}
 
-			if filterBasedOnResourceID(resID, typesSlice) {
-				logger.Debug("skipping event based on type", "resourceID", resID.ResourceType.String())
-				continue
-			}
-
-			apiVersion, ok := typesToFilter[resID.ResourceType.String()]["apiVersion"].(string)
+			// the subject can spell the resource type with any casing, so resolve the configured
+			// key once and use it for the apiVersion lookup and for every emitted value.
+			resourceType, ok := configuredResourceType(typesSlice, resID.ResourceType.String())
 			if !ok {
-				logger.Debug("skipping event with missing apiVersion", "resourceID", resID.ResourceType.String())
+				logger.Debug("skipping event based on type", "resourceType", resID.ResourceType.String())
 				continue
 			}
 
-			logger.Trace("handling resource", "resourceID", resID.ResourceType.String(), "eventType", envelope.Type, "apiVersion", apiVersion)
+			apiVersion, ok := typesToFilter[resourceType][apiVersionKey].(string)
+			if !ok {
+				logger.Debug("skipping event with missing apiVersion", "resourceType", resourceType)
+				continue
+			}
+
+			logger.Trace("handling resource", "resourceType", resourceType, "eventType", envelope.Type, "apiVersion", apiVersion)
 			switch envelope.Type {
 			case azsystemevents.TypeResourceWriteSuccess:
 				logger.Trace("request resource data from azure", "resourceID", *envelope.Subject)
@@ -255,25 +257,25 @@ func partitionEventHandler(client *armresources.Client, typesToFilter map[string
 					continue
 				}
 
+				normalizeResourceValues(logger, values, resourceType)
 				dataChannel <- source.Data{
-					Type:      resID.ResourceType.String(),
+					Type:      resourceType,
 					Operation: source.DataOperationUpsert,
 					Time:      *envelope.Time,
 					Values:    values,
 				}
 			case azsystemevents.TypeResourceDeleteSuccess:
-				logger.Trace("we have to delete something", "resourceID", resID.ResourceType.String())
+				logger.Trace("deleting resource", "resourceType", resourceType)
+				values := map[string]any{idKey: resID.String()}
+				normalizeResourceValues(logger, values, resourceType)
 				dataChannel <- source.Data{
-					Type:      resID.ResourceType.String(),
+					Type:      resourceType,
 					Operation: source.DataOperationDelete,
 					Time:      *envelope.Time,
-					Values: map[string]any{
-						"id":   resID.String(),
-						"type": resID.ResourceType.String(),
-					},
+					Values:    values,
 				}
 			default:
-				logger.Trace("skipping resource", "resourceID", resID.ResourceType.String(), "eventType", envelope.Type, "apiVersion", apiVersion)
+				logger.Trace("skipping resource", "resourceType", resourceType, "eventType", envelope.Type, "apiVersion", apiVersion)
 			}
 		}
 	}
@@ -301,14 +303,6 @@ func resourceIDFromSubject(subject *string) (*arm.ResourceID, error) {
 
 	// Example resource URI: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	return arm.ParseResourceID(*subject)
-}
-
-// filterBasedOnResourceID checks if the resource type is in the typesToFilter slice.
-func filterBasedOnResourceID(resID *arm.ResourceID, typesToFilter []string) bool {
-	resourceType := resID.ResourceType.String()
-	return !slices.ContainsFunc(typesToFilter, func(s string) bool {
-		return strings.EqualFold(s, resourceType)
-	})
 }
 
 // Close implement source.ClosableSource.
