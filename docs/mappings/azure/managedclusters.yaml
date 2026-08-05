@@ -10,6 +10,7 @@ mappings:
     title: "{{ .name }}"
   spec:
     name: "{{ .name }}"
+    id: "{{ .id }}"
     location: "{{ .location | lower }}"
     provisioningState: "{{ .properties.provisioningState | lower }}"
     currentKubernetesVersion: "{{ .properties.currentKubernetesVersion | quote }}"
@@ -34,7 +35,7 @@ mappings:
   extra:
     - apiVersion: mia-platform.eu/v1
       itemFamily: relationships
-      deletePolicy: "cascade"
+      deletePolicy: "none"
       identifier: |-
         {{ $src := printf "urn:mia-platform-catalog:console.mia-platform.eu:v1:Cluster:%s" (printf "%s" .properties.fqdn | sha256sum) -}}
         {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu" -}}

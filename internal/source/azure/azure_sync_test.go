@@ -108,7 +108,7 @@ func TestStartSyncProcess(t *testing.T) {
 					Time:      testTime,
 					Values: map[string]any{
 						"extendedLocation": nil,
-						"id":               "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/name",
+						"id":               "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/name",
 						"identity":         nil,
 						"kind":             "",
 						"location":         "region",
@@ -142,7 +142,7 @@ func TestStartSyncProcess(t *testing.T) {
 					Time:      testTime,
 					Values: map[string]any{
 						"extendedLocation": nil,
-						"id":               "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/name",
+						"id":               "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/name",
 						"identity":         nil,
 						"kind":             "",
 						"location":         "region",
@@ -163,7 +163,7 @@ func TestStartSyncProcess(t *testing.T) {
 					Time:      testTime,
 					Values: map[string]any{
 						"extendedLocation": nil,
-						"id":               "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/name/providers/Microsoft.Compute/virtualMachines/vm-name",
+						"id":               "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/name/providers/microsoft.compute/virtualmachines/vm-name",
 						"identity":         nil,
 						"kind":             "",
 						"location":         "northeurope",
@@ -193,7 +193,7 @@ func TestStartSyncProcess(t *testing.T) {
 					Time:      testTime,
 					Values: map[string]any{
 						"extendedLocation": nil,
-						"id":               "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/name/providers/Microsoft.Compute/virtualMachines/vm-name2",
+						"id":               "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/name/providers/microsoft.compute/virtualmachines/vm-name2",
 						"identity":         nil,
 						"kind":             "",
 						"location":         "northeurope",
@@ -215,6 +215,69 @@ func TestStartSyncProcess(t *testing.T) {
 						"sku":  nil,
 						"tags": nil,
 						"type": "Microsoft.Compute/virtualMachines",
+					},
+				},
+			},
+		},
+		"managed clusters with divergent casing": {
+			typesToFilter: map[string]source.Extra{
+				managedClustersType: nil,
+			},
+			expectedData: []source.Data{
+				{
+					Type:      managedClustersType,
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values: map[string]any{
+						"id":   normalizedManagedClusterID,
+						"name": "my-cluster",
+						"type": managedClustersType,
+					},
+				},
+				{
+					Type:      managedClustersType,
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values: map[string]any{
+						"id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg/providers/microsoft.containerservice/managedclusters/my-other-cluster",
+						"name": "my-other-cluster",
+						"type": managedClustersType,
+					},
+				},
+			},
+		},
+		"unusable ids are emitted unchanged": {
+			typesToFilter: map[string]source.Extra{
+				"Microsoft.Resources/malformedResources": nil,
+			},
+			expectedData: []source.Data{
+				{
+					Type:      "Microsoft.Resources/malformedResources",
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values: map[string]any{
+						"id":   "not-an-id",
+						"name": "no-id-resource",
+						"type": "Microsoft.Resources/malformedResources",
+					},
+				},
+				{
+					Type:      "Microsoft.Resources/malformedResources",
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values: map[string]any{
+						"id":   float64(42),
+						"name": "numeric-id-resource",
+						"type": "Microsoft.Resources/malformedResources",
+					},
+				},
+				{
+					Type:      "Microsoft.Resources/malformedResources",
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values: map[string]any{
+						"name": "missing-id-resource",
+						"type": "Microsoft.Resources/malformedResources",
 					},
 				},
 			},
@@ -417,6 +480,26 @@ func handleResourceGraphQueryRequest(t *testing.T, query armresourcegraph.QueryR
 				SkipToken:       to.Ptr("skip-token-1"),
 			},
 		}, nil
+	case fmt.Sprintf(resourceGraphQueryTemplate, managedClustersType):
+		return &armresourcegraph.ClientResourcesResponse{
+			QueryResponse: armresourcegraph.QueryResponse{
+				TotalRecords:    to.Ptr(int64(2)),
+				Data:            resourceGraphManagedClustersResponse,
+				ResultTruncated: to.Ptr(armresourcegraph.ResultTruncatedFalse),
+				Count:           to.Ptr(int64(2)),
+				SkipToken:       nil,
+			},
+		}, nil
+	case fmt.Sprintf(resourceGraphQueryTemplate, "Microsoft.Resources/malformedResources"):
+		return &armresourcegraph.ClientResourcesResponse{
+			QueryResponse: armresourcegraph.QueryResponse{
+				TotalRecords:    to.Ptr(int64(3)),
+				Data:            resourceGraphMalformedResponse,
+				ResultTruncated: to.Ptr(armresourcegraph.ResultTruncatedFalse),
+				Count:           to.Ptr(int64(3)),
+				SkipToken:       nil,
+			},
+		}, nil
 	case fmt.Sprintf(resourceGraphQueryTemplate, "Microsoft.Resources/errorResources"):
 		return nil, assert.AnError
 	}
@@ -425,6 +508,37 @@ func handleResourceGraphQueryRequest(t *testing.T, query armresourcegraph.QueryR
 }
 
 var (
+	// resourceGraphManagedClustersResponse mixes the camelCase resourceGroups literal Resource Graph
+	// really returns with an entirely lowercase row, because the normalization must be case blind.
+	resourceGraphManagedClustersResponse = []any{
+		map[string]any{
+			"id":   graphManagedClusterID,
+			"name": "my-cluster",
+			"type": "microsoft.containerservice/managedclusters",
+		},
+		map[string]any{
+			"id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg/providers/microsoft.containerservice/managedclusters/my-other-cluster",
+			"name": "my-other-cluster",
+			"type": "microsoft.containerservice/managedclusters",
+		},
+	}
+
+	// resourceGraphMalformedResponse holds rows whose id cannot be normalized: the items must still
+	// be emitted with their original value.
+	resourceGraphMalformedResponse = []any{
+		map[string]any{
+			"id":   "not-an-id",
+			"name": "no-id-resource",
+		},
+		map[string]any{
+			"id":   42,
+			"name": "numeric-id-resource",
+		},
+		map[string]any{
+			"name": "missing-id-resource",
+		},
+	}
+
 	resourceGraphResourceGroupsResponse = []any{
 		map[string]any{
 			"extendedLocation": nil,
