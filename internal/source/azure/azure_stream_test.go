@@ -182,6 +182,140 @@ func TestPartitionEventHandler(t *testing.T) {
 				},
 			},
 		},
+		"a site carrying the functionapp kind emits its item and the one of its sub-type": {
+			contextFunc: func(tb testing.TB) (context.Context, context.CancelFunc) {
+				tb.Helper()
+				return context.WithTimeout(tb.Context(), 1*time.Second)
+			},
+			typesToFilter: map[string]source.Extra{
+				websitesType:     {apiVersionKey: websitesAPIVersion},
+				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			},
+			azureData: &azeventhubs.ReceivedEventData{
+				EventData: azeventhubs.EventData{
+					Body: eventDataFunctionAppWriteBody,
+				},
+			},
+			expectedData: []source.Data{
+				{
+					Type:      websitesType,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Values:    streamedFunctionAppValues(),
+				},
+				{
+					// the sub-type carries the payload of its parent, whose type stays the Azure
+					// provider type: a sub-type key is a dispatch key and never reaches the item
+					Type:      functionAppsType,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Values:    streamedFunctionAppValues(),
+				},
+			},
+		},
+		"a site not carrying the functionapp kind emits its item alone": {
+			contextFunc: func(tb testing.TB) (context.Context, context.CancelFunc) {
+				tb.Helper()
+				return context.WithTimeout(tb.Context(), 1*time.Second)
+			},
+			typesToFilter: map[string]source.Extra{
+				websitesType:     {apiVersionKey: websitesAPIVersion},
+				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			},
+			azureData: &azeventhubs.ReceivedEventData{
+				EventData: azeventhubs.EventData{
+					Body: eventDataWebsiteWriteBody,
+				},
+			},
+			expectedData: []source.Data{
+				{
+					Type:      websitesType,
+					Operation: source.DataOperationUpsert,
+					Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Values: map[string]any{
+						"id":   normalizedWebsiteID,
+						"kind": webAppKindValue,
+						"type": websitesType,
+					},
+				},
+			},
+		},
+		"deleting a site broadcasts to every configured sub-type": {
+			contextFunc: func(tb testing.TB) (context.Context, context.CancelFunc) {
+				tb.Helper()
+				return context.WithTimeout(tb.Context(), 1*time.Second)
+			},
+			typesToFilter: map[string]source.Extra{
+				websitesType:     {apiVersionKey: websitesAPIVersion},
+				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			},
+			azureData: &azeventhubs.ReceivedEventData{
+				EventData: azeventhubs.EventData{
+					Body: eventDataFunctionAppDeleteBody,
+				},
+			},
+			// the event carries only the resource id, so the kind check cannot run and the sub-type
+			// is deleted whether or not the site ever produced it
+			expectedData: []source.Data{
+				{
+					Type:      websitesType,
+					Operation: source.DataOperationDelete,
+					Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Values: map[string]any{
+						"id":   normalizedFunctionAppID,
+						"type": websitesType,
+					},
+				},
+				{
+					Type:      functionAppsType,
+					Operation: source.DataOperationDelete,
+					Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Values: map[string]any{
+						"id":   normalizedFunctionAppID,
+						"type": websitesType,
+					},
+				},
+			},
+		},
+		"deleting a site without the sub-type mapping loaded keeps the previous behaviour": {
+			contextFunc: func(tb testing.TB) (context.Context, context.CancelFunc) {
+				tb.Helper()
+				return context.WithTimeout(tb.Context(), 1*time.Second)
+			},
+			typesToFilter: map[string]source.Extra{
+				websitesType: {apiVersionKey: websitesAPIVersion},
+			},
+			azureData: &azeventhubs.ReceivedEventData{
+				EventData: azeventhubs.EventData{
+					Body: eventDataFunctionAppDeleteBody,
+				},
+			},
+			expectedData: []source.Data{
+				{
+					Type:      websitesType,
+					Operation: source.DataOperationDelete,
+					Time:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+					Values: map[string]any{
+						"id":   normalizedFunctionAppID,
+						"type": websitesType,
+					},
+				},
+			},
+		},
+		"a sub-type mapping loaded without its parent produces nothing": {
+			contextFunc: func(tb testing.TB) (context.Context, context.CancelFunc) {
+				tb.Helper()
+				return context.WithTimeout(tb.Context(), 1*time.Second)
+			},
+			typesToFilter: map[string]source.Extra{
+				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			},
+			azureData: &azeventhubs.ReceivedEventData{
+				EventData: azeventhubs.EventData{
+					Body: eventDataFunctionAppWriteBody,
+				},
+			},
+		},
 		"delete with non canonical subject casing": {
 			contextFunc: func(tb testing.TB) (context.Context, context.CancelFunc) {
 				tb.Helper()
@@ -295,6 +429,26 @@ func handleResourcesGetByIDRequest(tb testing.TB, resourceID, apiVersion string)
 			},
 		}
 		return resp, nil
+	case functionAppGetByIDPath:
+		assert.Equal(tb, websitesAPIVersion, apiVersion)
+		resp = &armresources.ClientGetByIDResponse{
+			GenericResource: armresources.GenericResource{
+				ID:   to.Ptr(azureFunctionAppID),
+				Kind: to.Ptr(functionAppKindValue),
+				Type: to.Ptr(websitesType),
+			},
+		}
+		return resp, nil
+	case websiteGetByIDPath:
+		assert.Equal(tb, websitesAPIVersion, apiVersion)
+		resp = &armresources.ClientGetByIDResponse{
+			GenericResource: armresources.GenericResource{
+				ID:   to.Ptr(azureWebsiteID),
+				Kind: to.Ptr(webAppKindValue),
+				Type: to.Ptr(websitesType),
+			},
+		}
+		return resp, nil
 	}
 
 	return nil, nil
@@ -309,7 +463,24 @@ const (
 	// the fake actually receives.
 	managedClusterGetByIDPath          = "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.ContainerService/managedClusters/my-cluster"
 	lowerTypeManagedClusterGetByIDPath = "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/microsoft.containerservice/managedclusters/my-cluster"
+
+	// the same keys for the two App Service sites: their subjects already spell the resource group
+	// literal in camelCase, so the fake receives azureFunctionAppID and azureWebsiteID without the
+	// leading slash.
+	functionAppGetByIDPath = "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Web/sites/my-function"
+	websiteGetByIDPath     = "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Web/sites/my-site"
 )
+
+// streamedFunctionAppValues returns the payload the event handler emits for the App Service site
+// carrying the functionapp kind token. It is built on every call because a sub-type receives its
+// own copy of the payload of its parent.
+func streamedFunctionAppValues() map[string]any {
+	return map[string]any{
+		"id":   normalizedFunctionAppID,
+		"kind": functionAppKindValue,
+		"type": websitesType,
+	}
+}
 
 var (
 	// eventDataManagedClusterWriteBody carries a lowercase resourcegroups literal and a canonically
@@ -345,6 +516,40 @@ var (
 		"specversion": "1.0",
 		"type": "Microsoft.Resources.ResourceDeleteSuccess",
 		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg/providers/microsoft.containerservice/managedclusters/my-cluster",
+		"time": "2020-01-01T00:00:00.0000000Z"
+	}]`)
+
+	// eventDataFunctionAppWriteBody and eventDataWebsiteWriteBody import the two App Service sites,
+	// only the first of which carries the functionapp kind token in the body the resource provider
+	// answers with.
+	eventDataFunctionAppWriteBody = json.RawMessage(`[
+	{
+		"id": "00000000-0000-0000-0000-000000000000",
+		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
+		"specversion": "1.0",
+		"type": "Microsoft.Resources.ResourceWriteSuccess",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Web/sites/my-function",
+		"time": "2020-01-01T00:00:00.0000000Z"
+	}]`)
+
+	eventDataWebsiteWriteBody = json.RawMessage(`[
+	{
+		"id": "00000000-0000-0000-0000-000000000000",
+		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
+		"specversion": "1.0",
+		"type": "Microsoft.Resources.ResourceWriteSuccess",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Web/sites/my-site",
+		"time": "2020-01-01T00:00:00.0000000Z"
+	}]`)
+
+	// eventDataFunctionAppDeleteBody carries only the resource id, as every delete event does.
+	eventDataFunctionAppDeleteBody = json.RawMessage(`[
+	{
+		"id": "00000000-0000-0000-0000-000000000000",
+		"source": "/subscriptions/00000000-0000-0000-0000-000000000000",
+		"specversion": "1.0",
+		"type": "Microsoft.Resources.ResourceDeleteSuccess",
+		"subject": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.Web/sites/my-function",
 		"time": "2020-01-01T00:00:00.0000000Z"
 	}]`)
 

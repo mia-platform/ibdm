@@ -246,6 +246,53 @@ func TestStartSyncProcess(t *testing.T) {
 				},
 			},
 		},
+		"websites with the sub-type mapping loaded": {
+			typesToFilter: map[string]source.Extra{
+				websitesType:     {apiVersionKey: websitesAPIVersion},
+				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			},
+			expectedData: []source.Data{
+				{
+					Type:      websitesType,
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values:    syncedFunctionAppValues(),
+				},
+				{
+					// the sub-type carries the payload of its parent, whose type stays the Azure
+					// provider type: a sub-type key is a dispatch key and never reaches the item
+					Type:      functionAppsType,
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values:    syncedFunctionAppValues(),
+				},
+				{
+					Type:      websitesType,
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values:    syncedWebsiteValues(),
+				},
+			},
+		},
+		"websites without the sub-type mapping loaded keep the previous behaviour": {
+			typesToFilter: map[string]source.Extra{
+				websitesType: {apiVersionKey: websitesAPIVersion},
+			},
+			expectedData: []source.Data{
+				{
+					Type:      websitesType,
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values:    syncedFunctionAppValues(),
+				},
+				{
+					Type:      websitesType,
+					Operation: source.DataOperationUpsert,
+					Time:      testTime,
+					Values:    syncedWebsiteValues(),
+				},
+			},
+		},
 		"unusable ids are emitted unchanged": {
 			typesToFilter: map[string]source.Extra{
 				"Microsoft.Resources/malformedResources": nil,
@@ -336,6 +383,62 @@ func TestStartSyncProcess(t *testing.T) {
 			assert.ElementsMatch(t, test.expectedData, receivedData)
 		})
 	}
+}
+
+// syncedFunctionAppValues and syncedWebsiteValues return the payloads the sync process emits for
+// the two App Service sites of resourceGraphWebsitesResponse. They are built on every call because
+// a sub-type receives its own copy of the payload of its parent.
+func syncedFunctionAppValues() map[string]any {
+	return map[string]any{
+		"id":   normalizedFunctionAppID,
+		"kind": functionAppKindValue,
+		"name": "my-function",
+		"type": websitesType,
+	}
+}
+
+func syncedWebsiteValues() map[string]any {
+	return map[string]any{
+		"id":   normalizedWebsiteID,
+		"kind": webAppKindValue,
+		"name": "my-site",
+		"type": websitesType,
+	}
+}
+
+// TestStartSyncProcessEmitsSubTypesAfterTheirParent checks the emission order the table driven test
+// cannot assert, because it compares the collected data as a set.
+func TestStartSyncProcessEmitsSubTypesAfterTheirParent(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	azureSource := &Source{
+		config: config{
+			SubscriptionID: testSubscriptionID,
+			clientOptions: &arm.ClientOptions{
+				ClientOptions: policy.ClientOptions{
+					Transport: fakeResourceGraphTransport(t),
+				},
+			},
+			azureCredentials: &fakeazcore.TokenCredential{},
+		},
+	}
+
+	dataChannel := make(chan source.Data, 10)
+	require.NoError(t, azureSource.StartSyncProcess(ctx, map[string]source.Extra{
+		websitesType:     {apiVersionKey: websitesAPIVersion},
+		functionAppsType: {apiVersionKey: websitesAPIVersion},
+	}, dataChannel))
+	close(dataChannel)
+
+	emittedTypes := make([]string, 0, 3)
+	for data := range dataChannel {
+		emittedTypes = append(emittedTypes, data.Type)
+	}
+
+	assert.Equal(t, []string{websitesType, functionAppsType, websitesType}, emittedTypes)
 }
 
 func TestCancelledSyncProcess(t *testing.T) {
@@ -490,6 +593,18 @@ func handleResourceGraphQueryRequest(t *testing.T, query armresourcegraph.QueryR
 				SkipToken:       nil,
 			},
 		}, nil
+	// the query is built from the Azure provider type alone: there is deliberately no branch for
+	// the functionapps sub-type key, so a query issued for it fails the test on the default case
+	case fmt.Sprintf(resourceGraphQueryTemplate, websitesType):
+		return &armresourcegraph.ClientResourcesResponse{
+			QueryResponse: armresourcegraph.QueryResponse{
+				TotalRecords:    to.Ptr(int64(2)),
+				Data:            resourceGraphWebsitesResponse,
+				ResultTruncated: to.Ptr(armresourcegraph.ResultTruncatedFalse),
+				Count:           to.Ptr(int64(2)),
+				SkipToken:       nil,
+			},
+		}, nil
 	case fmt.Sprintf(resourceGraphQueryTemplate, "Microsoft.Resources/malformedResources"):
 		return &armresourcegraph.ClientResourcesResponse{
 			QueryResponse: armresourcegraph.QueryResponse{
@@ -520,6 +635,24 @@ var (
 			"id":   "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/my-rg/providers/microsoft.containerservice/managedclusters/my-other-cluster",
 			"name": "my-other-cluster",
 			"type": "microsoft.containerservice/managedclusters",
+		},
+	}
+
+	// resourceGraphWebsitesResponse holds one App Service site carrying the functionapp kind token
+	// and one that does not, so that one query exercises both the emission of a sub-type and its
+	// absence.
+	resourceGraphWebsitesResponse = []any{
+		map[string]any{
+			"id":   azureFunctionAppID,
+			"kind": functionAppKindValue,
+			"name": "my-function",
+			"type": "microsoft.web/sites",
+		},
+		map[string]any{
+			"id":   azureWebsiteID,
+			"kind": webAppKindValue,
+			"name": "my-site",
+			"type": "microsoft.web/sites",
 		},
 	}
 
