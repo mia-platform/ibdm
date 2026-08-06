@@ -1,15 +1,15 @@
 apiVersion: azure.mia-platform.eu/v1
-itemFamily: azurefunctions
+itemFamily: functionapps
 type: functionapps
 extra:
   apiVersion: "2025-03-01"
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "azurefunctions-%s" .id | sha256sum }}
+    {{ printf "functionapps-%s" .id | sha256sum }}
   metadata:
     title: |-
-      {{ printf "Azure Function - %s" .name }}
+      {{ printf "Function App - %s" .name }}
   spec:
     name: "{{ .name }}"
     id: "{{ .id }}"
@@ -32,12 +32,12 @@ mappings:
     itemFamily: relationships
     deletePolicy: "cascade"
     identifier: |-
-      {{ $src := printf "urn:mia-platform-catalog:azure.mia-platform.eu:v1:AzureFunction:%s" (printf "azurefunctions-%s" .id | sha256sum) -}}
+      {{ $src := printf "urn:mia-platform-catalog:azure.mia-platform.eu:v1:FunctionApp:%s" (printf "functionapps-%s" .id | sha256sum) -}}
       {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu" -}}
       {{- $tgt := printf "urn:mia-platform-catalog:azure.mia-platform.eu:v1:Website:%s" (printf "%s" .id | sha256sum) -}}
       {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
     sourceRef: |-
-      urn:mia-platform-catalog:azure.mia-platform.eu:v1:AzureFunction:{{ printf "azurefunctions-%s" .id | sha256sum }}
+      urn:mia-platform-catalog:azure.mia-platform.eu:v1:FunctionApp:{{ printf "functionapps-%s" .id | sha256sum }}
     targetRef: |-
       urn:mia-platform-catalog:azure.mia-platform.eu:v1:Website:{{ (printf "%s" .id | sha256sum) }}
     typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"

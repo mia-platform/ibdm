@@ -118,7 +118,7 @@ alone.
 the tokens are compared one by one: a site whose kind is `myfunctionapp` is not a Function App.
 A site without a usable `kind` produces no sub-type and nothing fails.
 
-The mapping creates an `azurefunctions` item and, through its `extra` section, a `dependency`
+The mapping creates an `functionapps` item and, through its `extra` section, a `dependency`
 relationship from that item to the `websites` item of the same site.
 
 Both mapping files must be loaded for the sub-type to be produced. Loading
@@ -144,12 +144,12 @@ catalog:
 | deleted | why |
 | --- | --- |
 | the `websites` item | the resource itself |
-| the `azurefunctions` item | the only sub-type configured for its type |
-| the relationship of the `azurefunctions` item | its `deletePolicy` is `cascade` |
+| the `functionapps` item | the only sub-type configured for its type |
+| the relationship of the `functionapps` item | its `deletePolicy` is `cascade` |
 
 A deletion addressed to a sub-type item the resource never produced is inert: the catalog publish
 reports no per item outcome, so nothing fails and nothing is left behind. The identifier of a
-sub-type item also lives in its own namespace, `azurefunctions-<resource id>` for the Function Apps,
+sub-type item also lives in its own namespace, `functionapps-<resource id>` for the Function Apps,
 so such a deletion can only ever name the sub-type item of that very resource.
 
 Removing a sub-type mapping file is not the reverse operation: the items it already published stop
