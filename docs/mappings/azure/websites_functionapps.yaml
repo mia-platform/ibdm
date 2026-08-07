@@ -34,10 +34,10 @@ mappings:
     identifier: |-
       {{ $src := printf "urn:mia-platform-catalog:azure.mia-platform.eu:v1:FunctionApp:%s" (printf "functionapps-%s" .id | sha256sum) -}}
       {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu" -}}
-      {{- $tgt := printf "urn:mia-platform-catalog:azure.mia-platform.eu:v1:Website:%s" (printf "%s" .id | sha256sum) -}}
+      {{- $tgt := printf "urn:mia-platform-catalog:azure.mia-platform.eu:v1:WebSite:%s" (printf "%s" .id | sha256sum) -}}
       {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
     sourceRef: |-
       urn:mia-platform-catalog:azure.mia-platform.eu:v1:FunctionApp:{{ printf "functionapps-%s" .id | sha256sum }}
     targetRef: |-
-      urn:mia-platform-catalog:azure.mia-platform.eu:v1:Website:{{ (printf "%s" .id | sha256sum) }}
+      urn:mia-platform-catalog:azure.mia-platform.eu:v1:WebSite:{{ (printf "%s" .id | sha256sum) }}
     typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
