@@ -98,6 +98,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 	if err := s.validateForSync(); err != nil {
 		return handleError(err)
 	}
+	warnOrphanSubTypes(logger, typesToFilter)
 
 	client, err := s.azureGraphClient()
 	if err != nil {
@@ -111,66 +112,86 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 	})
 
 	for resType := range typesToFilter {
-		var query *string
-		switch resType {
-		case arm.ResourceGroupResourceType.String():
-			graphResourceType := arm.SubscriptionResourceType.String() + "/resourceGroups"
-			query = to.Ptr(fmt.Sprintf(resourceContainerGraphQueryTemplate, graphResourceType))
-		case arm.SubscriptionResourceType.String():
-			query = to.Ptr(fmt.Sprintf(resourceContainerGraphQueryTemplate, resType))
-		default:
-			query = to.Ptr(fmt.Sprintf(resourceGraphQueryTemplate, resType))
+		// a sub-type is emitted while handling its parent resource, and its type key is an internal
+		// dispatch key: querying Azure for it would only ask for a type that does not exist.
+		if isSubTypeKey(resType) {
+			logger.Debug("skipping sub-type mapping, it is emitted with its parent type", "type", resType)
+			continue
 		}
 
-		queryRequest := armresourcegraph.QueryRequest{
-			Subscriptions: []*string{to.Ptr(s.SubscriptionID)},
-			Query:         query,
-		}
-
-		for {
-			timestamp := timeProvider()
-			response, err := client.Resources(ctx, queryRequest, nil)
-
-			switch {
-			case errors.Is(err, context.Canceled):
-				logger.Debug("stopping sync process due to context cancellation")
-				return nil
-			case err != nil:
-				return handleError(err)
-			}
-
-			if data, ok := response.Data.([]any); ok {
-				for _, item := range data {
-					if values, ok := item.(map[string]any); ok {
-						normalizeResourceValues(logger, values, resType)
-						dataChannel <- source.Data{
-							Type:      resType,
-							Operation: source.DataOperationUpsert,
-							Time:      timestamp,
-							Values:    values,
-						}
-					} else {
-						// something very wrong is going on, print an error and continue
-						logger.Debug("retrieve data item is not a valid map")
-					}
-				}
-			} else {
-				// something very wrong is going on, print an error and continue
-				logger.Debug("response data is not a valid type")
-			}
-
-			if response.ResultTruncated == nil || *response.ResultTruncated == armresourcegraph.ResultTruncatedFalse {
-				break
-			}
-
-			queryRequest.Options = &armresourcegraph.QueryRequestOptions{
-				SkipToken: response.SkipToken,
-			}
+		if err := s.syncResourceType(ctx, client, resType, typesToFilter, dataChannel); err != nil {
+			// handleError swallows the cancellation, so a stopped sync process is not a failure
+			return handleError(err)
 		}
 	}
 
 	s.syncContext.Swap(nil)
 	return nil
+}
+
+// syncResourceType pages through every resource of resType the Resource Graph returns and emits
+// the item of each one of them, together with the ones of the sub-types they additionally produce.
+func (s *Source) syncResourceType(ctx context.Context, client *armresourcegraph.Client, resType string, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+	logger := logger.FromContext(ctx).WithName(logName)
+	queryRequest := armresourcegraph.QueryRequest{
+		Subscriptions: []*string{to.Ptr(s.SubscriptionID)},
+		Query:         resourceGraphQuery(resType),
+	}
+
+	for {
+		timestamp := timeProvider()
+		response, err := client.Resources(ctx, queryRequest, nil)
+
+		switch {
+		case errors.Is(err, context.Canceled):
+			logger.Debug("stopping sync process due to context cancellation")
+			return nil
+		case err != nil:
+			return err
+		}
+
+		if data, ok := response.Data.([]any); ok {
+			for _, item := range data {
+				if values, ok := item.(map[string]any); ok {
+					normalizeResourceValues(logger, values, resType)
+					for _, resourceData := range resourceDataToEmit(resType, values, typesToFilter, source.DataOperationUpsert, timestamp) {
+						dataChannel <- resourceData
+					}
+				} else {
+					// something very wrong is going on, print an error and continue
+					logger.Debug("retrieve data item is not a valid map")
+				}
+			}
+		} else {
+			// something very wrong is going on, print an error and continue
+			logger.Debug("response data is not a valid type")
+		}
+
+		if response.ResultTruncated == nil || *response.ResultTruncated == armresourcegraph.ResultTruncatedFalse {
+			break
+		}
+
+		queryRequest.Options = &armresourcegraph.QueryRequestOptions{
+			SkipToken: response.SkipToken,
+		}
+	}
+
+	s.syncContext.Swap(nil)
+	return nil
+}
+
+// resourceGraphQuery returns the Resource Graph query retrieving every resource of resType, taken
+// from the container table for the types that live in it.
+func resourceGraphQuery(resType string) *string {
+	switch resType {
+	case arm.ResourceGroupResourceType.String():
+		graphResourceType := arm.SubscriptionResourceType.String() + "/resourceGroups"
+		return to.Ptr(fmt.Sprintf(resourceContainerGraphQueryTemplate, graphResourceType))
+	case arm.SubscriptionResourceType.String():
+		return to.Ptr(fmt.Sprintf(resourceContainerGraphQueryTemplate, resType))
+	default:
+		return to.Ptr(fmt.Sprintf(resourceGraphQueryTemplate, resType))
+	}
 }
 
 // StartEventStream implement source.EventSource.
@@ -179,6 +200,7 @@ func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]
 	if err := s.validateForEventStream(); err != nil {
 		return handleError(err)
 	}
+	warnOrphanSubTypes(logger, typesToFilter)
 
 	client, err := s.azureClient()
 	if err != nil {
@@ -206,7 +228,9 @@ func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]
 }
 
 func partitionEventHandler(client *armresources.Client, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) eventHandler {
-	typesSlice := slices.Sorted(maps.Keys(typesToFilter))
+	// a sub-type type key is an internal dispatch key and can never be the type of an event
+	// subject, so it is left out of the set the subject type is resolved against.
+	typesSlice := slices.DeleteFunc(slices.Sorted(maps.Keys(typesToFilter)), isSubTypeKey)
 
 	return func(ctx context.Context, receivedData *azeventhubs.ReceivedEventData) {
 		logger := logger.FromContext(ctx).WithName(logName)
@@ -258,21 +282,17 @@ func partitionEventHandler(client *armresources.Client, typesToFilter map[string
 				}
 
 				normalizeResourceValues(logger, values, resourceType)
-				dataChannel <- source.Data{
-					Type:      resourceType,
-					Operation: source.DataOperationUpsert,
-					Time:      *envelope.Time,
-					Values:    values,
+				for _, resourceData := range resourceDataToEmit(resourceType, values, typesToFilter, source.DataOperationUpsert, *envelope.Time) {
+					dataChannel <- resourceData
 				}
 			case azsystemevents.TypeResourceDeleteSuccess:
 				logger.Trace("deleting resource", "resourceType", resourceType)
+				// the event carries only the resource id, so no sub-type check can run here and a
+				// delete is emitted for every configured sub-type of the resource type.
 				values := map[string]any{idKey: resID.String()}
 				normalizeResourceValues(logger, values, resourceType)
-				dataChannel <- source.Data{
-					Type:      resourceType,
-					Operation: source.DataOperationDelete,
-					Time:      *envelope.Time,
-					Values:    values,
+				for _, resourceData := range resourceDataToEmit(resourceType, values, typesToFilter, source.DataOperationDelete, *envelope.Time) {
+					dataChannel <- resourceData
 				}
 			default:
 				logger.Trace("skipping resource", "resourceType", resourceType, "eventType", envelope.Type, "apiVersion", apiVersion)
