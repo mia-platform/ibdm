@@ -145,7 +145,7 @@ func (s *Source) syncResourceType(ctx context.Context, client *armresourcegraph.
 		switch {
 		case errors.Is(err, context.Canceled):
 			logger.Debug("stopping sync process due to context cancellation")
-			return err
+			return nil
 		case err != nil:
 			return err
 		}
@@ -168,13 +168,16 @@ func (s *Source) syncResourceType(ctx context.Context, client *armresourcegraph.
 		}
 
 		if response.ResultTruncated == nil || *response.ResultTruncated == armresourcegraph.ResultTruncatedFalse {
-			return nil
+			break
 		}
 
 		queryRequest.Options = &armresourcegraph.QueryRequestOptions{
 			SkipToken: response.SkipToken,
 		}
 	}
+
+	s.syncContext.Swap(nil)
+	return nil
 }
 
 // resourceGraphQuery returns the Resource Graph query retrieving every resource of resType, taken
