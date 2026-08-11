@@ -17,6 +17,7 @@ mappings:
     plan: "{{ .plan }}"
     apiVersionConstraintMinApiVersion: "{{ .properties.apiVersionConstraint.minApiVersion | toJSON }}"
     certificates: "{{ .properties.certificates | toJSON }}"
+    configurationApi: "{{ .properties.configurationApi | toJSON }}"
     createdAtUtc: "{{ .properties.createdAtUtc }}"
     customProperties: "{{ .properties.customProperties | toJSON }}"
     dataApiUrl: "{{ .properties.dataApiUrl }}"
