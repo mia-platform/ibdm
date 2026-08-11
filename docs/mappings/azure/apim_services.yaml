@@ -1,0 +1,45 @@
+apiVersion: azure.mia-platform.eu/v1
+itemFamily: apimservices
+type: Microsoft.ApiManagement/Service
+extra:
+  apiVersion: "2025-03-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ .name }}"
+  spec:
+    name: "{{ .name }}"
+    id: "{{ .id }}"
+    kind: "{{ .kind }}"
+    location: "{{ .location }}"
+    managedBy: "{{ .managedBy }}"
+    plan: "{{ .plan }}"
+    apiVersionConstraintMinApiVersion: "{{ .properties.apiVersionConstraint.minApiVersion | toJSON }}"
+    certificates: "{{ .properties.certificates | toJSON }}"
+    createdAtUtc: "{{ .properties.createdAtUtc }}"
+    customProperties: "{{ .properties.customProperties | toJSON }}"
+    dataApiUrl: "{{ .properties.dataApiUrl }}"
+    developerPortalStatus: "{{ .properties.developerPortalStatus }}"
+    developerPortalUrl: "{{ .properties.developerPortalUrl }}"
+    disableGateway: "{{ .properties.disableGateway }}"
+    gatewayRegionalUrl: "{{ .properties.gatewayRegionalUrl }}"
+    gatewayUrl: "{{ .properties.gatewayUrl }}"
+    legacyPortalStatus: "{{ .properties.legacyPortalStatus }}"
+    managementApiUrl: "{{ .properties.managementApiUrl }}"
+    notificationSenderEmail: "{{ .properties.notificationSenderEmail }}"
+    platformVersion: "{{ .properties.platformVersion }}"
+    portalUrl: "{{ .properties.portalUrl }}"
+    provisioningState: "{{ .properties.provisioningState }}"
+    publicIPAddresses: "{{ .properties.publicIPAddresses | toJSON }}"
+    publicNetworkAccess: "{{ .properties.publicNetworkAccess }}"
+    publisherEmail: "{{ .properties.publisherEmail }}"
+    publisherName: "{{ .properties.publisherName }}"
+    scmUrl: "{{ .properties.scmUrl }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}
