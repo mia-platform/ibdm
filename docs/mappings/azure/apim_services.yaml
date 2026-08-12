@@ -16,7 +16,13 @@ mappings:
     configurationApi: "{{ .properties.configurationApi | toJSON }}"
     createdAtUtc: "{{ .properties.createdAtUtc }}"
     customProperties: "{{ .properties.customProperties | toJSON }}"
-    dataApiUrl: "{{ .properties.dataApiUrl }}"
+    dataApiUrl: |-
+      {{ $dataApiUrl := (get "dataApiUrl" .properties "") -}}
+      {{- if $dataApiUrl -}}
+        {{- .properties.dataApiUrl -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     developerPortalStatus: "{{ .properties.developerPortalStatus }}"
     developerPortalUrl: "{{ .properties.developerPortalUrl }}"
     disableGateway: "{{ .properties.disableGateway }}"
@@ -26,7 +32,13 @@ mappings:
     managementApiUrl: "{{ .properties.managementApiUrl }}"
     notificationSenderEmail: "{{ .properties.notificationSenderEmail }}"
     platformVersion: "{{ .properties.platformVersion }}"
-    portalUrl: "{{ .properties.portalUrl }}"
+    portalUrl: |-
+      {{ $portalUrl := (get "portalUrl" .properties "") -}}
+      {{- if $portalUrl -}}
+        {{- .properties.portalUrl -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     provisioningState: "{{ .properties.provisioningState }}"
     publicIPAddresses: "{{ .properties.publicIPAddresses | toJSON }}"
     publicNetworkAccess: "{{ .properties.publicNetworkAccess }}"

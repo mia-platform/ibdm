@@ -14,7 +14,8 @@ mappings:
     enableRbacAuthorization: "{{ .properties.enableRbacAuthorization }}"
     enableSoftDelete: "{{ .properties.enableSoftDelete }}"
     enabledForDeployment: "{{ .properties.enabledForDeployment }}"
-    enabledForDiskEncryption: "{{ .properties.enabledForDiskEncryption }}"
+    enabledForDiskEncryption: |-
+      {{ get "enabledForDiskEncryption" .properties "" }}
     provisioningState: "{{ .properties.provisioningState }}"
     publicNetworkAccess: "{{ .properties.publicNetworkAccess }}"
     tenantId: "{{ .properties.tenantId }}"

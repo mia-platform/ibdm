@@ -12,7 +12,13 @@ mappings:
     name: "{{ .name }}"
     id: "{{ .id }}"
     dailyMaxActiveDevices: "{{ .properties.dailyMaxActiveDevices }}"
-    hubName: "{{ .properties.name }}"
+    hubName: |-
+      {{ $name := (get "name" .properties "") -}}
+      {{- if $name -}}
+        {{- .properties.name -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     registrationTtl: "{{ .properties.registrationTtl }}"
     tags: |-
       {{ $tags := (get "tags" . "") -}}
