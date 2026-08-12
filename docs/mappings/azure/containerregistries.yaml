@@ -1,0 +1,82 @@
+apiVersion: azure.mia-platform.eu/v1
+itemFamily: containerregistries
+type: Microsoft.ContainerRegistry/registries
+extra:
+  apiVersion: "2026-01-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ .name }}"
+  spec:
+    name: "{{ .name }}"
+    id: "{{ .id }}"
+    identity: |-
+      {{ $identity := (get "identity" . "") -}}
+      {{- if $identity -}}
+        {{- .identity -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    kind: "{{ .kind }}"
+    location: "{{ .location }}"
+    managedBy: "{{ .managedBy }}"
+    plan: |-
+      {{ $plan := (get "plan" . "") -}}
+      {{- if $plan -}}
+        {{- .plan -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    adminUserEnabled: "{{ .properties.adminUserEnabled }}"
+    anonymousPullEnabled: "{{ .properties.anonymousPullEnabled }}"
+    creationDate: "{{ .properties.creationDate }}"
+    dataEndpointEnabled: "{{ .properties.dataEndpointEnabled }}"
+    dataEndpointHostNames: "{{ .properties.dataEndpointHostNames | toJSON }}"
+    encryptionStatus: |-
+      {{ $encryption := get "encryption" .properties (object) -}}
+      {{- get "status" $encryption "" | quote }}
+    endpointProtocol: "{{ .properties.endpointProtocol }}"
+    loginServer: "{{ .properties.loginServer }}"
+    networkRuleBypassAllowedForTasks: "{{ .properties.networkRuleBypassAllowedForTasks }}"
+    networkRuleBypassOptions: "{{ .properties.networkRuleBypassOptions }}"
+    azureADAuthenticationAsArmPolicyStatus: |-
+      {{ $policies := get "policies" .properties (object) -}}
+      {{- $policy := get "azureADAuthenticationAsArmPolicy" $policies (object) -}}
+      {{- get "status" $policy "" | quote }}
+    exportPolicyStatus: |-
+      {{ $policies := get "policies" .properties (object) -}}
+      {{- $policy := get "exportPolicy" $policies (object) -}}
+      {{- get "status" $policy "" | quote }}
+    quarantinePolicyStatus: |-
+      {{ $policies := get "policies" .properties (object) -}}
+      {{- $policy := get "quarantinePolicy" $policies (object) -}}
+      {{- get "status" $policy "" | quote }}
+    retentionPolicyDays: |-
+      {{ $policies := get "policies" .properties (object) -}}
+      {{- $policy := get "retentionPolicy" $policies (object) -}}
+      {{- $days := get "days" $policy -1 }}
+      {{- $days }}
+    retentionPolicyStatus: |-
+      {{ $policies := get "policies" .properties (object) -}}
+      {{- $policy := get "retentionPolicy" $policies (object) -}}
+      {{- get "status" $policy "" | quote }}
+    softDeletePolicyRetentionDays: |-
+      {{ $policies := get "policies" .properties (object) -}}
+      {{- $policy := get "softDeletePolicy" $policies (object) -}}
+      {{- $days := get "retentionDays" $policy -1 }}
+      {{- $days }}
+    softDeletePolicyStatus: |-
+      {{ $policies := get "policies" .properties (object) -}}
+      {{- $policy := get "softDeletePolicy" $policies (object) -}}
+      {{- get "status" $policy "" | quote }}
+    provisioningState: "{{ .properties.provisioningState }}"
+    publicNetworkAccess: "{{ .properties.publicNetworkAccess }}"
+    zoneRedundancy: "{{ .properties.zoneRedundancy }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}
