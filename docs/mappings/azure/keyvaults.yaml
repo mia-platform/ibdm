@@ -1,0 +1,45 @@
+apiVersion: azure.mia-platform.eu/v1
+itemFamily: keyvaults
+type: Microsoft.KeyVault/vaults
+extra:
+  apiVersion: "2026-01-01"
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ .name }}"
+  spec:
+    name: "{{ .name }}"
+    id: "{{ .id }}"
+    identity: |-
+      {{ $identity := (get "identity" . "") -}}
+      {{- if $identity -}}
+        {{- .identity -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    kind: "{{ .kind }}"
+    location: "{{ .location }}"
+    managedBy: "{{ .managedBy }}"
+    plan: |-
+      {{ $plan := (get "plan" . "") -}}
+      {{- if $plan -}}
+        {{- .plan -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    enableRbacAuthorization: "{{ .properties.enableRbacAuthorization }}"
+    enableSoftDelete: "{{ .properties.enableSoftDelete }}"
+    enabledForDeployment: "{{ .properties.enabledForDeployment }}"
+    enabledForDiskEncryption: "{{ .properties.enabledForDiskEncryption }}"
+    provisioningState: "{{ .properties.provisioningState }}"
+    publicNetworkAccess: "{{ .properties.publicNetworkAccess }}"
+    tenantId: "{{ .properties.tenantId }}"
+    vaultUri: "{{ .properties.vaultUri }}"
+    tags: |-
+      {{ $tags := (get "tags" . "") -}}
+      {{- if $tags -}}
+        {{- $tags | toJSON  -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}
