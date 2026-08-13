@@ -2,7 +2,7 @@ apiVersion: azure.mia-platform.eu/v1
 itemFamily: apimservices
 type: Microsoft.ApiManagement/Service
 extra:
-  apiVersion: "2025-03-01"
+  apiVersion: "2024-05-01"
 syncable: true
 mappings:
   identifier: "{{ .id | sha256sum }}"
@@ -11,16 +11,36 @@ mappings:
   spec:
     name: "{{ .name }}"
     id: "{{ .id }}"
-    kind: "{{ .kind }}"
-    location: "{{ .location }}"
-    managedBy: "{{ .managedBy }}"
-    plan: "{{ .plan }}"
-    apiVersionConstraintMinApiVersion: "{{ .properties.apiVersionConstraint.minApiVersion | toJSON }}"
-    certificates: "{{ .properties.certificates | toJSON }}"
-    configurationApi: "{{ .properties.configurationApi | toJSON }}"
+    apiVersionConstraintMinApiVersion: |-
+      {{ $apiVersionConstraintMinApiVersion := (get "minApiVersion" .properties.apiVersionConstraint "") -}}
+      {{- if $apiVersionConstraintMinApiVersion -}}
+        {{- $apiVersionConstraintMinApiVersion -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    certificates: |-
+      {{ $certificates := (get "certificates" .properties "") -}}
+      {{- if $certificates -}}
+        {{- .properties.certificates | toJSON -}}
+      {{- else -}}
+        {{- list | toJSON -}}
+      {{- end }}
+    configurationApi: |-
+      {{ $configurationApi := (get "configurationApi" .properties "") -}}
+      {{- if $configurationApi -}}
+        {{- .properties.configurationApi | toJSON -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}
     createdAtUtc: "{{ .properties.createdAtUtc }}"
     customProperties: "{{ .properties.customProperties | toJSON }}"
-    dataApiUrl: "{{ .properties.dataApiUrl }}"
+    dataApiUrl: |-
+      {{ $dataApiUrl := (get "dataApiUrl" .properties "") -}}
+      {{- if $dataApiUrl -}}
+        {{- .properties.dataApiUrl -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     developerPortalStatus: "{{ .properties.developerPortalStatus }}"
     developerPortalUrl: "{{ .properties.developerPortalUrl }}"
     disableGateway: "{{ .properties.disableGateway }}"
@@ -30,7 +50,13 @@ mappings:
     managementApiUrl: "{{ .properties.managementApiUrl }}"
     notificationSenderEmail: "{{ .properties.notificationSenderEmail }}"
     platformVersion: "{{ .properties.platformVersion }}"
-    portalUrl: "{{ .properties.portalUrl }}"
+    portalUrl: |-
+      {{ $portalUrl := (get "portalUrl" .properties "") -}}
+      {{- if $portalUrl -}}
+        {{- .properties.portalUrl -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     provisioningState: "{{ .properties.provisioningState }}"
     publicIPAddresses: "{{ .properties.publicIPAddresses | toJSON }}"
     publicNetworkAccess: "{{ .properties.publicNetworkAccess }}"

@@ -2,7 +2,7 @@ apiVersion: azure.mia-platform.eu/v1
 itemFamily: notificationhubs
 type: Microsoft.NotificationHubs/namespaces/notificationhubs
 extra:
-  apiVersion: "2026-01-01"
+  apiVersion: "2017-04-01"
 syncable: true
 mappings:
   identifier: "{{ .id | sha256sum }}"
@@ -11,18 +11,14 @@ mappings:
   spec:
     name: "{{ .name }}"
     id: "{{ .id }}"
-    kind: "{{ .kind }}"
-    location: "{{ .location }}"
-    managedBy: "{{ .managedBy }}"
-    plan: |-
-      {{ $plan := (get "plan" . "") -}}
-      {{- if $plan -}}
-        {{- .plan -}}
+    dailyMaxActiveDevices: "{{ .properties.dailyMaxActiveDevices }}"
+    hubName: |-
+      {{ $name := (get "name" .properties "") -}}
+      {{- if $name -}}
+        {{- .properties.name -}}
       {{- else -}}
         {{- "" | quote -}}
       {{- end }}
-    dailyMaxActiveDevices: "{{ .properties.dailyMaxActiveDevices }}"
-    hubName: "{{ .properties.name }}"
     registrationTtl: "{{ .properties.registrationTtl }}"
     tags: |-
       {{ $tags := (get "tags" . "") -}}
