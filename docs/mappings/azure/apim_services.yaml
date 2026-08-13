@@ -11,9 +11,27 @@ mappings:
   spec:
     name: "{{ .name }}"
     id: "{{ .id }}"
-    apiVersionConstraintMinApiVersion: "{{ .properties.apiVersionConstraint.minApiVersion | toJSON }}"
-    certificates: "{{ .properties.certificates | toJSON }}"
-    configurationApi: "{{ .properties.configurationApi | toJSON }}"
+    apiVersionConstraintMinApiVersion: |-
+      {{ $apiVersionConstraintMinApiVersion := (get "minApiVersion" .properties.apiVersionConstraint "") -}}
+      {{- if $apiVersionConstraintMinApiVersion -}}
+        {{- $apiVersionConstraintMinApiVersion -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
+    certificates: |-
+      {{ $certificates := (get "certificates" .properties "") -}}
+      {{- if $certificates -}}
+        {{- .properties.certificates | toJSON -}}
+      {{- else -}}
+        {{- list | toJSON -}}
+      {{- end }}
+    configurationApi: |-
+      {{ $configurationApi := (get "configurationApi" .properties "") -}}
+      {{- if $configurationApi -}}
+        {{- .properties.configurationApi | toJSON -}}
+      {{- else -}}
+        {{- object | toJSON -}}
+      {{- end }}
     createdAtUtc: "{{ .properties.createdAtUtc }}"
     customProperties: "{{ .properties.customProperties | toJSON }}"
     dataApiUrl: |-
