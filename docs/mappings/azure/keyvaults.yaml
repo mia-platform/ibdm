@@ -15,7 +15,12 @@ mappings:
     enableSoftDelete: "{{ .properties.enableSoftDelete }}"
     enabledForDeployment: "{{ .properties.enabledForDeployment }}"
     enabledForDiskEncryption: |-
-      {{ get "enabledForDiskEncryption" .properties "" }}
+      {{ $enabledForDiskEncryption := (get "enabledForDiskEncryption" .properties "") -}}
+      {{- if $enabledForDiskEncryption -}}
+        {{- .properties.enabledForDiskEncryption -}}
+      {{- else -}}
+        {{- false -}}
+      {{- end }}
     provisioningState: "{{ .properties.provisioningState }}"
     publicNetworkAccess: "{{ .properties.publicNetworkAccess }}"
     tenantId: "{{ .properties.tenantId }}"
