@@ -29,7 +29,7 @@ type config struct {
 	// header. Always required: it selects whose scan results to read.
 	Customer string `env:"EASM_CUSTOMER"`
 	// Token authenticates the caller to the backend via Authorization: Bearer.
-	// Optional for now — the backend has no auth yet; set it once auth lands.
+	// Optional: when set, it is sent as the Authorization: Bearer header.
 	Token string `env:"EASM_TOKEN"`
 	// HTTPTimeout bounds each request to the endpoint.
 	HTTPTimeout time.Duration `env:"EASM_HTTP_TIMEOUT" envDefault:"30s"`
@@ -52,8 +52,8 @@ func loadConfigFromEnv() (config, error) {
 
 // validateConfig checks that the required config fields are non-empty. Customer
 // is always required: it scopes the request to a single customer via the
-// X-Customer header. Token is optional for now (the backend has no auth yet)
-// and, once set, authenticates the caller via Authorization: Bearer.
+// X-Customer header. Token is optional and, when set, authenticates the caller
+// via Authorization: Bearer.
 func validateConfig(cfg config) error {
 	missing := make([]string, 0)
 

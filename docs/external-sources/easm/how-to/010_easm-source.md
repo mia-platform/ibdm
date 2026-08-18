@@ -25,7 +25,7 @@ All configuration is read from environment variables.
 | --- | --- | --- | --- |
 | `EASM_BASE_URL` | Yes | _(empty)_ | Base URL of the EASM backend (e.g. `https://easm.example.com`). |
 | `EASM_CUSTOMER` | Yes | _(empty)_ | Customer identifier. Scopes the request to a single customer via the `X-Customer` header — it selects whose scan results to read. |
-| `EASM_TOKEN` | No | _(empty)_ | Bearer token authenticating the caller. Sent as `Authorization: Bearer <token>` when set. Optional for now — the backend has no auth yet; set it once auth lands. |
+| `EASM_TOKEN` | No | _(empty)_ | Bearer token authenticating the caller. When set, it is sent as `Authorization: Bearer <token>`. |
 | `EASM_DATA_PATH` | No | `/data` | Path of the read endpoint appended to `EASM_BASE_URL`. |
 | `EASM_HTTP_TIMEOUT` | No | `30s` | Timeout for each HTTP request, parsed as a Go `time.Duration`. |
 
@@ -70,8 +70,7 @@ The source scopes every request to a single customer with the `X-Customer` heade
 `EASM_CUSTOMER` — this is always sent.
 
 When `EASM_TOKEN` is set, the source authenticates the caller with an
-`Authorization: Bearer <token>` header. The backend has no authentication yet, so the token is
-optional for now; set it once auth lands.
+`Authorization: Bearer <token>` header.
 
 ## Example Mapping Files
 
