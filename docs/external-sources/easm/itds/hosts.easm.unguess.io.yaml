@@ -3,17 +3,19 @@
 apiVersion: mia-platform.eu/v1alpha1
 kind: ItemTypeDefinition
 metadata:
-  name: hosts.easm.mia-platform.eu
+  name: hosts.easm.unguess.io
 spec:
-  group: easm.mia-platform.eu
+  group: easm.unguess.io
   names:
     kind: Host
     plural: hosts
+    singular: host
     displayPlural: Hosts
+    displaySingular: Host
   scope: Organization
   versions:
     - deprecated: false
-      name: v1alpha1
+      name: v1
       schema:
         openAPIV31Schema:
           type: object

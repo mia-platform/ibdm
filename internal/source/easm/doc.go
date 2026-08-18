@@ -1,3 +1,4 @@
+// Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
 // Package easm provides a source implementation that integrates EASM scan

@@ -1,4 +1,4 @@
-apiVersion: easm.mia-platform.eu/v1alpha1
+apiVersion: easm.unguess.io/v1
 itemFamily: domains
 type: domain
 syncable: true

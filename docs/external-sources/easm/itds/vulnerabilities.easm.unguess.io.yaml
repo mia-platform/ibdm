@@ -3,17 +3,19 @@
 apiVersion: mia-platform.eu/v1alpha1
 kind: ItemTypeDefinition
 metadata:
-  name: vulnerabilities.easm.mia-platform.eu
+  name: vulnerabilities.easm.unguess.io
 spec:
-  group: easm.mia-platform.eu
+  group: easm.unguess.io
   names:
     kind: Vulnerability
     plural: vulnerabilities
+    singular: vulnerability
     displayPlural: Vulnerabilities
+    displaySingular: Vulnerability
   scope: Organization
   versions:
     - deprecated: false
-      name: v1alpha1
+      name: v1
       schema:
         openAPIV31Schema:
           type: object
