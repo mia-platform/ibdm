@@ -20,6 +20,7 @@ import (
 	azuredevops "github.com/mia-platform/ibdm/internal/source/azure-devops"
 	"github.com/mia-platform/ibdm/internal/source/bitbucket"
 	"github.com/mia-platform/ibdm/internal/source/console"
+	"github.com/mia-platform/ibdm/internal/source/easm"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 	"github.com/mia-platform/ibdm/internal/source/github"
 	"github.com/mia-platform/ibdm/internal/source/gitlab"
@@ -36,6 +37,8 @@ const (
 	bitbucketDescription   = "Bitbucket integration"
 	consoleSource          = "console"
 	consoleDescription     = "Mia Platform Console integration"
+	easmSource             = "easm"
+	easmDescription        = "External Attack Surface Management (EASM) integration"
 	gcpSource              = "gcp"
 	gcpDescription         = "Google Cloud Platform integration"
 	githubSource           = "github"
@@ -70,6 +73,7 @@ var (
 		azureSource:       azureDescription,
 		bitbucketSource:   bitbucketDescription,
 		consoleSource:     consoleDescription,
+		easmSource:        easmDescription,
 		gcpSource:         gcpDescription,
 		githubSource:      githubDescription,
 		gitlabSource:      gitlabDescription,
@@ -127,6 +131,8 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 		return github.NewSource()
 	case consoleSource:
 		return console.NewSource()
+	case easmSource:
+		return easm.NewSource()
 	case gitlabSource:
 		return gitlab.NewSource()
 	case nexusSource:
