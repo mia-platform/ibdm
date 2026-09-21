@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://cdn.mia-platform.eu/catalog/v1alpha1/mia-platform.eu.v1alpha1.ItemTypeDefinition.json
+---
+apiVersion: easm.unguess.io/v1
+kind: ItemTypeDefinition
+metadata:
+  name: endpoints.easm.unguess.io
+spec:
+  group: easm.unguess.io
+  names:
+    kind: Endpoint
+    plural: endpoints
+    singular: endpoint
+    displayPlural: Endpoints
+    displaySingular: Endpoint
+  scope: Organization
+  versions:
+    - deprecated: false
+      name: v1
+      schema:
+        openAPIV31Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                host:
+                  description: The host the endpoint belongs to.
+                  type: string
+                  title: Host
+                port:
+                  description: The port the endpoint listens on.
+                  type: integer
+                  title: Port
+                http:
+                  description: HTTP response details for the endpoint (absent when no HTTP answer).
+                  type: object
+                  title: HTTP
+                  properties:
+                    url:
+                      type: string
+                      title: URL
+                    scheme:
+                      type: string
+                      title: Scheme
+                    status_codes:
+                      type: array
+                      title: Status Codes
+                      items:
+                        type: integer
+                    content_length:
+                      type: integer
+                      title: Content Length
+                    title:
+                      type: string
+                      title: Title
+                    technologies:
+                      type: array
+                      title: Technologies
+                      items:
+                        type: string
+                tls:
+                  description: TLS report for the endpoint (success shape or an error; stored as-is).
+                  type: object
+                  title: TLS
+                  additionalProperties: true
+      served: true
+      storage: true

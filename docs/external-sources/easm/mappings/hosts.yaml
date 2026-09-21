@@ -1,0 +1,47 @@
+apiVersion: easm.unguess.io/v1
+itemFamily: hosts
+type: host
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ get \"fqdn\" . .id | quote }}"
+  spec:
+    fqdn: "{{ get \"fqdn\" . \"\" | quote }}"
+    status_code: "{{ get \"status_code\" . \"\" | quote }}"
+    a: "{{ get \"a\" . (list) | toJSON }}"
+    aaaa: "{{ get \"aaaa\" . (list) | toJSON }}"
+    cname: "{{ get \"cname\" . (list) | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ if first (get "a" . (list)) }}true{{ else }}false{{ end }}
+      identifier: |-
+        {{ $ip := first (get "a" . (list)) -}}
+        {{- $src := printf "urn:mia-platform-catalog:easm.unguess.io:v1:Ip:%s" (printf "%s" $ip | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:easm.unguess.io:v1:Host:%s" (.id | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:easm.unguess.io:v1:Ip:{{ printf "%s" (first (get "a" . (list))) | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:easm.unguess.io:v1:Host:{{ .id | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ if first (get "aaaa" . (list)) }}true{{ else }}false{{ end }}
+      identifier: |-
+        {{ $ip := first (get "aaaa" . (list)) -}}
+        {{- $src := printf "urn:mia-platform-catalog:easm.unguess.io:v1:Ip:%s" (printf "%s" $ip | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:easm.unguess.io:v1:Host:%s" (.id | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:easm.unguess.io:v1:Ip:{{ printf "%s" (first (get "aaaa" . (list))) | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:easm.unguess.io:v1:Host:{{ .id | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

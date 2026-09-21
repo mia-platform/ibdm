@@ -1,0 +1,29 @@
+apiVersion: easm.unguess.io/v1
+itemFamily: endpoints
+type: endpoint
+syncable: true
+mappings:
+  identifier: "{{ .id | sha256sum }}"
+  metadata:
+    title: "{{ .id | quote }}"
+  spec:
+    host: "{{ get \"host\" . \"\" | quote }}"
+    port: "{{ get \"port\" . 0 }}"
+    http: "{{ get \"http\" . (object) | toJSON }}"
+    tls: "{{ get \"tls\" . (object) | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ if get "host" . "" }}true{{ else }}false{{ end }}
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:easm.unguess.io:v1:Endpoint:%s" (.id | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:easm.unguess.io:v1:Host:%s" (printf "%s" .host | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:easm.unguess.io:v1:Endpoint:{{ .id | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:easm.unguess.io:v1:Host:{{ printf "%s" .host | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
