@@ -17,6 +17,10 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
+// testMappingName names the single mapping a test registers for a type, reproducing the
+// one-extra-per-type configuration sources received before extras were grouped by mapping.
+const testMappingName = "my-mapping"
+
 func TestNewSource(t *testing.T) {
 	testCases := map[string]struct {
 		envVars   map[string]string
@@ -76,14 +80,14 @@ func TestStartSyncProcess(t *testing.T) {
 	timeSource = func() time.Time { return fixedTime }
 
 	testCases := map[string]struct {
-		typesToSync  map[string]source.Extra
+		typesToSync  map[string]source.MappingExtras
 		handler      http.HandlerFunc
 		expectedData []source.Data
 		expectErr    error
 	}{
 		"single repository type with data": {
-			typesToSync: map[string]source.Extra{
-				repositoryType: {"apiVersion": "2026-03-10"},
+			typesToSync: map[string]source.MappingExtras{
+				repositoryType: {testMappingName: {"apiVersion": "2026-03-10"}},
 			},
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -108,7 +112,7 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"unknown type is skipped": {
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				"unknowntype": {},
 			},
 			handler: func(_ http.ResponseWriter, _ *http.Request) {
@@ -117,8 +121,8 @@ func TestStartSyncProcess(t *testing.T) {
 			expectedData: nil,
 		},
 		"mixed known and unknown types": {
-			typesToSync: map[string]source.Extra{
-				repositoryType: {"apiVersion": "2026-03-10"},
+			typesToSync: map[string]source.MappingExtras{
+				repositoryType: {testMappingName: {"apiVersion": "2026-03-10"}},
 				"unknowntype":  {},
 			},
 			handler: func(w http.ResponseWriter, _ *http.Request) {
@@ -137,8 +141,8 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"empty API response pushes no data": {
-			typesToSync: map[string]source.Extra{
-				repositoryType: {"apiVersion": "2026-03-10"},
+			typesToSync: map[string]source.MappingExtras{
+				repositoryType: {testMappingName: {"apiVersion": "2026-03-10"}},
 			},
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -147,8 +151,8 @@ func TestStartSyncProcess(t *testing.T) {
 			expectedData: nil,
 		},
 		"API error returns wrapped error": {
-			typesToSync: map[string]source.Extra{
-				repositoryType: {"apiVersion": "2026-03-10"},
+			typesToSync: map[string]source.MappingExtras{
+				repositoryType: {testMappingName: {"apiVersion": "2026-03-10"}},
 			},
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -158,8 +162,8 @@ func TestStartSyncProcess(t *testing.T) {
 			expectErr:    ErrGitHubSource,
 		},
 		"repository with full_name fetches languages": {
-			typesToSync: map[string]source.Extra{
-				repositoryType: {"apiVersion": "2026-03-10"},
+			typesToSync: map[string]source.MappingExtras{
+				repositoryType: {testMappingName: {"apiVersion": "2026-03-10"}},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -187,8 +191,8 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"languages API error is silently skipped": {
-			typesToSync: map[string]source.Extra{
-				repositoryType: {"apiVersion": "2026-03-10"},
+			typesToSync: map[string]source.MappingExtras{
+				repositoryType: {testMappingName: {"apiVersion": "2026-03-10"}},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -277,7 +281,7 @@ func TestStartSyncProcessConcurrencyGuard(t *testing.T) {
 	s.syncLock.Lock()
 
 	results := make(chan source.Data, 100)
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{
 		repositoryType: {},
 	}, results)
 
@@ -311,8 +315,8 @@ func TestStartSyncProcessContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately
 
 	results := make(chan source.Data, 100)
-	err := s.StartSyncProcess(ctx, map[string]source.Extra{
-		repositoryType: {"apiVersion": "2026-03-10"},
+	err := s.StartSyncProcess(ctx, map[string]source.MappingExtras{
+		repositoryType: {testMappingName: {"apiVersion": "2026-03-10"}},
 	}, results)
 
 	// Context cancellation returns nil
@@ -352,6 +356,51 @@ func TestApiVersionFromExtra(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, tc.expected, apiVersionFromExtra(tc.extra))
+		})
+	}
+}
+
+func TestAPIVersionExtra(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		extras   source.MappingExtras
+		expected string
+	}{
+		"single mapping with explicit version": {
+			extras:   source.MappingExtras{"my-mapping": {"apiVersion": "2024-01-01"}},
+			expected: "2024-01-01",
+		},
+		"single mapping without version uses default": {
+			extras:   source.MappingExtras{"my-mapping": nil},
+			expected: defaultAPIVersion,
+		},
+		"no mappings uses default": {
+			extras:   nil,
+			expected: defaultAPIVersion,
+		},
+		"first mapping in lexical order wins": {
+			extras: source.MappingExtras{
+				"b-mapping": {"apiVersion": "2025-01-01"},
+				"a-mapping": {"apiVersion": "2024-01-01"},
+			},
+			expected: "2024-01-01",
+		},
+		"mappings without a usable version are skipped": {
+			extras: source.MappingExtras{
+				"a-mapping": {"apiVersion": ""},
+				"b-mapping": {"apiVersion": 123},
+				"c-mapping": nil,
+				"d-mapping": {"apiVersion": "2025-01-01"},
+			},
+			expected: "2025-01-01",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.expected, apiVersionFromExtra(apiVersionExtra(tc.extras)))
 		})
 	}
 }
@@ -547,14 +596,14 @@ func TestStartSyncProcessWithWorkflowRunType(t *testing.T) {
 	timeSource = func() time.Time { return fixedTime }
 
 	testCases := map[string]struct {
-		typesToSync  map[string]source.Extra
+		typesToSync  map[string]source.MappingExtras
 		handler      http.HandlerFunc
 		expectedData []source.Data
 		expectErr    error
 	}{
 		"workflow_run only": {
-			typesToSync: map[string]source.Extra{
-				workflowRunType: {"apiVersion": "2026-03-10"},
+			typesToSync: map[string]source.MappingExtras{
+				workflowRunType: {testMappingName: {"apiVersion": "2026-03-10"}},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -580,9 +629,9 @@ func TestStartSyncProcessWithWorkflowRunType(t *testing.T) {
 			},
 		},
 		"both repository and workflow_run types": {
-			typesToSync: map[string]source.Extra{
-				repositoryType:  {"apiVersion": "2026-03-10"},
-				workflowRunType: {"apiVersion": "2026-03-10"},
+			typesToSync: map[string]source.MappingExtras{
+				repositoryType:  {testMappingName: {"apiVersion": "2026-03-10"}},
+				workflowRunType: {testMappingName: {"apiVersion": "2026-03-10"}},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -614,8 +663,8 @@ func TestStartSyncProcessWithWorkflowRunType(t *testing.T) {
 			},
 		},
 		"unknown type alongside workflow_run": {
-			typesToSync: map[string]source.Extra{
-				workflowRunType: {"apiVersion": "2026-03-10"},
+			typesToSync: map[string]source.MappingExtras{
+				workflowRunType: {testMappingName: {"apiVersion": "2026-03-10"}},
 				"unknowntype":   {},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {

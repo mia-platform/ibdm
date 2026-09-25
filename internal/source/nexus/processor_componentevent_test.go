@@ -65,7 +65,7 @@ func TestComponentEventProcessorTypeNotRequested(t *testing.T) {
 	p := &componentEventProcessor{}
 	body := []byte(`{"action":"CREATED","repositoryName":"docker-hosted","component":{"componentId":"id1","format":"docker","name":"img","version":"1.0.0"}}`)
 
-	data, err := p.process(t.Context(), nil, "nexus.example.com", map[string]source.Extra{}, body)
+	data, err := p.process(t.Context(), nil, "nexus.example.com", map[string]source.MappingExtras{}, body)
 	require.NoError(t, err)
 	assert.Nil(t, data)
 }
@@ -74,7 +74,7 @@ func TestComponentEventProcessorMalformedBody(t *testing.T) {
 	t.Parallel()
 
 	p := &componentEventProcessor{}
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, []byte(`not json`))
 	require.Error(t, err)
@@ -88,7 +88,7 @@ func TestComponentEventProcessorNonDockerFormatSkipped(t *testing.T) {
 	p := &componentEventProcessor{}
 	// npm format — must be skipped regardless of action or requested types.
 	body := []byte(`{"action":"CREATED","repositoryName":"npm-proxy","component":{"componentId":"id1","format":"npm","name":"angular2","version":"0.0.2"}}`)
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, body)
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestComponentEventProcessorUnknownAction(t *testing.T) {
 
 	p := &componentEventProcessor{}
 	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"PURGED","repositoryName":"docker-hosted","component":{"componentId":"id1","format":"docker","name":"img","version":"1.0.0"}}`)
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, body)
 	require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestComponentEventProcessorCreated(t *testing.T) {
 
 	p := &componentEventProcessor{}
 	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"CREATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"2.0.0"}}`)
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), c, "nexus.example.com", typesToStream, body)
 	require.NoError(t, err)
@@ -175,7 +175,7 @@ func TestComponentEventProcessorUpdated(t *testing.T) {
 
 	p := &componentEventProcessor{}
 	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"UPDATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"3.0.0"}}`)
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), c, "nexus.example.com", typesToStream, body)
 	require.NoError(t, err)
@@ -212,7 +212,7 @@ func TestComponentEventProcessorCreatedAPIError(t *testing.T) {
 	p := &componentEventProcessor{}
 	componentID := "some-component-id"
 	body := []byte(`{"timestamp":"2025-03-01T12:00:00.073+00:00","action":"CREATED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"1.0.0"}}`)
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), c, "nexus.example.com", typesToStream, body)
 	require.Error(t, err)
@@ -224,7 +224,7 @@ func TestComponentEventProcessorDeleted(t *testing.T) {
 	p := &componentEventProcessor{}
 	componentID := "docker-hosted:component-del-id-2"
 	body := []byte(`{"timestamp":"2025-03-01T12:00:00Z","action":"DELETED","repositoryName":"docker-hosted","component":{"id":"raw-id","componentId":"` + componentID + `","format":"docker","name":"my-image","group":"","version":"2.0.0"}}`)
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 
 	data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, body)
 	require.NoError(t, err)
@@ -257,7 +257,7 @@ func TestComponentEventProcessorMissingTimestamp(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			p := &componentEventProcessor{}
-			typesToStream := map[string]source.Extra{dockerImageType: {}}
+			typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 			data, err := p.process(t.Context(), nil, "nexus.example.com", typesToStream, tc.body)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.errText)

@@ -53,12 +53,65 @@ func TestCancelledContext(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAPIVersionExtra(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		extras          source.MappingExtras
+		expectedVersion string
+		expectedFound   bool
+	}{
+		"single mapping with a version": {
+			extras:          source.MappingExtras{"my-mapping": {apiVersionKey: "2024-01-01"}},
+			expectedVersion: "2024-01-01",
+			expectedFound:   true,
+		},
+		"single mapping with an empty version keeps it": {
+			extras:        source.MappingExtras{"my-mapping": {apiVersionKey: ""}},
+			expectedFound: true,
+		},
+		"single mapping without a version": {
+			extras: source.MappingExtras{"my-mapping": nil},
+		},
+		"no mappings": {
+			extras: nil,
+		},
+		"first mapping in lexical order wins": {
+			extras: source.MappingExtras{
+				"b-mapping": {apiVersionKey: "2025-01-01"},
+				"a-mapping": {apiVersionKey: "2024-01-01"},
+			},
+			expectedVersion: "2024-01-01",
+			expectedFound:   true,
+		},
+		"mappings without a string version are skipped": {
+			extras: source.MappingExtras{
+				"a-mapping": {apiVersionKey: 123},
+				"b-mapping": nil,
+				"c-mapping": {apiVersionKey: "2025-01-01"},
+			},
+			expectedVersion: "2025-01-01",
+			expectedFound:   true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			apiVersion, found := apiVersionExtra(test.extras)[apiVersionKey].(string)
+			require.Equal(t, test.expectedFound, found)
+			require.Equal(t, test.expectedVersion, apiVersion)
+		})
+	}
+}
+
 func TestPartitionEventHandler(t *testing.T) {
 	t.Parallel()
 
 	testCases := map[string]struct {
 		contextFunc   func(tb testing.TB) (context.Context, context.CancelFunc)
-		typesToFilter map[string]source.Extra
+		typesToFilter map[string]source.MappingExtras
 		azureData     *azeventhubs.ReceivedEventData
 		expectedData  []source.Data
 	}{
@@ -67,9 +120,9 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				"Microsoft.Resources/resourceGroups": {"apiVersion": "2021-04-01"},
-				"Microsoft.Compute/virtualMachines":  {"apiVersion": "2021-07-01"},
+			typesToFilter: map[string]source.MappingExtras{
+				"Microsoft.Resources/resourceGroups": {testMappingName: {"apiVersion": "2021-04-01"}},
+				"Microsoft.Compute/virtualMachines":  {testMappingName: {"apiVersion": "2021-07-01"}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -82,9 +135,9 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				"Microsoft.Resources/resourceGroups": {"apiVersion": "2021-04-01"},
-				"Microsoft.Compute/virtualMachines":  {"apiVersion": "2021-07-01"},
+			typesToFilter: map[string]source.MappingExtras{
+				"Microsoft.Resources/resourceGroups": {testMappingName: {"apiVersion": "2021-04-01"}},
+				"Microsoft.Compute/virtualMachines":  {testMappingName: {"apiVersion": "2021-07-01"}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -98,7 +151,7 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
+			typesToFilter: map[string]source.MappingExtras{
 				"Microsoft.Resources/resourceGroups": {},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
@@ -123,8 +176,8 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				"Microsoft.Resources/resourceGroups": {"apiVersion": "2021-04-01"},
+			typesToFilter: map[string]source.MappingExtras{
+				"Microsoft.Resources/resourceGroups": {testMappingName: {"apiVersion": "2021-04-01"}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -137,8 +190,8 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				managedClustersType: {"apiVersion": managedClustersAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				managedClustersType: {testMappingName: {"apiVersion": managedClustersAPIVersion}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -162,8 +215,8 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				managedClustersType: {"apiVersion": managedClustersAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				managedClustersType: {testMappingName: {"apiVersion": managedClustersAPIVersion}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -187,9 +240,9 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				websitesType:     {apiVersionKey: websitesAPIVersion},
-				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				websitesType:     {testMappingName: {apiVersionKey: websitesAPIVersion}},
+				functionAppsType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -218,9 +271,9 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				websitesType:     {apiVersionKey: websitesAPIVersion},
-				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				websitesType:     {testMappingName: {apiVersionKey: websitesAPIVersion}},
+				functionAppsType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -245,9 +298,9 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				websitesType:     {apiVersionKey: websitesAPIVersion},
-				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				websitesType:     {testMappingName: {apiVersionKey: websitesAPIVersion}},
+				functionAppsType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -282,8 +335,8 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				websitesType: {apiVersionKey: websitesAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				websitesType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -307,8 +360,8 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				functionAppsType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{
@@ -321,8 +374,8 @@ func TestPartitionEventHandler(t *testing.T) {
 				tb.Helper()
 				return context.WithTimeout(tb.Context(), 1*time.Second)
 			},
-			typesToFilter: map[string]source.Extra{
-				managedClustersType: {"apiVersion": managedClustersAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				managedClustersType: {testMappingName: {"apiVersion": managedClustersAPIVersion}},
 			},
 			azureData: &azeventhubs.ReceivedEventData{
 				EventData: azeventhubs.EventData{

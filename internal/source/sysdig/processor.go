@@ -22,7 +22,7 @@ type eventProcessor interface {
 	// API failure); the dispatcher logs it and drops the event.
 	// The implementation must NOT send to results directly — that is the
 	// dispatcher's job.
-	process(ctx context.Context, vc *vulnerabilityClient, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error)
+	process(ctx context.Context, vc *vulnerabilityClient, typesToStream map[string]source.MappingExtras, body []byte) ([]source.Data, error)
 }
 
 // eventProcessors maps event type values to their processor.

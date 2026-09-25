@@ -20,7 +20,7 @@ func TestGetWebhook_MissingToken(t *testing.T) {
 	s := &Source{
 		webhookConfig: webhookConfig{WebhookPath: "/gitlab/webhook", WebhookToken: ""},
 	}
-	_, err := s.GetWebhook(t.Context(), map[string]source.Extra{pipelineResource: nil}, make(chan source.Data))
+	_, err := s.GetWebhook(t.Context(), map[string]source.MappingExtras{pipelineResource: nil}, make(chan source.Data))
 	require.ErrorIs(t, err, ErrWebhookTokenMissing)
 }
 
@@ -29,7 +29,7 @@ func TestGetWebhook_ReturnsCorrectPathAndMethod(t *testing.T) {
 		webhookConfig: webhookConfig{WebhookPath: "/hooks/gitlab", WebhookToken: "secret"},
 	}
 
-	webhook, err := s.GetWebhook(t.Context(), map[string]source.Extra{pipelineResource: nil}, make(chan source.Data, 1))
+	webhook, err := s.GetWebhook(t.Context(), map[string]source.MappingExtras{pipelineResource: nil}, make(chan source.Data, 1))
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodPost, webhook.Method)
 	assert.Equal(t, "/hooks/gitlab", webhook.Path)
@@ -69,7 +69,7 @@ func TestWebhookHandler(t *testing.T) {
 		token         string
 		body          []byte
 		headers       http.Header
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		expectErr     error
 		expectData    bool
 		checkData     func(t *testing.T, d source.Data)
@@ -78,7 +78,7 @@ func TestWebhookHandler(t *testing.T) {
 			token:         validToken,
 			body:          validBody(),
 			headers:       validHeaders(validToken, pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectData:    true,
 			checkData: func(t *testing.T, d source.Data) {
 				t.Helper()
@@ -91,21 +91,21 @@ func TestWebhookHandler(t *testing.T) {
 			token:         validToken,
 			body:          validBody(),
 			headers:       validHeaders("wrong-token", pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectErr:     ErrSignatureMismatch,
 		},
 		"unknown event type is silently ignored": {
 			token:         validToken,
 			body:          validBody(),
 			headers:       validHeaders(validToken, "Emoji Hook"),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectData:    false,
 		},
 		"processor error does not produce data": {
 			token:         validToken,
 			body:          []byte("not-json"),
 			headers:       validHeaders(validToken, pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectData:    false,
 		},
 	}

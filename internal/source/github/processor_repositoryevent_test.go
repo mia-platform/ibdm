@@ -72,13 +72,13 @@ func TestRepositoryEventProcessor(t *testing.T) {
 	processor := &repositoryEventProcessor{}
 
 	testCases := map[string]struct {
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		body          string
 		expectedData  []source.Data
 		expectErr     bool
 	}{
 		"created action returns upsert": {
-			typesToStream: map[string]source.Extra{repositoryType: {}},
+			typesToStream: map[string]source.MappingExtras{repositoryType: {}},
 			body:          `{"action":"created","repository":{"id":1,"name":"repo1"}}`,
 			expectedData: []source.Data{
 				{
@@ -90,7 +90,7 @@ func TestRepositoryEventProcessor(t *testing.T) {
 			},
 		},
 		"deleted action returns delete": {
-			typesToStream: map[string]source.Extra{repositoryType: {}},
+			typesToStream: map[string]source.MappingExtras{repositoryType: {}},
 			body:          `{"action":"deleted","repository":{"id":1,"name":"repo1"}}`,
 			expectedData: []source.Data{
 				{
@@ -102,17 +102,17 @@ func TestRepositoryEventProcessor(t *testing.T) {
 			},
 		},
 		"unknown action returns nil": {
-			typesToStream: map[string]source.Extra{repositoryType: {}},
+			typesToStream: map[string]source.MappingExtras{repositoryType: {}},
 			body:          `{"action":"unknown_action","repository":{"id":1,"name":"repo1"}}`,
 			expectedData:  nil,
 		},
 		"type not in typesToStream returns nil": {
-			typesToStream: map[string]source.Extra{"othertype": {}},
+			typesToStream: map[string]source.MappingExtras{"othertype": {}},
 			body:          `{"action":"created","repository":{"id":1,"name":"repo1"}}`,
 			expectedData:  nil,
 		},
 		"malformed body returns error": {
-			typesToStream: map[string]source.Extra{repositoryType: {}},
+			typesToStream: map[string]source.MappingExtras{repositoryType: {}},
 			body:          `not json`,
 			expectErr:     true,
 		},
@@ -159,7 +159,7 @@ func TestRepositoryEventProcessorWithLanguages(t *testing.T) {
 
 	processor := &repositoryEventProcessor{client: c}
 	body := []byte(`{"action":"created","repository":{"id":1,"name":"my-repo","full_name":"my-org/my-repo"}}`)
-	typesToStream := map[string]source.Extra{repositoryType: {}}
+	typesToStream := map[string]source.MappingExtras{repositoryType: {}}
 
 	data, err := processor.process(t.Context(), typesToStream, body)
 	require.NoError(t, err)

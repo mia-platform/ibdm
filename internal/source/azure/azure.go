@@ -87,7 +87,7 @@ func NewSource() (*Source, error) {
 }
 
 // StartSyncProcess implement source.SyncableSource.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) error {
 	logger := logger.FromContext(ctx).WithName(logName)
 	if !s.syncLock.TryLock() {
 		logger.Debug("sync process already running")
@@ -131,7 +131,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 
 // syncResourceType pages through every resource of resType the Resource Graph returns and emits
 // the item of each one of them, together with the ones of the sub-types they additionally produce.
-func (s *Source) syncResourceType(ctx context.Context, client *armresourcegraph.Client, resType string, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+func (s *Source) syncResourceType(ctx context.Context, client *armresourcegraph.Client, resType string, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) error {
 	logger := logger.FromContext(ctx).WithName(logName)
 	queryRequest := armresourcegraph.QueryRequest{
 		Subscriptions: []*string{to.Ptr(s.SubscriptionID)},
@@ -195,7 +195,7 @@ func resourceGraphQuery(resType string) *string {
 }
 
 // StartEventStream implement source.EventSource.
-func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) error {
 	logger := logger.FromContext(ctx).WithName(logName)
 	if err := s.validateForEventStream(); err != nil {
 		return handleError(err)
@@ -227,7 +227,22 @@ func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]
 	return handleError(err)
 }
 
-func partitionEventHandler(client *armresources.Client, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) eventHandler {
+// interim: replaced by Phase 3 (Layer C)
+// apiVersionExtra returns the extra of the first mapping, in lexical name order, that declares
+// its apiVersion as a string, or nil when none does. With a single mapping per type it returns
+// that mapping's extra whenever it carries an apiVersion, as the source did before extras were
+// grouped by mapping.
+func apiVersionExtra(extras source.MappingExtras) source.Extra {
+	for _, name := range slices.Sorted(maps.Keys(extras)) {
+		if _, ok := extras[name][apiVersionKey].(string); ok {
+			return extras[name]
+		}
+	}
+
+	return nil
+}
+
+func partitionEventHandler(client *armresources.Client, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) eventHandler {
 	// a sub-type type key is an internal dispatch key and can never be the type of an event
 	// subject, so it is left out of the set the subject type is resolved against.
 	typesSlice := slices.DeleteFunc(slices.Sorted(maps.Keys(typesToFilter)), isSubTypeKey)
@@ -255,7 +270,7 @@ func partitionEventHandler(client *armresources.Client, typesToFilter map[string
 				continue
 			}
 
-			apiVersion, ok := typesToFilter[resourceType][apiVersionKey].(string)
+			apiVersion, ok := apiVersionExtra(typesToFilter[resourceType])[apiVersionKey].(string)
 			if !ok {
 				logger.Debug("skipping event with missing apiVersion", "resourceType", resourceType)
 				continue
