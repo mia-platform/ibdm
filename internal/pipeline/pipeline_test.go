@@ -1296,3 +1296,196 @@ func TestPipelineCreateIf(t *testing.T) {
 		})
 	}
 }
+
+// templateTestDataMapper builds a DataMapper for type1 from explicit templates.
+func templateTestDataMapper(tb testing.TB, name, itemFamily, identifierTemplate string, specTemplates map[string]string, createIf string) DataMapper {
+	tb.Helper()
+
+	mapper, err := mapper.New(identifierTemplate, nil, specTemplates, nil, mapper.WithCreateIf(createIf))
+	require.NoError(tb, err)
+	return DataMapper{
+		Name:       name,
+		APIVersion: "v1",
+		ItemFamily: itemFamily,
+		Mapper:     mapper,
+	}
+}
+
+func TestPipelineMappingsRenderPrivateCopies(t *testing.T) {
+	t.Parallel()
+
+	// payload returns a fresh payload for each case, so the cases never share maps
+	payload := func() map[string]any {
+		return map[string]any{
+			"id":     "item1",
+			"object": map[string]any{"key": "v"},
+			"list":   []any{map[string]any{"key": "v"}},
+			"assets": []map[string]any{{"key": "v"}},
+		}
+	}
+	item := func(itemFamily string, data map[string]any) *destination.Data {
+		return &destination.Data{
+			APIVersion:    "v1",
+			ItemFamily:    itemFamily,
+			Name:          "item1",
+			Metadata:      map[string]any{},
+			Data:          data,
+			OperationTime: "2024-06-01T12:00:00Z",
+		}
+	}
+
+	testCases := map[string]struct {
+		operation        source.DataOperation
+		mappers          func(tb testing.TB) []DataMapper
+		expectedData     []*destination.Data
+		expectedDeletion []*destination.Data
+	}{
+		"set on a nested input map does not reach the next mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", "{{ .id }}", map[string]string{"written": `{{ set "leaked" "from-a" .object | toJSON }}`}, ""),
+					templateTestDataMapper(tb, "reader", "family-b", "{{ .id }}", map[string]string{"object": "{{ .object | toJSON }}"}, ""),
+				}
+			},
+			expectedData: []*destination.Data{
+				item("family-a", map[string]any{"written": map[string]any{"key": "v", "leaked": "from-a"}}),
+				item("family-b", map[string]any{"object": map[string]any{"key": "v"}}),
+			},
+		},
+		"set on the top level input does not reach the next mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", "{{ .id }}", map[string]string{"written": `{{ get "leaked" (set "leaked" "from-a" .) "" }}`}, ""),
+					templateTestDataMapper(tb, "reader", "family-b", "{{ .id }}", map[string]string{"leaked": `{{ get "leaked" . "absent" }}`}, ""),
+				}
+			},
+			expectedData: []*destination.Data{
+				item("family-a", map[string]any{"written": "from-a"}),
+				item("family-b", map[string]any{"leaked": "absent"}),
+			},
+		},
+		"set inside a list of maps does not reach the next mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", "{{ .id }}", map[string]string{
+						"list":   `{{ set "leaked" "from-a" (index .list 0) | toJSON }}`,
+						"assets": `{{ set "leaked" "from-a" (index .assets 0) | toJSON }}`,
+					}, ""),
+					templateTestDataMapper(tb, "reader", "family-b", "{{ .id }}", map[string]string{
+						"list":   "{{ index .list 0 | toJSON }}",
+						"assets": "{{ index .assets 0 | toJSON }}",
+					}, ""),
+				}
+			},
+			expectedData: []*destination.Data{
+				item("family-a", map[string]any{
+					"list":   map[string]any{"key": "v", "leaked": "from-a"},
+					"assets": map[string]any{"key": "v", "leaked": "from-a"},
+				}),
+				item("family-b", map[string]any{
+					"list":   map[string]any{"key": "v"},
+					"assets": map[string]any{"key": "v"},
+				}),
+			},
+		},
+		"a later guard does not see an earlier write": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", "{{ .id }}", map[string]string{"written": `{{ get "admit" (set "admit" true .) false }}`}, ""),
+					templateTestDataMapper(tb, "guarded", "family-b", "{{ .id }}", map[string]string{"key": "value"}, `{{ get "admit" . false }}`),
+				}
+			},
+			expectedData: []*destination.Data{
+				item("family-a", map[string]any{"written": true}),
+			},
+		},
+		"a write in an identifier template on delete does not reach the next mapping": {
+			operation: source.DataOperationDelete,
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", `{{ $_ := set "id" "leaked" . }}item1`, map[string]string{"key": "value"}, ""),
+					templateTestDataMapper(tb, "reader", "family-b", "{{ .id }}", map[string]string{"key": "value"}, ""),
+				}
+			},
+			expectedDeletion: []*destination.Data{
+				{APIVersion: "v1", ItemFamily: "family-a", Name: "item1", OperationTime: "2024-06-01T12:00:00Z"},
+				{APIVersion: "v1", ItemFamily: "family-b", Name: "item1", OperationTime: "2024-06-01T12:00:00Z"},
+			},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			defer cancel()
+
+			emitted := payload()
+			data := source.Data{Type: "type1", Operation: test.operation, Values: emitted, Time: testTime}
+			destination := fakedestination.NewFakeDestination(t)
+			pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, []source.Data{data}), map[string][]DataMapper{"type1": test.mappers(t)}, destination)
+			require.NoError(t, err)
+
+			require.NoError(t, pipeline.Sync(ctx))
+			require.Equal(t, test.expectedData, destination.SentData)
+			require.Equal(t, test.expectedDeletion, destination.DeletedData)
+			// the payload the source emitted is left exactly as it was
+			require.Equal(t, payload(), emitted)
+		})
+	}
+}
+
+func TestCopyValues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil payload returns nil", func(t *testing.T) {
+		t.Parallel()
+		require.Nil(t, copyValues(nil))
+	})
+
+	t.Run("scalars, typed values and nil containers are preserved", func(t *testing.T) {
+		t.Parallel()
+
+		original := map[string]any{
+			"string":    "value",
+			"number":    float64(42),
+			"bool":      true,
+			"null":      nil,
+			"time":      testTime,
+			"languages": map[string]float64{"Go": 100},
+			"nilMap":    map[string]any(nil),
+			"nilList":   []any(nil),
+			"nilAssets": []map[string]any(nil),
+		}
+		require.Equal(t, original, copyValues(original))
+	})
+
+	t.Run("nested containers are independent of the original", func(t *testing.T) {
+		t.Parallel()
+
+		original := map[string]any{
+			"object": map[string]any{"nested": map[string]any{"key": "v"}},
+			"list":   []any{map[string]any{"key": "v"}, []any{"a"}},
+			"assets": []map[string]any{{"key": "v"}},
+		}
+		copied := copyValues(original)
+		require.Equal(t, original, copied)
+
+		copied["added"] = true
+		copied["object"].(map[string]any)["nested"].(map[string]any)["key"] = "changed"
+		copied["list"].([]any)[0].(map[string]any)["key"] = "changed"
+		copied["list"].([]any)[1].([]any)[0] = "changed"
+		copied["assets"].([]map[string]any)[0]["key"] = "changed"
+
+		require.Equal(t, map[string]any{
+			"object": map[string]any{"nested": map[string]any{"key": "v"}},
+			"list":   []any{map[string]any{"key": "v"}, []any{"a"}},
+			"assets": []map[string]any{{"key": "v"}},
+		}, original)
+	})
+}
