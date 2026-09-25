@@ -25,6 +25,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 	if s.config.WebhookSecret == "" {
 		return source.Webhook{}, fmt.Errorf("%w: %w: %s", ErrGitHubSource, ErrMissingEnvVariable, "GITHUB_WEBHOOK_SECRET")
 	}
+	warnUnusableAPIVersions(logger.FromContext(ctx).WithName(loggerName), typesToStream, repositoryType)
 
 	return source.Webhook{
 		Method: http.MethodPost,

@@ -29,6 +29,11 @@ type Data struct {
 	Values map[string]any
 	// Time indicates the timestamp of the event that generated this data.
 	Time time.Time
+	// Mappings lists the names of the mappings this emission targets. A nil slice targets every
+	// mapping registered for Type. A non-nil empty slice is invalid: the pipeline logs an error
+	// and drops the emission, so a source must never send data that concerns no mapping. Use
+	// MappingExtras.Target to build it.
+	Mappings []string
 }
 
 func (d *Data) Timestamp() string {

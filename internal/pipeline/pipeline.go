@@ -5,6 +5,7 @@ package pipeline
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/mia-platform/ibdm/internal/destination"
@@ -180,8 +181,8 @@ func (p *Pipeline) Stop(ctx context.Context, timeout time.Duration) error {
 	return closableSource.Close(ctx, timeout)
 }
 
-// mappingData consumes channel entries, runs every mapper registered for their type,
-// and forwards the results.
+// mappingData consumes channel entries, runs every mapper registered for their type that
+// the entry targets, and forwards the results.
 func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	for {
@@ -199,11 +200,45 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 				continue
 			}
 
-			for _, dataMapper := range dataMappers {
+			for _, dataMapper := range targetedMappers(log, data, dataMappers) {
 				p.applyMapper(ctx, data, dataMapper)
 			}
 		}
 	}
+}
+
+// targetedMappers selects the mappers data targets among dataMappers, the mappers registered
+// for its type. A nil data.Mappings selects every mapper. Otherwise the mappers it names are
+// selected, in registration order and each once; a name matching no mapper of the type is
+// reported and ignored. A non-nil empty data.Mappings is a source bug: it is reported and
+// selects nothing, because rendering every mapping for data meant for none could write items
+// built from a payload their templates were not written for.
+func targetedMappers(log logger.Logger, data source.Data, dataMappers []DataMapper) []DataMapper {
+	if data.Mappings == nil {
+		return dataMappers
+	}
+
+	if len(data.Mappings) == 0 {
+		log.Error("source emitted data targeting no mapping, dropping it", "type", data.Type, "operation", data.Operation.String())
+		return nil
+	}
+
+	selected := make([]DataMapper, 0, len(data.Mappings))
+	for _, dataMapper := range dataMappers {
+		if slices.Contains(data.Mappings, dataMapper.Name) {
+			selected = append(selected, dataMapper)
+		}
+	}
+
+	targets := slices.Compact(slices.Sorted(slices.Values(data.Mappings)))
+	for _, target := range targets {
+		registered := slices.ContainsFunc(dataMappers, func(dataMapper DataMapper) bool { return dataMapper.Name == target })
+		if !registered {
+			log.Warn("data targets a mapping not registered for its type, ignoring it", "type", data.Type, "mapping", target)
+		}
+	}
+
+	return selected
 }
 
 // applyMapper renders data with dataMapper and forwards the result to the destination.

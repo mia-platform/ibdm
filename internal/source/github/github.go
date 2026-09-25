@@ -7,9 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"net/http"
-	"slices"
 	"sync"
 	"time"
 
@@ -35,6 +33,9 @@ const (
 	// defaultAPIVersion is the GitHub REST API version used when the mapping
 	// config does not explicitly set extra["apiVersion"].
 	defaultAPIVersion = "2026-03-10"
+
+	// apiVersionKey is the mapping extra key holding the API version to use for a data type.
+	apiVersionKey = "apiVersion"
 )
 
 var (
@@ -93,6 +94,8 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	}
 	defer s.syncLock.Unlock()
 
+	warnUnusableAPIVersions(log, typesToSync, repositoryType, workflowRunType)
+
 	_, wantsRepo := typesToSync[repositoryType]
 	_, wantsRuns := typesToSync[workflowRunType]
 	if wantsRepo || wantsRuns {
@@ -118,29 +121,85 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	return nil
 }
 
-// syncRepositoryAssets iterates all repositories for the configured organization once
-// and, for each repository, emits a repository entry and/or fetches workflow runs
-// depending on which types are present in typesToSync.
-func (s *Source) syncRepositoryAssets(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
-	_, syncRepo := typesToSync[repositoryType]
-	_, syncRuns := typesToSync[workflowRunType]
+// repositoryPass describes one listing of the organization repositories made by a sync.
+type repositoryPass struct {
+	// apiVersion is the API version the repositories are listed, and their languages fetched, with.
+	apiVersion string
+	// emitRepositories reports whether the pass emits the repositories it lists.
+	emitRepositories bool
+	// repositoryTargets is the Data.Mappings value of the repositories the pass emits.
+	repositoryTargets []string
+	// runs lists the workflow runs fetches the pass makes for every repository it lists.
+	runs []runsFetch
+}
 
-	var repoAPIVersion, runAPIVersion string
-	if syncRepo {
-		repoAPIVersion = apiVersionFromExtra(apiVersionExtra(typesToSync[repositoryType]))
-	}
+// runsFetch describes the workflow runs fetch of one API version.
+type runsFetch struct {
+	// apiVersion is the API version the workflow runs are fetched with.
+	apiVersion string
+	// targets is the Data.Mappings value of the workflow runs fetched.
+	targets []string
+}
+
+// repositoryPasses plans the repository listings a sync makes for typesToSync.
+//
+// Repositories are listed once per API version their mappings declare, because the listing
+// payload depends on the version and every mapping must receive the payload of its own version.
+// Workflow runs only need the owner and the name of a repository, so they are fetched during the
+// first listing alone, once per API version their mappings declare: repeating them on every
+// listing would emit every run once per repository API version. When only workflow runs are
+// requested, a single listing is made with the first of their API versions.
+func repositoryPasses(typesToSync map[string]source.MappingExtras) []repositoryPass {
+	repoExtras, syncRepo := typesToSync[repositoryType]
+	runExtras, syncRuns := typesToSync[workflowRunType]
+
+	var runs []runsFetch
 	if syncRuns {
-		runAPIVersion = apiVersionFromExtra(apiVersionExtra(typesToSync[workflowRunType]))
+		for _, group := range apiVersionGroups(runExtras) {
+			runs = append(runs, runsFetch{apiVersion: group.Key, targets: runExtras.Target(group.Mappings)})
+		}
 	}
 
-	// Use repo API version for the repository listing; fall back to run version
-	// when only workflow runs are requested.
-	listAPIVersion := repoAPIVersion
-	if listAPIVersion == "" {
-		listAPIVersion = runAPIVersion
+	if !syncRepo {
+		if len(runs) == 0 {
+			return nil
+		}
+		return []repositoryPass{{apiVersion: runs[0].apiVersion, runs: runs}}
 	}
 
-	it := s.client.listRepositories(listAPIVersion)
+	repoGroups := apiVersionGroups(repoExtras)
+	passes := make([]repositoryPass, 0, len(repoGroups))
+	for i, group := range repoGroups {
+		pass := repositoryPass{
+			apiVersion:        group.Key,
+			emitRepositories:  true,
+			repositoryTargets: repoExtras.Target(group.Mappings),
+		}
+		if i == 0 {
+			pass.runs = runs
+		}
+		passes = append(passes, pass)
+	}
+
+	return passes
+}
+
+// syncRepositoryAssets lists the repositories of the configured organization once per planned
+// pass and, for each repository, emits a repository entry and/or fetches workflow runs
+// depending on which types are present in typesToSync. See repositoryPasses.
+func (s *Source) syncRepositoryAssets(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
+	for _, pass := range repositoryPasses(typesToSync) {
+		if err := s.syncRepositoryPass(ctx, pass, results); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// syncRepositoryPass makes the repository listing pass describes.
+func (s *Source) syncRepositoryPass(ctx context.Context, pass repositoryPass, results chan<- source.Data) error {
+	it := s.client.listRepositories(pass.apiVersion)
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -159,11 +218,11 @@ func (s *Source) syncRepositoryAssets(ctx context.Context, typesToSync map[strin
 				return err
 			}
 
-			if syncRepo {
+			if pass.emitRepositories {
 				fullName, _ := item["full_name"].(string)
 				values := map[string]any{repositoryType: item}
 				if fullName != "" {
-					if langs, err := s.client.getRepositoryLanguages(ctx, fullName, repoAPIVersion); err == nil {
+					if langs, err := s.client.getRepositoryLanguages(ctx, fullName, pass.apiVersion); err == nil {
 						values["repositoryLanguages"] = langs
 					}
 				}
@@ -172,11 +231,12 @@ func (s *Source) syncRepositoryAssets(ctx context.Context, typesToSync map[strin
 					Operation: source.DataOperationUpsert,
 					Values:    values,
 					Time:      timeSource(),
+					Mappings:  pass.repositoryTargets,
 				}
 			}
 
-			if syncRuns {
-				if err := s.syncRepositoryWorkflowRuns(ctx, item, runAPIVersion, results); err != nil {
+			for _, runs := range pass.runs {
+				if err := s.syncRepositoryWorkflowRuns(ctx, item, runs.apiVersion, runs.targets, results); err != nil {
 					return err
 				}
 			}
@@ -185,25 +245,72 @@ func (s *Source) syncRepositoryAssets(ctx context.Context, typesToSync map[strin
 	return nil
 }
 
-// interim: replaced by Phase 3 (Layer C)
-// apiVersionExtra returns the extra of the first mapping, in lexical name order, that declares a
-// non-empty apiVersion, or nil when none does, in which case apiVersionFromExtra falls back to
-// defaultAPIVersion. With a single mapping per type the result matches the one the source had
-// before extras were grouped by mapping.
-func apiVersionExtra(extras source.MappingExtras) source.Extra {
-	for _, name := range slices.Sorted(maps.Keys(extras)) {
-		if apiVersion, ok := extras[name]["apiVersion"].(string); ok && apiVersion != "" {
-			return extras[name]
-		}
+// apiVersionGroups groups the mappings of a data type by the API version they fetch with, as
+// apiVersionFromExtra resolves it, so every mapping belongs to a group. A data type requested
+// without any mapping still fetches once, with defaultAPIVersion.
+func apiVersionGroups(extras source.MappingExtras) []source.MappingGroup {
+	groups := extras.GroupBy(func(extra source.Extra) (string, bool) {
+		return apiVersionFromExtra(extra), true
+	})
+	if len(groups) == 0 {
+		return []source.MappingGroup{{Key: defaultAPIVersion}}
 	}
 
-	return nil
+	return groups
+}
+
+// repositoryEmissions builds the data a repository webhook event emits for repoObject. When the
+// languages of the repository can be fetched, they are fetched once per API version the mappings
+// in extras declare, and each emission targets the mappings of its version. Otherwise nothing is
+// fetched, every mapping receives the same payload, and a single untargeted emission is built.
+func repositoryEmissions(ctx context.Context, c *client, extras source.MappingExtras, repoObject map[string]any, operation source.DataOperation) []source.Data {
+	timestamp := timeSource()
+	fullName, _ := repoObject["full_name"].(string)
+	if c == nil || fullName == "" {
+		return []source.Data{{
+			Type:      repositoryType,
+			Operation: operation,
+			Values:    map[string]any{repositoryType: repoObject},
+			Time:      timestamp,
+		}}
+	}
+
+	groups := apiVersionGroups(extras)
+	data := make([]source.Data, 0, len(groups))
+	for _, group := range groups {
+		values := map[string]any{repositoryType: repoObject}
+		if langs, err := c.getRepositoryLanguages(ctx, fullName, group.Key); err == nil {
+			values["repositoryLanguages"] = langs
+		}
+		data = append(data, source.Data{
+			Type:      repositoryType,
+			Operation: operation,
+			Values:    values,
+			Time:      timestamp,
+			Mappings:  extras.Target(group.Mappings),
+		})
+	}
+
+	return data
+}
+
+// warnUnusableAPIVersions logs a warning for every mapping of dataTypes whose apiVersion is
+// declared but is not a non-empty string, typically an unquoted date that YAML decodes as a
+// timestamp: apiVersionFromExtra silently falls back to defaultAPIVersion for such a mapping.
+func warnUnusableAPIVersions(log logger.Logger, typesToStream map[string]source.MappingExtras, dataTypes ...string) {
+	for _, dataType := range dataTypes {
+		extras := typesToStream[dataType]
+		for _, mapping := range extras.InvalidStringValues(apiVersionKey) {
+			log.Warn("mapping apiVersion is not a non-empty string, the default API version is used instead: quote it in the mapping file",
+				"type", dataType, "mapping", mapping, "valueType", fmt.Sprintf("%T", extras[mapping][apiVersionKey]), "defaultAPIVersion", defaultAPIVersion)
+		}
+	}
 }
 
 // apiVersionFromExtra extracts the API version from the mapping extra config.
 // Falls back to defaultAPIVersion if absent or empty.
 func apiVersionFromExtra(extra source.Extra) string {
-	if v, ok := extra["apiVersion"]; ok {
+	if v, ok := extra[apiVersionKey]; ok {
 		if s, ok := v.(string); ok && s != "" {
 			return s
 		}
@@ -213,7 +320,8 @@ func apiVersionFromExtra(extra source.Extra) string {
 
 // syncRepositoryWorkflowRuns fetches all workflow runs for the given repository
 // and pushes each as a source.Data entry onto the results channel.
-func (s *Source) syncRepositoryWorkflowRuns(ctx context.Context, repo map[string]any, apiVersion string, results chan<- source.Data) error {
+// targets is the Data.Mappings value of the emitted runs.
+func (s *Source) syncRepositoryWorkflowRuns(ctx context.Context, repo map[string]any, apiVersion string, targets []string, results chan<- source.Data) error {
 	owner, repoName := extractOwnerRepo(repo)
 	if owner == "" || repoName == "" {
 		return nil
@@ -239,6 +347,7 @@ func (s *Source) syncRepositoryWorkflowRuns(ctx context.Context, repo map[string
 				Operation: source.DataOperationUpsert,
 				Values:    map[string]any{workflowRunType: item},
 				Time:      timeSource(),
+				Mappings:  targets,
 			}
 		}
 	}

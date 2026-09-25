@@ -12,7 +12,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -149,62 +151,82 @@ func (s *Source) webhookHandler(typesToStream map[string]source.MappingExtras, d
 			return handleErr(err)
 		}
 
-		go func(log logger.Logger, body []byte, typesToStream map[string]source.MappingExtras, _ chan<- source.Data) {
-			var payload map[string]any
-			if err := json.Unmarshal(body, &payload); err != nil {
-				log.Error("failed to unmarshal webhook payload", "error", err)
-				return
-			}
-
-			eventType, resource, operationTime, err := extractDataFromPayload(payload)
-			if err != nil {
-				log.Error("failed to extract data from webhook payload", "error", err)
-				return
-			}
-
-			for typeString, extras := range typesToStream {
-				if !mappingsHandleEvent(extras, eventType) {
-					continue
-				}
-
-				log.Debug("webhook handled", "webhookType", eventType, "resourceType", typeString)
-				if strings.EqualFold(typeString, "gitrepository") {
-					if repo, ok := resource["repository"].(map[string]any); ok {
-						resource = repo
-					}
-				}
-
-				operation := source.DataOperationUpsert
-				if strings.HasSuffix(eventType, ".deleted") {
-					operation = source.DataOperationDelete
-				}
-				dataChannel <- source.Data{
-					Type:      typeString,
-					Operation: operation,
-					Time:      operationTime,
-					Values:    resource,
-				}
-				return
-			}
-
-			log.Trace("webhook event type not configured to be streamed", "eventType", eventType)
-		}(log, body, typesToStream, dataChannel)
+		go dispatchWebhookEvent(log, body, typesToStream, dataChannel)
 		return nil
 	}
 }
 
-// interim: replaced by Phase 3 (Layer C)
-// mappingsHandleEvent reports whether eventType is listed in the union of the eventNames of every
-// mapping registered for a type. With a single mapping per type it matches the check the source
-// ran before extras were grouped by mapping.
-func mappingsHandleEvent(extras source.MappingExtras, eventType string) bool {
-	for _, extra := range extras {
-		if eventNamesContain(extra, eventType) {
-			return true
+// dispatchWebhookEvent parses a webhook body and emits its resource to every type with a mapping
+// listing its event type.
+func dispatchWebhookEvent(log logger.Logger, body []byte, typesToStream map[string]source.MappingExtras, dataChannel chan<- source.Data) {
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		log.Error("failed to unmarshal webhook payload", "error", err)
+		return
+	}
+
+	eventType, resource, operationTime, err := extractDataFromPayload(payload)
+	if err != nil {
+		log.Error("failed to extract data from webhook payload", "error", err)
+		return
+	}
+
+	operation := source.DataOperationUpsert
+	if strings.HasSuffix(eventType, ".deleted") {
+		operation = source.DataOperationDelete
+	}
+
+	// every type with a mapping listing the event receives it, in lexical order of type, so
+	// that the outcome never depends on the map iteration order.
+	handled := false
+	for _, typeString := range slices.Sorted(maps.Keys(typesToStream)) {
+		extras := typesToStream[typeString]
+		matched := matchingMappings(extras, eventType)
+		if len(matched) == 0 {
+			continue
+		}
+
+		log.Debug("webhook handled", "webhookType", eventType, "resourceType", typeString)
+		handled = true
+		dataChannel <- source.Data{
+			Type:      typeString,
+			Operation: operation,
+			Time:      operationTime,
+			Values:    webhookValues(typeString, resource),
+			Mappings:  extras.Target(matched),
 		}
 	}
 
-	return false
+	if !handled {
+		log.Trace("webhook event type not configured to be streamed", "eventType", eventType)
+	}
+}
+
+// matchingMappings returns, in lexical order, the names of the mappings in extras whose
+// eventNames list eventType.
+func matchingMappings(extras source.MappingExtras, eventType string) []string {
+	matched := make([]string, 0, len(extras))
+	for _, name := range extras.Names() {
+		if eventNamesContain(extras[name], eventType) {
+			matched = append(matched, name)
+		}
+	}
+
+	return matched
+}
+
+// webhookValues returns the payload a webhook resource produces for typeString: the repository
+// object for a git repository, the whole resource otherwise. The payload is a shallow copy, because
+// one resource can be emitted for several types and the mapping functions can write into the top
+// level of the map they are handed.
+func webhookValues(typeString string, resource map[string]any) map[string]any {
+	if strings.EqualFold(typeString, gitRepositoryType) {
+		if repo, ok := resource["repository"].(map[string]any); ok {
+			return maps.Clone(repo)
+		}
+	}
+
+	return maps.Clone(resource)
 }
 
 // eventNamesContain reports whether the eventNames list of a mapping extra contains eventType,
