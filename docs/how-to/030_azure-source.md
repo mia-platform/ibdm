@@ -102,6 +102,9 @@ The `type` of a sub-type mapping file is an **internal dispatch key**, not an Az
 	emit it
 - its `extra.apiVersion` is never read, since the resource is always retrieved with the `apiVersion`
 	of its parent type. It is kept in the file only for symmetry with every other Azure mapping
+- when the mappings of its parent type declare several `apiVersion`s, the resource is retrieved once
+	per `apiVersion` and the sub-type item is produced once, from the first retrieval that succeeds in
+	lexical order of `apiVersion`
 
 Which Azure type produces which sub-type is hardcoded in the source, together with the check deciding
 whether a retrieved resource must produce it. Declaring a sub-type therefore takes both a new mapping
