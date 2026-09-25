@@ -17,6 +17,10 @@ import (
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
+// testMappingName names the single mapping a test registers for a type, reproducing the
+// one-extra-per-type configuration sources received before extras were grouped by mapping.
+const testMappingName = "my-mapping"
+
 func TestNewSource(t *testing.T) {
 	testCases := map[string]struct {
 		setupEnv       func(t *testing.T)
@@ -111,7 +115,7 @@ func TestMultipleSyncStart(t *testing.T) {
 		},
 	}
 
-	typesToFilter := map[string]source.Extra{
+	typesToFilter := map[string]source.MappingExtras{
 		gitRepositoryType: {},
 	}
 	go func() {
@@ -129,12 +133,95 @@ func TestMultipleSyncStart(t *testing.T) {
 	assert.ErrorIs(t, ctx.Err(), context.Canceled)
 }
 
+func TestEventNamesContain(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		extra    source.Extra
+		expected bool
+	}{
+		"listed event": {
+			extra:    source.Extra{extraEventNamesKey: []any{"git.push", "git.repo.created"}},
+			expected: true,
+		},
+		"listed event with different casing": {
+			extra:    source.Extra{extraEventNamesKey: []any{"GIT.REPO.CREATED"}},
+			expected: true,
+		},
+		"event not listed": {
+			extra: source.Extra{extraEventNamesKey: []any{"git.push"}},
+		},
+		"non string entries are skipped": {
+			extra: source.Extra{extraEventNamesKey: []any{42, nil}},
+		},
+		"eventNames not a list": {
+			extra: source.Extra{extraEventNamesKey: "git.repo.created"},
+		},
+		"no eventNames": {
+			extra: source.Extra{},
+		},
+		"nil extra": {
+			extra: nil,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, test.expected, eventNamesContain(test.extra, "git.repo.created"))
+		})
+	}
+}
+
+func TestMappingsHandleEvent(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		extras   source.MappingExtras
+		expected bool
+	}{
+		"single mapping listing the event": {
+			extras:   source.MappingExtras{"my-mapping": {extraEventNamesKey: []any{"git.repo.created"}}},
+			expected: true,
+		},
+		"single mapping not listing the event": {
+			extras: source.MappingExtras{"my-mapping": {extraEventNamesKey: []any{"git.push"}}},
+		},
+		"union of every mapping eventNames": {
+			extras: source.MappingExtras{
+				"a-mapping": {extraEventNamesKey: []any{"git.push"}},
+				"b-mapping": {extraEventNamesKey: []any{"git.repo.created"}},
+				"c-mapping": nil,
+			},
+			expected: true,
+		},
+		"no mapping listing the event": {
+			extras: source.MappingExtras{
+				"a-mapping": {extraEventNamesKey: []any{"git.push"}},
+				"b-mapping": nil,
+			},
+		},
+		"no mappings": {
+			extras: nil,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, test.expected, mappingsHandleEvent(test.extras, "git.repo.created"))
+		})
+	}
+}
+
 func TestWebhookHandler(t *testing.T) {
 	t.Parallel()
 
 	testCases := map[string]struct {
 		config        config
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		headers       http.Header
 		body          string
 		expectedData  source.Data
@@ -146,10 +233,10 @@ func TestWebhookHandler(t *testing.T) {
 				WebhookUser:     "user",
 				WebhookPassword: "password",
 			},
-			typesToStream: map[string]source.Extra{
-				"gitrepository": {
+			typesToStream: map[string]source.MappingExtras{
+				"gitrepository": {testMappingName: {
 					"eventNames": []any{"git.repo.created"},
-				},
+				}},
 			},
 			body: repoCreatedPayload,
 			headers: http.Header{
@@ -184,10 +271,10 @@ func TestWebhookHandler(t *testing.T) {
 			config: config{
 				WebhookPath: "/azure-devops/webhook",
 			},
-			typesToStream: map[string]source.Extra{
-				"gitrepository": {
+			typesToStream: map[string]source.MappingExtras{
+				"gitrepository": {testMappingName: {
 					"eventNames": []any{"git.repo.renamed"},
-				},
+				}},
 			},
 			body: repoRenamedPayload,
 			expectedData: source.Data{
@@ -219,10 +306,10 @@ func TestWebhookHandler(t *testing.T) {
 			config: config{
 				WebhookPath: "/azure-devops/webhook",
 			},
-			typesToStream: map[string]source.Extra{
-				"gitrepository": {
+			typesToStream: map[string]source.MappingExtras{
+				"gitrepository": {testMappingName: {
 					"eventNames": []any{"git.repo.deleted"},
-				},
+				}},
 			},
 			body: repoDeletedPayload,
 			expectedData: source.Data{

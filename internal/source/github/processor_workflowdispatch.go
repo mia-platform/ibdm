@@ -17,7 +17,7 @@ type workflowDispatchProcessor struct {
 	client *client
 }
 
-func (p *workflowDispatchProcessor) process(_ context.Context, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
+func (p *workflowDispatchProcessor) process(_ context.Context, typesToStream map[string]source.MappingExtras, body []byte) ([]source.Data, error) {
 	if _, ok := typesToStream[workflowDispatchType]; !ok {
 		return nil, nil
 	}

@@ -164,7 +164,7 @@ func TestWebhookHandlerValidEventViaEventID(t *testing.T) {
 		vulnClient: vc,
 	}
 
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		vulnerabilityType: {},
 	}
 
@@ -244,7 +244,7 @@ func TestWebhookHandlerValidEventViaEventDataName(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToStream := map[string]source.Extra{vulnerabilityType: {}}
+	typesToStream := map[string]source.MappingExtras{vulnerabilityType: {}}
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
 	require.NoError(t, err)
@@ -292,7 +292,7 @@ func TestWebhookHandlerProcessorError(t *testing.T) {
 		vulnClient: vc,
 	}
 
-	typesToStream := map[string]source.Extra{vulnerabilityType: {}}
+	typesToStream := map[string]source.MappingExtras{vulnerabilityType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)

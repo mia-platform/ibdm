@@ -144,14 +144,14 @@ func TestPushEventProcessor(t *testing.T) {
 
 	testCases := map[string]struct {
 		body          []byte
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		expectData    int
 		checkData     func(t *testing.T, data []source.Data)
 		expectErr     bool
 	}{
 		"project in typesToStream": {
 			body:          pushBody,
-			typesToStream: map[string]source.Extra{projectResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil},
 			expectData:    1,
 			checkData: func(t *testing.T, data []source.Data) {
 				t.Helper()
@@ -165,17 +165,17 @@ func TestPushEventProcessor(t *testing.T) {
 				"object_kind": "pipeline",
 				"project_id":  validProjectID,
 			}),
-			typesToStream: map[string]source.Extra{projectResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil},
 			expectData:    0,
 		},
 		"project not in typesToStream returns no data": {
 			body:          pushBody,
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{pipelineResource: nil},
 			expectData:    0,
 		},
 		"malformed body": {
 			body:          []byte("not-json"),
-			typesToStream: map[string]source.Extra{projectResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil},
 			expectErr:     true,
 		},
 	}

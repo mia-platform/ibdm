@@ -111,7 +111,7 @@ func TestWebhookHandlerValidSignatureKnownEvent(t *testing.T) {
 		},
 	}
 
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -184,7 +184,7 @@ func TestWebhookHandlerProcessorError(t *testing.T) {
 		},
 	}
 
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 

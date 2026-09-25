@@ -88,7 +88,7 @@ func syncedManagedCluster(t *testing.T) source.Data {
 	}
 
 	dataChannel := make(chan source.Data, 10)
-	require.NoError(t, azureSource.StartSyncProcess(ctx, map[string]source.Extra{managedClustersType: nil}, dataChannel))
+	require.NoError(t, azureSource.StartSyncProcess(ctx, map[string]source.MappingExtras{managedClustersType: nil}, dataChannel))
 	close(dataChannel)
 
 	for data := range dataChannel {
@@ -116,8 +116,8 @@ func streamedManagedCluster(t *testing.T, body json.RawMessage) source.Data {
 	require.NoError(t, err)
 
 	dataChannel := make(chan source.Data, 10)
-	handler := partitionEventHandler(client, map[string]source.Extra{
-		managedClustersType: {apiVersionKey: managedClustersAPIVersion},
+	handler := partitionEventHandler(client, map[string]source.MappingExtras{
+		managedClustersType: {testMappingName: {apiVersionKey: managedClustersAPIVersion}},
 	}, dataChannel)
 
 	handler(ctx, &azeventhubs.ReceivedEventData{EventData: azeventhubs.EventData{Body: body}})

@@ -47,7 +47,7 @@ func TestStartSyncProcessRepositoriesOnly(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToSync := map[string]source.Extra{
+	typesToSync := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -102,7 +102,7 @@ func TestStartSyncProcessPipelinesOnly(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToSync := map[string]source.Extra{
+	typesToSync := map[string]source.MappingExtras{
 		pipelineType: {},
 	}
 
@@ -157,7 +157,7 @@ func TestStartSyncProcessBothTypes(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToSync := map[string]source.Extra{
+	typesToSync := map[string]source.MappingExtras{
 		repositoryType: {},
 		pipelineType:   {},
 	}
@@ -192,7 +192,7 @@ func TestStartSyncProcessWorkspaceAPIError(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToSync := map[string]source.Extra{
+	typesToSync := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -229,7 +229,7 @@ func TestStartSyncProcessRepositoryAPIError(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToSync := map[string]source.Extra{
+	typesToSync := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -279,7 +279,7 @@ func TestStartSyncProcessPipelineAPIErrorContinues(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToSync := map[string]source.Extra{
+	typesToSync := map[string]source.MappingExtras{
 		pipelineType: {},
 	}
 
@@ -320,7 +320,7 @@ func TestStartSyncProcessContextCancellation(t *testing.T) {
 	cancel()
 
 	results := make(chan source.Data, 10)
-	typesToSync := map[string]source.Extra{
+	typesToSync := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -337,7 +337,7 @@ func TestStartSyncProcessSyncLockAlreadyHeld(t *testing.T) {
 	defer s.syncLock.Unlock()
 
 	results := make(chan source.Data, 10)
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{repositoryType: {}}, results)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{repositoryType: {}}, results)
 	require.NoError(t, err)
 }
 
@@ -348,7 +348,7 @@ func TestStartSyncProcessUnknownTypeSkipped(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToSync := map[string]source.Extra{
+	typesToSync := map[string]source.MappingExtras{
 		"unknown_type": {},
 	}
 
@@ -404,7 +404,7 @@ func TestStartSyncProcessWithWorkspaceDiscovery(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToSync := map[string]source.Extra{
+	typesToSync := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -580,7 +580,7 @@ func TestSyncWorkspaceAssetsEmptySlugSkipped(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{repositoryType: {}}, results)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{repositoryType: {}}, results)
 	require.NoError(t, err)
 	close(results)
 
@@ -625,6 +625,6 @@ func TestStartSyncProcessContextCanceledDuringRequest(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	err := s.StartSyncProcess(cancelledCtx, map[string]source.Extra{repositoryType: {}}, results)
+	err := s.StartSyncProcess(cancelledCtx, map[string]source.MappingExtras{repositoryType: {}}, results)
 	require.NoError(t, err)
 }

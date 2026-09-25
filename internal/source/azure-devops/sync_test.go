@@ -31,11 +31,11 @@ func TestSyncSupportedTypes(t *testing.T) {
 	t.Parallel()
 
 	testCases := map[string]struct {
-		typesToSync  map[string]source.Extra
+		typesToSync  map[string]source.MappingExtras
 		expectedData []source.Data
 	}{
 		"only one type": {
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				"gitrepository": {},
 			},
 			expectedData: []source.Data{
@@ -74,7 +74,7 @@ func TestSyncSupportedTypes(t *testing.T) {
 			},
 		},
 		"multiple type with also continuation tokens": {
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				"team":          {},
 				"gitrepository": {},
 			},

@@ -392,7 +392,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		},
 		"valid webhook pipeline return mapped data without extra mappings": {
 			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.MappingExtras, dataChan chan<- source.Data) error {
 					dataChan <- type1
 					dataChan <- type2
 					close(c)
@@ -423,7 +423,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		},
 		"valid webhook pipeline return mapped data with extra mappings": {
 			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.MappingExtras, dataChan chan<- source.Data) error {
 					dataChan <- type1
 					dataChan <- type2
 					close(c)
@@ -466,7 +466,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		},
 		"valid webhook pipeline return deletion with extra mappings delete cascade": {
 			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.MappingExtras, dataChan chan<- source.Data) error {
 					dataChan <- type1D
 					dataChan <- deleteExtra
 					close(c)
@@ -493,7 +493,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		},
 		"valid webhook pipeline return mapped data with multiple extra mappings": {
 			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.MappingExtras, dataChan chan<- source.Data) error {
 					dataChan <- type1
 					close(c)
 					return nil
@@ -1012,62 +1012,49 @@ func TestPipelineUnmappedTypeSkippedOnce(t *testing.T) {
 	}
 }
 
-func TestSourceExtras(t *testing.T) {
+func TestMappingExtras(t *testing.T) {
 	t.Parallel()
-
-	const warnMessage = "mappings sharing a type declare different extra"
 
 	testCases := map[string]struct {
 		mappers        map[string][]DataMapper
-		expectedExtras map[string]source.Extra
-		expectedWarns  int
-		ignoredMapping string
+		expectedExtras map[string]source.MappingExtras
 	}{
-		"single mapping per type passes its extra": {
+		"no mappers": {
+			mappers:        map[string][]DataMapper{},
+			expectedExtras: map[string]source.MappingExtras{},
+		},
+		"single mapping per type passes its extra under its name": {
 			mappers: map[string][]DataMapper{
 				"type1": {{Name: "first", Extra: source.Extra{"apiVersion": "2024-01-01"}}},
 				"type2": {{Name: "second"}},
 			},
-			expectedExtras: map[string]source.Extra{
-				"type1": {"apiVersion": "2024-01-01"},
-				"type2": nil,
+			expectedExtras: map[string]source.MappingExtras{
+				"type1": {"first": {"apiVersion": "2024-01-01"}},
+				"type2": {"second": nil},
 			},
 		},
-		"first mapping extra wins and a differing one warns": {
+		"every mapping sharing a type passes its own extra": {
 			mappers: map[string][]DataMapper{
 				"type1": {
 					{Name: "first", Extra: source.Extra{"apiVersion": "2024-01-01"}},
 					{Name: "second", Extra: source.Extra{"apiVersion": "2025-01-01"}},
+					{Name: "third"},
 				},
 			},
-			expectedExtras: map[string]source.Extra{"type1": {"apiVersion": "2024-01-01"}},
-			expectedWarns:  1,
-			ignoredMapping: "second",
-		},
-		"equal extras do not warn": {
-			mappers: map[string][]DataMapper{
+			expectedExtras: map[string]source.MappingExtras{
 				"type1": {
-					{Name: "first", Extra: source.Extra{"eventNames": []any{"push", "pull"}}},
-					{Name: "second", Extra: source.Extra{"eventNames": []any{"push", "pull"}}},
+					"first":  {"apiVersion": "2024-01-01"},
+					"second": {"apiVersion": "2025-01-01"},
+					"third":  nil,
 				},
 			},
-			expectedExtras: map[string]source.Extra{"type1": {"eventNames": []any{"push", "pull"}}},
-		},
-		"nil and empty extras do not warn": {
-			mappers: map[string][]DataMapper{
-				"type1": {
-					{Name: "first"},
-					{Name: "second", Extra: source.Extra{}},
-				},
-			},
-			expectedExtras: map[string]source.Extra{"type1": nil},
 		},
 		"type without mappings is not passed to the source": {
 			mappers: map[string][]DataMapper{
 				"type1": {},
 				"type2": {{Name: "second"}},
 			},
-			expectedExtras: map[string]source.Extra{"type2": nil},
+			expectedExtras: map[string]source.MappingExtras{"type2": {"second": nil}},
 		},
 	}
 
@@ -1075,15 +1062,39 @@ func TestSourceExtras(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			logs := &bytes.Buffer{}
-			ctx := logger.WithContext(t.Context(), logger.NewLogger(logs))
-
-			extras := sourceExtras(ctx, test.mappers)
-			require.Equal(t, test.expectedExtras, extras)
-			require.Equal(t, test.expectedWarns, strings.Count(logs.String(), warnMessage))
-			if test.ignoredMapping != "" {
-				require.Contains(t, logs.String(), `"ignoredMapping":"`+test.ignoredMapping+`"`)
-			}
+			require.Equal(t, test.expectedExtras, mappingExtras(test.mappers))
 		})
 	}
+}
+
+// capturingSyncableSource records the configuration the pipeline hands to the source.
+type capturingSyncableSource struct {
+	received map[string]source.MappingExtras
+}
+
+func (c *capturingSyncableSource) StartSyncProcess(_ context.Context, typesToSync map[string]source.MappingExtras, _ chan<- source.Data) error {
+	c.received = typesToSync
+	return nil
+}
+
+func TestSyncPipelinePassesMappingExtras(t *testing.T) {
+	t.Parallel()
+
+	src := &capturingSyncableSource{}
+	mappers := map[string][]DataMapper{
+		"type1": {
+			{Name: "first", Extra: source.Extra{"apiVersion": "2024-01-01"}},
+			{Name: "second", Extra: source.Extra{"apiVersion": "2025-01-01"}},
+		},
+	}
+	pipeline, err := New(t.Context(), src, mappers, fakedestination.NewFakeDestination(t))
+	require.NoError(t, err)
+
+	require.NoError(t, pipeline.Sync(t.Context()))
+	require.Equal(t, map[string]source.MappingExtras{
+		"type1": {
+			"first":  {"apiVersion": "2024-01-01"},
+			"second": {"apiVersion": "2025-01-01"},
+		},
+	}, src.received)
 }

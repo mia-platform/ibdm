@@ -77,13 +77,13 @@ func TestWorkflowRunProcessor(t *testing.T) {
 	processor := &workflowRunProcessor{}
 
 	testCases := map[string]struct {
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		body          string
 		expectedData  []source.Data
 		expectErr     bool
 	}{
 		"requested action returns upsert": {
-			typesToStream: map[string]source.Extra{workflowRunType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowRunType: {}},
 			body:          `{"action":"requested","workflow_run":{"id":1,"name":"Build","status":"queued"}}`,
 			expectedData: []source.Data{
 				{
@@ -95,7 +95,7 @@ func TestWorkflowRunProcessor(t *testing.T) {
 			},
 		},
 		"in_progress action returns upsert": {
-			typesToStream: map[string]source.Extra{workflowRunType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowRunType: {}},
 			body:          `{"action":"in_progress","workflow_run":{"id":1,"name":"Build","status":"in_progress"}}`,
 			expectedData: []source.Data{
 				{
@@ -107,7 +107,7 @@ func TestWorkflowRunProcessor(t *testing.T) {
 			},
 		},
 		"completed action returns upsert": {
-			typesToStream: map[string]source.Extra{workflowRunType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowRunType: {}},
 			body:          `{"action":"completed","workflow_run":{"id":1,"name":"Build","status":"completed"}}`,
 			expectedData: []source.Data{
 				{
@@ -119,22 +119,22 @@ func TestWorkflowRunProcessor(t *testing.T) {
 			},
 		},
 		"unknown action returns nil": {
-			typesToStream: map[string]source.Extra{workflowRunType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowRunType: {}},
 			body:          `{"action":"unknown_action","workflow_run":{"id":1}}`,
 			expectedData:  nil,
 		},
 		"type not in typesToStream returns nil": {
-			typesToStream: map[string]source.Extra{"othertype": {}},
+			typesToStream: map[string]source.MappingExtras{"othertype": {}},
 			body:          `{"action":"completed","workflow_run":{"id":1}}`,
 			expectedData:  nil,
 		},
 		"malformed body returns error": {
-			typesToStream: map[string]source.Extra{workflowRunType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowRunType: {}},
 			body:          `not json`,
 			expectErr:     true,
 		},
 		"missing workflow_run returns error": {
-			typesToStream: map[string]source.Extra{workflowRunType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowRunType: {}},
 			body:          `{"action":"completed"}`,
 			expectErr:     true,
 		},

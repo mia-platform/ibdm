@@ -92,7 +92,7 @@ func NewSource() (*Source, error) {
 // types by querying the Sysdig SysQL API and sending results to results.
 // Only known data types are processed; unknown types are skipped with a debug
 // log message.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !s.syncLock.TryLock() {
 		log.Debug("sync process already running")

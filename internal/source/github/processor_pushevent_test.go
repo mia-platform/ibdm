@@ -65,13 +65,13 @@ func TestPushEventProcessor(t *testing.T) {
 	processor := &pushEventProcessor{}
 
 	testCases := map[string]struct {
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		body          string
 		expectedData  []source.Data
 		expectErr     bool
 	}{
 		"push event returns upsert": {
-			typesToStream: map[string]source.Extra{repositoryType: {}},
+			typesToStream: map[string]source.MappingExtras{repositoryType: {}},
 			body:          `{"ref":"refs/heads/main","repository":{"id":1,"name":"repo1"}}`,
 			expectedData: []source.Data{
 				{
@@ -83,17 +83,17 @@ func TestPushEventProcessor(t *testing.T) {
 			},
 		},
 		"type not in typesToStream returns nil": {
-			typesToStream: map[string]source.Extra{"othertype": {}},
+			typesToStream: map[string]source.MappingExtras{"othertype": {}},
 			body:          `{"ref":"refs/heads/main","repository":{"id":1,"name":"repo1"}}`,
 			expectedData:  nil,
 		},
 		"malformed body returns error": {
-			typesToStream: map[string]source.Extra{repositoryType: {}},
+			typesToStream: map[string]source.MappingExtras{repositoryType: {}},
 			body:          `not json`,
 			expectErr:     true,
 		},
 		"missing repository field returns error": {
-			typesToStream: map[string]source.Extra{repositoryType: {}},
+			typesToStream: map[string]source.MappingExtras{repositoryType: {}},
 			body:          `{"ref":"refs/heads/main"}`,
 			expectErr:     true,
 		},
@@ -140,7 +140,7 @@ func TestPushEventProcessorWithLanguages(t *testing.T) {
 
 	processor := &pushEventProcessor{client: c}
 	body := []byte(`{"ref":"refs/heads/main","repository":{"id":1,"name":"my-repo","full_name":"my-org/my-repo"}}`)
-	typesToStream := map[string]source.Extra{repositoryType: {}}
+	typesToStream := map[string]source.MappingExtras{repositoryType: {}}
 
 	data, err := processor.process(t.Context(), typesToStream, body)
 	require.NoError(t, err)

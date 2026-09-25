@@ -7,7 +7,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -83,7 +85,7 @@ func NewSource() (*Source, error) {
 // types by querying the GitHub REST API and sending results to results.
 // Only known data types are processed; unknown types are skipped with a debug
 // log message.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !s.syncLock.TryLock() {
 		log.Debug("sync process already running")
@@ -119,16 +121,16 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 // syncRepositoryAssets iterates all repositories for the configured organization once
 // and, for each repository, emits a repository entry and/or fetches workflow runs
 // depending on which types are present in typesToSync.
-func (s *Source) syncRepositoryAssets(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) syncRepositoryAssets(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	_, syncRepo := typesToSync[repositoryType]
 	_, syncRuns := typesToSync[workflowRunType]
 
 	var repoAPIVersion, runAPIVersion string
 	if syncRepo {
-		repoAPIVersion = apiVersionFromExtra(typesToSync[repositoryType])
+		repoAPIVersion = apiVersionFromExtra(apiVersionExtra(typesToSync[repositoryType]))
 	}
 	if syncRuns {
-		runAPIVersion = apiVersionFromExtra(typesToSync[workflowRunType])
+		runAPIVersion = apiVersionFromExtra(apiVersionExtra(typesToSync[workflowRunType]))
 	}
 
 	// Use repo API version for the repository listing; fall back to run version
@@ -180,6 +182,21 @@ func (s *Source) syncRepositoryAssets(ctx context.Context, typesToSync map[strin
 			}
 		}
 	}
+	return nil
+}
+
+// interim: replaced by Phase 3 (Layer C)
+// apiVersionExtra returns the extra of the first mapping, in lexical name order, that declares a
+// non-empty apiVersion, or nil when none does, in which case apiVersionFromExtra falls back to
+// defaultAPIVersion. With a single mapping per type the result matches the one the source had
+// before extras were grouped by mapping.
+func apiVersionExtra(extras source.MappingExtras) source.Extra {
+	for _, name := range slices.Sorted(maps.Keys(extras)) {
+		if apiVersion, ok := extras[name]["apiVersion"].(string); ok && apiVersion != "" {
+			return extras[name]
+		}
+	}
+
 	return nil
 }
 

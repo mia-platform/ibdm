@@ -91,7 +91,7 @@ func NewSource() (*Source, error) {
 // StartSyncProcess performs a full synchronisation of the requested resource
 // types by listing all matching assets from the Console API and sending them to
 // results. It blocks until every item has been written to the channel.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !s.syncLock.TryLock() {
 		log.Debug("sync process already running")
@@ -112,7 +112,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 
 // filterTypes returns the subset of candidates that are present as keys in
 // types, preserving the original ordering of candidates.
-func filterTypes(candidates []string, types map[string]source.Extra) []string {
+func filterTypes(candidates []string, types map[string]source.MappingExtras) []string {
 	var result []string
 	for _, t := range candidates {
 		if _, ok := types[t]; ok {
@@ -125,7 +125,7 @@ func filterTypes(candidates []string, types map[string]source.Extra) []string {
 // listAssets resolves the requested typesToSync against the known resource
 // chain types and delegates to the appropriate listing function. It returns
 // early with an empty slice when none of the requested types are relevant.
-func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.Extra) ([]source.Data, error) {
+func (s *Source) listAssets(ctx context.Context, typesToSync map[string]source.MappingExtras) ([]source.Data, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	configSubtypes := filterTypes(configurationChainTypes, typesToSync)
@@ -482,7 +482,7 @@ func buildClusterData(cluster map[string]any) map[string]any {
 // webhook requests against a shared secret and dispatches matching events to
 // results asynchronously. It returns [ErrWebhookSecretMissing] when no secret
 // is configured.
-func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
+func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.MappingExtras, results chan<- source.Data) (source.Webhook, error) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	if s.c.config.WebhookSecret == "" {
@@ -534,7 +534,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 // handleEvent routes an incoming event to the appropriate processing path.
 // Configuration events are expanded via configurationEventChain; all other
 // events are forwarded to channel as-is.
-func (s *Source) handleEvent(ctx context.Context, ev event, types map[string]source.Extra, channel chan<- source.Data) error {
+func (s *Source) handleEvent(ctx context.Context, ev event, types map[string]source.MappingExtras, channel chan<- source.Data) error {
 	switch ev.GetResource() {
 	case configurationResource:
 		subtypes := filterTypes(configurationChainTypes, types)

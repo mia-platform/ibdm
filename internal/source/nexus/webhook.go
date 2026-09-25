@@ -28,7 +28,7 @@ const (
 //   - no secret, signature header present → rejected (Nexus signed the payload but ibdm cannot verify it)
 //   - secret set, no signature header → rejected (ibdm expects verification but Nexus sent no signature)
 //   - secret set, signature header present → HMAC-SHA1 verified; rejected if invalid
-func (s *Source) GetWebhook(_ context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
+func (s *Source) GetWebhook(_ context.Context, typesToStream map[string]source.MappingExtras, results chan<- source.Data) (source.Webhook, error) {
 	return source.Webhook{
 		Method: http.MethodPost,
 		Path:   s.webhookConfig.WebhookPath,

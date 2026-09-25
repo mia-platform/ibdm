@@ -5,8 +5,6 @@ package pipeline
 
 import (
 	"context"
-	"maps"
-	"reflect"
 	"time"
 
 	"github.com/mia-platform/ibdm/internal/destination"
@@ -37,7 +35,7 @@ type DataMapper struct {
 type Pipeline struct {
 	source        any
 	mappers       map[string][]DataMapper
-	mapperTypes   map[string]source.Extra
+	mapperTypes   map[string]source.MappingExtras
 	destination   destination.Sender
 	serverCreator func(ctx context.Context) (server.Server, error)
 }
@@ -49,33 +47,27 @@ func New(ctx context.Context, src any, mappers map[string][]DataMapper, destinat
 	return &Pipeline{
 		source:        src,
 		mappers:       mappers,
-		mapperTypes:   sourceExtras(ctx, mappers),
+		mapperTypes:   mappingExtras(mappers),
 		destination:   destination,
 		serverCreator: server.NewServer,
 	}, nil
 }
 
-// interim: removed by Phase 2 (Layer B2)
-// sourceExtras builds the single Extra per type that sources still receive. The
-// first mapping registered for a type provides it. A later mapping that declares a
-// different Extra is reported with a warning and its Extra is not passed to the source.
-func sourceExtras(ctx context.Context, mappers map[string][]DataMapper) map[string]source.Extra {
-	log := logger.FromContext(ctx).WithName(loggerName)
-
-	mapperTypes := make(map[string]source.Extra, len(mappers))
+// mappingExtras builds the configuration handed to sources: for every type, the
+// extra of each mapping registered for it, keyed by mapping name. A type without
+// any mapping is left out, so sources are never asked for data nobody maps.
+func mappingExtras(mappers map[string][]DataMapper) map[string]source.MappingExtras {
+	mapperTypes := make(map[string]source.MappingExtras, len(mappers))
 	for dataType, dataMappers := range mappers {
 		if len(dataMappers) == 0 {
 			continue
 		}
 
-		first := dataMappers[0]
-		mapperTypes[dataType] = first.Extra
-		for _, dataMapper := range dataMappers[1:] {
-			if !maps.EqualFunc(first.Extra, dataMapper.Extra, reflect.DeepEqual) {
-				log.Warn("mappings sharing a type declare different extra, only the first one reaches the source",
-					"type", dataType, "usedMapping", first.Name, "ignoredMapping", dataMapper.Name)
-			}
+		extras := make(source.MappingExtras, len(dataMappers))
+		for _, dataMapper := range dataMappers {
+			extras[dataMapper.Name] = dataMapper.Extra
 		}
+		mapperTypes[dataType] = extras
 	}
 
 	return mapperTypes

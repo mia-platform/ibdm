@@ -15,7 +15,7 @@ import (
 // StartSyncProcess implements source.SyncableSource.
 // It resolves repositories (one or all), then for each repository fans out
 // component assets onto the results channel.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	if !s.syncLock.TryLock() {

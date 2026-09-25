@@ -19,11 +19,11 @@ type unclosableWebhookSource struct {
 
 	method  string
 	path    string
-	handler func(context.Context, map[string]source.Extra, chan<- source.Data) error
+	handler func(context.Context, map[string]source.MappingExtras, chan<- source.Data) error
 }
 
 // NewFakeUnclosableWebhookSource returns a WebhookSource without close capabilities.
-func NewFakeUnclosableWebhookSource(tb testing.TB, method, path string, handler func(context.Context, map[string]source.Extra, chan<- source.Data) error) source.WebhookSource {
+func NewFakeUnclosableWebhookSource(tb testing.TB, method, path string, handler func(context.Context, map[string]source.MappingExtras, chan<- source.Data) error) source.WebhookSource {
 	tb.Helper()
 
 	return &unclosableWebhookSource{
@@ -35,7 +35,7 @@ func NewFakeUnclosableWebhookSource(tb testing.TB, method, path string, handler 
 }
 
 // GetWebhook pushes queued events and blocks until Close is invoked or the context ends.
-func (f *unclosableWebhookSource) GetWebhook(ctx context.Context, typesToFilter map[string]source.Extra, sourceChan chan<- source.Data) (webhook source.Webhook, err error) {
+func (f *unclosableWebhookSource) GetWebhook(ctx context.Context, typesToFilter map[string]source.MappingExtras, sourceChan chan<- source.Data) (webhook source.Webhook, err error) {
 	f.tb.Helper()
 	return source.Webhook{
 		Method: f.method,
@@ -64,7 +64,7 @@ func NewFakeWebhookSourceWithError(tb testing.TB, err error) source.WebhookSourc
 }
 
 // GetWebhook returns the configured error.
-func (e *errorWebhookSource) GetWebhook(_ context.Context, _ map[string]source.Extra, _ chan<- source.Data) (source.Webhook, error) {
+func (e *errorWebhookSource) GetWebhook(_ context.Context, _ map[string]source.MappingExtras, _ chan<- source.Data) (source.Webhook, error) {
 	e.tb.Helper()
 	return source.Webhook{}, e.err
 }

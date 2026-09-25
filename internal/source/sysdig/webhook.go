@@ -16,7 +16,7 @@ import (
 // GetWebhook implements [source.WebhookSource]. It validates the webhook
 // configuration and returns a [source.Webhook] that parses Sysdig pipeline
 // failure notifications and dispatches events to the processor registry.
-func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
+func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.MappingExtras, results chan<- source.Data) (source.Webhook, error) {
 	if s.webhookConfig.BaseURL == "" {
 		return source.Webhook{}, fmt.Errorf("%w: %w: %s",
 			ErrSysdigSource, ErrMissingEnvVariable, "SYSDIG_BASE_URL")

@@ -39,7 +39,7 @@ var timeSource = time.Now
 // types by querying the Bitbucket REST API and sending results to results.
 // Only known data types are processed; unknown types are skipped with a debug
 // log message.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !s.syncLock.TryLock() {
 		log.Debug("sync process already running")
@@ -75,7 +75,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 
 // syncWorkspaceAssets orchestrates workspace-level sync. When BITBUCKET_WORKSPACE
 // is set, it delegates directly; otherwise it iterates all accessible workspaces.
-func (s *Source) syncWorkspaceAssets(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) syncWorkspaceAssets(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if s.workspace != "" {
 		return s.syncRepositoriesForWorkspace(ctx, s.workspace, typesToSync, results)
@@ -116,7 +116,7 @@ func (s *Source) syncWorkspaceAssets(ctx context.Context, typesToSync map[string
 // syncRepositoriesForWorkspace iterates repositories for a single workspace and,
 // depending on the requested types, emits repository entries and/or fetches
 // pipelines per repository.
-func (s *Source) syncRepositoriesForWorkspace(ctx context.Context, slug string, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) syncRepositoriesForWorkspace(ctx context.Context, slug string, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	_, syncRepo := typesToSync[repositoryType]
 	_, syncPipeline := typesToSync[pipelineType]

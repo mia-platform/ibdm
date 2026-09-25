@@ -24,7 +24,7 @@ var workflowRunActionToOperation = map[string]source.DataOperation{
 	"completed":   source.DataOperationUpsert,
 }
 
-func (p *workflowRunProcessor) process(_ context.Context, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
+func (p *workflowRunProcessor) process(_ context.Context, typesToStream map[string]source.MappingExtras, body []byte) ([]source.Data, error) {
 	if _, ok := typesToStream[workflowRunType]; !ok {
 		return nil, nil
 	}

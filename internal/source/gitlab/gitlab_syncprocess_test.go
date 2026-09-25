@@ -20,7 +20,7 @@ func TestStartSyncProcess(t *testing.T) {
 
 	testCases := map[string]struct {
 		handler           http.HandlerFunc
-		typesToSync       map[string]source.Extra
+		typesToSync       map[string]source.MappingExtras
 		expectedDataCount int
 		checkData         func(t *testing.T, data []source.Data)
 		expectErr         bool
@@ -32,7 +32,7 @@ func TestStartSyncProcess(t *testing.T) {
 				"/api/v4/projects/1/languages":     map[string]any{"Go": 100.0},
 				"/api/v4/projects/1/access_tokens": []map[string]any{},
 			}),
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				projectResource: nil,
 			},
 			expectedDataCount: 1,
@@ -47,7 +47,7 @@ func TestStartSyncProcess(t *testing.T) {
 		},
 		"sync pipelines only without project resource is no-op": {
 			handler:           paginatedHandler(t, map[string]any{}),
-			typesToSync:       map[string]source.Extra{pipelineResource: nil},
+			typesToSync:       map[string]source.MappingExtras{pipelineResource: nil},
 			expectedDataCount: 0,
 		},
 		"sync projects and pipelines": {
@@ -58,7 +58,7 @@ func TestStartSyncProcess(t *testing.T) {
 				"/api/v4/projects/1/languages":     map[string]any{"Go": 100.0},
 				"/api/v4/projects/1/access_tokens": []map[string]any{},
 			}),
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				projectResource:  nil,
 				pipelineResource: nil,
 			},
@@ -66,12 +66,12 @@ func TestStartSyncProcess(t *testing.T) {
 		},
 		"unknown type is no-op": {
 			handler:           paginatedHandler(t, map[string]any{}),
-			typesToSync:       map[string]source.Extra{"unknown": nil},
+			typesToSync:       map[string]source.MappingExtras{"unknown": nil},
 			expectedDataCount: 0,
 		},
 		"already running returns early": {
 			handler:           paginatedHandler(t, map[string]any{}),
-			typesToSync:       map[string]source.Extra{projectResource: nil},
+			typesToSync:       map[string]source.MappingExtras{projectResource: nil},
 			lockBeforeRun:     true,
 			expectedDataCount: 0,
 		},
@@ -80,7 +80,7 @@ func TestStartSyncProcess(t *testing.T) {
 				"/api/v4/groups":                  []map[string]any{{"id": float64(10), "name": "my-group"}},
 				"/api/v4/groups/10/access_tokens": []map[string]any{{"id": float64(1), "name": "token-a"}, {"id": float64(2), "name": "token-b"}},
 			}),
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				accessTokenResource: nil,
 			},
 			expectedDataCount: 2,
@@ -99,7 +99,7 @@ func TestStartSyncProcess(t *testing.T) {
 				"/api/v4/projects/1/access_tokens": []map[string]any{{"id": float64(10), "name": "tok-a"}, {"id": float64(11), "name": "tok-b"}},
 				"/api/v4/groups":                   []map[string]any{},
 			}),
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				projectResource:     nil,
 				accessTokenResource: nil,
 			},
@@ -142,7 +142,7 @@ func TestStartSyncProcess(t *testing.T) {
 					w.WriteHeader(http.StatusNotFound)
 				}
 			},
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				projectResource:     nil,
 				accessTokenResource: nil,
 			},

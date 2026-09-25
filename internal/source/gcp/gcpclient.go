@@ -223,7 +223,7 @@ func assetToMap(asset *assetpb.Asset) map[string]any {
 }
 
 // getListAssetsRequest builds a ListAssets request for the configured parent.
-func (a *assetClient) getListAssetsRequest(typesToSync map[string]source.Extra) *assetpb.ListAssetsRequest {
+func (a *assetClient) getListAssetsRequest(typesToSync map[string]source.MappingExtras) *assetpb.ListAssetsRequest {
 	return &assetpb.ListAssetsRequest{
 		Parent:      a.config.Parent,
 		AssetTypes:  slices.Sorted(maps.Keys(typesToSync)),
@@ -232,7 +232,7 @@ func (a *assetClient) getListAssetsRequest(typesToSync map[string]source.Extra) 
 }
 
 // StartSyncProcess iterates Cloud Asset listings and emits upsert events.
-func (g *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (g *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !g.a.startMutex.TryLock() {
 		log.Debug("sync process already running")
@@ -276,7 +276,7 @@ func (g *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 }
 
 // StartEventStream subscribes to Pub/Sub updates and forwards them as source.Data.
-func (g *Source) StartEventStream(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) error {
+func (g *Source) StartEventStream(ctx context.Context, typesToStream map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	types := slices.Sorted(maps.Keys(typesToStream))
 	client, err := g.p.initPubSubClient(ctx)
