@@ -81,12 +81,12 @@ func TestStartSyncProcess(t *testing.T) {
 	timeSource = func() time.Time { return fixedTime }
 
 	tests := map[string]struct {
-		typesToSync map[string]source.Extra
+		typesToSync map[string]source.MappingExtras
 		pages       []sysqlResponse
 		expectData  []source.Data
 	}{
 		"single vulnerability type": {
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				"vulnerability": nil,
 			},
 			pages: []sysqlResponse{
@@ -117,14 +117,14 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"unknown type is skipped": {
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				"unknown-type": nil,
 			},
 			pages:      nil,
 			expectData: nil,
 		},
 		"mixed known and unknown types": {
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				"vulnerability":  nil,
 				"something-else": nil,
 			},
@@ -156,7 +156,7 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"empty results": {
-			typesToSync: map[string]source.Extra{
+			typesToSync: map[string]source.MappingExtras{
 				"vulnerability": nil,
 			},
 			pages: []sysqlResponse{
@@ -236,7 +236,7 @@ func TestStartSyncProcessContextCancellation(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 100)
-	err := src.StartSyncProcess(ctx, map[string]source.Extra{"vulnerability": nil}, results)
+	err := src.StartSyncProcess(ctx, map[string]source.MappingExtras{"vulnerability": nil}, results)
 	close(results)
 
 	assert.NoError(t, err)
@@ -270,7 +270,7 @@ func TestStartSyncProcessConcurrencyGuard(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 100)
-	typesToSync := map[string]source.Extra{"vulnerability": nil}
+	typesToSync := map[string]source.MappingExtras{"vulnerability": nil}
 
 	var wg sync.WaitGroup
 
@@ -317,7 +317,7 @@ func TestStartSyncProcessAPIError(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 100)
-	err := src.StartSyncProcess(t.Context(), map[string]source.Extra{"vulnerability": nil}, results)
+	err := src.StartSyncProcess(t.Context(), map[string]source.MappingExtras{"vulnerability": nil}, results)
 	close(results)
 
 	// Per-type errors are logged but don't abort the sync — no error returned.

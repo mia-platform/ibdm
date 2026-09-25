@@ -25,7 +25,7 @@ var patActionToOperation = map[string]source.DataOperation{
 	"denied":    source.DataOperationDelete,
 }
 
-func (p *personalAccessTokenRequestProcessor) process(_ context.Context, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
+func (p *personalAccessTokenRequestProcessor) process(_ context.Context, typesToStream map[string]source.MappingExtras, body []byte) ([]source.Data, error) {
 	if _, ok := typesToStream[personalAccessTokenRequestType]; !ok {
 		return nil, nil
 	}

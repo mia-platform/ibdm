@@ -38,7 +38,7 @@ func TestRepositoryEventProcessorRepoPush(t *testing.T) {
 	p := &repositoryEventProcessor{}
 	body := []byte(`{"repository":{"full_name":"ws/repo1","slug":"repo1"},"push":{"changes":[]}}`)
 
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -73,7 +73,7 @@ func TestRepositoryEventProcessorRepoUpdated(t *testing.T) {
 	p := &repositoryEventProcessor{}
 	body := []byte(`{"repository":{"full_name":"ws/repo1","slug":"repo1"},"changes":{"name":{"new":"repo1"}}}`)
 
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -106,7 +106,7 @@ func TestRepositoryEventProcessorPullRequestFulfilled(t *testing.T) {
 	p := &repositoryEventProcessor{}
 	body := []byte(`{"repository":{"full_name":"ws/repo1","slug":"repo1"},"pullrequest":{"id":1}}`)
 
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -123,7 +123,7 @@ func TestRepositoryEventProcessorTypeNotRequested(t *testing.T) {
 	p := &repositoryEventProcessor{}
 	body := []byte(`{"repository":{"full_name":"ws/repo1"}}`)
 
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		pipelineType: {},
 	}
 
@@ -136,7 +136,7 @@ func TestRepositoryEventProcessorMalformedBody(t *testing.T) {
 	t.Parallel()
 
 	p := &repositoryEventProcessor{}
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -150,7 +150,7 @@ func TestRepositoryEventProcessorMissingRepositoryField(t *testing.T) {
 	t.Parallel()
 
 	p := &repositoryEventProcessor{}
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -178,7 +178,7 @@ func TestRepositoryEventProcessorEnrichmentFailure(t *testing.T) {
 	p := &repositoryEventProcessor{}
 	body := []byte(`{"repository":{"full_name":"ws/repo1","slug":"repo1"}}`)
 
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 
@@ -196,7 +196,7 @@ func TestRepositoryEventProcessorInvalidFullName(t *testing.T) {
 	p := &repositoryEventProcessor{}
 	// full_name without a slash → splitFullName returns empty strings → error
 	body := []byte(`{"repository":{"full_name":"noslash"}}`)
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		repositoryType: {},
 	}
 

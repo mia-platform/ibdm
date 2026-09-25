@@ -77,13 +77,13 @@ func TestPersonalAccessTokenRequestProcessor(t *testing.T) {
 	processor := &personalAccessTokenRequestProcessor{}
 
 	testCases := map[string]struct {
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		body          string
 		expectedData  []source.Data
 		expectErr     bool
 	}{
 		"approved action returns upsert": {
-			typesToStream: map[string]source.Extra{personalAccessTokenRequestType: {}},
+			typesToStream: map[string]source.MappingExtras{personalAccessTokenRequestType: {}},
 			body:          `{"action":"approved","personal_access_token_request":{"id":1,"token_name":"my-token"}}`,
 			expectedData: []source.Data{
 				{
@@ -95,7 +95,7 @@ func TestPersonalAccessTokenRequestProcessor(t *testing.T) {
 			},
 		},
 		"created action returns upsert": {
-			typesToStream: map[string]source.Extra{personalAccessTokenRequestType: {}},
+			typesToStream: map[string]source.MappingExtras{personalAccessTokenRequestType: {}},
 			body:          `{"action":"created","personal_access_token_request":{"id":2,"token_name":"other-token"}}`,
 			expectedData: []source.Data{
 				{
@@ -107,7 +107,7 @@ func TestPersonalAccessTokenRequestProcessor(t *testing.T) {
 			},
 		},
 		"cancelled action returns delete": {
-			typesToStream: map[string]source.Extra{personalAccessTokenRequestType: {}},
+			typesToStream: map[string]source.MappingExtras{personalAccessTokenRequestType: {}},
 			body:          `{"action":"cancelled","personal_access_token_request":{"id":1,"token_name":"my-token"}}`,
 			expectedData: []source.Data{
 				{
@@ -119,7 +119,7 @@ func TestPersonalAccessTokenRequestProcessor(t *testing.T) {
 			},
 		},
 		"denied action returns delete": {
-			typesToStream: map[string]source.Extra{personalAccessTokenRequestType: {}},
+			typesToStream: map[string]source.MappingExtras{personalAccessTokenRequestType: {}},
 			body:          `{"action":"denied","personal_access_token_request":{"id":1,"token_name":"my-token"}}`,
 			expectedData: []source.Data{
 				{
@@ -131,22 +131,22 @@ func TestPersonalAccessTokenRequestProcessor(t *testing.T) {
 			},
 		},
 		"unknown action returns nil": {
-			typesToStream: map[string]source.Extra{personalAccessTokenRequestType: {}},
+			typesToStream: map[string]source.MappingExtras{personalAccessTokenRequestType: {}},
 			body:          `{"action":"unknown_action","personal_access_token_request":{"id":1}}`,
 			expectedData:  nil,
 		},
 		"type not in typesToStream returns nil": {
-			typesToStream: map[string]source.Extra{"othertype": {}},
+			typesToStream: map[string]source.MappingExtras{"othertype": {}},
 			body:          `{"action":"created","personal_access_token_request":{"id":1}}`,
 			expectedData:  nil,
 		},
 		"malformed body returns error": {
-			typesToStream: map[string]source.Extra{personalAccessTokenRequestType: {}},
+			typesToStream: map[string]source.MappingExtras{personalAccessTokenRequestType: {}},
 			body:          `not json`,
 			expectErr:     true,
 		},
 		"missing personal_access_token_request returns error": {
-			typesToStream: map[string]source.Extra{personalAccessTokenRequestType: {}},
+			typesToStream: map[string]source.MappingExtras{personalAccessTokenRequestType: {}},
 			body:          `{"action":"created"}`,
 			expectErr:     true,
 		},

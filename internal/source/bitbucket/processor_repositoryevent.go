@@ -19,7 +19,7 @@ type repositoryEventProcessor struct{}
 
 // process extracts the repository from the webhook payload, enriches it via a
 // GET request to the API, and returns a single repository upsert event.
-func (p *repositoryEventProcessor) process(ctx context.Context, c *client, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
+func (p *repositoryEventProcessor) process(ctx context.Context, c *client, typesToStream map[string]source.MappingExtras, body []byte) ([]source.Data, error) {
 	// Guard: caller didn't request repository type → skip
 	if _, ok := typesToStream[repositoryType]; !ok {
 		return nil, nil

@@ -137,7 +137,7 @@ func TestWebhookHandlerNoSecretNoSignatureAccepted(t *testing.T) {
 		},
 	}
 
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
@@ -195,7 +195,7 @@ func TestWebhookHandlerValidSignatureKnownEventCreated(t *testing.T) {
 		},
 	}
 
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
@@ -257,7 +257,7 @@ func TestWebhookHandlerValidSignatureKnownEventUpdated(t *testing.T) {
 		},
 	}
 
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
@@ -297,7 +297,7 @@ func TestWebhookHandlerValidSignatureKnownEventDeleted(t *testing.T) {
 		client: &client{},
 	}
 
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
@@ -353,7 +353,7 @@ func TestWebhookHandlerProcessorError(t *testing.T) {
 		client: &client{},
 	}
 
-	typesToStream := map[string]source.Extra{dockerImageType: {}}
+	typesToStream := map[string]source.MappingExtras{dockerImageType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)

@@ -73,7 +73,7 @@ func NewSource() (*Source, error) {
 // StartSyncProcess performs a full synchronisation of the requested resource types
 // by listing assets from the GitLab API and sending them to results. Supported
 // types are "project" and "pipeline". Concurrent calls are a no-op.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	if !s.syncLock.TryLock() {
@@ -98,7 +98,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 }
 
 // syncProjectAssets iterates all GitLab projects page by page and sends upsert events to results.
-func (s *Source) syncProjectAssets(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) syncProjectAssets(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	_, ok := typesToSync[projectResource]
@@ -284,7 +284,7 @@ func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- so
 // webhook requests using a plain-text token comparison and dispatches matching
 // events to results asynchronously. It returns [ErrWebhookTokenMissing] when no
 // token is configured.
-func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
+func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.MappingExtras, results chan<- source.Data) (source.Webhook, error) {
 	if s.webhookConfig.WebhookToken == "" {
 		return source.Webhook{}, ErrWebhookTokenMissing
 	}

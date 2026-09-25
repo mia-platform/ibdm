@@ -78,13 +78,13 @@ func TestWorkflowDispatchProcessor(t *testing.T) {
 	processor := &workflowDispatchProcessor{}
 
 	testCases := map[string]struct {
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		body          string
 		expectedData  []source.Data
 		expectErr     bool
 	}{
 		"workflow_dispatch returns upsert": {
-			typesToStream: map[string]source.Extra{workflowDispatchType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowDispatchType: {}},
 			body:          `{"workflow":".github/workflows/build.yml","ref":"refs/heads/main","inputs":null,"repository":{"id":1},"sender":{"login":"octocat"}}`,
 			expectedData: []source.Data{
 				{
@@ -102,22 +102,22 @@ func TestWorkflowDispatchProcessor(t *testing.T) {
 			},
 		},
 		"type not in typesToStream returns nil": {
-			typesToStream: map[string]source.Extra{"othertype": {}},
+			typesToStream: map[string]source.MappingExtras{"othertype": {}},
 			body:          `{"workflow":".github/workflows/build.yml","ref":"refs/heads/main","repository":{"id":1}}`,
 			expectedData:  nil,
 		},
 		"malformed body returns error": {
-			typesToStream: map[string]source.Extra{workflowDispatchType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowDispatchType: {}},
 			body:          `not json`,
 			expectErr:     true,
 		},
 		"missing workflow field returns error": {
-			typesToStream: map[string]source.Extra{workflowDispatchType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowDispatchType: {}},
 			body:          `{"ref":"refs/heads/main","repository":{"id":1}}`,
 			expectErr:     true,
 		},
 		"missing repository field returns error": {
-			typesToStream: map[string]source.Extra{workflowDispatchType: {}},
+			typesToStream: map[string]source.MappingExtras{workflowDispatchType: {}},
 			body:          `{"workflow":".github/workflows/build.yml","ref":"refs/heads/main"}`,
 			expectErr:     true,
 		},

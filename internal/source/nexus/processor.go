@@ -22,7 +22,7 @@ type eventProcessor interface {
 	// process parses the raw webhook body and returns zero or more source.Data entries.
 	// Returns an error only for unrecoverable failures (e.g. body parse error).
 	// The implementation must NOT send to results directly — that is the dispatcher's job.
-	process(ctx context.Context, c *client, host string, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error)
+	process(ctx context.Context, c *client, host string, typesToStream map[string]source.MappingExtras, body []byte) ([]source.Data, error)
 }
 
 // eventProcessors maps X-Nexus-Webhook-Id header values to their processor.
