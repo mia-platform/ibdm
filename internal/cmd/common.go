@@ -246,5 +246,9 @@ func loadMappingConfigs(paths []string) ([]*config.MappingConfig, error) {
 		mappings = append(mappings, fileMappings...)
 	}
 
+	if err := config.ValidateMappingNames(mappings); err != nil {
+		return nil, err
+	}
+
 	return mappings, nil
 }
