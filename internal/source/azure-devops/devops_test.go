@@ -4,8 +4,10 @@
 package azuredevops
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
@@ -170,48 +173,6 @@ func TestEventNamesContain(t *testing.T) {
 			t.Parallel()
 
 			require.Equal(t, test.expected, eventNamesContain(test.extra, "git.repo.created"))
-		})
-	}
-}
-
-func TestMappingsHandleEvent(t *testing.T) {
-	t.Parallel()
-
-	testCases := map[string]struct {
-		extras   source.MappingExtras
-		expected bool
-	}{
-		"single mapping listing the event": {
-			extras:   source.MappingExtras{"my-mapping": {extraEventNamesKey: []any{"git.repo.created"}}},
-			expected: true,
-		},
-		"single mapping not listing the event": {
-			extras: source.MappingExtras{"my-mapping": {extraEventNamesKey: []any{"git.push"}}},
-		},
-		"union of every mapping eventNames": {
-			extras: source.MappingExtras{
-				"a-mapping": {extraEventNamesKey: []any{"git.push"}},
-				"b-mapping": {extraEventNamesKey: []any{"git.repo.created"}},
-				"c-mapping": nil,
-			},
-			expected: true,
-		},
-		"no mapping listing the event": {
-			extras: source.MappingExtras{
-				"a-mapping": {extraEventNamesKey: []any{"git.push"}},
-				"b-mapping": nil,
-			},
-		},
-		"no mappings": {
-			extras: nil,
-		},
-	}
-
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			require.Equal(t, test.expected, mappingsHandleEvent(test.extras, "git.repo.created"))
 		})
 	}
 }
@@ -521,3 +482,109 @@ const (
 	"createdDate": "2026-02-02T11:52:41.2982716Z"
 }`
 )
+
+// createdResource returns the resource of repoCreatedPayload and the repository object it holds.
+func createdResource(t *testing.T) (map[string]any, map[string]any) {
+	t.Helper()
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal([]byte(repoCreatedPayload), &payload))
+	resource, ok := payload["resource"].(map[string]any)
+	require.True(t, ok)
+	repository, ok := resource["repository"].(map[string]any)
+	require.True(t, ok)
+	return resource, repository
+}
+
+func TestDispatchWebhookEventTargeting(t *testing.T) {
+	t.Parallel()
+
+	const auditType = "repositoryaudit"
+	resource, repository := createdResource(t)
+	eventTime := time.Date(2022, 12, 12, 12, 34, 56, 549845900, time.UTC)
+	listsCreated := source.Extra{extraEventNamesKey: []any{"git.repo.created"}}
+	listsDeleted := source.Extra{extraEventNamesKey: []any{"git.repo.deleted"}}
+
+	testCases := map[string]struct {
+		typesToStream map[string]source.MappingExtras
+		expectedData  []source.Data
+	}{
+		"every type with a mapping listing the event receives it in lexical order with its own payload": {
+			typesToStream: map[string]source.MappingExtras{
+				auditType:         {"my-audits": listsCreated},
+				gitRepositoryType: {"my-repos": listsCreated},
+				teamType:          {"my-teams": nil},
+			},
+			expectedData: []source.Data{
+				// the repository unwrap applies to the git repository type alone and does not leak
+				// into the type handled after it
+				{Type: gitRepositoryType, Operation: source.DataOperationUpsert, Time: eventTime, Values: repository},
+				{Type: auditType, Operation: source.DataOperationUpsert, Time: eventTime, Values: resource},
+			},
+		},
+		"only the mappings listing the event are targeted": {
+			typesToStream: map[string]source.MappingExtras{
+				gitRepositoryType: {
+					"a-repos": listsCreated,
+					"b-repos": listsDeleted,
+					"c-repos": nil,
+				},
+			},
+			expectedData: []source.Data{
+				{Type: gitRepositoryType, Operation: source.DataOperationUpsert, Time: eventTime, Values: repository, Mappings: []string{"a-repos"}},
+			},
+		},
+		"every mapping listing the event stays untargeted": {
+			typesToStream: map[string]source.MappingExtras{
+				gitRepositoryType: {
+					"a-repos": listsCreated,
+					"b-repos": {extraEventNamesKey: []any{"git.repo.deleted", "GIT.REPO.CREATED"}},
+				},
+			},
+			expectedData: []source.Data{
+				{Type: gitRepositoryType, Operation: source.DataOperationUpsert, Time: eventTime, Values: repository},
+			},
+		},
+		"no mapping listing the event emits nothing": {
+			typesToStream: map[string]source.MappingExtras{
+				gitRepositoryType: {"my-repos": listsDeleted},
+				teamType:          {"my-teams": nil},
+			},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			dataChannel := make(chan source.Data, 10)
+			dispatchWebhookEvent(logger.NewLogger(&bytes.Buffer{}), []byte(repoCreatedPayload), test.typesToStream, dataChannel)
+			close(dataChannel)
+
+			var receivedData []source.Data
+			for data := range dataChannel {
+				receivedData = append(receivedData, data)
+			}
+			require.Equal(t, test.expectedData, receivedData)
+		})
+	}
+}
+
+func TestDispatchWebhookEventPayloadsAreNotShared(t *testing.T) {
+	t.Parallel()
+
+	listsCreated := source.Extra{extraEventNamesKey: []any{"git.repo.created"}}
+	dataChannel := make(chan source.Data, 10)
+	dispatchWebhookEvent(logger.NewLogger(&bytes.Buffer{}), []byte(repoCreatedPayload), map[string]source.MappingExtras{
+		"firstaudit":  {"first-audits": listsCreated},
+		"secondaudit": {"second-audits": listsCreated},
+	}, dataChannel)
+	close(dataChannel)
+
+	first, second := <-dataChannel, <-dataChannel
+	require.Equal(t, first.Values, second.Values)
+
+	// a mapping function writing into the top level of one payload must not reach the other one
+	first.Values["written"] = true
+	require.NotContains(t, second.Values, "written")
+}

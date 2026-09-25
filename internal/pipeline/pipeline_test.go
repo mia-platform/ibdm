@@ -1098,3 +1098,97 @@ func TestSyncPipelinePassesMappingExtras(t *testing.T) {
 		},
 	}, src.received)
 }
+
+// withMappings returns a copy of data targeting mappings.
+func withMappings(data source.Data, mappings []string) source.Data {
+	data.Mappings = mappings
+	return data
+}
+
+func TestPipelineTargeting(t *testing.T) {
+	t.Parallel()
+
+	const (
+		unregisteredWarning = "data targets a mapping not registered for its type"
+		noTargetError       = "source emitted data targeting no mapping"
+	)
+
+	testCases := map[string]struct {
+		data             []source.Data
+		expectedData     []*destination.Data
+		expectedDeletion []*destination.Data
+		expectedWarnings int
+		expectedErrors   int
+	}{
+		"nil mappings target every mapping": {
+			data:         []source.Data{type1},
+			expectedData: []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-b"), fanOutUpsert("family-c")},
+		},
+		"a named mapping is the only one rendered": {
+			data:         []source.Data{withMappings(type1, []string{"second"})},
+			expectedData: []*destination.Data{fanOutUpsert("family-b")},
+		},
+		"targeted mappings render in registration order": {
+			data:         []source.Data{withMappings(type1, []string{"third", "first"})},
+			expectedData: []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-c")},
+		},
+		"a repeated name renders once": {
+			data:         []source.Data{withMappings(type1, []string{"second", "second"})},
+			expectedData: []*destination.Data{fanOutUpsert("family-b")},
+		},
+		"an unregistered name warns and the others still render": {
+			data:             []source.Data{withMappings(type1, []string{"unknown", "second", "unknown"})},
+			expectedData:     []*destination.Data{fanOutUpsert("family-b")},
+			expectedWarnings: 1,
+		},
+		"only unregistered names render nothing": {
+			data:             []source.Data{withMappings(type1, []string{"unknown"})},
+			expectedWarnings: 1,
+		},
+		"an empty non nil target is dropped with an error": {
+			data:           []source.Data{withMappings(type1, []string{})},
+			expectedErrors: 1,
+		},
+		"a targeted delete reaches only the named mapping": {
+			data:             []source.Data{withMappings(type1D, []string{"third"})},
+			expectedDeletion: []*destination.Data{fanOutDelete("family-c")},
+		},
+		"each emission is targeted independently": {
+			data: []source.Data{
+				withMappings(type1, []string{"first"}),
+				type1,
+				withMappings(type1D, []string{"second"}),
+			},
+			expectedData: []*destination.Data{
+				fanOutUpsert("family-a"),
+				fanOutUpsert("family-a"), fanOutUpsert("family-b"), fanOutUpsert("family-c"),
+			},
+			expectedDeletion: []*destination.Data{fanOutDelete("family-b")},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			logs := &bytes.Buffer{}
+			ctx, cancel := context.WithTimeout(logger.WithContext(t.Context(), logger.NewLogger(logs)), 1*time.Second)
+			defer cancel()
+
+			destination := fakedestination.NewFakeDestination(t)
+			mappers := map[string][]DataMapper{"type1": {
+				validTestDataMapper(t, "first", "family-a", nil),
+				validTestDataMapper(t, "second", "family-b", nil),
+				validTestDataMapper(t, "third", "family-c", nil),
+			}}
+			pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, test.data), mappers, destination)
+			require.NoError(t, err)
+
+			require.NoError(t, pipeline.Sync(ctx))
+			require.Equal(t, test.expectedData, destination.SentData)
+			require.Equal(t, test.expectedDeletion, destination.DeletedData)
+			require.Equal(t, test.expectedWarnings, strings.Count(logs.String(), unregisteredWarning))
+			require.Equal(t, test.expectedErrors, strings.Count(logs.String(), noTargetError))
+		})
+	}
+}
