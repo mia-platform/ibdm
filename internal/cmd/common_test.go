@@ -199,22 +199,24 @@ func TestLoadMappers(t *testing.T) {
 	testCases := map[string]struct {
 		paths           []string
 		syncOnly        bool
-		expectedMappers map[string]pipeline.DataMapper
+		expectedMappers map[string][]pipeline.DataMapper
 		expectedError   error
 	}{
 		"valid mapping config": {
 			paths: []string{
 				filepath.Join("testdata", "mappers.yaml"),
 			},
-			expectedMappers: map[string]pipeline.DataMapper{
-				"valid": {
+			expectedMappers: map[string][]pipeline.DataMapper{
+				"valid": {{
+					Name:       "valid",
 					APIVersion: "v1",
 					ItemFamily: "family",
-				},
-				"mapper-type": {
+				}},
+				"mapper-type": {{
+					Name:       "mapper-type",
 					APIVersion: "v1",
 					ItemFamily: "family",
-				},
+				}},
 			},
 		},
 		"valid mapping config filtered by sync": {
@@ -222,11 +224,38 @@ func TestLoadMappers(t *testing.T) {
 				filepath.Join("testdata", "mappers.yaml"),
 			},
 			syncOnly: true,
-			expectedMappers: map[string]pipeline.DataMapper{
-				"mapper-type": {
+			expectedMappers: map[string][]pipeline.DataMapper{
+				"mapper-type": {{
+					Name:       "mapper-type",
 					APIVersion: "v1",
 					ItemFamily: "family",
+				}},
+			},
+		},
+		"mappings sharing a type are all kept in load order": {
+			paths: []string{
+				filepath.Join("testdata", "mappers.yaml"),
+				filepath.Join("testdata", "same-type.yaml"),
+			},
+			expectedMappers: map[string][]pipeline.DataMapper{
+				"valid": {
+					{
+						Name:       "valid",
+						APIVersion: "v1",
+						ItemFamily: "family",
+					},
+					{
+						Name:       "same-type",
+						APIVersion: "v2",
+						ItemFamily: "other-family",
+						Extra:      map[string]any{"apiVersion": "2024-01-01"},
+					},
 				},
+				"mapper-type": {{
+					Name:       "mapper-type",
+					APIVersion: "v1",
+					ItemFamily: "family",
+				}},
 			},
 		},
 		"error reading config": {
@@ -262,13 +291,54 @@ func TestLoadMappers(t *testing.T) {
 
 			assert.NoError(t, err)
 			// custom equality check for mappers
-			for name, mapper := range mappers {
-				expectedMapper, exists := test.expectedMappers[name]
+			require.Len(t, mappers, len(test.expectedMappers))
+			for name, typeMappers := range mappers {
+				expectedTypeMappers, exists := test.expectedMappers[name]
 				require.True(t, exists, "mapper %q not expected", name)
-				assert.Equal(t, expectedMapper.APIVersion, mapper.APIVersion)
-				assert.Equal(t, expectedMapper.ItemFamily, mapper.ItemFamily)
-				assert.NotNil(t, mapper.Mapper)
+				require.Len(t, typeMappers, len(expectedTypeMappers), "mappers for type %q", name)
+				for i, mapper := range typeMappers {
+					assert.Equal(t, expectedTypeMappers[i].Name, mapper.Name)
+					assert.Equal(t, expectedTypeMappers[i].APIVersion, mapper.APIVersion)
+					assert.Equal(t, expectedTypeMappers[i].ItemFamily, mapper.ItemFamily)
+					assert.Equal(t, expectedTypeMappers[i].Extra, mapper.Extra)
+					assert.NotNil(t, mapper.Mapper)
+				}
 			}
 		})
+	}
+}
+
+// TestLoadMappersLexicalOrder asserts that mappings sharing a type reach the
+// pipeline in lexical file order, whatever order the files were created in.
+func TestLoadMappersLexicalOrder(t *testing.T) {
+	t.Parallel()
+
+	const mappingTemplate = `type: my-type
+apiVersion: v1
+itemFamily: family
+mappings:
+  identifier: "{{ .id }}"
+  spec:
+    field1: "{{ .field1 }}"
+`
+
+	tmpDir := t.TempDir()
+	for _, fileName := range []string{"b-mapping.yaml", "c-mapping.yaml", "a-mapping.yaml"} {
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, fileName), []byte(mappingTemplate), 0o600))
+	}
+
+	for range 3 {
+		paths, err := collectPaths([]string{tmpDir})
+		require.NoError(t, err)
+
+		mappers, err := loadMappers(paths, false)
+		require.NoError(t, err)
+		require.Len(t, mappers, 1)
+
+		names := make([]string, 0, len(mappers["my-type"]))
+		for _, mapper := range mappers["my-type"] {
+			names = append(names, mapper.Name)
+		}
+		require.Equal(t, []string{"a-mapping", "b-mapping", "c-mapping"}, names)
 	}
 }

@@ -198,13 +198,14 @@ func collectPaths(paths []string) ([]string, error) {
 
 // loadMappers loads mapping files and builds typed mappers. When syncOnly is true,
 // it skips definitions that are not marked as syncable.
-func loadMappers(paths []string, syncOnly bool) (map[string]pipeline.DataMapper, error) {
+// Every mapping sharing a type is kept, in load order.
+func loadMappers(paths []string, syncOnly bool) (map[string][]pipeline.DataMapper, error) {
 	mappings, err := loadMappingConfigs(paths)
 	if err != nil {
 		return nil, err
 	}
 
-	typedMappers := make(map[string]pipeline.DataMapper)
+	typedMappers := make(map[string][]pipeline.DataMapper)
 	for _, mapping := range mappings {
 		if syncOnly && !mapping.Syncable {
 			continue
@@ -216,12 +217,13 @@ func loadMappers(paths []string, syncOnly bool) (map[string]pipeline.DataMapper,
 			return nil, err
 		}
 
-		typedMappers[mapping.Type] = pipeline.DataMapper{
+		typedMappers[mapping.Type] = append(typedMappers[mapping.Type], pipeline.DataMapper{
+			Name:       mapping.Name,
 			APIVersion: mapping.APIVersion,
 			ItemFamily: mapping.ItemFamily,
 			Mapper:     mapper,
 			Extra:      mapping.Extra,
-		}
+		})
 	}
 
 	return typedMappers, nil
