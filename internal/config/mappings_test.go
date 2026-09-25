@@ -179,6 +179,26 @@ func TestNewMappingsFromPath(t *testing.T) {
 				},
 			},
 		},
+		"valid yaml file with createIf guard": {
+			path: filepath.Join("testdata", "createif.yaml"),
+			expectedMappingConfigs: []*MappingConfig{
+				{
+					Name:       "createif",
+					Type:       "yaml",
+					APIVersion: "group/v1",
+					ItemFamily: "configs",
+					Syncable:   true,
+					CreateIf:   `{{ eq .kind "functionapp" }}`,
+					path:       filepath.Join("testdata", "createif.yaml"),
+					Mappings: Mappings{
+						Identifier: "{{ .name }}",
+						Spec: map[string]string{
+							"key": "{{ .value }}",
+						},
+					},
+				},
+			},
+		},
 		"valid yaml file with extra mapping": {
 			path: filepath.Join("testdata", "extra.yaml"),
 			expectedMappingConfigs: []*MappingConfig{

@@ -61,7 +61,10 @@ type MappingConfig struct {
 	APIVersion string         `json:"apiVersion" yaml:"apiVersion"`
 	ItemFamily string         `json:"itemFamily" yaml:"itemFamily"`
 	Syncable   bool           `json:"syncable" yaml:"syncable"`
-	Mappings   Mappings       `json:"mappings" yaml:"mappings"`
+	// CreateIf is an optional template guarding upserts: when it renders false, the mapping
+	// declines the payload and produces no item. It is never evaluated on delete.
+	CreateIf string   `json:"createIf" yaml:"createIf"`
+	Mappings Mappings `json:"mappings" yaml:"mappings"`
 
 	// path is the file the mapping was read from, used to report name collisions.
 	path string

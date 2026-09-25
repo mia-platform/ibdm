@@ -1,0 +1,9 @@
+apiVersion: group/v1
+itemFamily: configs
+type: yaml
+syncable: true
+createIf: '{{ eq .kind "functionapp" }}'
+mappings:
+  identifier: "{{ .name }}"
+  spec:
+    key: "{{ .value }}"
