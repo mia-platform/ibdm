@@ -5,6 +5,8 @@ package pipeline
 
 import (
 	"context"
+	"maps"
+	"reflect"
 	"time"
 
 	"github.com/mia-platform/ibdm/internal/destination"
@@ -23,6 +25,8 @@ type dataPipeline = func(ctx context.Context, channel chan<- source.Data) error
 
 // DataMapper couples a mapper with the metadata needed to build destination payloads.
 type DataMapper struct {
+	// Name identifies the mapping within the loaded set.
+	Name       string
 	APIVersion string
 	ItemFamily string
 	Extra      source.Extra
@@ -32,26 +36,49 @@ type DataMapper struct {
 // Pipeline orchestrates the flow from a source through mappers into a destination.
 type Pipeline struct {
 	source        any
-	mappers       map[string]DataMapper
+	mappers       map[string][]DataMapper
 	mapperTypes   map[string]source.Extra
 	destination   destination.Sender
 	serverCreator func(ctx context.Context) (server.Server, error)
 }
 
 // New wires together the given source, mappers, and destination into a Pipeline.
-func New(ctx context.Context, src any, mappers map[string]DataMapper, destination destination.Sender) (*Pipeline, error) {
-	mapperTypes := make(map[string]source.Extra, len(mappers))
-	for dataType, mapping := range mappers {
-		mapperTypes[dataType] = mapping.Extra
-	}
-
+// mappers groups the mappings by data type. Every mapping registered for a type
+// renders each emission of that type, in slice order.
+func New(ctx context.Context, src any, mappers map[string][]DataMapper, destination destination.Sender) (*Pipeline, error) {
 	return &Pipeline{
 		source:        src,
 		mappers:       mappers,
-		mapperTypes:   mapperTypes,
+		mapperTypes:   sourceExtras(ctx, mappers),
 		destination:   destination,
 		serverCreator: server.NewServer,
 	}, nil
+}
+
+// interim: removed by Phase 2 (Layer B2)
+// sourceExtras builds the single Extra per type that sources still receive. The
+// first mapping registered for a type provides it. A later mapping that declares a
+// different Extra is reported with a warning and its Extra is not passed to the source.
+func sourceExtras(ctx context.Context, mappers map[string][]DataMapper) map[string]source.Extra {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	mapperTypes := make(map[string]source.Extra, len(mappers))
+	for dataType, dataMappers := range mappers {
+		if len(dataMappers) == 0 {
+			continue
+		}
+
+		first := dataMappers[0]
+		mapperTypes[dataType] = first.Extra
+		for _, dataMapper := range dataMappers[1:] {
+			if !maps.EqualFunc(first.Extra, dataMapper.Extra, reflect.DeepEqual) {
+				log.Warn("mappings sharing a type declare different extra, only the first one reaches the source",
+					"type", dataType, "usedMapping", first.Name, "ignoredMapping", dataMapper.Name)
+			}
+		}
+	}
+
+	return mapperTypes
 }
 
 // Start begins streaming data from a source.EventSource or source.WebhookSource.
@@ -161,7 +188,8 @@ func (p *Pipeline) Stop(ctx context.Context, timeout time.Duration) error {
 	return closableSource.Close(ctx, timeout)
 }
 
-// mappingData consumes channel entries, runs the matching mapper, and forwards results.
+// mappingData consumes channel entries, runs every mapper registered for their type,
+// and forwards the results.
 func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	for {
@@ -173,56 +201,67 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 			if !ok {
 				return
 			}
-			dataMapper, found := p.mappers[data.Type]
-			if !found {
+			dataMappers := p.mappers[data.Type]
+			if len(dataMappers) == 0 {
 				log.Debug("data type not mapped, skipping", "type", data.Type)
 				continue
 			}
 
-			log.Trace("sending data", "type", data.Type, "operation", data.Operation.String())
-			dataToSend := &destination.Data{
-				APIVersion:    dataMapper.APIVersion,
-				ItemFamily:    dataMapper.ItemFamily,
-				OperationTime: data.Timestamp(),
+			for _, dataMapper := range dataMappers {
+				p.applyMapper(ctx, data, dataMapper)
 			}
-			parentResourceInfo := mapper.ParentItemInfo{
-				APIVersion: dataMapper.APIVersion,
-				ItemFamily: dataMapper.ItemFamily,
-			}
-			switch data.Operation {
-			case source.DataOperationUpsert:
-				output, extra, err := dataMapper.Mapper.ApplyTemplates(data.Values, parentResourceInfo)
-				if err != nil {
-					log.Error("error applying mapper templates", "type", data.Type, "error", err)
-					continue
-				}
-				dataToSend.Name = output.Identifier
-				if output.Metadata != nil {
-					dataToSend.Metadata = output.Metadata
-				}
-				dataToSend.Data = output.Spec
-				if err := p.destination.SendData(ctx, dataToSend); err != nil {
-					log.Error("error sending data to destination", "type", data.Type, "error", err)
-					continue
-				}
-				p.upsertExtraMappedData(ctx, data, extra)
-			case source.DataOperationDelete:
-				identifier, extra, err := dataMapper.Mapper.ApplyIdentifierTemplate(data.Values)
-				dataToSend.Name = identifier
-				if err != nil {
-					log.Error("error applying mapper templates", "type", data.Type, "error", err)
-					continue
-				}
-				if err := p.destination.DeleteData(ctx, dataToSend); err != nil {
-					log.Error("error deleting data from destination", "type", data.Type, "error", err)
-					continue
-				}
-				p.deleteExtraMappedData(ctx, data, extra)
-			}
-
-			log.Trace("data sent", "type", data.Type, "operation", data.Operation.String())
 		}
 	}
+}
+
+// applyMapper renders data with dataMapper and forwards the result to the destination.
+// A failure is logged and stops only this mapping, so the other mappings registered
+// for the same type still run.
+func (p *Pipeline) applyMapper(ctx context.Context, data source.Data, dataMapper DataMapper) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	log.Trace("sending data", "type", data.Type, "mapping", dataMapper.Name, "operation", data.Operation.String())
+	dataToSend := &destination.Data{
+		APIVersion:    dataMapper.APIVersion,
+		ItemFamily:    dataMapper.ItemFamily,
+		OperationTime: data.Timestamp(),
+	}
+	parentResourceInfo := mapper.ParentItemInfo{
+		APIVersion: dataMapper.APIVersion,
+		ItemFamily: dataMapper.ItemFamily,
+	}
+	switch data.Operation {
+	case source.DataOperationUpsert:
+		output, extra, err := dataMapper.Mapper.ApplyTemplates(data.Values, parentResourceInfo)
+		if err != nil {
+			log.Error("error applying mapper templates", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		dataToSend.Name = output.Identifier
+		if output.Metadata != nil {
+			dataToSend.Metadata = output.Metadata
+		}
+		dataToSend.Data = output.Spec
+		if err := p.destination.SendData(ctx, dataToSend); err != nil {
+			log.Error("error sending data to destination", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		p.upsertExtraMappedData(ctx, data, extra)
+	case source.DataOperationDelete:
+		identifier, extra, err := dataMapper.Mapper.ApplyIdentifierTemplate(data.Values)
+		dataToSend.Name = identifier
+		if err != nil {
+			log.Error("error applying mapper templates", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		if err := p.destination.DeleteData(ctx, dataToSend); err != nil {
+			log.Error("error deleting data from destination", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		p.deleteExtraMappedData(ctx, data, extra)
+	}
+
+	log.Trace("data sent", "type", data.Type, "mapping", dataMapper.Name, "operation", data.Operation.String())
 }
 
 func (p *Pipeline) upsertExtraMappedData(ctx context.Context, data source.Data, extra []mapper.ExtraMappedData) {
