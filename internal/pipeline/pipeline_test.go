@@ -1192,3 +1192,107 @@ func TestPipelineTargeting(t *testing.T) {
 		})
 	}
 }
+
+// guardedTestDataMapper is validTestDataMapper guarded by the root createIf template.
+func guardedTestDataMapper(tb testing.TB, name, itemFamily, createIf string) DataMapper {
+	tb.Helper()
+
+	mapper, err := mapper.New("{{ .id }}", nil, map[string]string{"field1": "{{ .field1 }}"}, nil, mapper.WithCreateIf(createIf))
+	require.NoError(tb, err)
+	return DataMapper{
+		Name:       name,
+		APIVersion: "v1",
+		ItemFamily: itemFamily,
+		Mapper:     mapper,
+	}
+}
+
+func TestPipelineCreateIf(t *testing.T) {
+	t.Parallel()
+
+	const (
+		admitsValue1 = `{{ eq .field1 "value1" }}`
+		brokenGuard  = `{{ .missingField }}`
+		// the error text repeats the phrase, so match the log message field exactly
+		guardError = `"@message":"error evaluating createIf"`
+	)
+
+	otherUpsert := source.Data{
+		Type:      "type1",
+		Operation: source.DataOperationUpsert,
+		Values:    map[string]any{"id": "item1", "field1": "other"},
+		Time:      testTime,
+	}
+	idOnlyDelete := source.Data{
+		Type:      "type1",
+		Operation: source.DataOperationDelete,
+		Values:    map[string]any{"id": "item1"},
+		Time:      testTime,
+	}
+
+	testCases := map[string]struct {
+		createIf         string
+		data             []source.Data
+		expectedData     []*destination.Data
+		expectedDeletion []*destination.Data
+		expectedErrors   int
+	}{
+		"a guard rendering true lets its mapping render": {
+			createIf:     admitsValue1,
+			data:         []source.Data{type1},
+			expectedData: []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-b")},
+		},
+		"a guard rendering false declines only its own mapping": {
+			createIf: admitsValue1,
+			data:     []source.Data{otherUpsert},
+			expectedData: []*destination.Data{{
+				APIVersion:    "v1",
+				ItemFamily:    "family-b",
+				Name:          "item1",
+				Metadata:      map[string]any{},
+				Data:          map[string]any{"field1": "other"},
+				OperationTime: "2024-06-01T12:00:00Z",
+			}},
+		},
+		"a guard is never consulted on delete": {
+			// the id-only payload would make the guard fail with a missing key if it ran
+			createIf:         admitsValue1,
+			data:             []source.Data{idOnlyDelete},
+			expectedDeletion: []*destination.Data{fanOutDelete("family-a"), fanOutDelete("family-b")},
+		},
+		"a guard failing is isolated to its mapping": {
+			createIf:       brokenGuard,
+			data:           []source.Data{type1},
+			expectedData:   []*destination.Data{fanOutUpsert("family-b")},
+			expectedErrors: 1,
+		},
+		"the target selection runs before the guard": {
+			createIf:     brokenGuard,
+			data:         []source.Data{withMappings(type1, []string{"plain"})},
+			expectedData: []*destination.Data{fanOutUpsert("family-b")},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			logs := &bytes.Buffer{}
+			ctx, cancel := context.WithTimeout(logger.WithContext(t.Context(), logger.NewLogger(logs)), 1*time.Second)
+			defer cancel()
+
+			destination := fakedestination.NewFakeDestination(t)
+			mappers := map[string][]DataMapper{"type1": {
+				guardedTestDataMapper(t, "guarded", "family-a", test.createIf),
+				validTestDataMapper(t, "plain", "family-b", nil),
+			}}
+			pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, test.data), mappers, destination)
+			require.NoError(t, err)
+
+			require.NoError(t, pipeline.Sync(ctx))
+			require.Equal(t, test.expectedData, destination.SentData)
+			require.Equal(t, test.expectedDeletion, destination.DeletedData)
+			require.Equal(t, test.expectedErrors, strings.Count(logs.String(), guardError))
+		})
+	}
+}

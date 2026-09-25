@@ -1,0 +1,8 @@
+type: guarded-type
+apiVersion: v1
+itemFamily: family
+createIf: '{{ eq .kind "functionapp" }}'
+mappings:
+  identifier: "{{ .id }}"
+  spec:
+    field1: "{{ .field1 }}"

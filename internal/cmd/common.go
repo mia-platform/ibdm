@@ -212,7 +212,7 @@ func loadMappers(paths []string, syncOnly bool) (map[string][]pipeline.DataMappe
 		}
 
 		mappings := mapping.Mappings
-		mapper, err := mapper.New(mappings.Identifier, mappings.Metadata, mappings.Spec, mappings.Extra)
+		mapper, err := mapper.New(mappings.Identifier, mappings.Metadata, mappings.Spec, mappings.Extra, mapper.WithCreateIf(mapping.CreateIf))
 		if err != nil {
 			return nil, err
 		}

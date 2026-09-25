@@ -26,6 +26,9 @@ type Mapper interface {
 	ApplyTemplates(input map[string]any, parentItemInfo ParentItemInfo) (output MappedData, extra []ExtraMappedData, err error)
 	// ApplyIdentifierTemplate applies only the identifier template to the given input data and returns
 	ApplyIdentifierTemplate(data map[string]any) (string, []ExtraMappedData, error)
+	// ShouldCreate reports whether the root createIf guard admits the input. A mapping
+	// without a guard always admits.
+	ShouldCreate(input map[string]any) (bool, error)
 }
 
 const (
@@ -35,6 +38,7 @@ const (
 var (
 	errParsingSpecOutput = errors.New("error during casting to valid object")
 	errParsingExtra      = errors.New("error parsing extra templates")
+	errEvaluatingGuard   = errors.New("error evaluating createIf template")
 
 	identifierRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 )
@@ -56,7 +60,24 @@ type internalMapper struct {
 	idTemplate       *template.Template
 	metadataTemplate *template.Template
 	specTemplate     *template.Template
+	createIfTemplate *template.Template
 	extraMappings    []ExtraMapping
+}
+
+// Option configures optional behaviour of a Mapper built by New.
+type Option func(*options)
+
+// options collects the optional settings of New.
+type options struct {
+	createIfTemplate string
+}
+
+// WithCreateIf guards the mapping with the root createIf template: when it renders false, the
+// mapping declines the payload. An empty or blank template sets no guard.
+func WithCreateIf(createIfTemplate string) Option {
+	return func(o *options) {
+		o.createIfTemplate = createIfTemplate
+	}
 }
 
 // MappedData wraps the identifier and rendered spec produced by a Mapper.
@@ -82,7 +103,12 @@ type ParentItemInfo struct {
 }
 
 // New constructs a Mapper using the provided identifier template and spec templates.
-func New(identifierTemplate string, metadataTemplates, specTemplates map[string]string, extraTemplates []config.Extra) (Mapper, error) {
+func New(identifierTemplate string, metadataTemplates, specTemplates map[string]string, extraTemplates []config.Extra, opts ...Option) (Mapper, error) {
+	var settings options
+	for _, opt := range opts {
+		opt(&settings)
+	}
+
 	var parsingErrs error
 	tmpl := template.New("main").Option("missingkey=error").Funcs(templateFunctions())
 	idTemplate, err := tmpl.New("identifier").Parse(identifierTemplate)
@@ -93,6 +119,14 @@ func New(identifierTemplate string, metadataTemplates, specTemplates map[string]
 	metadataTemplate := compileMetadataTemplates(metadataTemplates, tmpl, &parsingErrs)
 
 	specTemplate := compileSpecTemplates(specTemplates, tmpl, &parsingErrs)
+
+	var createIfTemplate *template.Template
+	if strings.TrimSpace(settings.createIfTemplate) != "" {
+		createIfTemplate, err = tmpl.New("createIf").Parse(settings.createIfTemplate)
+		if err != nil {
+			parsingErrs = errors.Join(parsingErrs, err)
+		}
+	}
 
 	var extraMappings []ExtraMapping
 	if len(extraTemplates) > 0 {
@@ -107,6 +141,7 @@ func New(identifierTemplate string, metadataTemplates, specTemplates map[string]
 		idTemplate:       idTemplate,
 		metadataTemplate: metadataTemplate,
 		specTemplate:     specTemplate,
+		createIfTemplate: createIfTemplate,
 		extraMappings:    extraMappings,
 	}, nil
 }
@@ -237,6 +272,19 @@ func (m *internalMapper) ApplyTemplates(data map[string]any, parentResourceInfo 
 	}, extraData, nil
 }
 
+// ShouldCreate implements Mapper.ShouldCreate.
+func (m *internalMapper) ShouldCreate(input map[string]any) (bool, error) {
+	if m.createIfTemplate == nil {
+		return true, nil
+	}
+
+	createIf, err := executeCreateIfTemplate(m.createIfTemplate, input)
+	if err != nil {
+		return false, fmt.Errorf("%w: %w", errEvaluatingGuard, err)
+	}
+	return createIf, nil
+}
+
 // ApplyIdentifierTemplate implements Mapper.ApplyIdentifierTemplate.
 func (m *internalMapper) ApplyIdentifierTemplate(data map[string]any) (string, []ExtraMappedData, error) {
 	identifier, err := executeIdentifierTemplate(m.idTemplate, "identifier", data)
@@ -304,16 +352,24 @@ func executeTemplatesMap(templates *template.Template, templateName string, data
 // executeExtraCreateIfTemplate renders an extra mapping "createIf" template and
 // parses its result into a boolean.
 func executeExtraCreateIfTemplate(data map[string]any, extraMapping ExtraMapping) (bool, error) {
-	// Generate CreateIf
-	var createIfBuf bytes.Buffer
-	if err := extraMapping.CreateIfTemplate.Execute(&createIfBuf, data); err != nil {
+	createIf, err := executeCreateIfTemplate(extraMapping.CreateIfTemplate, data)
+	if err != nil {
 		return false, fmt.Errorf("%w: %w", errParsingExtra, err)
 	}
+	return createIf, nil
+}
 
-	// Unmarshal the executed YAML back into a map
+// executeCreateIfTemplate renders a "createIf" template and parses its result into a
+// boolean. An empty rendering parses as false.
+func executeCreateIfTemplate(tmpl *template.Template, data map[string]any) (bool, error) {
+	var createIfBuf bytes.Buffer
+	if err := tmpl.Execute(&createIfBuf, data); err != nil {
+		return false, err
+	}
+
 	var createIf bool
 	if err := yaml.Unmarshal(createIfBuf.Bytes(), &createIf); err != nil {
-		return false, fmt.Errorf("%w: %w", errParsingExtra, err)
+		return false, err
 	}
 	return createIf, nil
 }

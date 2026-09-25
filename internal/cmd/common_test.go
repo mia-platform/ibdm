@@ -342,3 +342,46 @@ mappings:
 		require.Equal(t, []string{"a-mapping", "b-mapping", "c-mapping"}, names)
 	}
 }
+
+func TestLoadMappersCreateIf(t *testing.T) {
+	t.Parallel()
+
+	t.Run("createIf reaches the mapper", func(t *testing.T) {
+		t.Parallel()
+
+		mappers, err := loadMappers([]string{filepath.Join("testdata", "createif.yaml")}, false)
+		require.NoError(t, err)
+		require.Len(t, mappers["guarded-type"], 1)
+
+		guarded := mappers["guarded-type"][0].Mapper
+		create, err := guarded.ShouldCreate(map[string]any{"kind": "functionapp"})
+		require.NoError(t, err)
+		require.True(t, create)
+
+		create, err = guarded.ShouldCreate(map[string]any{"kind": "app"})
+		require.NoError(t, err)
+		require.False(t, create)
+	})
+
+	t.Run("mapping without createIf always admits", func(t *testing.T) {
+		t.Parallel()
+
+		mappers, err := loadMappers([]string{filepath.Join("testdata", "mappers.yaml")}, false)
+		require.NoError(t, err)
+		require.Len(t, mappers["valid"], 1)
+
+		create, err := mappers["valid"][0].Mapper.ShouldCreate(map[string]any{"kind": "app"})
+		require.NoError(t, err)
+		require.True(t, create)
+	})
+
+	t.Run("broken createIf fails loading", func(t *testing.T) {
+		t.Parallel()
+
+		mappers, err := loadMappers([]string{filepath.Join("testdata", "invalid-createif.yaml")}, false)
+		require.Nil(t, mappers)
+		var parsingError *mapper.ParsingError
+		require.ErrorAs(t, err, &parsingError)
+		require.ErrorContains(t, err, "invalidFunc")
+	})
+}

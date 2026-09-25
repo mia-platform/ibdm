@@ -1,0 +1,8 @@
+type: guarded-type
+apiVersion: v1
+itemFamily: family
+createIf: '{{ .kind | invalidFunc }}'
+mappings:
+  identifier: "{{ .id }}"
+  spec:
+    field1: "{{ .field1 }}"

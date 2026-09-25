@@ -98,6 +98,118 @@ func TestNewMapper(t *testing.T) {
 	})
 }
 
+func TestNewMapperCreateIf(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		createIf       string
+		expectGuard    bool
+		expectParseErr bool
+	}{
+		"no option sets no guard": {},
+		"blank template sets no guard": {
+			createIf: "  \n\t",
+		},
+		"template sets the guard": {
+			createIf:    `{{ eq .kind "functionapp" }}`,
+			expectGuard: true,
+		},
+		"broken template returns a parsing error": {
+			createIf:       "{{ .kind | unknownFunc }}",
+			expectParseErr: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := []Option{}
+			if test.createIf != "" {
+				opts = append(opts, WithCreateIf(test.createIf))
+			}
+			mapper, err := New("{{ .name }}", nil, map[string]string{"key": "{{ .name }}"}, nil, opts...)
+			if test.expectParseErr {
+				require.Nil(t, mapper)
+				var targetError *ParsingError
+				require.ErrorAs(t, err, &targetError)
+				require.ErrorContains(t, err, "unknownFunc")
+				return
+			}
+
+			require.NoError(t, err)
+			mapperInstance, ok := mapper.(*internalMapper)
+			require.True(t, ok)
+			require.Equal(t, test.expectGuard, mapperInstance.createIfTemplate != nil)
+		})
+	}
+}
+
+func TestShouldCreate(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		createIf      string
+		input         map[string]any
+		expected      bool
+		expectedError bool
+	}{
+		"mapping without guard admits": {
+			input:    map[string]any{"kind": "app"},
+			expected: true,
+		},
+		"guard rendering true admits": {
+			createIf: `{{ eq .kind "functionapp" }}`,
+			input:    map[string]any{"kind": "functionapp"},
+			expected: true,
+		},
+		"guard rendering false declines": {
+			createIf: `{{ eq .kind "functionapp" }}`,
+			input:    map[string]any{"kind": "app"},
+			expected: false,
+		},
+		"guard rendering nothing declines": {
+			createIf: `{{ if eq .kind "functionapp" }}true{{ end }}`,
+			input:    map[string]any{"kind": "app"},
+			expected: false,
+		},
+		"guard using get tolerates a missing key": {
+			createIf: `{{ eq (get "kind" . "") "functionapp" }}`,
+			input:    map[string]any{"name": "my-site"},
+			expected: false,
+		},
+		"guard referencing a missing key returns an error": {
+			createIf:      `{{ eq .kind "functionapp" }}`,
+			input:         map[string]any{"name": "my-site"},
+			expectedError: true,
+		},
+		"guard rendering a non boolean returns an error": {
+			createIf:      `{{ .kind }}`,
+			input:         map[string]any{"kind": "app"},
+			expectedError: true,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mapper, err := New("{{ .name }}", nil, map[string]string{"key": "value"}, nil, WithCreateIf(test.createIf))
+			require.NoError(t, err)
+
+			create, err := mapper.ShouldCreate(test.input)
+			if test.expectedError {
+				require.ErrorIs(t, err, errEvaluatingGuard)
+				require.False(t, create)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.expected, create)
+		})
+	}
+}
+
 func TestMapper(t *testing.T) {
 	t.Parallel()
 
