@@ -1,0 +1,9 @@
+type: valid
+apiVersion: v2
+itemFamily: other-family
+extra:
+  apiVersion: "2024-01-01"
+mappings:
+  identifier: "{{ .id }}"
+  spec:
+    field1: "{{ .field1 }}"
