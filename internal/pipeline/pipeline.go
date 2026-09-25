@@ -259,6 +259,18 @@ func (p *Pipeline) applyMapper(ctx context.Context, data source.Data, dataMapper
 	}
 	switch data.Operation {
 	case source.DataOperationUpsert:
+		// the guard runs after the target selection of mappingData, so it only ever sees
+		// payloads meant for its mapping
+		create, err := dataMapper.Mapper.ShouldCreate(data.Values)
+		if err != nil {
+			log.Error("error evaluating createIf", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		if !create {
+			log.Trace("mapping declined payload", "type", data.Type, "mapping", dataMapper.Name)
+			return
+		}
+
 		output, extra, err := dataMapper.Mapper.ApplyTemplates(data.Values, parentResourceInfo)
 		if err != nil {
 			log.Error("error applying mapper templates", "type", data.Type, "mapping", dataMapper.Name, "error", err)
@@ -275,6 +287,10 @@ func (p *Pipeline) applyMapper(ctx context.Context, data source.Data, dataMapper
 		}
 		p.upsertExtraMappedData(ctx, data, extra)
 	case source.DataOperationDelete:
+		// the createIf guard is deliberately not evaluated on delete: delete payloads are frequently
+		// id-only, so a guard written against the full payload could not run on them, and deleting an
+		// item that was never created is inert. The azure source applies the same rule to its
+		// sub-types, see subTypesToEmit in internal/source/azure/subtypes.go.
 		identifier, extra, err := dataMapper.Mapper.ApplyIdentifierTemplate(data.Values)
 		dataToSend.Name = identifier
 		if err != nil {
