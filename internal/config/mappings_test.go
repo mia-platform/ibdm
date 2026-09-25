@@ -4,11 +4,14 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewMappingsFromPath(t *testing.T) {
@@ -24,10 +27,12 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "one.yaml"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
+					Name:       "one",
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
 					Syncable:   true,
+					path:       filepath.Join("testdata", "one.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
 						Spec: map[string]string{
@@ -42,10 +47,12 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "one.json"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
+					Name:       "one",
 					Type:       "json",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
 					Syncable:   true,
+					path:       filepath.Join("testdata", "one.json"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
 						Spec: map[string]string{
@@ -60,10 +67,12 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "multiple.yaml"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
+					Name:       "first-mapping",
 					Type:       "first",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
 					Syncable:   true,
+					path:       filepath.Join("testdata", "multiple.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .spec.id }}",
 						Spec: map[string]string{
@@ -73,10 +82,12 @@ func TestNewMappingsFromPath(t *testing.T) {
 					},
 				},
 				{
+					Name:       "second-mapping",
 					Type:       "second",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
 					Syncable:   true,
+					path:       filepath.Join("testdata", "multiple.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .metadata.name }}",
 						Spec: map[string]string{
@@ -85,6 +96,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					},
 				},
 				{
+					Name:       "third-mapping",
 					Type:       "third",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
@@ -92,6 +104,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Extra: map[string]any{
 						"apiVersion": "2025-01-04-preview",
 					},
+					path: filepath.Join("testdata", "multiple.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .spec.code }}",
 						Spec: map[string]string{
@@ -118,10 +131,12 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "metadatamapping.yaml"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
+					Name:       "metadatamapping",
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
 					Syncable:   true,
+					path:       filepath.Join("testdata", "metadatamapping.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
 						Metadata: MetadataMapping{
@@ -147,10 +162,12 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "wrongmetadata.yaml"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
+					Name:       "wrongmetadata",
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
 					Syncable:   true,
+					path:       filepath.Join("testdata", "wrongmetadata.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
 						Metadata:   MetadataMapping{},
@@ -166,10 +183,12 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "extra.yaml"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
+					Name:       "extra",
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
 					Syncable:   true,
+					path:       filepath.Join("testdata", "extra.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
 						Spec: map[string]string{
@@ -195,10 +214,12 @@ func TestNewMappingsFromPath(t *testing.T) {
 			path: filepath.Join("testdata", "twoextra.yaml"),
 			expectedMappingConfigs: []*MappingConfig{
 				{
+					Name:       "twoextra",
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
 					Syncable:   true,
+					path:       filepath.Join("testdata", "twoextra.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
 						Spec: map[string]string{
@@ -264,6 +285,244 @@ func TestNewMappingsFromPath(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, test.expectedMappingConfigs, mappingConfigs)
+		})
+	}
+}
+
+// mappingDocument returns a minimal valid mapping document, declaring name when not empty.
+func mappingDocument(name string) string {
+	document := `type: my-type
+apiVersion: group/v1
+itemFamily: configs
+mappings:
+  identifier: "{{ .name }}"
+  spec:
+    key: "{{ .value }}"
+`
+	if name != "" {
+		document = "name: " + name + "\n" + document
+	}
+	return document
+}
+
+func TestNewMappingConfigsFromPathNames(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		fileName      string
+		content       string
+		expectedNames []string
+		expectedError error
+	}{
+		"name defaults to the file base name": {
+			fileName:      "my-repositories.yaml",
+			content:       mappingDocument(""),
+			expectedNames: []string{"my-repositories"},
+		},
+		"name defaults to the file base name keeping inner dots": {
+			fileName:      "my-repositories.v2.yaml",
+			content:       mappingDocument(""),
+			expectedNames: []string{"my-repositories.v2"},
+		},
+		"name defaults to the file base name without extension": {
+			fileName:      "apim_services",
+			content:       mappingDocument(""),
+			expectedNames: []string{"apim_services"},
+		},
+		"explicit name wins over the file base name": {
+			fileName:      "my-repositories.yaml",
+			content:       mappingDocument("my-custom-name"),
+			expectedNames: []string{"my-custom-name"},
+		},
+		"explicit name allows a non compliant file name": {
+			fileName:      "My Repositories.yaml",
+			content:       mappingDocument("my-repositories"),
+			expectedNames: []string{"my-repositories"},
+		},
+		"non compliant file base name without explicit name return error": {
+			fileName:      "My Repositories.yaml",
+			content:       mappingDocument(""),
+			expectedError: ErrParsing,
+		},
+		"multiple mappings with names": {
+			fileName:      "my-mappings.yaml",
+			content:       mappingDocument("first") + "---\n" + mappingDocument("second"),
+			expectedNames: []string{"first", "second"},
+		},
+		"multiple mappings with a missing name return error": {
+			fileName:      "my-mappings.yaml",
+			content:       mappingDocument("first") + "---\n" + mappingDocument(""),
+			expectedError: ErrParsing,
+		},
+		"multiple mappings without names return error": {
+			fileName:      "my-mappings.yaml",
+			content:       mappingDocument("") + "---\n" + mappingDocument(""),
+			expectedError: ErrParsing,
+		},
+		"name with uppercase characters return error": {
+			fileName:      "my-mappings.yaml",
+			content:       mappingDocument("My-Mapping"),
+			expectedError: ErrParsing,
+		},
+		"name with invalid characters return error": {
+			fileName:      "my-mappings.yaml",
+			content:       mappingDocument("my/mapping"),
+			expectedError: ErrParsing,
+		},
+		"name ending with a separator return error": {
+			fileName:      "my-mappings.yaml",
+			content:       mappingDocument("my-mapping-"),
+			expectedError: ErrParsing,
+		},
+		"name starting with a separator return error": {
+			fileName:      "my-mappings.yaml",
+			content:       mappingDocument("_my-mapping"),
+			expectedError: ErrParsing,
+		},
+		"name at the maximum length": {
+			fileName:      "my-mappings.yaml",
+			content:       mappingDocument(strings.Repeat("a", maxMappingNameLength)),
+			expectedNames: []string{strings.Repeat("a", maxMappingNameLength)},
+		},
+		"name over the maximum length return error": {
+			fileName:      "my-mappings.yaml",
+			content:       mappingDocument(strings.Repeat("a", maxMappingNameLength+1)),
+			expectedError: ErrParsing,
+		},
+		"single character name": {
+			fileName:      "a.yaml",
+			content:       mappingDocument(""),
+			expectedNames: []string{"a"},
+		},
+		"empty file return no mappings": {
+			fileName:      "empty.yaml",
+			content:       "",
+			expectedNames: []string{},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), test.fileName)
+			require.NoError(t, os.WriteFile(path, []byte(test.content), 0o600))
+
+			mappingConfigs, err := NewMappingConfigsFromPath(path)
+			if test.expectedError != nil {
+				require.ErrorIs(t, err, test.expectedError)
+				require.ErrorContains(t, err, path)
+				require.Empty(t, mappingConfigs)
+				return
+			}
+
+			require.NoError(t, err)
+			names := make([]string, 0, len(mappingConfigs))
+			for _, mappingConfig := range mappingConfigs {
+				names = append(names, mappingConfig.Name)
+				require.Equal(t, path, mappingConfig.path)
+			}
+			require.Equal(t, test.expectedNames, names)
+		})
+	}
+}
+
+func TestValidateMappingNames(t *testing.T) {
+	t.Parallel()
+
+	firstPath := filepath.Join("my-dir", "first.yaml")
+	secondPath := filepath.Join("my-other-dir", "second.yaml")
+
+	testCases := map[string]struct {
+		mappings      []*MappingConfig
+		expectedError error
+		expectedPaths []string
+	}{
+		"no mappings": {
+			mappings: []*MappingConfig{},
+		},
+		"unique names": {
+			mappings: []*MappingConfig{
+				{Name: "first", Type: "my-type", path: firstPath},
+				{Name: "second", Type: "my-type", path: secondPath},
+			},
+		},
+		"duplicate names across two files return error": {
+			mappings: []*MappingConfig{
+				{Name: "my-mapping", Type: "my-type", path: firstPath},
+				{Name: "my-mapping", Type: "my-other-type", path: secondPath},
+			},
+			expectedError: ErrDuplicateMappingName,
+			expectedPaths: []string{firstPath, secondPath},
+		},
+		"duplicate names in the same file return error": {
+			mappings: []*MappingConfig{
+				{Name: "first", Type: "my-type", path: firstPath},
+				{Name: "my-mapping", Type: "my-type", path: secondPath},
+				{Name: "my-mapping", Type: "my-other-type", path: secondPath},
+			},
+			expectedError: ErrDuplicateMappingName,
+			expectedPaths: []string{secondPath},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			err := ValidateMappingNames(test.mappings)
+			if test.expectedError != nil {
+				require.ErrorIs(t, err, test.expectedError)
+				for _, path := range test.expectedPaths {
+					require.ErrorContains(t, err, path)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
+}
+
+// TestBundledMappingNames loads every mapping shipped in docs/mappings and asserts
+// that each one resolves to a valid name, unique within its source directory.
+func TestBundledMappingNames(t *testing.T) {
+	t.Parallel()
+
+	mappingsRoot := filepath.Join("..", "..", "docs", "mappings")
+	sourceDirs, err := os.ReadDir(mappingsRoot)
+	require.NoError(t, err)
+	require.NotEmpty(t, sourceDirs)
+
+	for _, sourceDir := range sourceDirs {
+		if !sourceDir.IsDir() {
+			continue
+		}
+
+		t.Run(sourceDir.Name(), func(t *testing.T) {
+			t.Parallel()
+
+			dirPath := filepath.Join(mappingsRoot, sourceDir.Name())
+			files, err := os.ReadDir(dirPath)
+			require.NoError(t, err)
+
+			mappings := make([]*MappingConfig, 0, len(files))
+			for _, file := range files {
+				if file.IsDir() {
+					continue
+				}
+
+				fileMappings, err := NewMappingConfigsFromPath(filepath.Join(dirPath, file.Name()))
+				require.NoError(t, err)
+				require.NotEmpty(t, fileMappings)
+				for _, mapping := range fileMappings {
+					require.NoError(t, validateMappingName(mapping.Name))
+				}
+				mappings = append(mappings, fileMappings...)
+			}
+
+			require.NotEmpty(t, mappings)
+			require.NoError(t, ValidateMappingNames(mappings))
 		})
 	}
 }

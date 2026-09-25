@@ -235,6 +235,13 @@ func TestLoadMappers(t *testing.T) {
 			},
 			expectedError: config.ErrParsing,
 		},
+		"duplicate mapping names across files": {
+			paths: []string{
+				filepath.Join("testdata", "mappers.yaml"),
+				filepath.Join("testdata", "duplicate-name.yaml"),
+			},
+			expectedError: config.ErrDuplicateMappingName,
+		},
 		"error in mapping definition": {
 			paths: []string{
 				filepath.Join("testdata", "invalid.yaml"),

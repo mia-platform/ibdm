@@ -1,5 +1,6 @@
 apiVersion: group/v1
 itemFamily: configs
+name: first-mapping
 type: first
 syncable: true
 mappings:
@@ -10,6 +11,7 @@ mappings:
 ---
 apiVersion: group/v1
 itemFamily: configs
+name: second-mapping
 type: second
 syncable: true
 mappings:
@@ -21,6 +23,7 @@ mappings:
 ---
 apiVersion: group/v1
 itemFamily: configs
+name: third-mapping
 type: third
 extra:
   apiVersion: 2025-01-04-preview
