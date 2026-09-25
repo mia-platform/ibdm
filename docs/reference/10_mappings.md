@@ -229,6 +229,8 @@ produces `value1`.
 ### `set`
 
 `set` stores the provided value at the given key and returns the updated object.
+When the object is part of the payload, the write only changes the current mapping's copy of the
+payload: the other mappings rendering the same payload are not affected.
 
 Example: `{{ set "otherKey" .aKey .object | toJSON }}` with `.object` equal to `{"key":"value1"}`
 and `.aKey` equal to `new value` produces `{"key":"value1","otherKey":"new value"}`.

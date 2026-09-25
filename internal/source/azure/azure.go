@@ -313,7 +313,6 @@ func partitionEventHandler(client *armresources.Client, typesToFilter map[string
 	}
 }
 
-// unmarshalAzureResponse converts an armresources.ClientGetByIDResponse to a map[string]any.
 // emitUpsertedResource fetches the resource resID once per api-version group, in lexical order of
 // api-version, and emits the item of each fetch to the mappings of its group only. The sub-type
 // items are emitted once, together with the item of the first fetch that succeeds: emitting them
@@ -366,6 +365,7 @@ func groupedMappings(groups []source.MappingGroup) []string {
 	return mappings
 }
 
+// unmarshalAzureResponse converts an armresources.ClientGetByIDResponse to a map[string]any.
 func unmarshalAzureResponse(res armresources.GenericResource) (map[string]any, error) {
 	data, err := res.MarshalJSON()
 	if err != nil {

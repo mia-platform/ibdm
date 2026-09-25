@@ -247,6 +247,10 @@ func targetedMappers(log logger.Logger, data source.Data, dataMappers []DataMapp
 func (p *Pipeline) applyMapper(ctx context.Context, data source.Data, dataMapper DataMapper) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
+	// every template of this mapping, on upsert and on delete, works on a private copy of the
+	// payload: data is a value parameter, so the copy never reaches the other mappings.
+	data.Values = copyValues(data.Values)
+
 	log.Trace("sending data", "type", data.Type, "mapping", dataMapper.Name, "operation", data.Operation.String())
 	dataToSend := &destination.Data{
 		APIVersion:    dataMapper.APIVersion,
@@ -305,6 +309,53 @@ func (p *Pipeline) applyMapper(ctx context.Context, data source.Data, dataMapper
 	}
 
 	log.Trace("data sent", "type", data.Type, "mapping", dataMapper.Name, "operation", data.Operation.String())
+}
+
+// copyValues returns a deep copy of a source payload. Templates may write into their input with
+// the set function, which stores values in place, and several mappings can render the same
+// payload: each mapping must render the payload its source emitted, not one an earlier mapping
+// modified. The copy recurses into every map[string]any, []any and []map[string]any at any depth,
+// the containers a template can reach and write into. Every other value is assigned as is: it is
+// a scalar, or a typed value such as map[string]float64 that set cannot write into, because set
+// only accepts a map[string]any. A nil payload returns nil.
+func copyValues(values map[string]any) map[string]any {
+	if values == nil {
+		return nil
+	}
+
+	copied := make(map[string]any, len(values))
+	for key, value := range values {
+		copied[key] = copyValue(value)
+	}
+	return copied
+}
+
+// copyValue deep-copies the containers copyValues recurses into and returns any other value as is.
+func copyValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		return copyValues(typed)
+	case []any:
+		if typed == nil {
+			return typed
+		}
+		copied := make([]any, len(typed))
+		for i, element := range typed {
+			copied[i] = copyValue(element)
+		}
+		return copied
+	case []map[string]any:
+		if typed == nil {
+			return typed
+		}
+		copied := make([]map[string]any, len(typed))
+		for i, element := range typed {
+			copied[i] = copyValues(element)
+		}
+		return copied
+	default:
+		return value
+	}
 }
 
 func (p *Pipeline) upsertExtraMappedData(ctx context.Context, data source.Data, extra []mapper.ExtraMappedData) {

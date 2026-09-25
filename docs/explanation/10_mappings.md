@@ -78,6 +78,8 @@ Mappings sharing a `type` render in the order their files are loaded: the order 
 `--mapping-file` flags and, within a directory, the lexical order of the file names. The order is
 therefore the same at every run. A mapping that fails on a payload, because a template errors or the Catalog rejects
 the item, logs the error and does not prevent the other mappings from rendering it.
+Every mapping renders its own copy of the payload, so a template that writes into its input, for
+example with [`set`](../reference/10_mappings.md#set), does not affect the other mappings.
 
 Each mapping sends its own items to the Mia-Platform Catalog, so N mappings on a `type` mean N
 writes for every payload of that `type`.
