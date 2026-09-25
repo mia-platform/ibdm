@@ -27,24 +27,7 @@ func (p *pushEventProcessor) process(ctx context.Context, typesToStream map[stri
 		return nil, err
 	}
 
-	values := map[string]any{repositoryType: repoObject}
-	if p.client != nil {
-		if fullName, _ := repoObject["full_name"].(string); fullName != "" {
-			apiVersion := apiVersionFromExtra(apiVersionExtra(typesToStream[repositoryType]))
-			if langs, err := p.client.getRepositoryLanguages(ctx, fullName, apiVersion); err == nil {
-				values["repositoryLanguages"] = langs
-			}
-		}
-	}
-
-	return []source.Data{
-		{
-			Type:      repositoryType,
-			Operation: source.DataOperationUpsert,
-			Values:    values,
-			Time:      timeSource(),
-		},
-	}, nil
+	return repositoryEmissions(ctx, p.client, typesToStream[repositoryType], repoObject, source.DataOperationUpsert), nil
 }
 
 // parsePushEvent extracts the repository object from a push webhook payload.

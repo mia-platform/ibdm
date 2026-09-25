@@ -45,24 +45,7 @@ func (p *repositoryEventProcessor) process(ctx context.Context, typesToStream ma
 		return nil, nil
 	}
 
-	values := map[string]any{repositoryType: repoObject}
-	if p.client != nil {
-		if fullName, _ := repoObject["full_name"].(string); fullName != "" {
-			apiVersion := apiVersionFromExtra(apiVersionExtra(typesToStream[repositoryType]))
-			if langs, err := p.client.getRepositoryLanguages(ctx, fullName, apiVersion); err == nil {
-				values["repositoryLanguages"] = langs
-			}
-		}
-	}
-
-	return []source.Data{
-		{
-			Type:      repositoryType,
-			Operation: operation,
-			Values:    values,
-			Time:      timeSource(),
-		},
-	}, nil
+	return repositoryEmissions(ctx, p.client, typesToStream[repositoryType], repoObject, operation), nil
 }
 
 // parseRepositoryEvent extracts the action and repository object from a

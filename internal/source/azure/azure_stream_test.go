@@ -4,9 +4,12 @@
 package azure
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
@@ -51,59 +55,6 @@ func TestCancelledContext(t *testing.T) {
 	err := azureSource.StartEventStream(ctx, nil, nil)
 	assert.ErrorIs(t, ctx.Err(), context.Canceled)
 	assert.NoError(t, err)
-}
-
-func TestAPIVersionExtra(t *testing.T) {
-	t.Parallel()
-
-	testCases := map[string]struct {
-		extras          source.MappingExtras
-		expectedVersion string
-		expectedFound   bool
-	}{
-		"single mapping with a version": {
-			extras:          source.MappingExtras{"my-mapping": {apiVersionKey: "2024-01-01"}},
-			expectedVersion: "2024-01-01",
-			expectedFound:   true,
-		},
-		"single mapping with an empty version keeps it": {
-			extras:        source.MappingExtras{"my-mapping": {apiVersionKey: ""}},
-			expectedFound: true,
-		},
-		"single mapping without a version": {
-			extras: source.MappingExtras{"my-mapping": nil},
-		},
-		"no mappings": {
-			extras: nil,
-		},
-		"first mapping in lexical order wins": {
-			extras: source.MappingExtras{
-				"b-mapping": {apiVersionKey: "2025-01-01"},
-				"a-mapping": {apiVersionKey: "2024-01-01"},
-			},
-			expectedVersion: "2024-01-01",
-			expectedFound:   true,
-		},
-		"mappings without a string version are skipped": {
-			extras: source.MappingExtras{
-				"a-mapping": {apiVersionKey: 123},
-				"b-mapping": nil,
-				"c-mapping": {apiVersionKey: "2025-01-01"},
-			},
-			expectedVersion: "2025-01-01",
-			expectedFound:   true,
-		},
-	}
-
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			apiVersion, found := apiVersionExtra(test.extras)[apiVersionKey].(string)
-			require.Equal(t, test.expectedFound, found)
-			require.Equal(t, test.expectedVersion, apiVersion)
-		})
-	}
 }
 
 func TestPartitionEventHandler(t *testing.T) {
@@ -731,3 +682,194 @@ var (
 		},
 	}
 )
+
+// failingAPIVersion is the api-version the recording transport answers with an error.
+const failingAPIVersion = "2020-01-01"
+
+// apiVersionRecorder is a fake Resources API that serves the my-function site with a tag holding
+// the api-version it was fetched with, and records the api-version of every request.
+type apiVersionRecorder struct {
+	lock        sync.Mutex
+	apiVersions []string
+}
+
+func (r *apiVersionRecorder) transport(tb testing.TB) policy.Transporter {
+	tb.Helper()
+
+	return fakearmresources.NewServerTransport(&fakearmresources.Server{
+		GetByID: func(_ context.Context, resourceID, apiVersion string, _ *armresources.ClientGetByIDOptions) (responder fakeazcore.Responder[armresources.ClientGetByIDResponse], errResponder fakeazcore.ErrorResponder) {
+			r.lock.Lock()
+			r.apiVersions = append(r.apiVersions, apiVersion)
+			r.lock.Unlock()
+
+			assert.Equal(tb, functionAppGetByIDPath, resourceID)
+			if apiVersion == failingAPIVersion {
+				errResponder.SetError(assert.AnError)
+				return responder, errResponder
+			}
+
+			responder.SetResponse(http.StatusOK, armresources.ClientGetByIDResponse{
+				GenericResource: armresources.GenericResource{
+					ID:   to.Ptr(azureFunctionAppID),
+					Kind: to.Ptr(functionAppKindValue),
+					Type: to.Ptr(websitesType),
+					Tags: map[string]*string{"fetchedWith": to.Ptr(apiVersion)},
+				},
+			}, nil)
+			return responder, errResponder
+		},
+	})
+}
+
+// functionAppFetchedWith is the payload of the my-function site fetched with apiVersion.
+func functionAppFetchedWith(apiVersion string) map[string]any {
+	values := streamedFunctionAppValues()
+	values["tags"] = map[string]any{"fetchedWith": apiVersion}
+	return values
+}
+
+func TestPartitionEventHandlerAPIVersionGroups(t *testing.T) {
+	t.Parallel()
+
+	const olderAPIVersion = "2024-04-01"
+	eventTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	functionAppsMappings := source.MappingExtras{"my-functions": {apiVersionKey: websitesAPIVersion}}
+
+	testCases := map[string]struct {
+		websitesMappings    source.MappingExtras
+		eventBody           json.RawMessage
+		expectedAPIVersions []string
+		expectedData        []source.Data
+	}{
+		"mappings on two api-versions fetch once per version and each fetch targets its group": {
+			websitesMappings: source.MappingExtras{
+				"b-sites": {apiVersionKey: websitesAPIVersion},
+				"a-sites": {apiVersionKey: olderAPIVersion},
+			},
+			eventBody:           eventDataFunctionAppWriteBody,
+			expectedAPIVersions: []string{olderAPIVersion, websitesAPIVersion},
+			expectedData: []source.Data{
+				{Type: websitesType, Operation: source.DataOperationUpsert, Time: eventTime, Values: functionAppFetchedWith(olderAPIVersion), Mappings: []string{"a-sites"}},
+				// the sub-type is emitted once, with the first fetch, and reaches all its mappings
+				{Type: functionAppsType, Operation: source.DataOperationUpsert, Time: eventTime, Values: functionAppFetchedWith(olderAPIVersion)},
+				{Type: websitesType, Operation: source.DataOperationUpsert, Time: eventTime, Values: functionAppFetchedWith(websitesAPIVersion), Mappings: []string{"b-sites"}},
+			},
+		},
+		"mappings sharing an api-version fetch once and stay untargeted": {
+			websitesMappings: source.MappingExtras{
+				"a-sites": {apiVersionKey: websitesAPIVersion},
+				"b-sites": {apiVersionKey: websitesAPIVersion},
+			},
+			eventBody:           eventDataFunctionAppWriteBody,
+			expectedAPIVersions: []string{websitesAPIVersion},
+			expectedData: []source.Data{
+				{Type: websitesType, Operation: source.DataOperationUpsert, Time: eventTime, Values: functionAppFetchedWith(websitesAPIVersion)},
+				{Type: functionAppsType, Operation: source.DataOperationUpsert, Time: eventTime, Values: functionAppFetchedWith(websitesAPIVersion)},
+			},
+		},
+		"a mapping without api-version is left out of the fetch it cannot make": {
+			websitesMappings: source.MappingExtras{
+				"a-sites": {apiVersionKey: websitesAPIVersion},
+				"b-sites": {apiVersionKey: websitesAPIVersion},
+				"c-sites": nil,
+			},
+			eventBody:           eventDataFunctionAppWriteBody,
+			expectedAPIVersions: []string{websitesAPIVersion},
+			expectedData: []source.Data{
+				{Type: websitesType, Operation: source.DataOperationUpsert, Time: eventTime, Values: functionAppFetchedWith(websitesAPIVersion), Mappings: []string{"a-sites", "b-sites"}},
+				{Type: functionAppsType, Operation: source.DataOperationUpsert, Time: eventTime, Values: functionAppFetchedWith(websitesAPIVersion)},
+			},
+		},
+		"a failed fetch skips its group and the sub-type comes with the first successful fetch": {
+			websitesMappings: source.MappingExtras{
+				"a-sites": {apiVersionKey: failingAPIVersion},
+				"b-sites": {apiVersionKey: websitesAPIVersion},
+			},
+			eventBody:           eventDataFunctionAppWriteBody,
+			expectedAPIVersions: []string{failingAPIVersion, websitesAPIVersion},
+			expectedData: []source.Data{
+				{Type: websitesType, Operation: source.DataOperationUpsert, Time: eventTime, Values: functionAppFetchedWith(websitesAPIVersion), Mappings: []string{"b-sites"}},
+				{Type: functionAppsType, Operation: source.DataOperationUpsert, Time: eventTime, Values: functionAppFetchedWith(websitesAPIVersion)},
+			},
+		},
+		"a delete is emitted once to every mapping able to fetch the resource": {
+			websitesMappings: source.MappingExtras{
+				"a-sites": {apiVersionKey: olderAPIVersion},
+				"b-sites": {apiVersionKey: websitesAPIVersion},
+				"c-sites": nil,
+			},
+			eventBody: eventDataFunctionAppDeleteBody,
+			expectedData: []source.Data{
+				{Type: websitesType, Operation: source.DataOperationDelete, Time: eventTime, Values: map[string]any{"id": normalizedFunctionAppID, "type": websitesType}, Mappings: []string{"a-sites", "b-sites"}},
+				{Type: functionAppsType, Operation: source.DataOperationDelete, Time: eventTime, Values: map[string]any{"id": normalizedFunctionAppID, "type": websitesType}},
+			},
+		},
+		"a delete reaching every mapping stays untargeted": {
+			websitesMappings: source.MappingExtras{
+				"a-sites": {apiVersionKey: olderAPIVersion},
+				"b-sites": {apiVersionKey: websitesAPIVersion},
+			},
+			eventBody: eventDataFunctionAppDeleteBody,
+			expectedData: []source.Data{
+				{Type: websitesType, Operation: source.DataOperationDelete, Time: eventTime, Values: map[string]any{"id": normalizedFunctionAppID, "type": websitesType}},
+				{Type: functionAppsType, Operation: source.DataOperationDelete, Time: eventTime, Values: map[string]any{"id": normalizedFunctionAppID, "type": websitesType}},
+			},
+		},
+	}
+
+	for testName, test := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			defer cancel()
+
+			recorder := &apiVersionRecorder{}
+			client, err := armresources.NewClient("sub-id", &fakeazcore.TokenCredential{}, &arm.ClientOptions{
+				ClientOptions: policy.ClientOptions{Transport: recorder.transport(t)},
+			})
+			require.NoError(t, err)
+
+			typesToFilter := map[string]source.MappingExtras{
+				websitesType:     test.websitesMappings,
+				functionAppsType: functionAppsMappings,
+			}
+			dataChannel := make(chan source.Data, 100)
+			partitionEventHandler(client, typesToFilter, dataChannel)(ctx, &azeventhubs.ReceivedEventData{
+				EventData: azeventhubs.EventData{Body: test.eventBody},
+			})
+			close(dataChannel)
+
+			var receivedData []source.Data
+			for data := range dataChannel {
+				receivedData = append(receivedData, data)
+			}
+
+			require.NotErrorIs(t, ctx.Err(), context.DeadlineExceeded)
+			require.Equal(t, test.expectedAPIVersions, recorder.apiVersions)
+			require.Equal(t, test.expectedData, receivedData)
+		})
+	}
+}
+
+func TestWarnUnusableAPIVersions(t *testing.T) {
+	t.Parallel()
+
+	logs := &bytes.Buffer{}
+	warnUnusableAPIVersions(logger.NewLogger(logs), map[string]source.MappingExtras{
+		websitesType: {
+			"a-sites": {apiVersionKey: time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)},
+			"b-sites": {apiVersionKey: ""},
+			"c-sites": {apiVersionKey: websitesAPIVersion},
+			"d-sites": nil,
+		},
+		// a sub-type is fetched with the api-version of its parent mappings, so its own is not checked
+		functionAppsType: {"my-functions": {apiVersionKey: 20250301}},
+	})
+
+	output := logs.String()
+	require.Equal(t, 2, strings.Count(output, "mapping apiVersion is not a non-empty string"))
+	require.Contains(t, output, `"mapping":"a-sites"`)
+	require.Contains(t, output, `"valueType":"time.Time"`)
+	require.Contains(t, output, `"mapping":"b-sites"`)
+	require.NotContains(t, output, "my-functions")
+}
