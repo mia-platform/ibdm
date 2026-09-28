@@ -86,5 +86,5 @@ files:
   - ".devcontainer/devcontainer.json"
   - ".github/*.yml"
   - ".github/**/*.yaml"
-  - "docs/mappings/**/*.yaml"
+  - "internal/mappings/data/**/*.yaml"
   - Makefile

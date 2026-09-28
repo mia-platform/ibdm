@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -206,8 +207,28 @@ func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 	}
 	defer file.Close()
 
-	// Create a YAML decoder for the file.
-	decoder := yaml.NewDecoder(file)
+	return NewMappingConfigsFromReader(file, path)
+}
+
+// NewMappingConfigsFromFS parses the file name of fsys, such as an embedded file system, and
+// returns the mapping configurations it contains. It applies exactly the rules of
+// NewMappingConfigsFromPath, and name identifies the file in errors and name defaulting.
+func NewMappingConfigsFromFS(fsys fs.FS, name string) ([]*MappingConfig, error) {
+	file, err := fsys.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	return NewMappingConfigsFromReader(file, name)
+}
+
+// NewMappingConfigsFromReader parses the mapping configurations read from reader. path identifies
+// the source of the data: it is reported in errors, recorded for duplicate-name errors, and its
+// base name is the default name of a single-mapping document.
+func NewMappingConfigsFromReader(reader io.Reader, path string) ([]*MappingConfig, error) {
+	// Create a YAML decoder for the data.
+	decoder := yaml.NewDecoder(reader)
 	decoder.KnownFields(true)
 
 	configs := make([]*MappingConfig, 0)
