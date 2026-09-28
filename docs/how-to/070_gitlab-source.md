@@ -81,7 +81,7 @@ synchronize.
 
 ## Example Mapping Files
 
-Example mapping files are provided in the `docs/mappings/gitlab/` directory:
+Example mapping files are provided in the `internal/mappings/data/gitlab/` directory:
 
 - `projects.yaml` — maps GitLab projects to Catalog items.
 - `pipelines.yaml` — maps pipelines to Catalog items.
@@ -91,11 +91,11 @@ These files can be used as a starting point for your own mapping configurations.
 or a specific file to the `--mapping-file` flag:
 
 ```sh
-ibdm sync gitlab --mapping-file docs/mappings/gitlab/
+ibdm sync gitlab --mapping-file internal/mappings/data/gitlab/
 ```
 
 For local development and debugging, add the `--local-output` flag to send results to stdout:
 
 ```sh
-ibdm sync gitlab --mapping-file docs/mappings/gitlab/ --local-output
+ibdm sync gitlab --mapping-file internal/mappings/data/gitlab/ --local-output
 ```

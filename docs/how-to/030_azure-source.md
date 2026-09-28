@@ -115,7 +115,7 @@ alone.
 
 | Azure type | Sub-type mapping | Produced when |
 | --- | --- | --- |
-| `Microsoft.Web/sites` | `docs/mappings/azure/websites_functionapps.yaml`, `type: functionapps` | the `kind` of the site carries the `functionapp` token |
+| `Microsoft.Web/sites` | `internal/mappings/data/azure/websites_functionapps.yaml`, `type: functionapps` | the `kind` of the site carries the `functionapp` token |
 
 `kind` is a comma separated list of tokens, such as `app`, `app,linux` or `functionapp,linux`, and
 the tokens are compared one by one: a site whose kind is `myfunctionapp` is not a Function App.
@@ -125,7 +125,7 @@ The mapping creates an `functionapps` item and, through its `extra` section, a `
 relationship from that item to the `websites` item of the same site.
 
 Both mapping files must be loaded for the sub-type to be produced. Loading
-`docs/mappings/azure/websites.yaml` alone reproduces exactly the behaviour the source had before
+`internal/mappings/data/azure/websites.yaml` alone reproduces exactly the behaviour the source had before
 sub-types existed, deletion included. Loading `websites_functionapps.yaml` alone can instead never
 produce anything, so the source logs a warning when it starts and carries on.
 
