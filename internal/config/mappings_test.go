@@ -4,11 +4,13 @@
 package config
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -504,45 +506,61 @@ func TestValidateMappingNames(t *testing.T) {
 	}
 }
 
-// TestBundledMappingNames loads every mapping shipped in docs/mappings and asserts
-// that each one resolves to a valid name, unique within its source directory.
-func TestBundledMappingNames(t *testing.T) {
+func TestNewMappingConfigsFromReaderMatchesPath(t *testing.T) {
 	t.Parallel()
 
-	mappingsRoot := filepath.Join("..", "..", "docs", "mappings")
-	sourceDirs, err := os.ReadDir(mappingsRoot)
-	require.NoError(t, err)
-	require.NotEmpty(t, sourceDirs)
-
-	for _, sourceDir := range sourceDirs {
-		if !sourceDir.IsDir() {
-			continue
-		}
-
-		t.Run(sourceDir.Name(), func(t *testing.T) {
+	for _, fixture := range []string{"one.yaml", "one.json", "multiple.yaml", "extra.yaml", "createif.yaml", "missingdata.yaml", "invalid.yaml"} {
+		t.Run(fixture, func(t *testing.T) {
 			t.Parallel()
 
-			dirPath := filepath.Join(mappingsRoot, sourceDir.Name())
-			files, err := os.ReadDir(dirPath)
+			path := filepath.Join("testdata", fixture)
+			fromPath, pathErr := NewMappingConfigsFromPath(path)
+
+			file, err := os.Open(path)
 			require.NoError(t, err)
+			t.Cleanup(func() { _ = file.Close() })
+			fromReader, readerErr := NewMappingConfigsFromReader(file, path)
 
-			mappings := make([]*MappingConfig, 0, len(files))
-			for _, file := range files {
-				if file.IsDir() {
-					continue
-				}
-
-				fileMappings, err := NewMappingConfigsFromPath(filepath.Join(dirPath, file.Name()))
-				require.NoError(t, err)
-				require.NotEmpty(t, fileMappings)
-				for _, mapping := range fileMappings {
-					require.NoError(t, validateMappingName(mapping.Name))
-				}
-				mappings = append(mappings, fileMappings...)
+			require.Equal(t, fromPath, fromReader)
+			if pathErr != nil {
+				require.EqualError(t, readerErr, pathErr.Error())
+			} else {
+				require.NoError(t, readerErr)
 			}
-
-			require.NotEmpty(t, mappings)
-			require.NoError(t, ValidateMappingNames(mappings))
 		})
 	}
+}
+
+func TestNewMappingConfigsFromFS(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"console/my-projects.yaml": {Data: []byte(mappingDocument(""))},
+		"console/broken.yaml":      {Data: []byte("type: [")},
+	}
+
+	t.Run("name defaults to the base name of the fs path", func(t *testing.T) {
+		t.Parallel()
+
+		configs, err := NewMappingConfigsFromFS(fsys, "console/my-projects.yaml")
+		require.NoError(t, err)
+		require.Len(t, configs, 1)
+		require.Equal(t, "my-projects", configs[0].Name)
+		require.Equal(t, "console/my-projects.yaml", configs[0].path)
+	})
+
+	t.Run("parse errors name the fs path", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewMappingConfigsFromFS(fsys, "console/broken.yaml")
+		require.ErrorIs(t, err, ErrParsing)
+		require.ErrorContains(t, err, "console/broken.yaml")
+	})
+
+	t.Run("missing file returns the fs error", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewMappingConfigsFromFS(fsys, "console/missing.yaml")
+		require.ErrorIs(t, err, fs.ErrNotExist)
+	})
 }
