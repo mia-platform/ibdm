@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"syscall"
@@ -237,4 +238,74 @@ func TestInternalMappingsCompletion(t *testing.T) {
 			require.NotZero(t, directive&cobra.ShellCompDirectiveNoFileComp)
 		})
 	}
+}
+
+func TestMappingsShowCmd(t *testing.T) {
+	t.Parallel()
+
+	runShow := func(t *testing.T, args ...string) (string, string, error) {
+		t.Helper()
+
+		outBuffer, errBuffer := new(bytes.Buffer), new(bytes.Buffer)
+		cmd := MappingsCmd()
+		cmd.SetOut(outBuffer)
+		cmd.SetErr(errBuffer)
+		for _, subcommand := range cmd.Commands() {
+			subcommand.SetUsageTemplate("usage string")
+		}
+		cmd.SetArgs(append([]string{"show"}, args...))
+		err := cmd.ExecuteContext(t.Context())
+		return outBuffer.String(), errBuffer.String(), err
+	}
+
+	t.Run("every internal mapping is printed byte for byte", func(t *testing.T) {
+		t.Parallel()
+
+		for _, source := range mappings.Sources() {
+			names, err := mappings.Names(source)
+			require.NoError(t, err)
+			for _, name := range names {
+				expected, err := os.ReadFile(filepath.Join("..", "mappings", "data", source, name+".yaml"))
+				require.NoError(t, err)
+
+				output, _, err := runShow(t, source, name)
+				require.NoError(t, err)
+				require.Equal(t, string(expected), output, "%s/%s", source, name)
+			}
+		}
+	})
+
+	t.Run("an unknown mapping is an error listing the valid names", func(t *testing.T) {
+		t.Parallel()
+		_, errOutput, err := runShow(t, "nexus", "unknown")
+		require.ErrorIs(t, err, mappings.ErrUnknownMapping)
+		require.Contains(t, errOutput, "internal mappings are dockerimages")
+	})
+
+	t.Run("an unknown integration is an error", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := runShow(t, "unknown", "projects")
+		require.ErrorIs(t, err, mappings.ErrUnknownSource)
+	})
+
+	t.Run("missing arguments print the usage", func(t *testing.T) {
+		t.Parallel()
+		output, _, err := runShow(t, "nexus")
+		require.NoError(t, err)
+		require.Equal(t, "usage string", output)
+	})
+
+	t.Run("completion offers integrations then mapping names", func(t *testing.T) {
+		t.Parallel()
+
+		show := mappingsShowCmd()
+		integrations, _ := show.ValidArgsFunction(show, nil, "")
+		require.Equal(t, mappings.Sources(), integrations)
+
+		names, _ := show.ValidArgsFunction(show, []string{"gitlab"}, "")
+		require.Equal(t, []string{"accesstokens", "pipelines", "projects"}, names)
+
+		none, _ := show.ValidArgsFunction(show, []string{"gitlab", "projects"}, "")
+		require.Empty(t, none)
+	})
 }
