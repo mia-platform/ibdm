@@ -26,6 +26,21 @@ if you want to start a REST API sync process run this instead:
 ibdm sync azure-devops --include-internal-mappings=all
 ```
 
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list azure-devops` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+| Internal mapping | Sync | Webhook (`run`) |
+| --- | --- | --- |
+| `gitrepositories` | yes | yes, on the events listed in its `extra.eventNames`: `git.repo.created`, `git.repo.renamed`, `git.repo.deleted` |
+| `teams` | yes | no, it lists no `eventNames` |
+
+The two mappings are independent: the sync reads each selected type on its own, and a webhook event
+reaches every selected mapping whose `eventNames` list it. No internal mapping creates relationships
+to another one.
+
 ## Configurations
 
 In addition to other environment variables the Microsoft Azure Devops source require these additional ones:

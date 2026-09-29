@@ -25,6 +25,22 @@ ibdm run bitbucket --include-internal-mappings=all
 
 Starts a long-running HTTP server that listens for inbound Bitbucket webhook events.
 
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list bitbucket` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+| Internal mapping | Sync | Webhook (`run`) | Its relationships point at |
+| --- | --- | --- | --- |
+| `repositories` | yes | yes, on `repo:push`, `repo:updated` and `pullrequest:fulfilled` | — |
+| `pipelines` | yes, for every repository | no | `repositories` |
+
+The sync walks the repositories of the workspaces as soon as either mapping is selected, and fetches
+the pipelines of each repository while walking them. Selecting `pipelines` alone works: the
+repositories are listed without being written. Their pipelines then relate to repository items that
+nothing creates, unless `repositories` is selected too.
+
 ## Configuration
 
 All configuration is read from environment variables.

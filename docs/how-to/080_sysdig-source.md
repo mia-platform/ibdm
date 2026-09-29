@@ -33,6 +33,17 @@ Starts a long-running HTTP server that listens for inbound Sysdig pipeline failu
 For each notification, IBDM calls the Sysdig Vulnerability API to retrieve the full scan result
 and forwards each vulnerability to the pipeline.
 
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list sysdig` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+`vulnerabilities` is the only internal mapping: the sync queries every image vulnerability, and the
+webhook handles the failed policy evaluations of Docker images. Its relationships point at the
+`dockerimages` of the Nexus integration, and they only resolve when that integration publishes them.
+The Catalog accepts such relationships without error.
+
 ## Configuration
 
 All configuration is read from environment variables.

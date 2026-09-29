@@ -115,3 +115,9 @@ For local development and debugging, add the `--local-output` flag to send resul
 ```sh
 ibdm sync nexus --include-internal-mappings=all --local-output
 ```
+
+The sync and the webhook both produce `dockerimages`, and only from Docker format components: the
+webhook upserts the images of a created or updated component, and deletes them when the component
+is deleted. `dockerimages` creates no relationship itself, but its items are the targets of the
+relationships of the Console `services` and of the Sysdig `vulnerabilities`, which only resolve when
+this integration publishes them.
