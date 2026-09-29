@@ -200,3 +200,90 @@ func TestResolveMappersInternalError(t *testing.T) {
 	})
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
+
+func TestResolveMappersRefusesReservedDomains(t *testing.T) {
+	t.Parallel()
+
+	// document returns an external mapping publishing to apiVersion, with an optional relationship
+	// extra item, which may always target the reserved relationships item type.
+	document := func(apiVersion string, withRelationship bool) string {
+		content := "type: a-type\napiVersion: " + apiVersion + "\nitemFamily: my-items\nmappings:\n  identifier: \"{{ .id }}\"\n  spec:\n    key: \"{{ .value }}\"\n"
+		if withRelationship {
+			content += "  extra:\n    - apiVersion: mia-platform.eu/v1\n      itemFamily: relationships\n      deletePolicy: none\n" +
+				"      identifier: \"{{ .id }}-rel\"\n      sourceRef: \"urn:x\"\n      targetRef: \"urn:y\"\n      typeRef: \"urn:z\"\n"
+		}
+		return content
+	}
+
+	testCases := map[string]struct {
+		fileName         string
+		apiVersion       string
+		withRelationship bool
+		expectedDomain   string
+		expectedFix      string
+	}{
+		"mia-platform.eu bare":                                 {apiVersion: "mia-platform.eu/v1", expectedDomain: "mia-platform.eu"},
+		"mia-platform.eu subdomain":                            {apiVersion: "console.mia-platform.eu/v1", expectedDomain: "mia-platform.eu"},
+		"mia-platform.eu other version":                        {apiVersion: "mia-platform.eu/v2", expectedDomain: "mia-platform.eu"},
+		"mia-care.io bare":                                     {apiVersion: "mia-care.io/v1", expectedDomain: "mia-care.io"},
+		"mia-care.io subdomain":                                {apiVersion: "records.mia-care.io/v1", expectedDomain: "mia-care.io"},
+		"mia-care.io other version":                            {apiVersion: "mia-care.io/v2", expectedDomain: "mia-care.io"},
+		"mia-fintech.io bare":                                  {apiVersion: "mia-fintech.io/v1", expectedDomain: "mia-fintech.io"},
+		"mia-fintech.io subdomain":                             {apiVersion: "payments.mia-fintech.io/v1", expectedDomain: "mia-fintech.io"},
+		"mia-fintech.io other version":                         {apiVersion: "mia-fintech.io/v2", expectedDomain: "mia-fintech.io"},
+		"a near miss is accepted":                              {apiVersion: "notmia-platform.eu.example.com/v1"},
+		"a prefix near miss is accepted":                       {apiVersion: "xmia-care.io/v1"},
+		"mia-platform-experimental.eu is free":                 {apiVersion: "console.mia-platform-experimental.eu/v1"},
+		"a customer domain is accepted":                        {apiVersion: "my-org.example.com/v1"},
+		"a relationship extra on the reserved ITD is accepted": {apiVersion: "my-org.example.com/v1", withRelationship: true},
+		"the fix names the internal mapping of the same name": {
+			fileName:       "a.yaml",
+			apiVersion:     "internal.mia-platform.eu/v1",
+			expectedDomain: "mia-platform.eu",
+			expectedFix:    "use --include-internal-mappings=a to load the internal mapping instead",
+		},
+		"without an internal mapping of the same name the fix is another domain": {
+			apiVersion:     "internal.mia-platform.eu/v1",
+			expectedDomain: "mia-platform.eu",
+			expectedFix:    "publish it to your own domain instead",
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			fileName := test.fileName
+			if fileName == "" {
+				fileName = "my-mapping.yaml"
+			}
+			internal := testInternalSet(t)
+			_, err := resolveMappers(logger.NewLogger(&bytes.Buffer{}), mapperRequest{
+				source:           "my-source",
+				externalPaths:    writeExternalFiles(t, map[string]string{fileName: document(test.apiVersion, test.withRelationship)}),
+				internalMappings: func(string) ([]*config.MappingConfig, error) { return internal, nil },
+			})
+			if test.expectedDomain == "" {
+				require.NoError(t, err)
+				return
+			}
+
+			require.ErrorIs(t, err, errReservedDomain)
+			require.ErrorContains(t, err, "reserved domain "+test.expectedDomain)
+			require.ErrorContains(t, err, fileName)
+			require.ErrorContains(t, err, test.apiVersion)
+			require.ErrorContains(t, err, test.expectedFix)
+		})
+	}
+
+	t.Run("internal mappings on reserved domains are never refused", func(t *testing.T) {
+		t.Parallel()
+
+		mappers, err := resolveMappers(logger.NewLogger(&bytes.Buffer{}), mapperRequest{
+			source:    "console",
+			selection: internalSelection{include: []string{"all"}, includeSet: true},
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, mappers)
+	})
+}

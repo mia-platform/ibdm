@@ -49,11 +49,11 @@ performed during private-key JWT client authentication:
 
 ## Local Output
 
-`ibdm` can also be used to validate custom mappings or custom source implementations with a
+`ibdm` can also be used to validate external mappings or custom source implementations with a
 dedicated destination that can be enabled via the `--local-output` flag. An example can be:
 
 ```sh
-ibdm run azure --mapping-file <path to custom mapping> --local-output
+ibdm run azure --mapping-file <path to external mapping file or folder> --local-output
 ```
 
 This output don’t require any configuration but it will print on `stdout` a summary of the action

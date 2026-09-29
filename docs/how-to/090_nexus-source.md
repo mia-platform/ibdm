@@ -6,10 +6,14 @@ It supports both pull-based sync and real-time webhook events.
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 ### Sync
 
 ```sh
-ibdm sync nexus --mapping-file <path to mapping file or folder>
+ibdm sync nexus --include-internal-mappings=all
 ```
 
 Performs a one-off synchronisation: fetches all configured data from the Nexus REST API and exits.
@@ -17,7 +21,7 @@ Performs a one-off synchronisation: fetches all configured data from the Nexus R
 ### Run (Webhook Listener)
 
 ```sh
-ibdm run nexus --mapping-file <path to mapping file or folder>
+ibdm run nexus --include-internal-mappings=all
 ```
 
 Starts a long-running HTTP server that listens for inbound Nexus webhook events and streams
@@ -94,21 +98,20 @@ accepted. This is useful for internal deployments where network-level controls a
 To enable Nexus to send a signature, configure the **Secret Key** field when creating the webhook
 in the Nexus administration UI.
 
-## Example Mapping Files
+## Internal Mappings
 
-Example mapping files are provided in the `internal/mappings/data/nexus/` directory:
+`ibdm` ships one internal mapping for Nexus (`ibdm mappings list nexus`):
 
-- `dockerimages.yaml` — maps Docker image assets to Catalog items.
+- `dockerimages` — maps Docker image assets to Catalog items.
 
-This file can be used as a starting point for your own mapping configuration. Pass the file
-or the folder to the `--mapping-file` flag:
+Select it with `--include-internal-mappings`:
 
 ```sh
-ibdm sync nexus --mapping-file internal/mappings/data/nexus/
+ibdm sync nexus --include-internal-mappings=dockerimages
 ```
 
 For local development and debugging, add the `--local-output` flag to send results to stdout:
 
 ```sh
-ibdm sync nexus --mapping-file internal/mappings/data/nexus/ --local-output
+ibdm sync nexus --include-internal-mappings=all --local-output
 ```
