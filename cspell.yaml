@@ -9,11 +9,15 @@ ignoreRegExpList:
   - "//\\s*nolint:.*"
 words:
   - anchore
+  - apim
+  - apimservices
   - buildx
   - contoso
+  - createif
   - diber
   - epss
   - fabrikam
+  - fsys
   - golangci
   - healthz
   - HMAC
@@ -31,6 +35,7 @@ words:
   - upserted
   - upserts
   - uuidv
+  - xmia
 ignoreWords:
   - Dsonar
   - acks

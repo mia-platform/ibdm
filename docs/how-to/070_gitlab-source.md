@@ -7,20 +7,24 @@ The GitLab Integration of `ibdm` can work in two modes:
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 Once you have the `ibdm` binary available the run of the integration is straightforward.
 
 If you want to start a new integration that exposes a webhook endpoint for receiving GitLab events
 you can run the following command:
 
 ```sh
-ibdm run gitlab --mapping-file <path to mapping file or folder>
+ibdm run gitlab --include-internal-mappings=all
 ```
 
 If you want to start a full sync process that fetches resources from the GitLab API run this
 instead:
 
 ```sh
-ibdm sync gitlab --mapping-file <path to mapping file or folder>
+ibdm sync gitlab --include-internal-mappings=all
 ```
 
 ## Configurations
@@ -53,7 +57,7 @@ The source supports three data types that can be used in mapping files:
 
 ### Sync Mode
 
-In sync mode, `project` is the primary resource. When `project` is included in the mapping file,
+In sync mode, `project` is the primary resource. When a mapping of type `project` is loaded,
 the source iterates all accessible GitLab projects and, for each project, optionally fetches:
 
 - project access tokens (if `accesstoken` is also mapped)
@@ -67,7 +71,7 @@ fetches their group-level access tokens.
 In webhook mode, the source currently handles two GitLab event types:
 
 - **Pipeline Hook** — triggers on pipeline events. Emits both a `project` and a `pipeline` data
-  item when both types are present in the mapping file.
+  item when both types are loaded.
 - **Push Hook** — triggers on push events. Emits a `project` data item with the updated project
   information.
 
@@ -79,23 +83,25 @@ environment variable. The token is attached to every HTTP request as a `PRIVATE-
 The token must have read permissions on the projects, pipelines, and access tokens you intend to
 synchronize.
 
-## Example Mapping Files
+## Internal Mappings
 
-Example mapping files are provided in the `internal/mappings/data/gitlab/` directory:
+`ibdm` ships these internal mappings for GitLab (`ibdm mappings list gitlab`):
 
-- `projects.yaml` — maps GitLab projects to Catalog items.
-- `pipelines.yaml` — maps pipelines to Catalog items.
-- `accesstokens.yaml` — maps access tokens to Catalog items.
+- `projects` — maps GitLab projects to Catalog items.
+- `pipelines` — maps pipelines to Catalog items.
+- `accesstokens` — maps access tokens to Catalog items.
 
-These files can be used as a starting point for your own mapping configurations. Pass the folder
-or a specific file to the `--mapping-file` flag:
+Select them with `--include-internal-mappings`, for example the projects and their pipelines only:
 
 ```sh
-ibdm sync gitlab --mapping-file internal/mappings/data/gitlab/
+ibdm sync gitlab --include-internal-mappings=projects,pipelines
 ```
 
 For local development and debugging, add the `--local-output` flag to send results to stdout:
 
 ```sh
-ibdm sync gitlab --mapping-file internal/mappings/data/gitlab/ --local-output
+ibdm sync gitlab --include-internal-mappings=all --local-output
 ```
+
+Pipelines are only fetched while the projects are walked, so `--include-internal-mappings=pipelines`
+alone produces nothing: see the dependencies described above.

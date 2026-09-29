@@ -5,10 +5,14 @@ pipeline data into the Mia-Platform Catalog. It supports both pull-based sync (R
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 ### Sync
 
 ```bash
-ibdm sync bitbucket --mapping-file <path to mapping file or folder>
+ibdm sync bitbucket --include-internal-mappings=all
 ```
 
 Performs a one-off synchronisation: fetches all configured data from the Bitbucket REST API and exits.
@@ -16,7 +20,7 @@ Performs a one-off synchronisation: fetches all configured data from the Bitbuck
 ### Run (Webhook Listener)
 
 ```bash
-ibdm run bitbucket --mapping-file <path to mapping file or folder>
+ibdm run bitbucket --include-internal-mappings=all
 ```
 
 Starts a long-running HTTP server that listens for inbound Bitbucket webhook events.

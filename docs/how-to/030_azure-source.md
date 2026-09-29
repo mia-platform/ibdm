@@ -7,19 +7,23 @@ The Microsoft Azure Integration of `ibdm` can work in two modes:
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 Once you have the `ibdm` binary available the run of the integration is straightforward.
 
 If you want to start a new integration with the EventHub subscription yuo can run the following
 command:
 
 ```sh
-ibdm run azure --mapping-file <path to mapping file or folder>
+ibdm run azure --include-internal-mappings=all
 ```
 
 if you want to start a resource graph sync process run this instead:
 
 ```sh
-ibdm sync azure --mapping-file <path to mapping file or folder>
+ibdm sync azure --include-internal-mappings=all
 ```
 
 ## Configurations
@@ -115,7 +119,7 @@ alone.
 
 | Azure type | Sub-type mapping | Produced when |
 | --- | --- | --- |
-| `Microsoft.Web/sites` | `internal/mappings/data/azure/websites_functionapps.yaml`, `type: functionapps` | the `kind` of the site carries the `functionapp` token |
+| `Microsoft.Web/sites` | internal mapping `websites_functionapps`, `type: functionapps` | the `kind` of the site carries the `functionapp` token |
 
 `kind` is a comma separated list of tokens, such as `app`, `app,linux` or `functionapp,linux`, and
 the tokens are compared one by one: a site whose kind is `myfunctionapp` is not a Function App.
@@ -124,14 +128,14 @@ A site without a usable `kind` produces no sub-type and nothing fails.
 The mapping creates an `functionapps` item and, through its `extra` section, a `dependency`
 relationship from that item to the `websites` item of the same site.
 
-Both mapping files must be loaded for the sub-type to be produced. Loading
-`internal/mappings/data/azure/websites.yaml` alone reproduces exactly the behaviour the source had before
-sub-types existed, deletion included. Loading `websites_functionapps.yaml` alone can instead never
-produce anything, so the source logs a warning when it starts and carries on.
+Both internal mappings must be selected for the sub-type to be produced. Selecting `websites` alone
+reproduces exactly the behaviour the source had before sub-types existed, deletion included.
+Selecting `websites_functionapps` alone can instead never produce anything, so the source logs a
+warning when it starts and carries on.
 
 `ibdm sync azure` and `ibdm run azure` behave identically, because the check runs on the payload the
 Azure APIs returned and is indifferent to which of them retrieved it. To adopt a sub-type on an
-already imported subscription load both mapping files and run `ibdm sync azure` once: every site that
+already imported subscription select both internal mappings and run `ibdm sync azure` once: every site that
 already exists gets its sub-type item and its relationship.
 
 ### Deleting a resource that has sub-types
@@ -141,7 +145,7 @@ is gone and no API can return it any more, so at deletion time the check cannot 
 deletes the item of the resource **and the item of every sub-type its type can produce**, whether or
 not that resource ever produced it.
 
-For a `Microsoft.Web/sites` resource with both mapping files loaded, three deletions reach the
+For a `Microsoft.Web/sites` resource with both internal mappings selected, three deletions reach the
 catalog:
 
 | deleted | why |
@@ -155,9 +159,9 @@ reports no per item outcome, so nothing fails and nothing is left behind. The id
 sub-type item also lives in its own namespace, `functionapps-<resource id>` for the Function Apps,
 so such a deletion can only ever name the sub-type item of that very resource.
 
-Removing a sub-type mapping file is not the reverse operation: the items it already published stop
-being updated and stop being deleted together with their resource, so they have to be removed by
-hand.
+Excluding a sub-type mapping from the selection is not the reverse operation: the items it already
+published stop being updated and stop being deleted together with their resource, so they have to be
+removed by hand.
 
 ### Authoring a sub-type mapping
 
@@ -169,9 +173,8 @@ hand.
 	field fails to render and that deletion is lost
 - Give the sub-type item its own item family, so that its identifiers can never collide with the ones
 	of another mapping, and make sure the item type definition for that family exists in the catalog
-- Treat the payload as read only. A sub-type receives a shallow copy of the payload of its parent, so
-	writing into a nested value, such as `properties` or `tags`, would be seen by every other item
-	produced out of the same resource
+- A template may write into its payload, for example with `set`: every mapping renders its own copy
+	of the payload, so the write is never seen by the other items produced out of the same resource
 
 ## Authentication
 
