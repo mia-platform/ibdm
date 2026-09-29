@@ -61,7 +61,9 @@ type MappingConfig struct {
 	Extra      map[string]any `json:"extra,omitempty" yaml:"extra,omitempty"`
 	APIVersion string         `json:"apiVersion" yaml:"apiVersion"`
 	ItemFamily string         `json:"itemFamily" yaml:"itemFamily"`
-	Syncable   bool           `json:"syncable" yaml:"syncable"`
+	// Syncable reports whether a full sync can produce the mapping's items. An absent value
+	// means true: use IsSyncable to read it.
+	Syncable *bool `json:"syncable" yaml:"syncable"`
 	// CreateIf is an optional template guarding upserts: when it renders false, the mapping
 	// declines the payload and produces no item. It is never evaluated on delete.
 	CreateIf string   `json:"createIf" yaml:"createIf"`
@@ -69,6 +71,17 @@ type MappingConfig struct {
 
 	// path is the file the mapping was read from, used to report name collisions.
 	path string
+}
+
+// Path returns the file the mapping was read from.
+func (c *MappingConfig) Path() string {
+	return c.path
+}
+
+// IsSyncable reports whether the sync command uses the mapping: true unless the mapping
+// declares syncable: false.
+func (c *MappingConfig) IsSyncable() bool {
+	return c.Syncable == nil || *c.Syncable
 }
 
 // Mappings holds the identifier and specification templates for mapping rules.
