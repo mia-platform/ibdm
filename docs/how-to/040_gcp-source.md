@@ -26,6 +26,16 @@ if you want to start a Cloud Asset sync process run this instead:
 ibdm sync gcp --include-internal-mappings=all
 ```
 
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list gcp` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+Every internal mapping is independent. The sync asks the Cloud Asset API for exactly the asset types
+of the selected mappings, in one request, and the Pub/Sub stream keeps only the events of those asset
+types. No internal mapping creates relationships to another one.
+
 ## Configuration
 
 In addition to other environment variables the GCP source can require additional ones:

@@ -14,6 +14,9 @@ import (
 )
 
 const (
+	// mappingsShowArgs is the number of arguments of mappings show: the integration and the mapping.
+	mappingsShowArgs = 2
+
 	mappingsCmdShort = "inspect the internal mappings shipped with ibdm"
 
 	mappingsListCmdShort = "list the internal mappings of an integration"
@@ -21,6 +24,12 @@ const (
 	Use them as values of --include-internal-mappings and --exclude-internal-mappings.`
 	mappingsListCmdExample = `# List the internal mappings of the Mia Platform Console integration
 	ibdm mappings list console`
+
+	mappingsShowCmdShort = "print an internal mapping of an integration"
+	mappingsShowCmdLong  = `Print, byte for byte, the file of an internal mapping of an integration.
+	Use it as a starting point for an external mapping: publish it to your own domain first.`
+	mappingsShowCmdExample = `# Print the projects mapping of the Mia Platform Console integration
+	ibdm mappings show console projects`
 )
 
 // MappingsCmd returns the Cobra command grouping the internal mapping subcommands.
@@ -30,7 +39,7 @@ func MappingsCmd() *cobra.Command {
 		Short: heredoc.Doc(mappingsCmdShort),
 	}
 
-	cmd.AddCommand(mappingsListCmd())
+	cmd.AddCommand(mappingsListCmd(), mappingsShowCmd())
 	return cmd
 }
 
@@ -60,6 +69,44 @@ func mappingsListCmd() *cobra.Command {
 				fmt.Fprintln(cmd.OutOrStdout(), name)
 			}
 			return nil
+		},
+	}
+}
+
+// mappingsShowCmd returns the command printing the embedded file of an internal mapping.
+func mappingsShowCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     fmt.Sprintf("show [%s] <mapping>", strings.Join(mappings.Sources(), "|")),
+		Short:   heredoc.Doc(mappingsShowCmdShort),
+		Long:    heredoc.Doc(mappingsShowCmdLong),
+		Example: heredoc.Doc(mappingsShowCmdExample),
+
+		SilenceErrors: true,
+		SilenceUsage:  true,
+
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+			switch len(args) {
+			case 0:
+				return mappings.Sources(), cobra.ShellCompDirectiveNoFileComp
+			case 1:
+				names, _ := mappings.Names(strings.ToLower(args[0]))
+				return names, cobra.ShellCompDirectiveNoFileComp
+			default:
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) < mappingsShowArgs {
+				return handleError(cmd, errNoArguments)
+			}
+
+			data, err := mappings.Raw(strings.ToLower(args[0]), args[1])
+			if err != nil {
+				return handleError(cmd, err)
+			}
+
+			_, err = cmd.OutOrStdout().Write(data)
+			return err
 		},
 	}
 }
