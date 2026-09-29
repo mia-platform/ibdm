@@ -104,6 +104,7 @@ func rootCmd() *cobra.Command {
 	cmd.AddCommand(
 		internalcmd.RunCmd(),
 		internalcmd.SyncCmd(),
+		internalcmd.MappingsCmd(),
 		versionCmd(),
 	)
 

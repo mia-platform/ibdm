@@ -21,11 +21,6 @@ import (
 	"github.com/mia-platform/ibdm/internal/mapper"
 )
 
-// cliSources copies the integration names registered by internal/cmd (availableSyncSources and
-// availableEventSources). internal/cmd does not export them, so the list is duplicated here and
-// the conformance test keeps the two in step.
-var cliSources = []string{"azure", "azure-devops", "bitbucket", "console", "gcp", "github", "gitlab", "nexus", "sysdig"}
-
 // reservedMappingName can never be the name of a mapping: it is the selector of every mapping.
 const reservedMappingName = "all"
 
@@ -126,6 +121,31 @@ func fileProblems(fsys fs.FS, file, baseName string, types map[string]string) []
 	return problems
 }
 
+// itemTypeProblems is part of conformance tier 1: no two bundled mappings, across every source,
+// write the same item type definition. Sharing one is allowed for user mappings only with an
+// explicit acknowledgement at startup, so a bundled pair would block every run that selects both.
+func itemTypeProblems(fsys fs.FS, directories map[string]string) []string {
+	problems := make([]string, 0)
+	owners := make(map[string]string)
+	for _, source := range slices.Sorted(maps.Keys(directories)) {
+		configs, err := forSource(fsys, directories, source)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("%s: %v", source, err))
+			continue
+		}
+		for _, mapping := range configs {
+			itemType := mapping.APIVersion + " " + mapping.ItemFamily
+			owner := source + "/" + mapping.Name
+			if other, shared := owners[itemType]; shared {
+				problems = append(problems, fmt.Sprintf("%s and %s both write the item type %s", other, owner, itemType))
+				continue
+			}
+			owners[itemType] = owner
+		}
+	}
+	return problems
+}
+
 // urnProblems is conformance tier 1b: a bundled mapping only relates system items, so every
 // Catalog URN it contains must carry a reserved group.
 func urnProblems(fsys fs.FS) []string {
@@ -176,7 +196,14 @@ func TestBundledMappingsConformance(t *testing.T) {
 
 	t.Run("tier 1 structural", func(t *testing.T) {
 		t.Parallel()
-		require.Empty(t, structuralProblems(bundled, sourceDirectories, cliSources))
+		// the registry is checked against the CLI integrations by TestIntegrationsMatchInternalMappings
+		// in internal/cmd, which can import both without a cycle
+		require.Empty(t, structuralProblems(bundled, sourceDirectories, Sources()))
+	})
+
+	t.Run("tier 1 distinct item types", func(t *testing.T) {
+		t.Parallel()
+		require.Empty(t, itemTypeProblems(bundled, sourceDirectories))
 	})
 
 	t.Run("tier 1b URN domains", func(t *testing.T) {
@@ -273,6 +300,11 @@ func TestConformanceChecksCatchDefects(t *testing.T) {
 			files:    map[string]string{"my-source/a.yaml": validDocument("a-type"), "orphan/b.yaml": validDocument("b-type")},
 			check:    func(fsys fs.FS) []string { return structuralProblems(fsys, directories, []string{"my-source"}) },
 			expected: `"orphan" is bound to no source`,
+		},
+		"two mappings writing one item type": {
+			files:    map[string]string{"my-source/a.yaml": validDocument("a-type"), "my-source/b.yaml": validDocument("b-type")},
+			check:    func(fsys fs.FS) []string { return itemTypeProblems(fsys, directories) },
+			expected: "both write the item type console.mia-platform.eu/v1 my-items",
 		},
 		"a URN outside the reserved domains": {
 			files:    map[string]string{"my-source/a.yaml": validDocument("a-type") + "# urn:mia-platform-catalog:console.mia-platform-experimental.eu:v1:Project:null:x\n"},

@@ -23,7 +23,7 @@ var (
 	// ErrUnknownSource reports a source ibdm bundles no mappings for.
 	ErrUnknownSource = errors.New("unknown source")
 	// ErrUnknownMapping reports a mapping name that is not bundled for a source.
-	ErrUnknownMapping = errors.New("unknown bundled mapping")
+	ErrUnknownMapping = errors.New("unknown internal mapping")
 	// ErrInvalidBundledMapping reports a bundled mapping file that cannot be read or parsed.
 	ErrInvalidBundledMapping = errors.New("invalid bundled mapping")
 
@@ -84,7 +84,7 @@ func Raw(source, name string) ([]byte, error) {
 func directory(directories map[string]string, source string) (string, error) {
 	dir, ok := directories[source]
 	if !ok {
-		return "", fmt.Errorf("%w %q: bundled mappings exist for %s", ErrUnknownSource, source, strings.Join(slices.Sorted(maps.Keys(directories)), ", "))
+		return "", fmt.Errorf("%w %q: internal mappings exist for %s", ErrUnknownSource, source, strings.Join(slices.Sorted(maps.Keys(directories)), ", "))
 	}
 	return dir, nil
 }
@@ -138,7 +138,7 @@ func raw(fsys fs.FS, directories map[string]string, source, name string) ([]byte
 	}
 
 	if !slices.Contains(mappingNames, name) {
-		return nil, fmt.Errorf("%w %q for %s: bundled mappings are %s", ErrUnknownMapping, name, source, strings.Join(mappingNames, ", "))
+		return nil, fmt.Errorf("%w %q for %s: internal mappings are %s", ErrUnknownMapping, name, source, strings.Join(mappingNames, ", "))
 	}
 
 	data, err := fs.ReadFile(fsys, path.Join(directories[source], name+fileExtension))

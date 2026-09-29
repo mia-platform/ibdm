@@ -33,7 +33,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   true,
+					Syncable:   new(true),
 					path:       filepath.Join("testdata", "one.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
@@ -53,7 +53,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "json",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   true,
+					Syncable:   new(true),
 					path:       filepath.Join("testdata", "one.json"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
@@ -73,7 +73,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "first",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   true,
+					Syncable:   new(true),
 					path:       filepath.Join("testdata", "multiple.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .spec.id }}",
@@ -88,7 +88,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "second",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   true,
+					Syncable:   new(true),
 					path:       filepath.Join("testdata", "multiple.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .metadata.name }}",
@@ -102,7 +102,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "third",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   false,
+					Syncable:   new(false),
 					Extra: map[string]any{
 						"apiVersion": "2025-01-04-preview",
 					},
@@ -137,7 +137,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   true,
+					Syncable:   new(true),
 					path:       filepath.Join("testdata", "metadatamapping.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
@@ -168,7 +168,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   true,
+					Syncable:   new(true),
 					path:       filepath.Join("testdata", "wrongmetadata.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
@@ -189,7 +189,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   true,
+					Syncable:   new(true),
 					CreateIf:   `{{ eq .kind "functionapp" }}`,
 					path:       filepath.Join("testdata", "createif.yaml"),
 					Mappings: Mappings{
@@ -209,7 +209,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   true,
+					Syncable:   new(true),
 					path:       filepath.Join("testdata", "extra.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
@@ -240,7 +240,7 @@ func TestNewMappingsFromPath(t *testing.T) {
 					Type:       "yaml",
 					APIVersion: "group/v1",
 					ItemFamily: "configs",
-					Syncable:   true,
+					Syncable:   new(true),
 					path:       filepath.Join("testdata", "twoextra.yaml"),
 					Mappings: Mappings{
 						Identifier: "{{ .name }}",
@@ -547,6 +547,7 @@ func TestNewMappingConfigsFromFS(t *testing.T) {
 		require.Len(t, configs, 1)
 		require.Equal(t, "my-projects", configs[0].Name)
 		require.Equal(t, "console/my-projects.yaml", configs[0].path)
+		require.Equal(t, "console/my-projects.yaml", configs[0].Path())
 	})
 
 	t.Run("parse errors name the fs path", func(t *testing.T) {
@@ -563,4 +564,24 @@ func TestNewMappingConfigsFromFS(t *testing.T) {
 		_, err := NewMappingConfigsFromFS(fsys, "console/missing.yaml")
 		require.ErrorIs(t, err, fs.ErrNotExist)
 	})
+}
+
+func TestIsSyncable(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		syncable *bool
+		expected bool
+	}{
+		"absent key is syncable":  {syncable: nil, expected: true},
+		"explicit true syncable":  {syncable: new(true), expected: true},
+		"explicit false excluded": {syncable: new(false), expected: false},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, test.expected, (&MappingConfig{Syncable: test.syncable}).IsSyncable())
+		})
+	}
 }
