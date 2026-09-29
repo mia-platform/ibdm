@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mia-platform/ibdm/internal/config"
-	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/pipeline"
 	"github.com/mia-platform/ibdm/internal/source/azure"
 	azuredevops "github.com/mia-platform/ibdm/internal/source/azure-devops"
@@ -196,37 +195,23 @@ func collectPaths(paths []string) ([]string, error) {
 	return collected, nil
 }
 
-// loadMappers loads mapping files and builds typed mappers. When syncOnly is true,
-// it skips definitions that are not marked as syncable.
-// Every mapping sharing a type is kept, in load order.
+// loadMappers loads the external mapping files at paths and builds typed mappers. When syncOnly
+// is true, it skips definitions that are not syncable. Every mapping sharing a type is kept, in
+// load order.
 func loadMappers(paths []string, syncOnly bool) (map[string][]pipeline.DataMapper, error) {
-	mappings, err := loadMappingConfigs(paths)
+	configs, err := loadMappingConfigs(paths)
 	if err != nil {
 		return nil, err
 	}
 
-	typedMappers := make(map[string][]pipeline.DataMapper)
-	for _, mapping := range mappings {
-		if syncOnly && !mapping.Syncable {
+	kept := make([]*config.MappingConfig, 0, len(configs))
+	for _, mapping := range configs {
+		if syncOnly && !mapping.IsSyncable() {
 			continue
 		}
-
-		mappings := mapping.Mappings
-		mapper, err := mapper.New(mappings.Identifier, mappings.Metadata, mappings.Spec, mappings.Extra, mapper.WithCreateIf(mapping.CreateIf))
-		if err != nil {
-			return nil, err
-		}
-
-		typedMappers[mapping.Type] = append(typedMappers[mapping.Type], pipeline.DataMapper{
-			Name:       mapping.Name,
-			APIVersion: mapping.APIVersion,
-			ItemFamily: mapping.ItemFamily,
-			Mapper:     mapper,
-			Extra:      mapping.Extra,
-		})
+		kept = append(kept, mapping)
 	}
-
-	return typedMappers, nil
+	return buildMappers(kept)
 }
 
 // loadMappingConfigs reads every mapping configuration from the provided paths.

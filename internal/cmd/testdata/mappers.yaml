@@ -2,6 +2,7 @@ name: valid
 type: valid
 apiVersion: v1
 itemFamily: family
+syncable: false
 mappings:
   identifier: "{{ .id }}"
   spec:

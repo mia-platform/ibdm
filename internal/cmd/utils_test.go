@@ -6,11 +6,13 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/source/fake"
 )
 
@@ -82,5 +84,21 @@ func testSourceGetter(tb testing.TB) func(string) (any, error) {
 		}
 
 		return nil, assert.AnError
+	}
+}
+
+// testInternalMappings returns an internal-mappings provider serving one mapping for any source.
+func testInternalMappings(tb testing.TB) func(string) ([]*config.MappingConfig, error) {
+	tb.Helper()
+
+	return func(string) ([]*config.MappingConfig, error) {
+		return config.NewMappingConfigsFromReader(strings.NewReader(`type: internal-type
+apiVersion: internal.mia-platform.eu/v1
+itemFamily: internal-items
+mappings:
+  identifier: "{{ .id }}"
+  spec:
+    key: "{{ .value }}"
+`), "fake/internal-mapping.yaml")
 	}
 }
