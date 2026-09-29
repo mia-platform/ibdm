@@ -10,10 +10,14 @@ supports two modes:
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 ### Sync
 
 ```sh
-ibdm sync sysdig --mapping-file <path to mapping file or folder>
+ibdm sync sysdig --include-internal-mappings=all
 ```
 
 Performs a one-off synchronisation: queries the Sysdig SysQL API for all image vulnerabilities
@@ -22,7 +26,7 @@ and exits.
 ### Run (Webhook Listener)
 
 ```sh
-ibdm run sysdig --mapping-file <path to mapping file or folder>
+ibdm run sysdig --include-internal-mappings=all
 ```
 
 Starts a long-running HTTP server that listens for inbound Sysdig pipeline failure notifications.

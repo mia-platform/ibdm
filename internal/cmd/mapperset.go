@@ -23,6 +23,7 @@ const minSharedWriters = 2
 
 var (
 	errReservedMappingName = errors.New("reserved mapping name")
+	errReservedDomain      = errors.New("reserved domain")
 	errSharedItemTypes     = errors.New("several mappings write the same item type")
 )
 
@@ -52,6 +53,9 @@ func resolveMappers(log logger.Logger, request mapperRequest) (map[string][]pipe
 
 	external, err := loadMappingConfigs(request.externalPaths)
 	if err != nil {
+		return nil, err
+	}
+	if err := refuseReservedDomains(request.source, external, mappingNames(internal)); err != nil {
 		return nil, err
 	}
 	externalNames := mappingNames(external)
@@ -86,6 +90,26 @@ func resolveMappers(log logger.Logger, request mapperRequest) (map[string][]pipe
 		return nil, nil
 	}
 	return buildMappers(final)
+}
+
+// refuseReservedDomains rejects an external mapping whose root apiVersion is under a reserved
+// system domain: only internal mappings may write system item types. The error points to the
+// internal mapping of the same name, when there is one.
+func refuseReservedDomains(source string, external []*config.MappingConfig, internalNames []string) error {
+	for _, mapping := range external {
+		domain, reserved := mappings.ReservedAPIVersionDomain(mapping.APIVersion)
+		if !reserved {
+			continue
+		}
+
+		fix := "publish it to your own domain instead"
+		if slices.Contains(internalNames, mapping.Name) {
+			fix = fmt.Sprintf("use --%s=%s to load the internal mapping instead", includeInternalMappingsFlagName, mapping.Name)
+		}
+		return fmt.Errorf("%w %s in %q: its apiVersion %q is written by the internal mappings of %s only, %s",
+			errReservedDomain, domain, mapping.Path(), mapping.APIVersion, source, fix)
+	}
+	return nil
 }
 
 // mappingNames returns the names of configs, in their order.

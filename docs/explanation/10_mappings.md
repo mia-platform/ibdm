@@ -74,8 +74,9 @@ Every payload the source emits for that `type` is then rendered by each of those
 mapping produces its own item, with its own `apiVersion`, `itemFamily`, templates and extra items.
 Deletes fan out the same way: every mapping of the `type` sends its own delete.
 
-Mappings sharing a `type` render in the order their files are loaded: the order of the
-`--mapping-file` flags and, within a directory, the lexical order of the file names. The order is
+Mappings sharing a `type` render in a fixed order: the selected internal mappings first, in lexical
+order of name, then the external mappings in the order their files are loaded, meaning the order of
+the `--mapping-file` flags and, within a directory, the lexical order of the file names. The order is
 therefore the same at every run. A mapping that fails on a payload, because a template errors or the Catalog rejects
 the item, logs the error and does not prevent the other mappings from rendering it.
 Every mapping renders its own copy of the payload, so a template that writes into its input, for
@@ -129,10 +130,15 @@ each mapping is enough.
 
 ### Colliding Items
 
-No uniqueness is enforced on `type`, nor on the `apiVersion` and `itemFamily` of the mappings.
-When two mappings produce items with the same `apiVersion`, `itemFamily` and identifier, they write
-the same Catalog item, and the last mapping to write it wins.
-Avoiding such collisions is the responsibility of whoever writes the mappings.
+No uniqueness is enforced on `type`: several mappings can share one. Several mappings can also write
+the same item type, meaning the same `apiVersion` and `itemFamily`, but not by accident. When two
+mappings produce items with the same `apiVersion`, `itemFamily` and identifier, they write the same
+Catalog item, and the last mapping to write it wins. `ibdm` cannot tell in advance whether identifiers
+will overlap, so it refuses to start when two mappings of a run write the same item type, and lists
+them. Pass `--allow-shared-item-types` to start anyway: every shared item type is then logged as a
+warning, and avoiding colliding identifiers is the responsibility of whoever writes the mappings.
+The internal mappings never share an item type with each other, and an external mapping cannot write
+a system item type, so the check only ever concerns your external mappings.
 
 ## Template Functions
 

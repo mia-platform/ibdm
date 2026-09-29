@@ -7,18 +7,22 @@ The Mia-Platform Console Integration of `ibdm` can work in two modes:
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 Once you have the `ibdm` binary available, running the integration is straightforward.
 
 If you want to start listening for webhooks:
 
 ```sh
-ibdm run console --mapping-file <path to mapping file or folder>
+ibdm run console --include-internal-mappings=all
 ```
 
 If you want to start a sync process to fetch data from the Console APIs:
 
 ```sh
-ibdm sync console --mapping-file <path to mapping file or folder>
+ibdm sync console --include-internal-mappings=all
 ```
 
 ## Configuration
