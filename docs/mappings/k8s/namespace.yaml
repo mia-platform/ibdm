@@ -1,4 +1,4 @@
-apiVersion: k8s.mia-platform.eu/v1
+apiVersion: k8s.mia-platform-experimental.eu/v1
 itemFamily: namespaces
 type: namespace
 syncable: true
@@ -21,12 +21,12 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ $src := printf "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:Namespace:%s" (printf "%s-%s" (replace "https://" "" .apiServer) .namespace.metadata.name | sha256sum) -}}
+        {{ $src := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Namespace:%s" (printf "%s-%s" (replace "https://" "" .apiServer) .namespace.metadata.name | sha256sum) -}}
         {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
-        {{- $tgt := printf "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:Cluster:%s" (printf "%s" (replace "https://" "" .apiServer) | sha256sum) -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:K8sCluster:%s" (printf "k8s-%s" (replace "https://" "" .apiServer) | sha256sum) -}}
         {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:k8s.mia-platform.eu:v1:Namespace:{{ printf "%s-%s" (replace "https://" "" .apiServer) .namespace.metadata.name | sha256sum }}
+        urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Namespace:{{ printf "%s-%s" (replace "https://" "" .apiServer) .namespace.metadata.name | sha256sum }}
       targetRef: |-
-        urn:mia-platform-catalog:k8s.mia-platform.eu:v1:Cluster:{{ printf "%s" (replace "https://" "" .apiServer) | sha256sum }}
+        urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:K8sCluster:{{ printf "k8s-%s" (replace "https://" "" .apiServer) | sha256sum }}
       typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
