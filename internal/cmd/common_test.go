@@ -232,6 +232,26 @@ func TestLoadMappers(t *testing.T) {
 				}},
 			},
 		},
+		"mapping without syncable key is kept by sync": {
+			paths: []string{
+				filepath.Join("testdata", "mappers.yaml"),
+				filepath.Join("testdata", "same-type.yaml"),
+			},
+			syncOnly: true,
+			expectedMappers: map[string][]pipeline.DataMapper{
+				"valid": {{
+					Name:       "same-type",
+					APIVersion: "v2",
+					ItemFamily: "other-family",
+					Extra:      map[string]any{"apiVersion": "2024-01-01"},
+				}},
+				"mapper-type": {{
+					Name:       "mapper-type",
+					APIVersion: "v1",
+					ItemFamily: "family",
+				}},
+			},
+		},
 		"mappings sharing a type are all kept in load order": {
 			paths: []string{
 				filepath.Join("testdata", "mappers.yaml"),
