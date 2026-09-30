@@ -57,6 +57,7 @@ linters:
   settings:
     goconst:
       ignore-tests: true
+      min-occurrences: 6
     gocyclo:
       min-complexity: 15
     goheader:

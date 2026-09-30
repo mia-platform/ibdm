@@ -23,6 +23,7 @@ words:
   - mytoken
   - postgresqldb
   - postgresqldbs
+  - sonarqube
   - Sonatype
   - syft
   - sysdig
@@ -31,6 +32,7 @@ words:
   - upserts
   - uuidv
 ignoreWords:
+  - Dsonar
   - acks
   - apiv
   - assetpb

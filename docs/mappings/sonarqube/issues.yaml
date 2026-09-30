@@ -1,0 +1,66 @@
+apiVersion: sonarqube.mia-platform.eu/v1
+itemFamily: issues
+type: issue
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s-%s" .derived.projectSlug (printf "%s" .issue.key | sha256sum | truncate 16) }}
+  metadata:
+    title: '{{ .derived.title | toJSON }}'
+    description: '{{ .derived.description | toJSON }}'
+    labels: '{{ .derived.labels | toJSON }}'
+    tags: '{{ .derived.tags | toJSON }}'
+    links: '{{ .derived.links | toJSON }}'
+  spec:
+    issueKey: '{{ .issue.key | toJSON }}'
+    projectKey: '{{ .analysis.projectKey | toJSON }}'
+    projectName: '{{ .analysis.projectName | toJSON }}'
+    serverUrl: '{{ .analysis.serverUrl | toJSON }}'
+    branch: '{{ .analysis.branch | toJSON }}'
+    pullRequest: '{{ .analysis.pullRequest | toJSON }}'
+    isMainBranch: '{{ .analysis.isMainBranch | toJSON }}'
+    analysisId: '{{ .analysis.taskId | toJSON }}'
+    analysedAt: '{{ .analysis.analysedAt | toJSON }}'
+    revision: '{{ .analysis.revision | toJSON }}'
+    qualityGateStatus: '{{ .analysis.qualityGateStatus | toJSON }}'
+    qualityGateName: '{{ .analysis.qualityGateName | toJSON }}'
+    repositoryUrl: '{{ .derived.repositoryUrl | toJSON }}'
+    scmUrl: '{{ .derived.scmUrl | toJSON }}'
+    rule: '{{ get "rule" .issue nil | toJSON }}'
+    ruleName: '{{ get "name" .rule nil | toJSON }}'
+    language: '{{ get "langName" .rule nil | toJSON }}'
+    message: '{{ get "message" .issue nil | toJSON }}'
+    component: '{{ get "component" .issue nil | toJSON }}'
+    componentPath: '{{ .derived.componentPath | toJSON }}'
+    line: '{{ get "line" .issue nil | toJSON }}'
+    hash: '{{ get "hash" .issue nil | toJSON }}'
+    textRange: '{{ get "textRange" .issue nil | toJSON }}'
+    severity: '{{ .derived.severity | toJSON }}'
+    issueStatus: '{{ .derived.status | toJSON }}'
+    resolution: '{{ get "resolution" .issue nil | toJSON }}'
+    type: '{{ get "type" .issue nil | toJSON }}'
+    scope: '{{ get "scope" .issue nil | toJSON }}'
+    cleanCodeAttribute: '{{ get "cleanCodeAttribute" .issue nil | toJSON }}'
+    cleanCodeAttributeCategory: '{{ get "cleanCodeAttributeCategory" .issue nil | toJSON }}'
+    impacts: '{{ get "impacts" .issue (list) | toJSON }}'
+    effort: '{{ .derived.effort | toJSON }}'
+    author: '{{ get "author" .issue nil | toJSON }}'
+    issueTags: '{{ get "tags" .issue (list) | toJSON }}'
+    quickFixAvailable: '{{ get "quickFixAvailable" .issue nil | toJSON }}'
+    creationDate: '{{ .derived.creationDate | toJSON }}'
+    updateDate: '{{ .derived.updateDate | toJSON }}'
+    closeDate: '{{ .derived.closeDate | toJSON }}'
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "none"
+      createIf: '{{ if .analysis.runKey }}true{{ else }}false{{ end }}'
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Issue:%s-%s" .derived.projectSlug (printf "%s" .issue.key | sha256sum | truncate 16) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- printf "%s-%s" $src $type | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Issue:{{ printf "%s-%s" .derived.projectSlug (printf "%s" .issue.key | sha256sum | truncate 16) }}
+      targetRef: |-
+        urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Run:{{ printf "%s-%s" .derived.projectSlug (printf "%s" .analysis.runKey | sha256sum | truncate 16) }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

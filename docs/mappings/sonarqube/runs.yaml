@@ -1,0 +1,33 @@
+apiVersion: sonarqube.mia-platform.eu/v1
+itemFamily: runs
+type: run
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "%s-%s" .derived.projectSlug (printf "%s" .analysis.runKey | sha256sum | truncate 16) }}
+  metadata:
+    title: '{{ .derived.title | toJSON }}'
+    description: '{{ .derived.description | toJSON }}'
+    labels: '{{ .derived.labels | toJSON }}'
+    tags: '{{ .derived.tags | toJSON }}'
+    links: '{{ .derived.links | toJSON }}'
+  spec:
+    projectKey: '{{ .analysis.projectKey | toJSON }}'
+    projectName: '{{ .analysis.projectName | toJSON }}'
+    serverUrl: '{{ .analysis.serverUrl | toJSON }}'
+    branch: '{{ .analysis.branch | toJSON }}'
+    pullRequest: '{{ .analysis.pullRequest | toJSON }}'
+    isMainBranch: '{{ .analysis.isMainBranch | toJSON }}'
+    taskId: '{{ .analysis.taskId | toJSON }}'
+    analysisKey: '{{ .run.analysisKey | toJSON }}'
+    analysedAt: '{{ .analysis.analysedAt | toJSON }}'
+    revision: '{{ .analysis.revision | toJSON }}'
+    projectVersion: '{{ .run.projectVersion | toJSON }}'
+    repositoryUrl: '{{ .derived.repositoryUrl | toJSON }}'
+    status: '{{ .run.status | toJSON }}'
+    qualityGateStatus: '{{ .analysis.qualityGateStatus | toJSON }}'
+    qualityGateName: '{{ .analysis.qualityGateName | toJSON }}'
+    qualityGateConditions: '{{ .run.qualityGateConditions | toJSON }}'
+    issuesRead: '{{ .run.issuesRead | toJSON }}'
+    truncated: '{{ .run.truncated | toJSON }}'
+    issueCounts: '{{ .run.issueCounts | toJSON }}'
