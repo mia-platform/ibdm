@@ -1,0 +1,81 @@
+apiVersion: sonarqube.mia-platform.eu/v1
+itemFamily: issues
+type: issue
+syncable: true
+mappings:
+  # The project key, readable, plus a prefix of the SHA-256 of the issue key:
+  # stable across analyses, so a re-analysis updates the item instead of
+  # adding another, and identical to the names catalog-sonarqube-webhook wrote.
+  identifier: |-
+    {{ printf "%s-%s" .derived.projectSlug (printf "%s" .issue.key | sha256sum | truncate 16) }}
+  metadata:
+    title: '{{ .derived.title | toJSON }}'
+    description: '{{ .derived.description | toJSON }}'
+    labels: '{{ .derived.labels | toJSON }}'
+    tags: '{{ .derived.tags | toJSON }}'
+    links: '{{ .derived.links | toJSON }}'
+  spec:
+    # identity
+    issueKey: '{{ .issue.key | toJSON }}'
+    projectKey: '{{ .analysis.projectKey | toJSON }}'
+    projectName: '{{ .analysis.projectName | toJSON }}'
+    serverUrl: '{{ .analysis.serverUrl | toJSON }}'
+    # which analysis
+    branch: '{{ .analysis.branch | toJSON }}'
+    pullRequest: '{{ .analysis.pullRequest | toJSON }}'
+    isMainBranch: '{{ .analysis.isMainBranch | toJSON }}'
+    analysisId: '{{ .analysis.taskId | toJSON }}'
+    analysedAt: '{{ .analysis.analysedAt | toJSON }}'
+    revision: '{{ .analysis.revision | toJSON }}'
+    qualityGateStatus: '{{ .analysis.qualityGateStatus | toJSON }}'
+    qualityGateName: '{{ .analysis.qualityGateName | toJSON }}'
+    # where the code is
+    repositoryUrl: '{{ .derived.repositoryUrl | toJSON }}'
+    scmUrl: '{{ .derived.scmUrl | toJSON }}'
+    # the rule
+    rule: '{{ get "rule" .issue nil | toJSON }}'
+    ruleName: '{{ get "name" .rule nil | toJSON }}'
+    language: '{{ get "langName" .rule nil | toJSON }}'
+    # where it is
+    message: '{{ get "message" .issue nil | toJSON }}'
+    component: '{{ get "component" .issue nil | toJSON }}'
+    componentPath: '{{ .derived.componentPath | toJSON }}'
+    line: '{{ get "line" .issue nil | toJSON }}'
+    hash: '{{ get "hash" .issue nil | toJSON }}'
+    textRange: '{{ get "textRange" .issue nil | toJSON }}'
+    # how bad
+    severity: '{{ .derived.severity | toJSON }}'
+    issueStatus: '{{ .derived.status | toJSON }}'
+    resolution: '{{ get "resolution" .issue nil | toJSON }}'
+    type: '{{ get "type" .issue nil | toJSON }}'
+    scope: '{{ get "scope" .issue nil | toJSON }}'
+    cleanCodeAttribute: '{{ get "cleanCodeAttribute" .issue nil | toJSON }}'
+    cleanCodeAttributeCategory: '{{ get "cleanCodeAttributeCategory" .issue nil | toJSON }}'
+    impacts: '{{ get "impacts" .issue (list) | toJSON }}'
+    # the rest
+    effort: '{{ .derived.effort | toJSON }}'
+    author: '{{ get "author" .issue nil | toJSON }}'
+    issueTags: '{{ get "tags" .issue (list) | toJSON }}'
+    quickFixAvailable: '{{ get "quickFixAvailable" .issue nil | toJSON }}'
+    creationDate: '{{ .derived.creationDate | toJSON }}'
+    updateDate: '{{ .derived.updateDate | toJSON }}'
+    closeDate: '{{ .derived.closeDate | toJSON }}'
+  extra:
+    # The issue is part of the run that reported it. The identifier depends on
+    # the issue alone, so every analysis moves the relationship to its own run
+    # instead of adding one: the Catalog keeps one relationship per issue, to
+    # the latest run. To keep the whole history instead, one relationship per
+    # issue and run, hash the targetRef URN into the identifier as well.
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "none"
+      createIf: '{{ if .analysis.runKey }}true{{ else }}false{{ end }}'
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Issue:%s-%s" .derived.projectSlug (printf "%s" .issue.key | sha256sum | truncate 16) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- printf "%s-%s" $src $type | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Issue:{{ printf "%s-%s" .derived.projectSlug (printf "%s" .issue.key | sha256sum | truncate 16) }}
+      targetRef: |-
+        urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Run:{{ printf "%s-%s" .derived.projectSlug (printf "%s" .analysis.runKey | sha256sum | truncate 16) }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

@@ -12,6 +12,7 @@
 - [How to Configure the Sysdig Secure Integration](./how-to/80_sysdig-source.md)
 - [How to Configure the Sonatype Nexus Repository Manager Integration](./how-to/90_nexus-source.md)
 - [How to Configure the GitHub Integration](./how-to/100_github-source.md)
+- [How to Configure the SonarQube Integration](./how-to/120_sonarqube-source.md)
 
 ## Explainations
 

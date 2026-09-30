@@ -24,6 +24,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/source/github"
 	"github.com/mia-platform/ibdm/internal/source/gitlab"
 	"github.com/mia-platform/ibdm/internal/source/nexus"
+	"github.com/mia-platform/ibdm/internal/source/sonarqube"
 	"github.com/mia-platform/ibdm/internal/source/sysdig"
 )
 
@@ -44,6 +45,8 @@ const (
 	gitlabDescription      = "GitLab integration"
 	nexusSource            = "nexus"
 	nexusDescription       = "Sonatype Nexus Repository Manager integration"
+	sonarqubeSource        = "sonarqube"
+	sonarqubeDescription   = "SonarQube integration"
 	sysdigSource           = "sysdig"
 	sysdigDescription      = "Sysdig Secure integration"
 )
@@ -62,6 +65,7 @@ var (
 		githubSource:      githubDescription,
 		gitlabSource:      gitlabDescription,
 		nexusSource:       nexusDescription,
+		sonarqubeSource:   sonarqubeDescription,
 		sysdigSource:      sysdigDescription,
 	}
 	// availableSyncSources covers synchronization sources used for completion and help text.
@@ -74,6 +78,7 @@ var (
 		githubSource:      githubDescription,
 		gitlabSource:      gitlabDescription,
 		nexusSource:       nexusDescription,
+		sonarqubeSource:   sonarqubeDescription,
 		sysdigSource:      sysdigDescription,
 	}
 )
@@ -131,6 +136,8 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 		return gitlab.NewSource()
 	case nexusSource:
 		return nexus.NewSource()
+	case sonarqubeSource:
+		return sonarqube.NewSource()
 	case sysdigSource:
 		return sysdig.NewSource()
 	}
