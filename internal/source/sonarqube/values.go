@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 const (
@@ -372,14 +371,14 @@ func sanitiseLabelValue(raw string) string {
 		if builder.Len() >= labelValueLimit {
 			break
 		}
-		if r < utf8.RuneSelf && (isASCIIAlphanumeric(byte(r)) || r == '.' || r == '_' || r == '-') {
+		if isASCIIAlphanumeric(r) || r == '.' || r == '_' || r == '-' {
 			builder.WriteRune(r)
 		} else {
 			builder.WriteByte('-')
 		}
 	}
 	return strings.TrimFunc(builder.String(), func(r rune) bool {
-		return r >= utf8.RuneSelf || !isASCIIAlphanumeric(byte(r))
+		return !isASCIIAlphanumeric(r)
 	})
 }
 
@@ -391,13 +390,10 @@ func sanitiseTag(raw string) string {
 		if builder.Len() >= labelValueLimit {
 			break
 		}
-		if r < utf8.RuneSelf {
-			b := asciiLower(byte(r))
-			if isASCIIAlphanumeric(b) || b == ':' || b == '+' || b == '#' {
-				builder.WriteByte(b)
-				lastWasSeparator = false
-				continue
-			}
+		if l := asciiLower(r); isASCIIAlphanumeric(l) || l == ':' || l == '+' || l == '#' {
+			builder.WriteRune(l)
+			lastWasSeparator = false
+			continue
 		}
 		if !lastWasSeparator {
 			builder.WriteByte('-')
@@ -465,10 +461,10 @@ func truncateRunes(s string, limit int) string {
 	return string(runes[:limit])
 }
 
-// asciiLower lowercases an ASCII letter and leaves every other byte alone.
-func asciiLower(b byte) byte {
-	if b >= 'A' && b <= 'Z' {
-		return b + ('a' - 'A')
+// asciiLower lowercases an ASCII letter and leaves every other character alone.
+func asciiLower[T byte | rune](c T) T {
+	if c >= 'A' && c <= 'Z' {
+		return c + ('a' - 'A')
 	}
-	return b
+	return c
 }

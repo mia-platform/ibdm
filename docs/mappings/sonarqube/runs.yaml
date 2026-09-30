@@ -3,10 +3,6 @@ itemFamily: runs
 type: run
 syncable: true
 mappings:
-  # The project key, readable, plus a prefix of the SHA-256 of the run key
-  # (project, ref and analysis date): a webhook delivery and a sync of the same
-  # analysis write the same item. The issue mapping builds its relationship
-  # target from the same formula.
   identifier: |-
     {{ printf "%s-%s" .derived.projectSlug (printf "%s" .analysis.runKey | sha256sum | truncate 16) }}
   metadata:
@@ -16,7 +12,6 @@ mappings:
     tags: '{{ .derived.tags | toJSON }}'
     links: '{{ .derived.links | toJSON }}'
   spec:
-    # which analysis
     projectKey: '{{ .analysis.projectKey | toJSON }}'
     projectName: '{{ .analysis.projectName | toJSON }}'
     serverUrl: '{{ .analysis.serverUrl | toJSON }}'
@@ -29,12 +24,10 @@ mappings:
     revision: '{{ .analysis.revision | toJSON }}'
     projectVersion: '{{ .run.projectVersion | toJSON }}'
     repositoryUrl: '{{ .derived.repositoryUrl | toJSON }}'
-    # its outcome
     status: '{{ .run.status | toJSON }}'
     qualityGateStatus: '{{ .analysis.qualityGateStatus | toJSON }}'
     qualityGateName: '{{ .analysis.qualityGateName | toJSON }}'
     qualityGateConditions: '{{ .run.qualityGateConditions | toJSON }}'
-    # what it found
     issuesRead: '{{ .run.issuesRead | toJSON }}'
     truncated: '{{ .run.truncated | toJSON }}'
     issueCounts: '{{ .run.issueCounts | toJSON }}'

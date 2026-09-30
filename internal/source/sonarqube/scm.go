@@ -286,7 +286,7 @@ func isHTTPURL(u *url.URL) bool {
 	return (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
 
-// isASCIIAlphanumeric reports whether b is an ASCII letter or digit.
-func isASCIIAlphanumeric(b byte) bool {
-	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= '0' && b <= '9'
+// isASCIIAlphanumeric reports whether c is an ASCII letter or digit.
+func isASCIIAlphanumeric[T byte | rune](c T) bool {
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9'
 }
