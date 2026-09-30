@@ -163,7 +163,7 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
     - name: Scan image
-      uses: sysdiglabs/scan-action@601520256777eb8e8da34719446ceef2870a795f # v6.3.4
+      uses: sysdiglabs/scan-action@0f80e86c1276ece376cfadb8e90ec297000f9655 # v6.3.7
       with:
         image-tag: nexus.mia-platform.eu/catalog/ibdm:${{ steps.meta.outputs.version }}
         sysdig-secure-url: "https://eu1.app.sysdig.com"
