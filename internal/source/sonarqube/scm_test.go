@@ -108,13 +108,14 @@ func TestNewSCMTarget(t *testing.T) {
 		t.Parallel()
 
 		target, _ := newSCMTarget("https://git.example.com/group/repo", testRevision, "", scmSettings{
-			provider:     providerCustom,
-			urlTemplate:  "{repo}/files/{ref}/{path}",
-			lineTemplate: "?highlight={line}",
+			provider:    providerCustom,
+			urlTemplate: "{repo}/files/{ref}/{path}?highlight={line}",
 		})
 		require.NotNil(t, target)
 		url, _ := target.url("src/App.java", 9)
 		assert.Equal(t, "https://git.example.com/group/repo/files/"+testRevision+"/src/App.java?highlight=9", url)
+		url, _ = target.url("src/App.java", 0)
+		assert.Equal(t, "https://git.example.com/group/repo/files/"+testRevision+"/src/App.java", url)
 	})
 
 	t.Run("custom without a template writes no link", func(t *testing.T) {
@@ -190,4 +191,28 @@ func TestParseProvider(t *testing.T) {
 
 	_, err = parseProvider("unknown-forge")
 	assert.ErrorIs(t, err, ErrInvalidEnvVariable)
+}
+
+func TestSplitURLTemplate(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		template string
+		expected scmTemplates
+	}{
+		"no line":                {template: "{repo}/src/{ref}/{path}", expected: scmTemplates{file: "{repo}/src/{ref}/{path}"}},
+		"fragment":               {template: "{repo}/blob/{ref}/{path}#L{line}", expected: githubTemplates},
+		"query":                  {template: "{repo}/files/{ref}/{path}?highlight={line}", expected: scmTemplates{file: "{repo}/files/{ref}/{path}", line: "?highlight={line}"}},
+		"fragment after a query": {template: "{repo}/browse/{path}?at={ref}#{line}", expected: bitbucketServerTemplates},
+		"query parameter":        {template: "{repo}?path=/{path}&version=GC{ref}&line={line}", expected: azureDevOpsTemplates},
+		"no separator":           {template: "{repo}/{path}/{line}", expected: scmTemplates{file: "{repo}/{path}/", line: "{line}"}},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tc.expected, splitURLTemplate(tc.template))
+		})
+	}
 }

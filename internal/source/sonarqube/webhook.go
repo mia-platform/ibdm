@@ -93,7 +93,7 @@ func (s *Source) processAnalysis(ctx context.Context, payload *webhookPayload, t
 
 	// Only a branch is a git ref: a pull request analysis reports its PR key
 	// as the branch name, which names nothing in the repository.
-	scm := s.resolveSCMTarget(ctx, payload.Project.Key, payload.property(s.scm.analysisProperty), payload.Revision, scope.branch())
+	scm := s.resolveSCMTarget(ctx, payload.Project.Key, payload.property(repositoryURLProperty), payload.Revision, scope.branch())
 
 	analysis := analysisContext{
 		serverURL:   s.publicURL(payload.ServerURL),

@@ -67,35 +67,27 @@ func NewSource() (*Source, error) {
 		config:        cfg,
 		webhookConfig: whCfg,
 		scm: scmSettings{
-			provider:         scmProvider,
-			repositoryURL:    cfg.SCMRepositoryURL,
-			analysisProperty: cfg.SCMAnalysisProperty,
-			useProjectLinks:  cfg.SCMUseProjectLinks,
-			urlTemplate:      cfg.SCMFileTemplate,
-			lineTemplate:     cfg.SCMLineTemplate,
+			provider:    scmProvider,
+			urlTemplate: cfg.SCMURLTemplate,
 		},
 		client: newClient(cfg),
 	}, nil
 }
 
 // resolveSCMTarget works out where the analysed code lives, once per analysis.
-// Three sources are tried in order:
+// Two sources are tried in order:
 //
-//  1. an analysis property (sonar.analysis.repoUrl by default), injected by the
-//     CI job that ran the scan: free, and the CI is the one that knows;
-//  2. the project sonar.links.scm link, read from SonarQube;
-//  3. SONARQUBE_SCM_REPOSITORY_URL, for a deployment watching one repository.
+//  1. the sonar.analysis.repoUrl analysis property, injected by the CI job that
+//     ran the scan: free, and the CI is the one that knows;
+//  2. the project sonar.links.scm link, read from SonarQube.
 func (s *Source) resolveSCMTarget(ctx context.Context, projectKey, propertyURL, revision, branch string) *scmTarget {
 	if s.scm.provider == providerNone {
 		return nil
 	}
 
 	repositoryURL := strings.TrimSpace(propertyURL)
-	if repositoryURL == "" && s.scm.useProjectLinks {
-		repositoryURL = strings.TrimSpace(s.client.projectRepositoryURL(ctx, projectKey))
-	}
 	if repositoryURL == "" {
-		repositoryURL = s.scm.repositoryURL
+		repositoryURL = strings.TrimSpace(s.client.projectRepositoryURL(ctx, projectKey))
 	}
 
 	target, reason := newSCMTarget(repositoryURL, revision, branch, s.scm)

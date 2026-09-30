@@ -45,18 +45,13 @@ All configuration is read from environment variables.
 | `SONARQUBE_HTTP_TIMEOUT` | No | `30s` | Timeout for HTTP requests, as a Go `time.Duration`. |
 | `SONARQUBE_ISSUE_STATUSES` | No | `OPEN,CONFIRMED` | `issueStatuses` filter of the issues read. Add `ACCEPTED` to also record findings somebody has consciously accepted. |
 | `SONARQUBE_NEW_CODE_ONLY` | No | `false` | Read only the issues in the project new code period. |
-| `SONARQUBE_PAGE_SIZE` | No | `500` | Issues per page (1–500). |
 | `SONARQUBE_MAX_ISSUES` | No | `20000` | Ceiling on the issues read for one project ref. |
 | `SONARQUBE_PROJECT_KEYS` | No | _(empty)_ | Comma-separated project keys to sync. When empty, sync reads every project the token can browse. |
 | `SONARQUBE_WEBHOOK_PATH` | No | `/sonarqube/webhook` | HTTP path on which the webhook listener accepts deliveries. |
 | `SONARQUBE_WEBHOOK_SECRET` | **Webhook** | _(empty)_ | The secret configured on the SonarQube webhook. Required unless `SONARQUBE_WEBHOOK_ALLOW_UNSIGNED` is `true`. |
 | `SONARQUBE_WEBHOOK_ALLOW_UNSIGNED` | No | `false` | Accept deliveries without a signature when no secret is configured. For a local loop only. |
 | `SONARQUBE_SCM_PROVIDER` | No | `auto` | Forge the analysed repositories are on: `auto`, `gitlab`, `github`, `bitbucket`, `bitbucket-server`, `azure-devops`, `custom` or `none`. See [Links to the Source Code](#links-to-the-source-code). |
-| `SONARQUBE_SCM_ANALYSIS_PROPERTY` | No | `sonar.analysis.repoUrl` | Analysis property a repository URL may arrive in. |
-| `SONARQUBE_SCM_USE_PROJECT_LINKS` | No | `true` | Whether to read the project `sonar.links.scm` link from SonarQube. |
-| `SONARQUBE_SCM_REPOSITORY_URL` | No | _(empty)_ | Fixed repository URL, for a deployment watching a single repository. |
-| `SONARQUBE_SCM_URL_TEMPLATE` | No | _(empty)_ | File URL template overriding the built-in shape. Placeholders: `{repo}`, `{ref}`, `{path}`. |
-| `SONARQUBE_SCM_LINE_TEMPLATE` | No | _(empty)_ | Line anchor appended to the file URL. Placeholder: `{line}`. |
+| `SONARQUBE_SCM_URL_TEMPLATE` | No | _(empty)_ | URL template overriding the built-in shape. Placeholders: `{repo}`, `{ref}`, `{path}` and, in the trailing anchor, `{line}`. |
 
 ## Setting Up the SonarQube Webhook
 
@@ -127,12 +122,11 @@ Each item links to the finding in SonarQube and, when it can be built, to the of
 the repository. SonarQube reports a path and a line but never says which repository they are in,
 so the repository URL is resolved once per analysis, from the first of these that answers:
 
-1. **the analysis property** `SONARQUBE_SCM_ANALYSIS_PROPERTY`, passed by the CI job that ran the
-   scan: `sonar-scanner -Dsonar.analysis.repoUrl="$CI_PROJECT_URL"`. Webhook only;
+1. **the analysis property** `sonar.analysis.repoUrl`, passed by the CI job that ran the scan:
+   `sonar-scanner -Dsonar.analysis.repoUrl="$CI_PROJECT_URL"`. Webhook only;
 1. **the project `scm` link** in SonarQube (`sonar.links.scm`), read from
-   `/api/project_links/search` when `SONARQUBE_SCM_USE_PROJECT_LINKS` is `true`. The Maven form
-   `scm:git:https://…` and the SSH form `git@host:group/repo.git` are normalised;
-1. **`SONARQUBE_SCM_REPOSITORY_URL`**.
+   `/api/project_links/search`. The Maven form `scm:git:https://…` and the SSH form
+   `git@host:group/repo.git` are normalised.
 
 `SONARQUBE_SCM_PROVIDER` decides the shape of the link. `auto` recognises only the hosted services
 (`gitlab.com`, `github.com`, `bitbucket.org`, `dev.azure.com`): a self-hosted forge must be named,
@@ -145,13 +139,17 @@ otherwise its items carry no line link.
 | `bitbucket` | `{repo}/src/{ref}/{path}#lines-{line}` |
 | `bitbucket-server` | `{repo}/browse/{path}?at={ref}#{line}` |
 | `azure-devops` | `{repo}?path=/{path}&version=GC{ref}&line={line}` |
-| `custom` | `SONARQUBE_SCM_URL_TEMPLATE` + `SONARQUBE_SCM_LINE_TEMPLATE` |
+| `custom` | `SONARQUBE_SCM_URL_TEMPLATE` |
 
 The reference is the analysed commit (`revision`) whenever the payload carries one, and the branch
 only as a fallback: a link to a branch points at whatever is on it now. A pull request analysis
 without a revision gets no line link, since its branch name is the pull request key. So does an
 Azure DevOps repository, whose `GC` prefix can only address a commit. Sync knows no revision, so
 its links point at the main branch.
+
+In `SONARQUBE_SCM_URL_TEMPLATE`, the line anchor starts at the last `?`, `&` or `#` before
+`{line}`, and is left out for an issue without a line: `{repo}/files/{ref}/{path}?highlight={line}`
+links the file alone for a file-level issue.
 
 A repository that cannot be resolved costs the link and nothing else.
 

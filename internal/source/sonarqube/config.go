@@ -13,12 +13,6 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
-const (
-	// sonarqubeMaxPageSize is the upper bound SonarQube enforces on the `ps`
-	// parameter of /api/issues/search.
-	sonarqubeMaxPageSize = 500
-)
-
 var (
 	// ErrMissingEnvVariable reports missing mandatory environment variables.
 	ErrMissingEnvVariable = errors.New("missing environment variable")
@@ -39,16 +33,11 @@ type config struct {
 	HTTPTimeout   time.Duration `env:"SONARQUBE_HTTP_TIMEOUT"   envDefault:"30s"`
 	IssueStatuses string        `env:"SONARQUBE_ISSUE_STATUSES" envDefault:"OPEN,CONFIRMED"`
 	NewCodeOnly   bool          `env:"SONARQUBE_NEW_CODE_ONLY"  envDefault:"false"`
-	PageSize      int           `env:"SONARQUBE_PAGE_SIZE"      envDefault:"500"`
 	MaxIssues     int           `env:"SONARQUBE_MAX_ISSUES"     envDefault:"20000"`
 	ProjectKeys   []string      `env:"SONARQUBE_PROJECT_KEYS"   envSeparator:","`
 
-	SCMProvider         string `env:"SONARQUBE_SCM_PROVIDER"          envDefault:"auto"`
-	SCMAnalysisProperty string `env:"SONARQUBE_SCM_ANALYSIS_PROPERTY" envDefault:"sonar.analysis.repoUrl"`
-	SCMUseProjectLinks  bool   `env:"SONARQUBE_SCM_USE_PROJECT_LINKS" envDefault:"true"`
-	SCMRepositoryURL    string `env:"SONARQUBE_SCM_REPOSITORY_URL"`
-	SCMFileTemplate     string `env:"SONARQUBE_SCM_URL_TEMPLATE"`
-	SCMLineTemplate     string `env:"SONARQUBE_SCM_LINE_TEMPLATE"`
+	SCMProvider    string `env:"SONARQUBE_SCM_PROVIDER"     envDefault:"auto"`
+	SCMURLTemplate string `env:"SONARQUBE_SCM_URL_TEMPLATE"`
 }
 
 // webhookConfig holds the environment-driven SonarQube webhook settings.
@@ -105,9 +94,6 @@ func (c config) validate() error {
 		}
 	}
 
-	if c.PageSize < 1 || c.PageSize > sonarqubeMaxPageSize {
-		return fmt.Errorf("%w: SONARQUBE_PAGE_SIZE must be between 1 and %d, got %d", ErrInvalidEnvVariable, sonarqubeMaxPageSize, c.PageSize)
-	}
 	if c.MaxIssues < 1 {
 		return fmt.Errorf("%w: SONARQUBE_MAX_ISSUES must be at least 1, got %d", ErrInvalidEnvVariable, c.MaxIssues)
 	}

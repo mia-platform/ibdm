@@ -28,6 +28,10 @@ const (
 	providerNone
 )
 
+// repositoryURLProperty is the analysis property a CI job passes the
+// repository URL in.
+const repositoryURLProperty = "sonar.analysis.repoUrl"
+
 // scmTemplates holds how a forge spells a link to a file and to a line in it.
 type scmTemplates struct {
 	// file renders {repo}, {ref} and {path}.
@@ -127,12 +131,24 @@ func detectProvider(repositoryURL string) provider {
 
 // scmSettings groups everything deciding the SCM link of an item.
 type scmSettings struct {
-	provider         provider
-	repositoryURL    string
-	analysisProperty string
-	useProjectLinks  bool
-	urlTemplate      string
-	lineTemplate     string
+	provider    provider
+	urlTemplate string
+}
+
+// splitURLTemplate splits a custom URL template into its file and line parts.
+// The line part starts at the last '?', '&' or '#' before {line}, so that
+// "{repo}/files/{ref}/{path}?highlight={line}" links a file on its own when
+// the issue carries no line.
+func splitURLTemplate(template string) scmTemplates {
+	index := strings.Index(template, "{line}")
+	if index < 0 {
+		return scmTemplates{file: template}
+	}
+	start := strings.LastIndexAny(template[:index], "?&#")
+	if start < 0 {
+		start = index
+	}
+	return scmTemplates{file: template[:start], line: template[start:]}
 }
 
 // scmTarget is a repository and the reference an analysis saw it at, ready to
@@ -169,7 +185,7 @@ func newSCMTarget(repositoryURL, revision, branch string, settings scmSettings) 
 		if settings.urlTemplate == "" {
 			return nil, "SONARQUBE_SCM_PROVIDER is 'custom' but SONARQUBE_SCM_URL_TEMPLATE is empty; no SCM link is written"
 		}
-		templates = scmTemplates{file: settings.urlTemplate, line: settings.lineTemplate}
+		templates = splitURLTemplate(settings.urlTemplate)
 	default:
 		builtIn, found := settings.provider.templates(normalised)
 		if !found {

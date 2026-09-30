@@ -18,6 +18,10 @@ import (
 )
 
 const (
+	// sonarqubeMaxPageSize is the upper bound SonarQube enforces on the `ps`
+	// parameter of its paginated search endpoints.
+	sonarqubeMaxPageSize = 500
+
 	issuesSearchPath     = "/api/issues/search"
 	projectLinksPath     = "/api/project_links/search"
 	componentsSearchPath = "/api/components/search"
@@ -68,7 +72,7 @@ func newClient(cfg config) *client {
 		token:         cfg.Token,
 		issueStatuses: cfg.IssueStatuses,
 		newCodeOnly:   cfg.NewCodeOnly,
-		pageSize:      cfg.PageSize,
+		pageSize:      sonarqubeMaxPageSize,
 		maxIssues:     cfg.MaxIssues,
 		httpClient: &http.Client{
 			Timeout: cfg.HTTPTimeout,

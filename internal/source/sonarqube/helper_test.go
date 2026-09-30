@@ -27,15 +27,12 @@ func newTestSource(t *testing.T, handler http.Handler) *Source {
 	t.Cleanup(server.Close)
 
 	cfg := config{
-		URL:                 server.URL,
-		Token:               testToken,
-		HTTPTimeout:         5 * time.Second,
-		IssueStatuses:       "OPEN,CONFIRMED",
-		PageSize:            sonarqubeMaxPageSize,
-		MaxIssues:           1000,
-		SCMProvider:         "auto",
-		SCMAnalysisProperty: "sonar.analysis.repoUrl",
-		SCMUseProjectLinks:  true,
+		URL:           server.URL,
+		Token:         testToken,
+		HTTPTimeout:   5 * time.Second,
+		IssueStatuses: "OPEN,CONFIRMED",
+		MaxIssues:     1000,
+		SCMProvider:   "auto",
 	}
 
 	return &Source{
@@ -45,9 +42,7 @@ func newTestSource(t *testing.T, handler http.Handler) *Source {
 			WebhookSecret: testSecret,
 		},
 		scm: scmSettings{
-			provider:         providerAuto,
-			analysisProperty: cfg.SCMAnalysisProperty,
-			useProjectLinks:  cfg.SCMUseProjectLinks,
+			provider: providerAuto,
 		},
 		client: newClient(cfg),
 	}
