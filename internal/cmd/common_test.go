@@ -19,6 +19,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/source/azure"
 	azuredevops "github.com/mia-platform/ibdm/internal/source/azure-devops"
 	"github.com/mia-platform/ibdm/internal/source/gcp"
+	"github.com/mia-platform/ibdm/internal/source/k8s"
 )
 
 func TestCompletion(t *testing.T) {
@@ -67,6 +68,17 @@ func TestCompletion(t *testing.T) {
 			assert.ElementsMatch(t, test.expectedCompletion, args)
 		})
 	}
+}
+
+func TestSourceFromNameK8s(t *testing.T) {
+	// not parallel: the k8s source reads its configuration from the environment.
+	t.Setenv("K8S_API_SERVER", "https://api.example.com")
+	t.Setenv("K8S_BEARER_TOKEN", "my-token")
+
+	source, err := sourceFromIntegrationName(k8sSource)
+	require.NoError(t, err)
+	require.NotNil(t, source)
+	assert.IsType(t, (*k8s.Source)(nil), source)
 }
 
 func TestSourceFromName(t *testing.T) {
