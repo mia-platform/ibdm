@@ -1,0 +1,8 @@
+# Fails on the repositories without a homepage: templates run with missingkey=error.
+type: repository
+apiVersion: integration.example.com/v1
+itemFamily: repositoryhomepages
+mappings:
+  identifier: "homepage-{{ .repository.id }}"
+  spec:
+    homepage: "{{ .repository.homepage }}"

@@ -53,7 +53,9 @@ func newFakeCatalog(t *testing.T) *fakeCatalog {
 // startFakeCatalog starts a fake Catalog that the caller stops.
 func startFakeCatalog() *fakeCatalog {
 	catalog := new(fakeCatalog)
-	catalog.server = httptest.NewServer(http.HandlerFunc(catalog.handle))
+	// Assigned before the start, so that the handler can read the URL without a race.
+	catalog.server = httptest.NewUnstartedServer(http.HandlerFunc(catalog.handle))
+	catalog.server.Start()
 	return catalog
 }
 

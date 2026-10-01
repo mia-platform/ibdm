@@ -1,0 +1,130 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "github.mia-platform.eu/v1",
+      "data": {
+        "conclusion": "success",
+        "created": "2026-09-28T16:31:00Z",
+        "displayTitle": "Build #11",
+        "event": "push",
+        "headBranch": "main",
+        "headSha": "000000000000000000000000000000000000000b",
+        "htmlUrl": "https://github.example.com/acme-widgets/gizmo-service/actions/runs/7001",
+        "id": 7001,
+        "name": "CI",
+        "repositoryFullName": "acme-widgets/gizmo-service",
+        "repositoryId": 101,
+        "runAttempt": 1,
+        "runNumber": 11,
+        "runStartedAt": "2026-09-28T16:31:00Z",
+        "status": "completed",
+        "updated": "2026-09-28T16:31:00Z",
+        "workflowId": 5001,
+        "workflowPath": ".github/workflows/ci.yaml"
+      },
+      "itemFamily": "workflowruns",
+      "metadata": {
+        "title": "acme-widgets/gizmo-service CI #11"
+      },
+      "name": "bc6a25ffab984a53c730ea9aff8718a6046a5083146006745bde98fe74c52737",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "github.mia-platform.eu/v1",
+      "data": {
+        "conclusion": "failure",
+        "created": "2026-09-29T10:02:00Z",
+        "displayTitle": "Build #12",
+        "event": "push",
+        "headBranch": "main",
+        "headSha": "000000000000000000000000000000000000000c",
+        "htmlUrl": "https://github.example.com/acme-widgets/gizmo-service/actions/runs/7002",
+        "id": 7002,
+        "name": "CI",
+        "repositoryFullName": "acme-widgets/gizmo-service",
+        "repositoryId": 101,
+        "runAttempt": 1,
+        "runNumber": 12,
+        "runStartedAt": "2026-09-29T10:02:00Z",
+        "status": "completed",
+        "updated": "2026-09-29T10:02:00Z",
+        "workflowId": 5001,
+        "workflowPath": ".github/workflows/ci.yaml"
+      },
+      "itemFamily": "workflowruns",
+      "metadata": {
+        "title": "acme-widgets/gizmo-service CI #12"
+      },
+      "name": "fd69fda1314b05c15adebf4d55fbfa87906e47a1a4a520a5c69109b4ed6721b1",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:github.mia-platform.eu:v1:WorkflowRun:bc6a25ffab984a53c730ea9aff8718a6046a5083146006745bde98fe74c52737",
+        "targetRef": "urn:mia-platform-catalog:github.mia-platform.eu:v1:Repository:102e2e0aa5dcc7b23714445b3e719503f038fa93d07d8cecfcdc336d20445ca3",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "118c24d01057a16d3988cf7baeda02d2d1fabf983f9444ab6637ff5040c0498b",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:github.mia-platform.eu:v1:WorkflowRun:fd69fda1314b05c15adebf4d55fbfa87906e47a1a4a520a5c69109b4ed6721b1",
+        "targetRef": "urn:mia-platform-catalog:github.mia-platform.eu:v1:Repository:102e2e0aa5dcc7b23714445b3e719503f038fa93d07d8cecfcdc336d20445ca3",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "a1241008d9c112df220a6e7a8c23e2bf89aa48075460e59bab91b01e78c9f4a2",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/orgs/acme-widgets/repos",
+      "query": "page=1&per_page=100&type=all",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/orgs/acme-widgets/repos",
+      "query": "page=2&per_page=100&type=all",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/cog-docs/actions/runs",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/gizmo-service/actions/runs",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/sprocket-ui/actions/runs",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    }
+  ]
+}
