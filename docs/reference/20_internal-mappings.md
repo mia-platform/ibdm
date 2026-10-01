@@ -94,6 +94,13 @@ starting point for your own external mappings.
 | --- | --- | --- | --- |
 | `dockerimages` | `dockerimage` | `nexus.mia-platform.eu/v1` `dockerimages` | — |
 
+## `sonarqube`
+
+| Name | Type | Item type (`apiVersion` `itemFamily`) | Root `extra` |
+| --- | --- | --- | --- |
+| `issues` | `issue` | `sonarqube.mia-platform.eu/v1` `issues` | — |
+| `runs` | `run` | `sonarqube.mia-platform.eu/v1` `runs` | — |
+
 ## `sysdig`
 
 | Name | Type | Item type (`apiVersion` `itemFamily`) | Root `extra` |

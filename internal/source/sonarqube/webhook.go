@@ -32,7 +32,7 @@ const (
 // route carries no other authentication, since SonarQube holds no token the
 // platform issues. With a secret configured every delivery is verified,
 // whatever the value of SONARQUBE_WEBHOOK_ALLOW_UNSIGNED.
-func (s *Source) GetWebhook(_ context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
+func (s *Source) GetWebhook(_ context.Context, typesToStream map[string]source.MappingExtras, results chan<- source.Data) (source.Webhook, error) {
 	if s.webhookConfig.WebhookSecret == "" && !s.webhookConfig.AllowUnsigned {
 		return source.Webhook{}, fmt.Errorf("%w: %w: %s (or set SONARQUBE_WEBHOOK_ALLOW_UNSIGNED=true to accept unauthenticated deliveries)",
 			ErrSonarQubeSource, ErrMissingEnvVariable, "SONARQUBE_WEBHOOK_SECRET")
@@ -88,7 +88,7 @@ func (s *Source) GetWebhook(_ context.Context, typesToStream map[string]source.E
 
 // processAnalysis emits the run of the analysis a delivery announces and, when
 // it succeeded, the issues it left on the analysed ref.
-func (s *Source) processAnalysis(ctx context.Context, payload *webhookPayload, types map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) processAnalysis(ctx context.Context, payload *webhookPayload, types map[string]source.MappingExtras, results chan<- source.Data) error {
 	scope := payload.scope()
 
 	// Only a branch is a git ref: a pull request analysis reports its PR key

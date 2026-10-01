@@ -45,6 +45,7 @@ var (
 		"github":       "github",
 		"gitlab":       "gitlab",
 		"nexus":        "nexus",
+		"sonarqube":    "sonarqube",
 		"sysdig":       "sysdig",
 	}
 )

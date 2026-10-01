@@ -44,7 +44,7 @@ func signedHeaders(body []byte) http.Header {
 	return headers
 }
 
-var issueTypes = map[string]source.Extra{issueType: {}}
+var issueTypes = map[string]source.MappingExtras{issueType: {}}
 
 func TestGetWebhookRequiresASecret(t *testing.T) {
 	t.Parallel()
@@ -150,7 +150,7 @@ func TestWebhookHandlerIgnoresWhatItHasNothingToReadFor(t *testing.T) {
 
 	tests := map[string]struct {
 		body  []byte
-		types map[string]source.Extra
+		types map[string]source.MappingExtras
 	}{
 		"a failed analysis": {
 			body:  []byte(`{"status":"FAILED","project":{"key":"my-project"}}`),
@@ -158,7 +158,7 @@ func TestWebhookHandlerIgnoresWhatItHasNothingToReadFor(t *testing.T) {
 		},
 		"an unmapped issue type": {
 			body:  []byte(testPayload),
-			types: map[string]source.Extra{"other": {}},
+			types: map[string]source.MappingExtras{"other": {}},
 		},
 	}
 
@@ -309,7 +309,7 @@ func TestPayloadScope(t *testing.T) {
 	}
 }
 
-var issueAndRunTypes = map[string]source.Extra{issueType: {}, runType: {}}
+var issueAndRunTypes = map[string]source.MappingExtras{issueType: {}, runType: {}}
 
 // receive reads count data from results, failing when they do not arrive.
 func receive(t *testing.T, results chan source.Data, count int) []source.Data {

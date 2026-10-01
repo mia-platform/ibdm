@@ -15,7 +15,7 @@ import (
 // every project the token can browse, or of the projects listed in
 // SONARQUBE_PROJECT_KEYS, it emits the run of the latest analysis and one
 // upsert per current issue.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !s.syncLock.TryLock() {
 		log.Debug("sync process already running")
@@ -87,7 +87,7 @@ func (s *Source) resolveProjects(ctx context.Context) ([]project, error) {
 // branch as those written by a webhook delivery for it. The latest analysis
 // gives the date and revision a webhook delivery would have carried, so the
 // run is the same item a webhook writes, and SCM links point at the commit.
-func (s *Source) syncProject(ctx context.Context, p project, types map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) syncProject(ctx context.Context, p project, types map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	analysis := analysisContext{

@@ -72,7 +72,7 @@ func TestStartSyncProcessAllProjects(t *testing.T) {
 	}))
 
 	results := make(chan source.Data, 10)
-	require.NoError(t, s.StartSyncProcess(t.Context(), map[string]source.Extra{issueType: {}, runType: {}}, results))
+	require.NoError(t, s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{issueType: {}, runType: {}}, results))
 	data := collect(results)
 
 	// A project that fails does not cost the others: its run is written, its
@@ -156,7 +156,7 @@ func TestStartSyncProcessSkipsUnknownTypes(t *testing.T) {
 	}))
 
 	results := make(chan source.Data, 1)
-	require.NoError(t, s.StartSyncProcess(t.Context(), map[string]source.Extra{"other": {}}, results))
+	require.NoError(t, s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{"other": {}}, results))
 	assert.Empty(t, collect(results))
 }
 

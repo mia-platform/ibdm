@@ -25,7 +25,7 @@ mappings:
 func TestSources(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, []string{"azure", "azure-devops", "bitbucket", "console", "gcp", "github", "gitlab", "nexus", "sysdig"}, Sources())
+	require.Equal(t, []string{"azure", "azure-devops", "bitbucket", "console", "gcp", "github", "gitlab", "nexus", "sonarqube", "sysdig"}, Sources())
 }
 
 func TestNamesForSourceAndRaw(t *testing.T) {
