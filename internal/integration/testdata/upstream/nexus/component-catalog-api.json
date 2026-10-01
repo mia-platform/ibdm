@@ -1,0 +1,24 @@
+{
+  "id": "component-catalog-api",
+  "repository": "docker-hosted",
+  "format": "docker",
+  "group": null,
+  "name": "acme-widgets/catalog-api",
+  "version": "1.4.0",
+  "tags": [
+    "release"
+  ],
+  "assets": [
+    {
+      "id": "asset-a1a1a1a1",
+      "path": "v2/acme-widgets/catalog-api/manifests/1.4.0",
+      "downloadUrl": "https://nexus.example.com/repository/docker-hosted/v2/acme-widgets/catalog-api/manifests/1.4.0",
+      "checksum": {
+        "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      "lastModified": "2026-09-25T08:00:00.000+00:00",
+      "format": "docker",
+      "lastDownloaded": "2026-09-29T12:00:00.000+00:00"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "azuredevops.mia-platform.eu/v1",
+      "data": {
+        "defaultBranch": "refs/heads/main",
+        "httpGitUrl": "https://acme-widgets@dev.azure.example.com/acme-widgets/Storefront/_git/storefront-mobile",
+        "isAFork": false,
+        "isArchived": false,
+        "isDisabled": false,
+        "name": "storefront-mobile",
+        "sshGitUrl": "git@ssh.dev.azure.example.com:v3/acme-widgets/Storefront/storefront-mobile"
+      },
+      "itemFamily": "gitrepositories",
+      "metadata": {
+        "title": "storefront-mobile"
+      },
+      "name": "d2d0b31d2f5822f9d36c2a4acbcaa329a2cde8db97d4186be3f65b1077e0ca56",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "initiatedBy": "ada@example.com",
+        "repositoryName": "storefront-mobile"
+      },
+      "itemFamily": "repositorycreations",
+      "name": "creation-a1b2c3d4-0000-4000-8000-000000000104",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": []
+}

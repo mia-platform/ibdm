@@ -1,0 +1,36 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "bitbucket.mia-platform.eu/v1",
+      "data": {
+        "createdOn": "2023-02-01T09:00:00Z",
+        "defaultBranch": "main",
+        "description": "Legacy tool (as sent in the webhook payload)",
+        "fullName": "acme-widgets/legacy-tool",
+        "htmlUrl": "https://bitbucket.example.com/acme-widgets/legacy-tool",
+        "isPrivate": true,
+        "language": "java",
+        "name": "Legacy Tool",
+        "projectName": "Widgets",
+        "scm": "git",
+        "slug": "legacy-tool",
+        "updatedOn": "2026-09-30T12:00:00Z",
+        "uuid": "6f1c2a3b-0000-4000-8000-000000000104",
+        "workspaceName": "Acme Widgets"
+      },
+      "itemFamily": "repositories",
+      "metadata": {
+        "title": "acme-widgets/legacy-tool"
+      },
+      "name": "612e53161d83448d7ca0da9721896623142ff6ccffe3d20b5d372b8e59232c19",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets/legacy-tool"
+    }
+  ]
+}

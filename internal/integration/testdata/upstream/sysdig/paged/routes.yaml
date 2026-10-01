@@ -1,0 +1,15 @@
+# Fake SysQL API with three vulnerabilities over two pages of size 2 (SYSDIG_PAGE_SIZE=2), then
+# the empty page that ends the pagination. Pages are told apart by the OFFSET in the query body.
+routes:
+  - method: POST
+    path: /api/sysql/v2/query
+    bodyContains: "LIMIT 2 OFFSET 0;"
+    body: sysql-page-1.json
+  - method: POST
+    path: /api/sysql/v2/query
+    bodyContains: "LIMIT 2 OFFSET 2;"
+    body: sysql-page-2.json
+  - method: POST
+    path: /api/sysql/v2/query
+    bodyContains: "LIMIT 2 OFFSET 3;"
+    body: sysql-empty.json

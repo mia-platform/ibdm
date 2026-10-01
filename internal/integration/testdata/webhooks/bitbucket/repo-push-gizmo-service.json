@@ -1,0 +1,14 @@
+{
+  "repository": {
+    "type": "repository",
+    "full_name": "acme-widgets/gizmo-service",
+    "name": "Gizmo Service",
+    "uuid": "{6f1c2a3b-0000-4000-8000-000000000101}"
+  },
+  "actor": {
+    "display_name": "Jane Doe"
+  },
+  "push": {
+    "changes": []
+  }
+}

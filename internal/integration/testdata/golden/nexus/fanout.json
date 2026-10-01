@@ -1,0 +1,109 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "image": "acme-widgets/catalog-api:1.4.0",
+        "tags": [
+          "release"
+        ]
+      },
+      "itemFamily": "imagetags",
+      "name": "tags-f1efe81e5d4ff9d2",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "image": "acme-widgets/checkout-api:2.0.1",
+        "tags": []
+      },
+      "itemFamily": "imagetags",
+      "name": "tags-f4535e3b313737ea",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "nexus.mia-platform.eu/v1",
+      "data": {
+        "assets": [
+          {
+            "downloadUrl": "https://nexus.example.com/repository/docker-hosted/v2/acme-widgets/catalog-api/manifests/1.4.0",
+            "lastDownloaded": "2026-09-29T12:00:00.000+00:00",
+            "lastModified": "2026-09-25T08:00:00.000+00:00",
+            "sha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+          }
+        ],
+        "format": "docker",
+        "host": "<upstream>",
+        "name": "acme-widgets/catalog-api",
+        "repository": "docker-hosted",
+        "tags": [
+          "release"
+        ],
+        "version": "1.4.0"
+      },
+      "itemFamily": "dockerimages",
+      "metadata": {
+        "title": "<upstream>/acme-widgets/catalog-api:1.4.0"
+      },
+      "name": "<nexus-id acme-widgets/catalog-api:1.4.0>",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "nexus.mia-platform.eu/v1",
+      "data": {
+        "assets": [
+          {
+            "downloadUrl": "https://nexus.example.com/repository/docker-hosted/v2/acme-widgets/checkout-api/manifests/2.0.1",
+            "lastDownloaded": "",
+            "lastModified": "2026-09-27T09:30:00.000+00:00",
+            "sha256": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          },
+          {
+            "downloadUrl": "https://nexus.example.com/repository/docker-hosted/v2/acme-widgets/checkout-api/blobs/sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "lastDownloaded": "",
+            "lastModified": "2026-09-27T09:29:00.000+00:00",
+            "sha256": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          }
+        ],
+        "format": "docker",
+        "host": "<upstream>",
+        "name": "acme-widgets/checkout-api",
+        "repository": "docker-hosted",
+        "tags": [],
+        "version": "2.0.1"
+      },
+      "itemFamily": "dockerimages",
+      "metadata": {
+        "title": "<upstream>/acme-widgets/checkout-api:2.0.1"
+      },
+      "name": "<nexus-id acme-widgets/checkout-api:2.0.1>",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/service/rest/v1/components",
+      "query": "continuationToken=docker-hosted-page-2&repository=docker-hosted"
+    },
+    {
+      "method": "GET",
+      "path": "/service/rest/v1/components",
+      "query": "repository=docker-hosted"
+    },
+    {
+      "method": "GET",
+      "path": "/service/rest/v1/components",
+      "query": "repository=maven-releases"
+    },
+    {
+      "method": "GET",
+      "path": "/service/rest/v1/repositories"
+    }
+  ]
+}

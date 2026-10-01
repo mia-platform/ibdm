@@ -1,0 +1,19 @@
+{
+  "pagelen": 10,
+  "values": [
+    {
+      "type": "pipeline",
+      "uuid": "{9a8b7c6d-0000-4000-8000-000000000013}",
+      "build_number": 13,
+      "created_on": "2026-09-30T08:00:00+00:00",
+      "target": {
+        "type": "pipeline_ref_target",
+        "ref_type": "branch",
+        "ref_name": "main"
+      },
+      "state": {
+        "name": "IN_PROGRESS"
+      }
+    }
+  ]
+}

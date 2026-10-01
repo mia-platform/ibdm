@@ -1,0 +1,50 @@
+# Fake SonarQube Server Web API for the organisation acme-widgets: projects
+# acme-widgets:storefront (main and feature-checkout branches, quality gate ERROR, two issues with
+# their rules) and acme-widgets:backoffice (main branch, quality gate OK, no issue). The token is a
+# Bearer token; the fake does not check it. Issue searches answer the main-branch scope of sync and
+# the branch scope of a webhook delivery alike.
+routes:
+  - method: GET
+    path: /api/components/search
+    query: {qualifiers: TRK, p: "1"}
+    body: components.json
+  - method: GET
+    path: /api/project_branches/list
+    query: {project: "acme-widgets:storefront"}
+    body: branches-storefront.json
+  - method: GET
+    path: /api/project_branches/list
+    query: {project: "acme-widgets:backoffice"}
+    body: branches-backoffice.json
+  - method: GET
+    path: /api/project_analyses/search
+    query: {project: "acme-widgets:storefront", ps: "1"}
+    body: analyses-storefront.json
+  - method: GET
+    path: /api/project_analyses/search
+    query: {project: "acme-widgets:backoffice", ps: "1"}
+    body: analyses-backoffice.json
+  - method: GET
+    path: /api/qualitygates/project_status
+    query: {analysisId: AYstorefront0001}
+    body: qualitygate-status-storefront.json
+  - method: GET
+    path: /api/qualitygates/project_status
+    query: {analysisId: AYbackoffice0001}
+    body: qualitygate-status-backoffice.json
+  - method: GET
+    path: /api/qualitygates/get_by_project
+    query: {project: "acme-widgets:storefront"}
+    body: qualitygate-storefront.json
+  - method: GET
+    path: /api/qualitygates/get_by_project
+    query: {project: "acme-widgets:backoffice"}
+    body: qualitygate-backoffice.json
+  - method: GET
+    path: /api/issues/search
+    query: {components: "acme-widgets:storefront", p: "1"}
+    body: issues-storefront.json
+  - method: GET
+    path: /api/issues/search
+    query: {components: "acme-widgets:backoffice", p: "1"}
+    body: issues-empty.json

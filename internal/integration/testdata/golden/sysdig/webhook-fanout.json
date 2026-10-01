@@ -1,0 +1,199 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "image": "registry.example.com/acme-widgets/catalog-api:1.4.2",
+        "severity": "critical"
+      },
+      "itemFamily": "vulnerabilityseverities",
+      "name": "severity-cve-2026-0001",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "image": "registry.example.com/acme-widgets/catalog-api:1.4.2",
+        "severity": "medium"
+      },
+      "itemFamily": "vulnerabilityseverities",
+      "name": "severity-cve-2026-0002",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "image": "registry.example.com/acme-widgets/catalog-api:1.4.2",
+        "severity": "high"
+      },
+      "itemFamily": "vulnerabilityseverities",
+      "name": "severity-cve-2026-0003",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:sysdig.mia-platform.eu:v1:Vulnerability:7e53884c10eb65bd86e326289d43c5166d66dd5c6b219221d58f3b4f92ab3d33",
+        "targetRef": "urn:mia-platform-catalog:nexus.mia-platform.eu:v1:DockerImage:19765de7c9468a86f7b3c7280d1193ed642656f1e9af148fda6e7561301925c4",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:affect.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "7854ecc9ebc9c70fcf1addf3c58adae111213aa67efa3020c82f3e58aa11ee49",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:sysdig.mia-platform.eu:v1:Vulnerability:156f27f61864083638b552e24310f8127a4efdb9609b2d929e36f03f0bd32282",
+        "targetRef": "urn:mia-platform-catalog:nexus.mia-platform.eu:v1:DockerImage:19765de7c9468a86f7b3c7280d1193ed642656f1e9af148fda6e7561301925c4",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:affect.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "79396a4a9913d5725ba170da7c23c5b4d6fdc2271f42ecac1fc7b163b493d090",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:sysdig.mia-platform.eu:v1:Vulnerability:5a60ccf0ca78ee1c1ad83c8716e7affdaf90a99e3934952d58e405c7e704cddd",
+        "targetRef": "urn:mia-platform-catalog:nexus.mia-platform.eu:v1:DockerImage:19765de7c9468a86f7b3c7280d1193ed642656f1e9af148fda6e7561301925c4",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:affect.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "e594dc07bc959b22e39f777a257425b3200eec61e0019ca6271aa125aa368c18",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "sysdig.mia-platform.eu/v1",
+      "data": {
+        "createdAt": "",
+        "cvssScore": 7.5,
+        "cvssSource": "nvd",
+        "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssVersion": "3.1",
+        "firstSeen": "",
+        "fixDate": "",
+        "fixedInVersion": "1.3.2",
+        "globalId": "",
+        "hasExploit": "",
+        "hasFix": "",
+        "hash": "",
+        "inUse": "",
+        "knownRansomwareCampaignUse": "",
+        "lastModified": "",
+        "name": "CVE-2026-0003",
+        "namespace": [],
+        "packageInfo": "",
+        "packageName": "",
+        "packagePath": "",
+        "packageType": "",
+        "packageVersion": "",
+        "publicationDate": "2026-05-04T00:00:00Z",
+        "purl": "",
+        "severity": "high",
+        "solutionDate": "2026-06-01T00:00:00Z",
+        "suggestedFix": ""
+      },
+      "itemFamily": "vulnerabilities",
+      "metadata": {
+        "title": "CVE-2026-0003"
+      },
+      "name": "156f27f61864083638b552e24310f8127a4efdb9609b2d929e36f03f0bd32282",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "sysdig.mia-platform.eu/v1",
+      "data": {
+        "createdAt": "",
+        "cvssScore": 9.8,
+        "cvssSource": "nvd",
+        "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssVersion": "3.1",
+        "firstSeen": "",
+        "fixDate": "",
+        "fixedInVersion": "3.0.14",
+        "globalId": "",
+        "hasExploit": "",
+        "hasFix": "",
+        "hash": "",
+        "inUse": "",
+        "knownRansomwareCampaignUse": "",
+        "lastModified": "",
+        "name": "CVE-2026-0001",
+        "namespace": [],
+        "packageInfo": "",
+        "packageName": "",
+        "packagePath": "",
+        "packageType": "",
+        "packageVersion": "",
+        "publicationDate": "2026-05-04T00:00:00Z",
+        "purl": "",
+        "severity": "critical",
+        "solutionDate": "2026-06-01T00:00:00Z",
+        "suggestedFix": ""
+      },
+      "itemFamily": "vulnerabilities",
+      "metadata": {
+        "title": "CVE-2026-0001"
+      },
+      "name": "5a60ccf0ca78ee1c1ad83c8716e7affdaf90a99e3934952d58e405c7e704cddd",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "sysdig.mia-platform.eu/v1",
+      "data": {
+        "createdAt": "",
+        "cvssScore": 5.3,
+        "cvssSource": "nvd",
+        "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssVersion": "3.1",
+        "firstSeen": "",
+        "fixDate": "",
+        "fixedInVersion": "",
+        "globalId": "",
+        "hasExploit": "",
+        "hasFix": "",
+        "hash": "",
+        "inUse": "",
+        "knownRansomwareCampaignUse": "",
+        "lastModified": "",
+        "name": "CVE-2026-0002",
+        "namespace": [],
+        "packageInfo": "",
+        "packageName": "",
+        "packagePath": "",
+        "packageType": "",
+        "packageVersion": "",
+        "publicationDate": "2026-05-04T00:00:00Z",
+        "purl": "",
+        "severity": "medium",
+        "solutionDate": "",
+        "suggestedFix": ""
+      },
+      "itemFamily": "vulnerabilities",
+      "metadata": {
+        "title": "CVE-2026-0002"
+      },
+      "name": "7e53884c10eb65bd86e326289d43c5166d66dd5c6b219221d58f3b4f92ab3d33",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/secure/vulnerability/v1beta1/results/res-failed-0001",
+      "header": {
+        "Authorization": "Bearer test-bearer-token"
+      }
+    }
+  ]
+}

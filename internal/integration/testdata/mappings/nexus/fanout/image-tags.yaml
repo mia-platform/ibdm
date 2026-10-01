@@ -1,0 +1,9 @@
+# A second mapping of the dockerimage type, on its own item type: every image renders twice.
+type: dockerimage
+apiVersion: integration.example.com/v1
+itemFamily: imagetags
+mappings:
+  identifier: "tags-{{ .id | sha256sum | truncate 16 }}"
+  spec:
+    image: "{{ .name }}:{{ .version }}"
+    tags: "{{ .tags | toJSON }}"

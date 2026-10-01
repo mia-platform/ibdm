@@ -1,0 +1,44 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "azuredevops.mia-platform.eu/v1",
+      "data": {
+        "description": "",
+        "name": "Checkout Squad",
+        "projectName": "Storefront"
+      },
+      "itemFamily": "teams",
+      "metadata": {
+        "title": "Checkout Squad"
+      },
+      "name": "4dcbdf70bed2b13503bc1f301ba89a6e0bc2d2d65753964452ab6a10279968a2",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "azuredevops.mia-platform.eu/v1",
+      "data": {
+        "description": "The default project team.",
+        "name": "Storefront Team",
+        "projectName": "Storefront"
+      },
+      "itemFamily": "teams",
+      "metadata": {
+        "title": "Storefront Team"
+      },
+      "name": "9f02f529efe38f44b836a7e50b36b67a71b5e0464ecd92f71f0476b60b94568b",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/acme-widgets/_apis/teams",
+      "query": "%24expandIdentity=true",
+      "header": {
+        "Accept": "application/json;api-version=7.1;charset=utf-8"
+      }
+    }
+  ]
+}

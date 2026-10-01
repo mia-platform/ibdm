@@ -1,0 +1,36 @@
+{
+  "items": [
+    {
+      "id": "component-checkout-api",
+      "repository": "docker-hosted",
+      "format": "docker",
+      "group": null,
+      "name": "acme-widgets/checkout-api",
+      "version": "2.0.1",
+      "tags": [],
+      "assets": [
+        {
+          "id": "asset-b2b2b2b2",
+          "path": "v2/acme-widgets/checkout-api/manifests/2.0.1",
+          "downloadUrl": "https://nexus.example.com/repository/docker-hosted/v2/acme-widgets/checkout-api/manifests/2.0.1",
+          "checksum": {
+            "sha256": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          },
+          "lastModified": "2026-09-27T09:30:00.000+00:00",
+          "format": "docker"
+        },
+        {
+          "id": "asset-c3c3c3c3",
+          "path": "v2/acme-widgets/checkout-api/blobs/sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "downloadUrl": "https://nexus.example.com/repository/docker-hosted/v2/acme-widgets/checkout-api/blobs/sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "checksum": {
+            "sha256": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "lastModified": "2026-09-27T09:29:00.000+00:00",
+          "format": "docker"
+        }
+      ]
+    }
+  ],
+  "continuationToken": null
+}

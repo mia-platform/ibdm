@@ -1,0 +1,31 @@
+{
+  "pagelen": 100,
+  "page": 2,
+  "values": [
+    {
+      "type": "repository",
+      "uuid": "{6f1c2a3b-0000-4000-8000-000000000103}",
+      "name": "Cog Docs",
+      "slug": "cog-docs",
+      "full_name": "acme-widgets/cog-docs",
+      "is_private": false,
+      "scm": "git",
+      "links": {
+        "html": {
+          "href": "https://bitbucket.example.com/acme-widgets/cog-docs"
+        }
+      },
+      "created_on": "2025-06-01T07:00:00+00:00",
+      "updated_on": "2026-08-15T09:00:00+00:00",
+      "workspace": {
+        "slug": "acme-widgets",
+        "name": "Acme Widgets"
+      },
+      "language": "markdown",
+      "mainbranch": {
+        "name": "main",
+        "type": "branch"
+      }
+    }
+  ]
+}

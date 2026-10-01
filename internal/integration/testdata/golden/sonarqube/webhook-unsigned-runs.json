@@ -1,0 +1,60 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "sonarqube.mia-platform.eu/v1",
+      "data": {
+        "analysedAt": "2026-10-01T07:30:00Z",
+        "analysisKey": null,
+        "branch": "main",
+        "isMainBranch": true,
+        "issueCounts": null,
+        "issuesRead": null,
+        "projectKey": "acme-widgets:storefront",
+        "projectName": "Storefront",
+        "projectVersion": null,
+        "pullRequest": null,
+        "qualityGateConditions": [
+          {
+            "errorThreshold": "80",
+            "metric": "new_coverage",
+            "operator": "LESS_THAN",
+            "status": "OK",
+            "value": "84.0"
+          }
+        ],
+        "qualityGateName": "Acme way",
+        "qualityGateStatus": "OK",
+        "repositoryUrl": null,
+        "revision": "9e8d7c6b5a493f2a9c1d0b8e7a6f5e4d3c2b1a0f",
+        "serverUrl": "https://sonarqube.example.com",
+        "status": "SUCCESS",
+        "taskId": "AYtaskStorefront0002",
+        "truncated": null
+      },
+      "itemFamily": "runs",
+      "metadata": {
+        "description": "Quality gate OK (Acme way)",
+        "labels": {
+          "sonarqube.mia-platform.eu/branch": "main",
+          "sonarqube.mia-platform.eu/project": "acme-widgets-storefront",
+          "sonarqube.mia-platform.eu/quality-gate": "OK",
+          "sonarqube.mia-platform.eu/status": "SUCCESS"
+        },
+        "links": [
+          {
+            "title": "Open in SonarQube",
+            "url": "https://sonarqube.example.com/dashboard?branch=main&id=acme-widgets%3Astorefront"
+          }
+        ],
+        "tags": [
+          "sonarqube"
+        ],
+        "title": "Storefront · main · 2026-10-01T07:30:00Z"
+      },
+      "name": "acme-widgets-storefront-7eccb5d8bb5d092e",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": []
+}

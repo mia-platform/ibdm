@@ -1,0 +1,11 @@
+{
+  "timestamp": 1790000000000000,
+  "event": {
+    "id": "Pipeline Failure Alerts",
+    "url": "https://secure.sysdig.example.com/#/vulnerabilities/results/res-host-0003/overview",
+    "eventData": {
+      "name": "Pipeline Failure Alerts",
+      "status": "failed"
+    }
+  }
+}

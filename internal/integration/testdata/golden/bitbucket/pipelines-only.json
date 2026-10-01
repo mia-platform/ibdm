@@ -1,0 +1,172 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "bitbucket.mia-platform.eu/v1",
+      "data": {
+        "buildNumber": 11,
+        "buildSecondsUsed": 305,
+        "completedOn": "2026-09-28T16:36:00Z",
+        "createdOn": "2026-09-28T16:31:00Z",
+        "durationInSeconds": 300,
+        "repositoryFullName": "acme-widgets/gizmo-service",
+        "repositoryHtmlUrl": "https://bitbucket.example.com/acme-widgets/gizmo-service",
+        "result": "SUCCESSFUL",
+        "state": "COMPLETED",
+        "targetRef": "main",
+        "uuid": "9a8b7c6d-0000-4000-8000-000000000011"
+      },
+      "itemFamily": "pipelines",
+      "metadata": {
+        "title": "Gizmo Service #11"
+      },
+      "name": "29b8e2ed2b25ef01a49ae1695ad5d5eb2e2c37f63c61c7f2835422337ef730c7",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "bitbucket.mia-platform.eu/v1",
+      "data": {
+        "buildNumber": 12,
+        "buildSecondsUsed": 125,
+        "completedOn": "2026-09-29T10:04:00Z",
+        "createdOn": "2026-09-29T10:02:00Z",
+        "durationInSeconds": 120,
+        "repositoryFullName": "acme-widgets/gizmo-service",
+        "repositoryHtmlUrl": "https://bitbucket.example.com/acme-widgets/gizmo-service",
+        "result": "FAILED",
+        "state": "COMPLETED",
+        "targetRef": "feature/checkout",
+        "uuid": "9a8b7c6d-0000-4000-8000-000000000012"
+      },
+      "itemFamily": "pipelines",
+      "metadata": {
+        "title": "Gizmo Service #12"
+      },
+      "name": "5ba62cfe63b8c47537e5225a0cb7ddc147a2970997f4bbb72e54dcf7329d10c4",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "bitbucket.mia-platform.eu/v1",
+      "data": {
+        "buildNumber": 13,
+        "buildSecondsUsed": "",
+        "completedOn": "",
+        "createdOn": "2026-09-30T08:00:00Z",
+        "durationInSeconds": "",
+        "repositoryFullName": "acme-widgets/gizmo-service",
+        "repositoryHtmlUrl": "https://bitbucket.example.com/acme-widgets/gizmo-service",
+        "result": "",
+        "state": "IN_PROGRESS",
+        "targetRef": "main",
+        "uuid": "9a8b7c6d-0000-4000-8000-000000000013"
+      },
+      "itemFamily": "pipelines",
+      "metadata": {
+        "title": "Gizmo Service #13"
+      },
+      "name": "c6117a20c2635abc1b31175db804a6ce6cd69d383521ad29b48749f5a95b76cf",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1:Pipeline:5ba62cfe63b8c47537e5225a0cb7ddc147a2970997f4bbb72e54dcf7329d10c4",
+        "targetRef": "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1:Repository:75285f03beb7323862a9ff2f59580252489ab611ce371419e0e73a682bc651fd",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "18e6522fd2dffddddf24bcb6c534ac7066cec32d8385f78a2b58606f25e46c6f",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1:Pipeline:29b8e2ed2b25ef01a49ae1695ad5d5eb2e2c37f63c61c7f2835422337ef730c7",
+        "targetRef": "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1:Repository:75285f03beb7323862a9ff2f59580252489ab611ce371419e0e73a682bc651fd",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "a570e9fc905ed13b21d8a26fbb56a4229c9f5cacf81479bb4936d869729ae4d5",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1:Pipeline:c6117a20c2635abc1b31175db804a6ce6cd69d383521ad29b48749f5a95b76cf",
+        "targetRef": "urn:mia-platform-catalog:bitbucket.mia-platform.eu:v1:Repository:75285f03beb7323862a9ff2f59580252489ab611ce371419e0e73a682bc651fd",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "d6c9f76e189d8667d165948e4aa1fae315694ffe94b269cfa32c80eafad4d9d0",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-labs",
+      "query": "pagelen=100",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets",
+      "query": "page=2&pagelen=100",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets",
+      "query": "pagelen=100",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets/cog-docs/pipelines",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets/gizmo-service/pipelines",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets/gizmo-service/pipelines",
+      "query": "page=2",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets/sprocket-ui/pipelines",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/user/workspaces",
+      "query": "pagelen=100",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "timestamp": 1790000000000000,
+  "event": {
+    "id": "Runtime Policy Alerts",
+    "url": "https://secure.sysdig.example.com/#/vulnerabilities/results/res-failed-0001/overview",
+    "eventData": {
+      "name": "Runtime Policy Alerts",
+      "status": "failed"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+# Fake Nexus Repository Manager REST API for acme-widgets. Two repositories: docker-hosted, whose
+# components come over two pages linked by a continuationToken (catalog-api 1.4.0 with one asset,
+# orders-worker 0.9.0 with no asset, checkout-api 2.0.1 with two assets and never downloaded), and
+# maven-releases, with one maven2 component that must never be emitted.
+routes:
+  - method: GET
+    path: /service/rest/v1/repositories
+    body: repositories.json
+  - method: GET
+    path: /service/rest/v1/repositories/docker-hosted
+    body: repository-docker-hosted.json
+  # The page asked with the token comes first: the first page has no token to match on.
+  - method: GET
+    path: /service/rest/v1/components
+    query: {repository: docker-hosted, continuationToken: docker-hosted-page-2}
+    body: components-docker-hosted-page-2.json
+  - method: GET
+    path: /service/rest/v1/components
+    query: {repository: docker-hosted}
+    body: components-docker-hosted-page-1.json
+  - method: GET
+    path: /service/rest/v1/components
+    query: {repository: maven-releases}
+    body: components-maven-releases.json
+  - method: GET
+    path: /service/rest/v1/components/component-catalog-api
+    body: component-catalog-api.json

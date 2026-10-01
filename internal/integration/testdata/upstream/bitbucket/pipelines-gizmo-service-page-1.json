@@ -1,0 +1,46 @@
+{
+  "pagelen": 10,
+  "values": [
+    {
+      "type": "pipeline",
+      "uuid": "{9a8b7c6d-0000-4000-8000-000000000011}",
+      "build_number": 11,
+      "created_on": "2026-09-28T16:31:00+00:00",
+      "target": {
+        "type": "pipeline_ref_target",
+        "ref_type": "branch",
+        "ref_name": "main"
+      },
+      "state": {
+        "name": "COMPLETED",
+        "result": {
+          "name": "SUCCESSFUL"
+        }
+      },
+      "completed_on": "2026-09-28T16:36:00+00:00",
+      "duration_in_seconds": 300,
+      "build_seconds_used": 305
+    },
+    {
+      "type": "pipeline",
+      "uuid": "{9a8b7c6d-0000-4000-8000-000000000012}",
+      "build_number": 12,
+      "created_on": "2026-09-29T10:02:00+00:00",
+      "target": {
+        "type": "pipeline_ref_target",
+        "ref_type": "branch",
+        "ref_name": "feature/checkout"
+      },
+      "state": {
+        "name": "COMPLETED",
+        "result": {
+          "name": "FAILED"
+        }
+      },
+      "completed_on": "2026-09-29T10:04:00+00:00",
+      "duration_in_seconds": 120,
+      "build_seconds_used": 125
+    }
+  ],
+  "next": "{{.BaseURL}}/2.0/repositories/acme-widgets/gizmo-service/pipelines?page=2"
+}

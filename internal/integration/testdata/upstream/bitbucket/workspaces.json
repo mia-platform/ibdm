@@ -1,0 +1,25 @@
+{
+  "pagelen": 100,
+  "values": [
+    {
+      "type": "workspace_access",
+      "workspace": {
+        "slug": "acme-widgets",
+        "name": "Acme Widgets"
+      }
+    },
+    {
+      "type": "workspace_access",
+      "workspace": {
+        "name": "Workspace without a slug"
+      }
+    },
+    {
+      "type": "workspace_access",
+      "workspace": {
+        "slug": "acme-labs",
+        "name": "Acme Labs"
+      }
+    }
+  ]
+}

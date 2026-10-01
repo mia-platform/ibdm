@@ -1,0 +1,45 @@
+# Fake Bitbucket Cloud API. Workspace discovery returns acme-widgets, an entry without a slug (to
+# be skipped) and acme-labs (no repository). acme-widgets holds three repositories over two pages,
+# linked by an absolute next URL: gizmo-service (private, pipelines over two pages), sprocket-ui
+# (no main branch; its pipelines endpoint fails, which the sync must log and skip) and cog-docs (no
+# project, no description, no pipeline). The single-repository endpoint serves gizmo-service with
+# a description that differs from the listing, so a test can tell the webhook enrichment happened,
+# and refuses legacy-tool, so the webhook must fall back to the payload.
+routes:
+  - method: GET
+    path: /2.0/user/workspaces
+    query: {pagelen: "100"}
+    body: workspaces.json
+  - method: GET
+    path: /2.0/repositories/acme-widgets
+    query: {pagelen: "100", page: "2"}
+    body: repositories-acme-widgets-page-2.json
+  - method: GET
+    path: /2.0/repositories/acme-widgets
+    query: {pagelen: "100"}
+    body: repositories-acme-widgets-page-1.json
+  - method: GET
+    path: /2.0/repositories/acme-labs
+    query: {pagelen: "100"}
+    body: repositories-acme-labs.json
+  - method: GET
+    path: /2.0/repositories/acme-widgets/gizmo-service/pipelines
+    query: {page: "2"}
+    body: pipelines-gizmo-service-page-2.json
+  - method: GET
+    path: /2.0/repositories/acme-widgets/gizmo-service/pipelines
+    body: pipelines-gizmo-service-page-1.json
+  - method: GET
+    path: /2.0/repositories/acme-widgets/sprocket-ui/pipelines
+    status: 500
+    body: error.json
+  - method: GET
+    path: /2.0/repositories/acme-widgets/cog-docs/pipelines
+    body: pipelines-empty.json
+  - method: GET
+    path: /2.0/repositories/acme-widgets/gizmo-service
+    body: repository-gizmo-service.json
+  - method: GET
+    path: /2.0/repositories/acme-widgets/legacy-tool
+    status: 404
+    body: error.json

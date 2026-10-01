@@ -1,0 +1,62 @@
+{
+  "pagelen": 100,
+  "page": 1,
+  "values": [
+    {
+      "type": "repository",
+      "uuid": "{6f1c2a3b-0000-4000-8000-000000000101}",
+      "name": "Gizmo Service",
+      "slug": "gizmo-service",
+      "full_name": "acme-widgets/gizmo-service",
+      "is_private": true,
+      "scm": "git",
+      "links": {
+        "html": {
+          "href": "https://bitbucket.example.com/acme-widgets/gizmo-service"
+        }
+      },
+      "created_on": "2025-01-10T09:00:00+00:00",
+      "updated_on": "2026-09-28T16:30:00+00:00",
+      "workspace": {
+        "slug": "acme-widgets",
+        "name": "Acme Widgets"
+      },
+      "description": "Gizmo service",
+      "language": "go",
+      "mainbranch": {
+        "name": "main",
+        "type": "branch"
+      },
+      "project": {
+        "key": "WID",
+        "name": "Widgets"
+      }
+    },
+    {
+      "type": "repository",
+      "uuid": "{6f1c2a3b-0000-4000-8000-000000000102}",
+      "name": "Sprocket Ui",
+      "slug": "sprocket-ui",
+      "full_name": "acme-widgets/sprocket-ui",
+      "is_private": false,
+      "scm": "git",
+      "links": {
+        "html": {
+          "href": "https://bitbucket.example.com/acme-widgets/sprocket-ui"
+        }
+      },
+      "created_on": "2024-03-05T08:00:00+00:00",
+      "updated_on": "2025-11-20T10:00:00+00:00",
+      "workspace": {
+        "slug": "acme-widgets",
+        "name": "Acme Widgets"
+      },
+      "description": "",
+      "project": {
+        "key": "WID",
+        "name": "Widgets"
+      }
+    }
+  ],
+  "next": "{{.BaseURL}}/2.0/repositories/acme-widgets?pagelen=100&page=2"
+}

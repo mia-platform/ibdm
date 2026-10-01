@@ -1,0 +1,19 @@
+# Fake Sysdig Secure API, serving both SYSDIG_URL and SYSDIG_BASE_URL.
+# - The SysQL query answers an empty page (fetched_items_count 0); the paged/ directory serves
+#   pages with items.
+# - The Vulnerability API holds three scan results of registry.example.com/acme-widgets/catalog-api:
+#   a failed Docker image scan with 3 vulnerabilities in 2 packages, a passed one, and a failed
+#   host scan.
+routes:
+  - method: POST
+    path: /api/sysql/v2/query
+    body: sysql-empty.json
+  - method: GET
+    path: /secure/vulnerability/v1beta1/results/res-failed-0001
+    body: result-failed.json
+  - method: GET
+    path: /secure/vulnerability/v1beta1/results/res-passed-0002
+    body: result-passed.json
+  - method: GET
+    path: /secure/vulnerability/v1beta1/results/res-host-0003
+    body: result-host.json

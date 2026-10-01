@@ -1,0 +1,246 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Issue:acme-widgets-storefront-a61540ac565fac7f",
+        "targetRef": "urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Run:acme-widgets-storefront-7eccb5d8bb5d092e",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "63cf6b73d7b4aa88d47f2c4d8e65cb645c0e6cb135ad8f4ea180ce15ecb5d72a",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Issue:acme-widgets-storefront-ef8ffb98a5919a95",
+        "targetRef": "urn:mia-platform-catalog:sonarqube.mia-platform.eu:v1:Run:acme-widgets-storefront-7eccb5d8bb5d092e",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "d9fe797aa592e80a0b029786c6b4eabc58f92277edbf23b6db04e640836416bb",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "sonarqube.mia-platform.eu/v1",
+      "data": {
+        "analysedAt": "2026-10-01T07:30:00Z",
+        "analysisId": "AYtaskStorefront0002",
+        "author": "dev@example.com",
+        "branch": "main",
+        "cleanCodeAttribute": "DISTINCT",
+        "cleanCodeAttributeCategory": "ADAPTABLE",
+        "closeDate": null,
+        "component": "acme-widgets:storefront:src/main/java/com/acme/Checkout.java",
+        "componentPath": "src/main/java/com/acme/Checkout.java",
+        "creationDate": "2026-09-01T10:00:00Z",
+        "effort": "10min",
+        "hash": "a1b2c3d4e5f6",
+        "impacts": [
+          {
+            "severity": "HIGH",
+            "softwareQuality": "MAINTAINABILITY"
+          }
+        ],
+        "isMainBranch": true,
+        "issueKey": "AZacmeIssue000000001",
+        "issueStatus": "OPEN",
+        "issueTags": [
+          "design"
+        ],
+        "language": "Java",
+        "line": 42,
+        "message": "Define a constant instead of duplicating this literal \"checkout\" 4 times.",
+        "projectKey": "acme-widgets:storefront",
+        "projectName": "Storefront",
+        "pullRequest": null,
+        "qualityGateName": "Acme way",
+        "qualityGateStatus": "OK",
+        "quickFixAvailable": false,
+        "repositoryUrl": null,
+        "resolution": null,
+        "revision": "9e8d7c6b5a493f2a9c1d0b8e7a6f5e4d3c2b1a0f",
+        "rule": "java:S1192",
+        "ruleName": "String literals should not be duplicated",
+        "scmUrl": null,
+        "scope": "MAIN",
+        "serverUrl": "https://sonarqube.example.com",
+        "severity": "HIGH",
+        "textRange": {
+          "endLine": 42,
+          "endOffset": 31,
+          "startLine": 42,
+          "startOffset": 10
+        },
+        "type": "CODE_SMELL",
+        "updateDate": "2026-09-30T08:15:00Z"
+      },
+      "itemFamily": "issues",
+      "metadata": {
+        "description": "java:S1192 — src/main/java/com/acme/Checkout.java:42",
+        "labels": {
+          "sonarqube.mia-platform.eu/branch": "main",
+          "sonarqube.mia-platform.eu/project": "acme-widgets-storefront",
+          "sonarqube.mia-platform.eu/type": "CODE_SMELL"
+        },
+        "links": [
+          {
+            "title": "Open in SonarQube",
+            "url": "https://sonarqube.example.com/project/issues?branch=main&id=acme-widgets%3Astorefront&issues=AZacmeIssue000000001&open=AZacmeIssue000000001"
+          }
+        ],
+        "tags": [
+          "sonarqube",
+          "design"
+        ],
+        "title": "Define a constant instead of duplicating this literal \"checkout\" 4 times."
+      },
+      "name": "acme-widgets-storefront-a61540ac565fac7f",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "sonarqube.mia-platform.eu/v1",
+      "data": {
+        "analysedAt": "2026-10-01T07:30:00Z",
+        "analysisId": "AYtaskStorefront0002",
+        "author": "dev@example.com",
+        "branch": "main",
+        "cleanCodeAttribute": "LOGICAL",
+        "cleanCodeAttributeCategory": "INTENTIONAL",
+        "closeDate": null,
+        "component": "acme-widgets:storefront:src/main/java/com/acme/Cart.java",
+        "componentPath": "src/main/java/com/acme/Cart.java",
+        "creationDate": "2026-09-20T12:00:00Z",
+        "effort": "15min",
+        "hash": "f6e5d4c3b2a1",
+        "impacts": [
+          {
+            "severity": "MEDIUM",
+            "softwareQuality": "RELIABILITY"
+          }
+        ],
+        "isMainBranch": true,
+        "issueKey": "AZacmeIssue000000002",
+        "issueStatus": "CONFIRMED",
+        "issueTags": [],
+        "language": "Java",
+        "line": 17,
+        "message": "A \"NullPointerException\" could be thrown; \"cart\" is nullable here.",
+        "projectKey": "acme-widgets:storefront",
+        "projectName": "Storefront",
+        "pullRequest": null,
+        "qualityGateName": "Acme way",
+        "qualityGateStatus": "OK",
+        "quickFixAvailable": false,
+        "repositoryUrl": null,
+        "resolution": null,
+        "revision": "9e8d7c6b5a493f2a9c1d0b8e7a6f5e4d3c2b1a0f",
+        "rule": "java:S2259",
+        "ruleName": "Null pointers should not be dereferenced",
+        "scmUrl": null,
+        "scope": "MAIN",
+        "serverUrl": "https://sonarqube.example.com",
+        "severity": "MEDIUM",
+        "textRange": {
+          "endLine": 17,
+          "endOffset": 12,
+          "startLine": 17,
+          "startOffset": 4
+        },
+        "type": "BUG",
+        "updateDate": "2026-09-30T08:15:00Z"
+      },
+      "itemFamily": "issues",
+      "metadata": {
+        "description": "java:S2259 — src/main/java/com/acme/Cart.java:17",
+        "labels": {
+          "sonarqube.mia-platform.eu/branch": "main",
+          "sonarqube.mia-platform.eu/project": "acme-widgets-storefront",
+          "sonarqube.mia-platform.eu/type": "BUG"
+        },
+        "links": [
+          {
+            "title": "Open in SonarQube",
+            "url": "https://sonarqube.example.com/project/issues?branch=main&id=acme-widgets%3Astorefront&issues=AZacmeIssue000000002&open=AZacmeIssue000000002"
+          }
+        ],
+        "tags": [
+          "sonarqube"
+        ],
+        "title": "A \"NullPointerException\" could be thrown; \"cart\" is nullable here."
+      },
+      "name": "acme-widgets-storefront-ef8ffb98a5919a95",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "sonarqube.mia-platform.eu/v1",
+      "data": {
+        "analysedAt": "2026-10-01T07:30:00Z",
+        "analysisKey": null,
+        "branch": "main",
+        "isMainBranch": true,
+        "issueCounts": {
+          "HIGH": 1,
+          "MEDIUM": 1
+        },
+        "issuesRead": 2,
+        "projectKey": "acme-widgets:storefront",
+        "projectName": "Storefront",
+        "projectVersion": null,
+        "pullRequest": null,
+        "qualityGateConditions": [
+          {
+            "errorThreshold": "80",
+            "metric": "new_coverage",
+            "operator": "LESS_THAN",
+            "status": "OK",
+            "value": "84.0"
+          }
+        ],
+        "qualityGateName": "Acme way",
+        "qualityGateStatus": "OK",
+        "repositoryUrl": null,
+        "revision": "9e8d7c6b5a493f2a9c1d0b8e7a6f5e4d3c2b1a0f",
+        "serverUrl": "https://sonarqube.example.com",
+        "status": "SUCCESS",
+        "taskId": "AYtaskStorefront0002",
+        "truncated": false
+      },
+      "itemFamily": "runs",
+      "metadata": {
+        "description": "Quality gate OK (Acme way)",
+        "labels": {
+          "sonarqube.mia-platform.eu/branch": "main",
+          "sonarqube.mia-platform.eu/project": "acme-widgets-storefront",
+          "sonarqube.mia-platform.eu/quality-gate": "OK",
+          "sonarqube.mia-platform.eu/status": "SUCCESS"
+        },
+        "links": [
+          {
+            "title": "Open in SonarQube",
+            "url": "https://sonarqube.example.com/dashboard?branch=main&id=acme-widgets%3Astorefront"
+          }
+        ],
+        "tags": [
+          "sonarqube"
+        ],
+        "title": "Storefront · main · 2026-10-01T07:30:00Z"
+      },
+      "name": "acme-widgets-storefront-7eccb5d8bb5d092e",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/issues/search",
+      "query": "additionalFields=rules&branch=main&components=acme-widgets%3Astorefront&issueStatuses=OPEN%2CCONFIRMED&p=1&ps=500"
+    }
+  ]
+}

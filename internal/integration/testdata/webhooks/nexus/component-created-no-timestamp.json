@@ -1,0 +1,14 @@
+{
+  "nodeId": "nexus-node-1",
+  "initiator": "ci-bot/10.0.0.12",
+  "repositoryName": "docker-hosted",
+  "action": "CREATED",
+  "component": {
+    "id": "short-id",
+    "componentId": "component-catalog-api",
+    "format": "docker",
+    "name": "acme-widgets/catalog-api",
+    "group": "",
+    "version": "1.4.0"
+  }
+}

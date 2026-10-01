@@ -1,0 +1,116 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "bitbucket.mia-platform.eu/v1",
+      "data": {
+        "createdOn": "2024-03-05T08:00:00Z",
+        "defaultBranch": "",
+        "description": "",
+        "fullName": "acme-widgets/sprocket-ui",
+        "htmlUrl": "https://bitbucket.example.com/acme-widgets/sprocket-ui",
+        "isPrivate": false,
+        "language": "",
+        "name": "Sprocket Ui",
+        "projectName": "Widgets",
+        "scm": "git",
+        "slug": "sprocket-ui",
+        "updatedOn": "2025-11-20T10:00:00Z",
+        "uuid": "6f1c2a3b-0000-4000-8000-000000000102",
+        "workspaceName": "Acme Widgets"
+      },
+      "itemFamily": "repositories",
+      "metadata": {
+        "title": "acme-widgets/sprocket-ui"
+      },
+      "name": "0abcaa0d2163229b1105e22aabbb3fc0f0e50ff0c191aa07dc68b8dcbb7025b5",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "bitbucket.mia-platform.eu/v1",
+      "data": {
+        "createdOn": "2025-01-10T09:00:00Z",
+        "defaultBranch": "main",
+        "description": "Gizmo service",
+        "fullName": "acme-widgets/gizmo-service",
+        "htmlUrl": "https://bitbucket.example.com/acme-widgets/gizmo-service",
+        "isPrivate": true,
+        "language": "go",
+        "name": "Gizmo Service",
+        "projectName": "Widgets",
+        "scm": "git",
+        "slug": "gizmo-service",
+        "updatedOn": "2026-09-28T16:30:00Z",
+        "uuid": "6f1c2a3b-0000-4000-8000-000000000101",
+        "workspaceName": "Acme Widgets"
+      },
+      "itemFamily": "repositories",
+      "metadata": {
+        "title": "acme-widgets/gizmo-service"
+      },
+      "name": "75285f03beb7323862a9ff2f59580252489ab611ce371419e0e73a682bc651fd",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "bitbucket.mia-platform.eu/v1",
+      "data": {
+        "createdOn": "2025-06-01T07:00:00Z",
+        "defaultBranch": "main",
+        "description": "",
+        "fullName": "acme-widgets/cog-docs",
+        "htmlUrl": "https://bitbucket.example.com/acme-widgets/cog-docs",
+        "isPrivate": false,
+        "language": "markdown",
+        "name": "Cog Docs",
+        "projectName": "",
+        "scm": "git",
+        "slug": "cog-docs",
+        "updatedOn": "2026-08-15T09:00:00Z",
+        "uuid": "6f1c2a3b-0000-4000-8000-000000000103",
+        "workspaceName": "Acme Widgets"
+      },
+      "itemFamily": "repositories",
+      "metadata": {
+        "title": "acme-widgets/cog-docs"
+      },
+      "name": "918643e198df283dfe58caf3066263e056bf8416ba66f4c3a5e3fec69e5adac2",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-labs",
+      "query": "pagelen=100",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets",
+      "query": "page=2&pagelen=100",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets",
+      "query": "pagelen=100",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/2.0/user/workspaces",
+      "query": "pagelen=100",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    }
+  ]
+}

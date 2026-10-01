@@ -47,11 +47,15 @@ type golden struct {
 }
 
 // assertGolden compares the normalised traffic of catalog and upstream with the golden file
-// name, or rewrites the file when the update flag is set. upstream may be nil.
-func assertGolden(t *testing.T, name string, catalog *fakeCatalog, upstream *fakeUpstream) {
+// name, or rewrites the file when the update flag is set. upstream may be nil. extraReplacements
+// are old, new pairs applied to every string after the address placeholders: values that depend
+// on the run, such as identifiers hashed from the address of a fake, become stable placeholders.
+func assertGolden(t *testing.T, name string, catalog *fakeCatalog, upstream *fakeUpstream, extraReplacements ...string) {
 	t.Helper()
 
-	replacements := []string{hostOf(t, catalog.server.URL), catalogPlaceholder}
+	require.Zero(t, len(extraReplacements)%2, "extraReplacements must be old, new pairs")
+	replacements := append([]string{}, extraReplacements...)
+	replacements = append(replacements, hostOf(t, catalog.server.URL), catalogPlaceholder)
 	var requests []recordedRequest
 	if upstream != nil {
 		replacements = append(replacements, hostOf(t, upstream.server.URL), upstreamPlaceholder)

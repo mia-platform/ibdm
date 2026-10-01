@@ -1,0 +1,35 @@
+{
+  "subscriptionId": "00000000-0000-4000-8000-000000000401",
+  "notificationId": 1,
+  "id": "e1000000-0000-4000-8000-000000000501",
+  "eventType": "git.repo.created",
+  "publisherId": "tfs",
+  "resource": {
+    "repository": {
+      "id": "a1b2c3d4-0000-4000-8000-000000000104",
+      "name": "storefront-mobile",
+      "url": "https://dev.azure.example.com/acme-widgets/_apis/git/repositories/a1b2c3d4-0000-4000-8000-000000000104",
+      "project": {
+        "id": "7f3c2a10-0000-4000-8000-000000000001",
+        "name": "Storefront",
+        "url": "https://dev.azure.example.com/acme-widgets/_apis/projects/7f3c2a10-0000-4000-8000-000000000001",
+        "state": "wellFormed",
+        "visibility": "private"
+      },
+      "size": 2048,
+      "remoteUrl": "https://acme-widgets@dev.azure.example.com/acme-widgets/Storefront/_git/storefront-mobile",
+      "sshUrl": "git@ssh.dev.azure.example.com:v3/acme-widgets/Storefront/storefront-mobile",
+      "webUrl": "https://dev.azure.example.com/acme-widgets/Storefront/_git/storefront-mobile",
+      "isDisabled": false,
+      "isInMaintenance": false,
+      "defaultBranch": "refs/heads/main"
+    },
+    "initiatedBy": {
+      "displayName": "Ada Example",
+      "uniqueName": "ada@example.com",
+      "id": "d00d0000-0000-4000-8000-000000000301"
+    },
+    "utcTimestamp": "2026-09-30T08:15:00.000Z"
+  },
+  "createdDate": "2026-09-30T08:15:01Z"
+}

@@ -1,0 +1,34 @@
+{
+  "subscriptionId": "00000000-0000-4000-8000-000000000401",
+  "notificationId": 2,
+  "id": "e1000000-0000-4000-8000-000000000502",
+  "eventType": "git.repo.deleted",
+  "publisherId": "tfs",
+  "resource": {
+    "repository": {
+      "id": "a1b2c3d4-0000-4000-8000-000000000103",
+      "name": "storefront-archive",
+      "url": "https://dev.azure.example.com/acme-widgets/_apis/git/repositories/a1b2c3d4-0000-4000-8000-000000000103",
+      "project": {
+        "id": "7f3c2a10-0000-4000-8000-000000000001",
+        "name": "Storefront",
+        "url": "https://dev.azure.example.com/acme-widgets/_apis/projects/7f3c2a10-0000-4000-8000-000000000001",
+        "state": "wellFormed",
+        "visibility": "private"
+      },
+      "size": 2048,
+      "remoteUrl": "https://acme-widgets@dev.azure.example.com/acme-widgets/Storefront/_git/storefront-archive",
+      "sshUrl": "git@ssh.dev.azure.example.com:v3/acme-widgets/Storefront/storefront-archive",
+      "webUrl": "https://dev.azure.example.com/acme-widgets/Storefront/_git/storefront-archive",
+      "isDisabled": true,
+      "isInMaintenance": false
+    },
+    "initiatedBy": {
+      "displayName": "Ada Example",
+      "uniqueName": "ada@example.com",
+      "id": "d00d0000-0000-4000-8000-000000000301"
+    },
+    "utcTimestamp": "2026-09-30T09:00:00.000Z"
+  },
+  "createdDate": "2026-09-30T09:00:01Z"
+}

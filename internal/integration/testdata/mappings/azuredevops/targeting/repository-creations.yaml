@@ -1,0 +1,13 @@
+# A team-type mapping that also listens to git.repo.created: the event must reach both the
+# gitrepository and the team types, in lexical order of type. Its payload is the whole resource.
+type: team
+apiVersion: integration.example.com/v1
+itemFamily: repositorycreations
+extra:
+  eventNames:
+  - git.repo.created
+mappings:
+  identifier: "creation-{{ .repository.id }}"
+  spec:
+    repositoryName: "{{ .repository.name }}"
+    initiatedBy: "{{ .initiatedBy.uniqueName }}"

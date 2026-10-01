@@ -1,0 +1,15 @@
+{
+  "nodeId": "nexus-node-1",
+  "initiator": "ci-bot/10.0.0.12",
+  "repositoryName": "maven-releases",
+  "action": "CREATED",
+  "component": {
+    "id": "short-id",
+    "componentId": "component-widget-core",
+    "format": "maven2",
+    "name": "widget-core",
+    "group": "com.example.acme",
+    "version": "3.2.0"
+  },
+  "timestamp": "2026-09-30T14:00:00.000Z"
+}

@@ -1,0 +1,127 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "gitlab.mia-platform.eu/v1",
+      "data": {
+        "created_at": "2026-09-25T10:01:00Z",
+        "finished_at": "2026-09-25T10:09:00Z",
+        "id": 5001,
+        "projectId": 101,
+        "ref": "main",
+        "sha": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+        "source": "push",
+        "status": "success",
+        "url": "https://git.example.com/acme-widgets/storefront-api/-/pipelines/5001",
+        "userId": 42
+      },
+      "itemFamily": "pipelines",
+      "metadata": {
+        "title": "5001"
+      },
+      "name": "aa09aaf12d13524aa0aad85cde7e8ac82a2308d51e464982ecbc87d8410a5f92",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "gitlab.mia-platform.eu/v1",
+      "data": {
+        "allowMergeOnSkippedPipeline": true,
+        "archived": false,
+        "buildsAccessLevel": "enabled",
+        "canCreateMergeRequestIn": true,
+        "containerRegistryEnabled": true,
+        "createdAt": "2025-02-01T09:00:00Z",
+        "creatorId": 42,
+        "defaultBranch": "main",
+        "description": "Storefront API",
+        "descriptionHtml": "<p>Storefront API</p>",
+        "emptyRepo": false,
+        "environmentsAccessLevel": "enabled",
+        "featureFlagsAccessLevel": "enabled",
+        "forkingAccessLevel": "enabled",
+        "forksCount": 1,
+        "httpUrlToRepo": "https://git.example.com/acme-widgets/storefront-api.git",
+        "id": 101,
+        "infrastructureAccessLevel": "enabled",
+        "issuesAccessLevel": "enabled",
+        "issuesEnabled": true,
+        "jobsEnabled": true,
+        "languages": {
+          "Go": 81.5,
+          "Shell": 18.5
+        },
+        "lastActivityAt": "2026-09-25T10:00:00Z",
+        "license": {
+          "key": "mit",
+          "name": "MIT License"
+        },
+        "mergeMethod": "merge",
+        "mergeRequestsAccessLevel": "enabled",
+        "mergeRequestsEnabled": true,
+        "name": "storefront-api",
+        "nameWithNamespace": "Acme Widgets / storefront-api",
+        "onlyAllowMergeIfPipelineSucceeds": true,
+        "owner": null,
+        "packagesEnabled": true,
+        "pagesAccessLevel": "private",
+        "path": "storefront-api",
+        "pathWithNamespace": "acme-widgets/storefront-api",
+        "publicJobs": true,
+        "readmeUrl": "https://git.example.com/acme-widgets/storefront-api/-/blob/main/README.md",
+        "releasesAccessLevel": "enabled",
+        "repositoryAccessLevel": "enabled",
+        "requestAccessEnabled": false,
+        "securityAndComplianceAccessLevel": "private",
+        "serviceDesksEnabled": false,
+        "snippetsAccessLevel": "disabled",
+        "snippetsEnabled": false,
+        "sshUrlToRepo": "git@git.example.com:acme-widgets/storefront-api.git",
+        "starCount": 4,
+        "tagList": [
+          "catalog"
+        ],
+        "topics": [
+          "catalog"
+        ],
+        "updatedAt": "2026-09-25T10:00:00Z",
+        "visibility": "private",
+        "webUrl": "https://git.example.com/acme-widgets/storefront-api",
+        "wikiAccessLevel": "disabled",
+        "wikiEnabled": false
+      },
+      "itemFamily": "projects",
+      "metadata": {
+        "title": "Acme Widgets / storefront-api"
+      },
+      "name": "c069c97ce50e8beb930529514b3f69c85dbc7adf7715c35a9c5f567e5d78efb9",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:gitlab.mia-platform.eu:v1:Pipeline:aa09aaf12d13524aa0aad85cde7e8ac82a2308d51e464982ecbc87d8410a5f92",
+        "targetRef": "urn:mia-platform-catalog:gitlab.mia-platform.eu:v1:Project:c069c97ce50e8beb930529514b3f69c85dbc7adf7715c35a9c5f567e5d78efb9",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "6cabd390c29f5d288036cf4af331923cec3f0e4d884edcb4f921ce6575c9b19a",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/v4/projects/101"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/projects/101/languages"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/projects/101/pipelines/5001"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "count": 2,
+  "value": [
+    {
+      "id": "c0ffee00-0000-4000-8000-000000000201",
+      "name": "Storefront Team",
+      "url": "https://dev.azure.example.com/acme-widgets/_apis/projects/7f3c2a10-0000-4000-8000-000000000001/teams/c0ffee00-0000-4000-8000-000000000201",
+      "projectName": "Storefront",
+      "projectId": "7f3c2a10-0000-4000-8000-000000000001",
+      "identityUrl": "https://vssps.dev.azure.example.com/acme-widgets/_apis/Identities/c0ffee00-0000-4000-8000-000000000201",
+      "description": "The default project team."
+    },
+    {
+      "id": "c0ffee00-0000-4000-8000-000000000202",
+      "name": "Checkout Squad",
+      "url": "https://dev.azure.example.com/acme-widgets/_apis/projects/7f3c2a10-0000-4000-8000-000000000001/teams/c0ffee00-0000-4000-8000-000000000202",
+      "projectName": "Storefront",
+      "projectId": "7f3c2a10-0000-4000-8000-000000000001",
+      "identityUrl": "https://vssps.dev.azure.example.com/acme-widgets/_apis/Identities/c0ffee00-0000-4000-8000-000000000202"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "items": [
+    {
+      "img": {
+        "imageReference": "registry.example.com/acme-widgets/catalog-api:1.4.0",
+        "imageId": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pullString": "registry.example.com/acme-widgets/catalog-api:1.4.0"
+      },
+      "vuln": {
+        "name": "CVE-2026-1001",
+        "cvssScore": 9.8,
+        "cvssSource": "nvd",
+        "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssVersion": "3.1",
+        "severity": "Critical",
+        "hasExploit": false,
+        "hasFix": true,
+        "fixedInVersion": "3.0.15",
+        "publicationDate": "2026-04-02T00:00:00Z",
+        "packageName": "openssl",
+        "packageVersion": "3.0.13"
+      }
+    },
+    {
+      "img": {
+        "imageReference": "registry.example.com/acme-widgets/catalog-api:1.4.0",
+        "imageId": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pullString": "registry.example.com/acme-widgets/catalog-api:1.4.0"
+      },
+      "vuln": {
+        "name": "CVE-2026-1002",
+        "cvssScore": 7.5,
+        "cvssSource": "nvd",
+        "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssVersion": "3.1",
+        "severity": "High",
+        "hasExploit": false,
+        "hasFix": true,
+        "fixedInVersion": "3.0.15",
+        "publicationDate": "2026-04-02T00:00:00Z",
+        "packageName": "zlib",
+        "packageVersion": "3.0.13"
+      }
+    }
+  ],
+  "summary": {
+    "fetched_items_count": 2
+  }
+}

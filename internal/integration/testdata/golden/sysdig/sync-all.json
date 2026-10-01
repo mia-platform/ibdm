@@ -1,0 +1,183 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:sysdig.mia-platform.eu:v1:Vulnerability:e19c73b52834458519132e2f7020d1fac032a08fbc0eb7d8f4a845771eff7760",
+        "targetRef": "urn:mia-platform-catalog:nexus.mia-platform.eu:v1:DockerImage:4aa67d5e6d855059966db5d6c7b6e7f74414ec68da9be5cecfff46cb23bd9b2b",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:affect.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "6266552f103e3309f62eceecc8c19a28835c69ed5148189fca516979ff7bc5ea",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:sysdig.mia-platform.eu:v1:Vulnerability:381df8c09386fd1b33d2200c069dccb7b7eda6691d9c3d09440807a6c4ddfe80",
+        "targetRef": "urn:mia-platform-catalog:nexus.mia-platform.eu:v1:DockerImage:4aa67d5e6d855059966db5d6c7b6e7f74414ec68da9be5cecfff46cb23bd9b2b",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:affect.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "986c4bae1f302f5cfc617c89d813c6049e31a25934073b09707781326766f898",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:sysdig.mia-platform.eu:v1:Vulnerability:8a34770770d77bcbb4d3dff5596365e47233e2f5beb62e931cac04750c899c2c",
+        "targetRef": "urn:mia-platform-catalog:nexus.mia-platform.eu:v1:DockerImage:4c9c4c22252f4ce0ea6ee793b95308294aa212829b0adaad32cb261ab077cc9d",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:affect.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "9ceb81fc094cf7b9856ad499efcef51cf65b84b44a8a254f45aebfaa11e46679",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "sysdig.mia-platform.eu/v1",
+      "data": {
+        "createdAt": "",
+        "cvssScore": 7.5,
+        "cvssSource": "nvd",
+        "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssVersion": "3.1",
+        "firstSeen": "",
+        "fixDate": "",
+        "fixedInVersion": "3.0.15",
+        "globalId": "",
+        "hasExploit": false,
+        "hasFix": true,
+        "hash": "",
+        "inUse": "",
+        "knownRansomwareCampaignUse": "",
+        "lastModified": "",
+        "name": "CVE-2026-1002",
+        "namespace": [],
+        "packageInfo": "",
+        "packageName": "zlib",
+        "packagePath": "",
+        "packageType": "",
+        "packageVersion": "3.0.13",
+        "publicationDate": "2026-04-02T00:00:00Z",
+        "purl": "",
+        "severity": "High",
+        "solutionDate": "",
+        "suggestedFix": ""
+      },
+      "itemFamily": "vulnerabilities",
+      "metadata": {
+        "title": "CVE-2026-1002"
+      },
+      "name": "381df8c09386fd1b33d2200c069dccb7b7eda6691d9c3d09440807a6c4ddfe80",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "sysdig.mia-platform.eu/v1",
+      "data": {
+        "createdAt": "",
+        "cvssScore": 5.3,
+        "cvssSource": "nvd",
+        "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssVersion": "3.1",
+        "firstSeen": "",
+        "fixDate": "",
+        "fixedInVersion": "3.0.15",
+        "globalId": "",
+        "hasExploit": false,
+        "hasFix": true,
+        "hash": "",
+        "inUse": "",
+        "knownRansomwareCampaignUse": "",
+        "lastModified": "",
+        "name": "CVE-2026-1003",
+        "namespace": [],
+        "packageInfo": "",
+        "packageName": "busybox",
+        "packagePath": "",
+        "packageType": "",
+        "packageVersion": "3.0.13",
+        "publicationDate": "2026-04-02T00:00:00Z",
+        "purl": "",
+        "severity": "Medium",
+        "solutionDate": "",
+        "suggestedFix": ""
+      },
+      "itemFamily": "vulnerabilities",
+      "metadata": {
+        "title": "CVE-2026-1003"
+      },
+      "name": "8a34770770d77bcbb4d3dff5596365e47233e2f5beb62e931cac04750c899c2c",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "sysdig.mia-platform.eu/v1",
+      "data": {
+        "createdAt": "",
+        "cvssScore": 9.8,
+        "cvssSource": "nvd",
+        "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssVersion": "3.1",
+        "firstSeen": "",
+        "fixDate": "",
+        "fixedInVersion": "3.0.15",
+        "globalId": "",
+        "hasExploit": false,
+        "hasFix": true,
+        "hash": "",
+        "inUse": "",
+        "knownRansomwareCampaignUse": "",
+        "lastModified": "",
+        "name": "CVE-2026-1001",
+        "namespace": [],
+        "packageInfo": "",
+        "packageName": "openssl",
+        "packagePath": "",
+        "packageType": "",
+        "packageVersion": "3.0.13",
+        "publicationDate": "2026-04-02T00:00:00Z",
+        "purl": "",
+        "severity": "Critical",
+        "solutionDate": "",
+        "suggestedFix": ""
+      },
+      "itemFamily": "vulnerabilities",
+      "metadata": {
+        "title": "CVE-2026-1001"
+      },
+      "name": "e19c73b52834458519132e2f7020d1fac032a08fbc0eb7d8f4a845771eff7760",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "POST",
+      "path": "/api/sysql/v2/query",
+      "header": {
+        "Authorization": "Bearer test-token"
+      },
+      "body": "{\"query\":\"MATCH Image AS img AFFECTED_BY Vulnerability AS vuln RETURN img, vuln LIMIT 2 OFFSET 0;\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sysql/v2/query",
+      "header": {
+        "Authorization": "Bearer test-token"
+      },
+      "body": "{\"query\":\"MATCH Image AS img AFFECTED_BY Vulnerability AS vuln RETURN img, vuln LIMIT 2 OFFSET 2;\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sysql/v2/query",
+      "header": {
+        "Authorization": "Bearer test-token"
+      },
+      "body": "{\"query\":\"MATCH Image AS img AFFECTED_BY Vulnerability AS vuln RETURN img, vuln LIMIT 2 OFFSET 3;\"}"
+    }
+  ]
+}

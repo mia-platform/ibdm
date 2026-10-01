@@ -1,0 +1,13 @@
+{
+  "catalogItems": [],
+  "upstreamRequests": [
+    {
+      "method": "POST",
+      "path": "/api/sysql/v2/query",
+      "header": {
+        "Authorization": "Bearer test-token"
+      },
+      "body": "{\"query\":\"MATCH Image AS img AFFECTED_BY Vulnerability AS vuln RETURN img, vuln LIMIT 1000 OFFSET 0;\"}"
+    }
+  ]
+}

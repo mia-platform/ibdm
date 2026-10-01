@@ -1,0 +1,6 @@
+{
+  "type": "error",
+  "error": {
+    "message": "Pipelines are not enabled for this repository"
+  }
+}
