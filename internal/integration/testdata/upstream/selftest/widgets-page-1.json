@@ -1,0 +1,1 @@
+{"widgets": [{"name": "gizmo", "next": "{{.BaseURL}}/widgets?page=2"}]}

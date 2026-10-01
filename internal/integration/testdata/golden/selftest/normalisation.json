@@ -1,0 +1,45 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "integration.example.com/v1",
+      "itemFamily": "widgets",
+      "name": "gizmo",
+      "operation": "delete",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "integration.example.com/v1",
+      "itemFamily": "widgets",
+      "name": "gizmo",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "parts": [
+          "catalog http://<catalog>/items"
+        ],
+        "self": "http://<upstream>/widgets/sprocket"
+      },
+      "itemFamily": "widgets",
+      "name": "sprocket",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/widgets",
+      "header": {
+        "X-Widget-Version": "http://<upstream>"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/widgets",
+      "query": "page=2"
+    }
+  ]
+}

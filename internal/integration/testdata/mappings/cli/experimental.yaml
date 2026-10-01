@@ -1,0 +1,7 @@
+type: widget
+apiVersion: integration.mia-platform-experimental.eu/v1
+itemFamily: widgets
+mappings:
+  identifier: "{{ .repository.id }}"
+  spec:
+    name: "{{ .repository.name }}"

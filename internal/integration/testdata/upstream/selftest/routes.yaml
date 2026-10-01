@@ -1,0 +1,16 @@
+# Routes of the harness self-tests: one paginated listing that links to its next page with an
+# absolute URL, as some sources expect.
+routes:
+  - method: GET
+    path: /widgets
+    query:
+      page: "2"
+    body: widgets-page-2.json
+  - method: GET
+    path: /widgets
+    headers:
+      Link: '<{{.BaseURL}}/widgets?page=2>; rel="next"'
+    body: widgets-page-1.json
+  - method: DELETE
+    path: /widgets/gizmo
+    status: 204

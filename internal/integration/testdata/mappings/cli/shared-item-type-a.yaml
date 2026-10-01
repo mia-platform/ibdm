@@ -1,0 +1,7 @@
+type: repository
+apiVersion: integration.example.com/v1
+itemFamily: repositories
+mappings:
+  identifier: "{{ .repository.id }}"
+  spec:
+    name: "{{ .repository.name }}"
