@@ -34,6 +34,9 @@ type route struct {
 	// Query, when set, must all be present in the request with these values. Other parameters
 	// are allowed, so that one route can answer every page size.
 	Query map[string]string `yaml:"query"`
+	// RequestHeaders, when set, must all be present in the request with these values, for
+	// upstreams whose answer depends on a header such as an API version.
+	RequestHeaders map[string]string `yaml:"requestHeaders"`
 	// Status defaults to 200.
 	Status  int               `yaml:"status"`
 	Headers map[string]string `yaml:"headers"`
@@ -89,7 +92,9 @@ func startFakeUpstream(routes []route, recordedHeaders ...string) *fakeUpstream 
 	for _, header := range recordedHeaders {
 		upstream.recordedHeaders = append(upstream.recordedHeaders, http.CanonicalHeaderKey(header))
 	}
-	upstream.server = httptest.NewServer(http.HandlerFunc(upstream.handle))
+	// Assigned before the start, so that the handler can read the URL without a race.
+	upstream.server = httptest.NewUnstartedServer(http.HandlerFunc(upstream.handle))
+	upstream.server.Start()
 	return upstream
 }
 
@@ -181,7 +186,7 @@ func (u *fakeUpstream) match(r *http.Request) (route, bool) {
 		if candidate.Method != r.Method || candidate.Path != r.URL.Path {
 			continue
 		}
-		if queryMatches(candidate.Query, query) {
+		if queryMatches(candidate.Query, query) && headersMatch(candidate.RequestHeaders, r.Header) {
 			return candidate, true
 		}
 	}
@@ -190,6 +195,16 @@ func (u *fakeUpstream) match(r *http.Request) (route, bool) {
 
 // queryMatches reports whether every parameter of want has its value in got.
 func queryMatches(want map[string]string, got url.Values) bool {
+	for key, value := range want {
+		if got.Get(key) != value {
+			return false
+		}
+	}
+	return true
+}
+
+// headersMatch reports whether every header of want has its value in got.
+func headersMatch(want map[string]string, got http.Header) bool {
 	for key, value := range want {
 		if got.Get(key) != value {
 			return false

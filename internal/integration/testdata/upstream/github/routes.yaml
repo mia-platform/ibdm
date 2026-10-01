@@ -1,0 +1,48 @@
+# Fake GitHub REST API for the organization acme-widgets: three repositories over two pages, and
+# two workflow runs of gizmo-service. The repository listing answers API version 2022-11-28 with
+# different descriptions, so a test can tell which listing each mapping rendered.
+routes:
+  # Repository listings of API version 2022-11-28.
+  - method: GET
+    path: /orgs/acme-widgets/repos
+    query: {type: all, page: "1"}
+    requestHeaders: {X-GitHub-Api-Version: "2022-11-28"}
+    headers:
+      Link: '<{{.BaseURL}}/orgs/acme-widgets/repos?type=all&page=2>; rel="next"'
+    body: repos-page-1-2022-11-28.json
+  - method: GET
+    path: /orgs/acme-widgets/repos
+    query: {type: all, page: "2"}
+    requestHeaders: {X-GitHub-Api-Version: "2022-11-28"}
+    body: repos-page-2-2022-11-28.json
+  # Repository listings of every other API version.
+  - method: GET
+    path: /orgs/acme-widgets/repos
+    query: {type: all, page: "1"}
+    headers:
+      Link: '<{{.BaseURL}}/orgs/acme-widgets/repos?type=all&page=2>; rel="next"'
+    body: repos-page-1.json
+  - method: GET
+    path: /orgs/acme-widgets/repos
+    query: {type: all, page: "2"}
+    body: repos-page-2.json
+  # Languages, any API version.
+  - method: GET
+    path: /repos/acme-widgets/gizmo-service/languages
+    body: languages-gizmo-service.json
+  - method: GET
+    path: /repos/acme-widgets/sprocket-ui/languages
+    body: languages-sprocket-ui.json
+  - method: GET
+    path: /repos/acme-widgets/cog-docs/languages
+    body: languages-cog-docs.json
+  # Workflow runs, any API version.
+  - method: GET
+    path: /repos/acme-widgets/gizmo-service/actions/runs
+    body: runs-gizmo-service.json
+  - method: GET
+    path: /repos/acme-widgets/sprocket-ui/actions/runs
+    body: runs-empty.json
+  - method: GET
+    path: /repos/acme-widgets/cog-docs/actions/runs
+    body: runs-empty.json

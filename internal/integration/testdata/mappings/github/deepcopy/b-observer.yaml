@@ -1,0 +1,8 @@
+# Loaded after the tamperer: must still see the name the source sent.
+type: repository
+apiVersion: integration.example.com/v1
+itemFamily: observedrepositories
+mappings:
+  identifier: "observed-{{ .repository.id }}"
+  spec:
+    name: "{{ .repository.name }}"

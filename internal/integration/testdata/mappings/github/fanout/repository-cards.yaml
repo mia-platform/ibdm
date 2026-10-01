@@ -1,0 +1,10 @@
+# A second mapping of the repository type, on its own item type: every repository renders twice.
+type: repository
+apiVersion: integration.example.com/v1
+itemFamily: repositorycards
+mappings:
+  identifier: "card-{{ .repository.id }}"
+  spec:
+    fullName: "{{ .repository.full_name }}"
+    archived: "{{ .repository.archived }}"
+    languages: "{{ get \"repositoryLanguages\" . (object) | toJSON }}"

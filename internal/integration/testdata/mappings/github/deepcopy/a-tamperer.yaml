@@ -1,0 +1,8 @@
+# Loaded first: overwrites the repository name in its own copy of the payload, then renders it.
+type: repository
+apiVersion: integration.example.com/v1
+itemFamily: tamperedrepositories
+mappings:
+  identifier: "tampered-{{ .repository.id }}"
+  spec:
+    name: '{{ $_ := set "name" "tampered-name" .repository }}{{ .repository.name }}'
