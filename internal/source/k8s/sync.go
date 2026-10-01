@@ -20,6 +20,15 @@ const (
 
 	// namespaceType is the data type key for Kubernetes namespaces.
 	namespaceType = "namespace"
+
+	// deploymentType is the data type key for Kubernetes deployments.
+	deploymentType = "deployment"
+
+	// statefulSetType is the data type key for Kubernetes statefulsets.
+	statefulSetType = "statefulset"
+
+	// daemonSetType is the data type key for Kubernetes daemonsets.
+	daemonSetType = "daemonset"
 )
 
 // timeSource is a package-level function for the current time, replaceable in tests.
@@ -35,6 +44,9 @@ var knownTypes = []struct {
 }{
 	{name: clusterType, sync: (*Source).syncCluster},
 	{name: namespaceType, sync: (*Source).syncNamespaces},
+	{name: deploymentType, sync: (*Source).syncDeployments},
+	{name: statefulSetType, sync: (*Source).syncStatefulSets},
+	{name: daemonSetType, sync: (*Source).syncDaemonSets},
 }
 
 // StartSyncProcess performs a full synchronisation of the requested resource

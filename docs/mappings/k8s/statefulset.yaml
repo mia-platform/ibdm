@@ -1,0 +1,30 @@
+apiVersion: k8s.mia-platform-experimental.eu/v1
+itemFamily: statefulsets
+type: statefulset
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "k8s-%s-statefulset-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
+  metadata:
+    title: "{{ .name }}"
+  spec:
+    name: "{{ .name }}"
+    namespace: "{{ .namespace }}"
+    labels: "{{ .labels | toJSON }}"
+    replicas: "{{ .replicas }}"
+    containers: "{{ .containers | toJSON }}"
+    initContainers: "{{ .initContainers | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:StatefulSet:%s" (printf "k8s-%s-statefulset-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Namespace:%s" (printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:StatefulSet:{{ printf "k8s-%s-statefulset-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Namespace:{{ printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
