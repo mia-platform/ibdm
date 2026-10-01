@@ -71,6 +71,10 @@ func TestFakeUpstream(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, status, "the declared status is used")
 	assert.Empty(t, body)
 
+	status, body, _ = doRequest(t, http.MethodGet, upstream.baseURL()+"/widgets", nil, http.Header{"X-Widget-Version": {"2020-01-01"}})
+	require.Equal(t, http.StatusOK, status)
+	assert.JSONEq(t, `{"widgets": [{"name": "legacy-gizmo"}]}`, body, "a route can depend on a request header")
+
 	assert.Empty(t, upstream.unexpectedRequests())
 
 	status, _, _ = doRequest(t, http.MethodGet, upstream.baseURL()+"/gadgets", nil, nil)
@@ -81,9 +85,11 @@ func TestFakeUpstream(t *testing.T) {
 		{Method: http.MethodGet, Path: "/widgets", Query: "per_page=10", Header: map[string]string{"X-Widget-Version": "2026-01-01"}},
 		{Method: http.MethodGet, Path: "/widgets", Query: "page=2&per_page=10"},
 		{Method: http.MethodDelete, Path: "/widgets/gizmo"},
+		{Method: http.MethodGet, Path: "/widgets", Header: map[string]string{"X-Widget-Version": "2020-01-01"}},
 		{Method: http.MethodGet, Path: "/gadgets"},
 	}, upstream.received(), "every request is recorded, with its sorted query and the recorded headers only")
-	assert.Equal(t, 2, upstream.calls(http.MethodGet, "/widgets"))
+	assert.Equal(t, 3, upstream.calls(http.MethodGet, "/widgets"))
+	assert.Equal(t, 1, upstream.calls(http.MethodDelete, "/widgets/gizmo"), "calls counts per method")
 }
 
 // TestFakeCatalog proves the record, the failure injection, the wait and the strictness of the

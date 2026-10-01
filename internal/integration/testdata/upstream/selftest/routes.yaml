@@ -1,6 +1,11 @@
 # Routes of the harness self-tests: one paginated listing that links to its next page with an
-# absolute URL, as some sources expect.
+# absolute URL, as some sources expect, and answers an older API version differently.
 routes:
+  - method: GET
+    path: /widgets
+    requestHeaders:
+      X-Widget-Version: "2020-01-01"
+    body: widgets-legacy.json
   - method: GET
     path: /widgets
     query:

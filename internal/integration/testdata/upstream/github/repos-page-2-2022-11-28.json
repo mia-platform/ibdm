@@ -1,0 +1,33 @@
+[
+  {
+    "id": 103,
+    "name": "cog-docs",
+    "full_name": "acme-widgets/cog-docs",
+    "owner": {
+      "login": "acme-widgets",
+      "id": 9001,
+      "type": "Organization"
+    },
+    "html_url": "https://github.example.com/acme-widgets/cog-docs",
+    "description": "Cog documentation (as listed by API version 2022-11-28)",
+    "language": "Markdown",
+    "visibility": "public",
+    "default_branch": "main",
+    "archived": false,
+    "fork": false,
+    "stargazers_count": 3,
+    "forks_count": 2,
+    "open_issues_count": 1,
+    "license": {
+      "key": "mit",
+      "name": "MIT License",
+      "spdx_id": "MIT"
+    },
+    "topics": [
+      "docs"
+    ],
+    "created_at": "2025-06-01T07:00:00Z",
+    "updated_at": "2026-08-15T09:00:00Z",
+    "pushed_at": "2026-08-15T08:45:00Z"
+  }
+]

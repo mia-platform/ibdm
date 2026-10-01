@@ -1,0 +1,9 @@
+# Declared for the webhook only: sync must skip it.
+type: repository
+apiVersion: integration.example.com/v1
+itemFamily: streamonlyrepositories
+syncable: false
+mappings:
+  identifier: "stream-{{ .repository.id }}"
+  spec:
+    name: "{{ .repository.name }}"
