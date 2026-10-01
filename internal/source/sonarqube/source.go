@@ -104,7 +104,7 @@ func (s *Source) resolveSCMTarget(ctx context.Context, projectKey, propertyURL, 
 //
 // The issues are read only when they are mapped and readIssues is set: an
 // analysis that did not succeed has none worth reading.
-func (s *Source) emitAnalysis(ctx context.Context, analysis analysisContext, scope componentScope, run runInfo, readIssues bool, types map[string]source.Extra, eventTime time.Time, results chan<- source.Data) error {
+func (s *Source) emitAnalysis(ctx context.Context, analysis analysisContext, scope componentScope, run runInfo, readIssues bool, types map[string]source.MappingExtras, eventTime time.Time, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	_, issuesMapped := types[issueType]
 	_, runsMapped := types[runType]
@@ -168,7 +168,7 @@ func send(ctx context.Context, results chan<- source.Data, dataType string, valu
 }
 
 // mapsAny reports whether types asks for at least one type this source emits.
-func mapsAny(types map[string]source.Extra) bool {
+func mapsAny(types map[string]source.MappingExtras) bool {
 	_, issues := types[issueType]
 	_, runs := types[runType]
 	return issues || runs
