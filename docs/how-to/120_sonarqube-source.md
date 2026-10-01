@@ -19,17 +19,42 @@ Verified against SonarQube Server 26.5.
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 ### Run (Webhook Listener)
 
 ```sh
-ibdm run sonarqube --mapping-file <path to mapping file or folder>
+ibdm run sonarqube --include-internal-mappings=all
 ```
 
 ### Sync
 
 ```sh
-ibdm sync sonarqube --mapping-file <path to mapping file or folder>
+ibdm sync sonarqube --include-internal-mappings=all
 ```
+
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list sonarqube` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+| Internal mapping | Sync | Webhook (`run`) | Its relationships point at |
+| --- | --- | --- | --- |
+| `issues` | yes, for the main branch of every project | yes, for the analysed branch or pull request of a successful analysis | `runs` |
+| `runs` | yes, the latest analysis of every project | yes, for every delivery | — |
+
+Select both. Each mapping works alone, with these limits:
+
+- **`runs` alone** writes the run items, but no issue is read: `issuesRead`, `truncated` and
+  `issueCounts` are null.
+- **`issues` alone** writes the issue items without their `part-of.mia-platform.eu` relationship:
+  the run key it points at is only computed when `runs` is selected, and the relationship is not
+  created without it.
+- With `issues` alone, the webhook ignores a delivery whose analysis did not succeed, because there
+  is no run to record and no issue worth reading.
 
 ## Configuration
 
@@ -78,7 +103,8 @@ takes longer. The outcome of each delivery is reported in the `ibdm` logs.
 | `issue` | ✅ | ✅ |
 | `run` | ✅ | ✅ |
 
-Map both: an issue is related to its run only when runs are mapped too.
+An issue is related to its run only when runs are mapped too: see
+[Internal Mappings and Their Dependencies](#internal-mappings-and-their-dependencies).
 
 ## Webhook Events
 
@@ -201,13 +227,13 @@ from one analysis to the next, like the status and severity of an issue, lives i
 repository keeps pointing at the commit of the analysis that first reported it; `spec.scmUrl`
 follows the latest one.
 
-## Example Mapping Files
+## Internal Mappings
 
-Example mapping files are provided in the `docs/mappings/sonarqube/` directory:
+`ibdm` ships these internal mappings for SonarQube (`ibdm mappings list sonarqube`):
 
-- `runs.yaml` — maps each run to an item of the `runs.sonarqube.mia-platform.eu` Item Type
+- `runs` — maps each run to an item of the `runs.sonarqube.mia-platform.eu` Item Type
   Definition.
-- `issues.yaml` — maps each issue to an item of the `issues.sonarqube.mia-platform.eu` Item Type
+- `issues` — maps each issue to an item of the `issues.sonarqube.mia-platform.eu` Item Type
   Definition, and relates it to its run with a `part-of.mia-platform.eu` relationship: the issue
   _is part of_ the run, the run _contains_ the issue.
 
@@ -217,17 +243,16 @@ and a webhook and a sync of the same analysis write the same run.
 
 The relationship identifier depends on the issue alone, so the Catalog keeps one relationship per
 issue, pointing at the latest run that reported it: every analysis moves it rather than adding one.
-To keep the whole history, one relationship per issue and run, hash the `targetRef` URN into the
-identifier as well. Expect one relationship per issue per analysis then.
-
-```sh
-ibdm run sonarqube --mapping-file docs/mappings/sonarqube/
-```
+To keep the whole history, one relationship per issue and run, write an external mapping that
+hashes the `targetRef` URN into the identifier as well, and expect one relationship per issue per
+analysis then. Start from `ibdm mappings show sonarqube issues`, and publish it on an Item Type
+Definition of your own domain, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
 
 For local development and debugging, add the `--local-output` flag to send results to stdout:
 
 ```sh
-ibdm sync sonarqube --mapping-file docs/mappings/sonarqube/ --local-output
+ibdm sync sonarqube --include-internal-mappings=all --local-output
 ```
 
 ## Not in Scope

@@ -13,8 +13,8 @@ import (
 	"github.com/mia-platform/ibdm/internal/mapper"
 )
 
-// examplePath is the mapping shipped in the documentation.
-const examplePath = "../../../docs/mappings/sonarqube/issues.yaml"
+// examplePath is the internal mapping shipped in the binary.
+const examplePath = "../../mappings/data/sonarqube/issues.yaml"
 
 // TestExampleMapping renders the documented mapping over the values this
 // source emits, so the two cannot drift apart silently.
@@ -116,7 +116,7 @@ func loadExampleMapper(t *testing.T, path, dataType string) mapper.Mapper {
 	return m
 }
 
-const runsExamplePath = "../../../docs/mappings/sonarqube/runs.yaml"
+const runsExamplePath = "../../mappings/data/sonarqube/runs.yaml"
 
 func TestExampleRunMapping(t *testing.T) {
 	t.Parallel()
