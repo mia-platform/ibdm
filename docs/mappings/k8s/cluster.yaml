@@ -10,6 +10,8 @@ mappings:
   spec:
     name: "{{ .clusterName }}"
     nodeCount: "{{ .nodeCount }}"
+    totalCPUCores: "{{ .totalCPUCores }}"
+    nodes: "{{ .nodes | toJSON }}"
   extra:
     - apiVersion: mia-platform.eu/v1
       itemFamily: relationships

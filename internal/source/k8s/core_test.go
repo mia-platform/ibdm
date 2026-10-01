@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -25,9 +26,39 @@ func TestSyncCluster(t *testing.T) {
 	testCases := map[string]struct {
 		objects   []runtime.Object
 		nodeCount int
+		nodes     []map[string]any
+		totalCPU  float64
 	}{
-		"no nodes":       {nodeCount: 0},
-		"multiple nodes": {objects: []runtime.Object{&corev1.Node{}, newNodePtr("node-2"), newNodePtr("node-3")}, nodeCount: 3},
+		"no nodes": {nodeCount: 0, nodes: []map[string]any{}},
+		"multiple nodes": {
+			objects:   []runtime.Object{newNodePtr("node-3"), newNodePtr("node-1"), newNodePtr("node-2")},
+			nodeCount: 3,
+			nodes: []map[string]any{
+				expectedNode("node-1", 0, []map[string]any{}),
+				expectedNode("node-2", 0, []map[string]any{}),
+				expectedNode("node-3", 0, []map[string]any{}),
+			},
+		},
+		"details, taints and fractional cpu": {
+			objects: []runtime.Object{
+				detailedNode("node-b", "500m", nil),
+				detailedNode("node-a", "4", []corev1.Taint{
+					{Key: "dedicated", Value: "gpu", Effect: corev1.TaintEffectNoSchedule},
+					{Key: "node.kubernetes.io/unschedulable", Effect: corev1.TaintEffectNoExecute},
+				}),
+				newNodePtr("node-c"),
+			},
+			nodeCount: 3,
+			nodes: []map[string]any{
+				expectedNode("node-a", 4, []map[string]any{
+					{"key": "dedicated", "value": "gpu", "effect": "NoSchedule"},
+					{"key": "node.kubernetes.io/unschedulable", "value": "", "effect": "NoExecute"},
+				}),
+				expectedNode("node-b", 0.5, []map[string]any{}),
+				expectedNode("node-c", 0, []map[string]any{}),
+			},
+			totalCPU: 4.5,
+		},
 	}
 
 	for name, tc := range testCases {
@@ -44,9 +75,11 @@ func TestSyncCluster(t *testing.T) {
 			assert.Equal(t, source.DataOperationUpsert, items[0].Operation)
 			assert.Equal(t, testFixedTime, items[0].Time)
 			assert.Equal(t, map[string]any{
-				"apiServer":   testAPIServer,
-				"clusterName": testClusterName,
-				"nodeCount":   tc.nodeCount,
+				"apiServer":     testAPIServer,
+				"clusterName":   testClusterName,
+				"nodeCount":     tc.nodeCount,
+				"nodes":         tc.nodes,
+				"totalCPUCores": tc.totalCPU,
 			}, items[0].Values)
 		})
 	}
@@ -62,6 +95,35 @@ func TestSyncClusterListError(t *testing.T) {
 
 	require.ErrorIs(t, s.syncCluster(t.Context(), results), ErrRetrievingAssets)
 	assert.Empty(t, results)
+}
+
+// detailedNode builds a node with fictional system info, CPU capacity and taints.
+func detailedNode(name, cpu string, taints []corev1.Taint) *corev1.Node {
+	node := newNodePtr(name)
+	node.Spec.Taints = taints
+	node.Status.Capacity = corev1.ResourceList{corev1.ResourceCPU: resource.MustParse(cpu)}
+	node.Status.NodeInfo = corev1.NodeSystemInfo{
+		KubeletVersion: "v1.30.0",
+		OSImage:        "Example Linux 1.0",
+		KernelVersion:  "6.1.0-example",
+		Architecture:   "amd64",
+	}
+	return node
+}
+
+// expectedNode builds the expected per-node map; nodes created with newNodePtr have no system info.
+func expectedNode(name string, cpu float64, taints []map[string]any) map[string]any {
+	info := map[string]any{
+		"name": name, "kubeletVersion": "", "osImage": "", "kernelVersion": "", "architecture": "",
+		"cpuCapacity": cpu, "taints": taints,
+	}
+	if cpu > 0 {
+		info["kubeletVersion"] = "v1.30.0"
+		info["osImage"] = "Example Linux 1.0"
+		info["kernelVersion"] = "6.1.0-example"
+		info["architecture"] = "amd64"
+	}
+	return info
 }
 
 func newNodePtr(name string) *corev1.Node {
