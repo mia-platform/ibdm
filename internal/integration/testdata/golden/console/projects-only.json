@@ -1,0 +1,135 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "console.mia-platform.eu/v1",
+      "data": {
+        "availableNamespaces": [],
+        "configurationGitPath": "acme-widgets/storefront-configuration",
+        "containerRegistries": [],
+        "defaultBranch": "main",
+        "deploy": {},
+        "description": "Online storefront",
+        "dockerImageNameSuggestion": {},
+        "enabledSecurityFeatures": {},
+        "enabledServices": {},
+        "environments": [
+          {
+            "envId": "production",
+            "label": "Production"
+          },
+          {
+            "envId": "staging",
+            "label": "Staging"
+          }
+        ],
+        "environmentsVariables": {},
+        "flavor": "application",
+        "imagePullSecretNames": [],
+        "info": {
+          "teamContact": "storefront-team@example.com"
+        },
+        "lastUpdate": "2026-09-20T10:00:00Z",
+        "links": {},
+        "logicalScopeLayers": [],
+        "name": "Storefront",
+        "originalTemplate": {},
+        "pipelines": {},
+        "projectId": "storefront",
+        "projectNamespaceVariable": "",
+        "projectUniqueId": "64f1a0c0e1b2c3d4e5f60001",
+        "repository": {
+          "providerId": "gitlab-acme",
+          "type": "gitlab"
+        },
+        "repositoryUrl": "https://git.example.com/acme-widgets/storefront",
+        "tenantId": "acme-widgets",
+        "tenantName": "Acme Widgets"
+      },
+      "itemFamily": "projects",
+      "metadata": {
+        "owner": {
+          "ref": "storefront-team@example.com",
+          "type": "email"
+        },
+        "title": "Storefront"
+      },
+      "name": "64f1a0c0e1b2c3d4e5f60001",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "console.mia-platform.eu/v1",
+      "data": {
+        "availableNamespaces": [],
+        "configurationGitPath": "acme-widgets/backoffice-configuration",
+        "containerRegistries": [],
+        "defaultBranch": "main",
+        "deploy": {},
+        "description": "",
+        "dockerImageNameSuggestion": {},
+        "enabledSecurityFeatures": {},
+        "enabledServices": {},
+        "environments": [
+          {
+            "envId": "production",
+            "label": "Production"
+          }
+        ],
+        "environmentsVariables": {},
+        "flavor": "",
+        "imagePullSecretNames": [],
+        "info": {},
+        "lastUpdate": "2026-09-21T11:30:00Z",
+        "links": {},
+        "logicalScopeLayers": [],
+        "name": "Backoffice",
+        "originalTemplate": {},
+        "pipelines": {},
+        "projectId": "backoffice",
+        "projectNamespaceVariable": "",
+        "projectUniqueId": "64f1a0c0e1b2c3d4e5f60002",
+        "repository": {
+          "providerId": "gitlab-acme",
+          "type": "gitlab"
+        },
+        "repositoryUrl": "",
+        "tenantId": "acme-widgets",
+        "tenantName": ""
+      },
+      "itemFamily": "projects",
+      "metadata": {
+        "owner": null,
+        "title": "Backoffice"
+      },
+      "name": "64f1a0c0e1b2c3d4e5f60002",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60001/revisions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60001/revisions/feature-checkout/configuration"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60001/revisions/main/configuration"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60002/revisions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60002/revisions/main/configuration"
+    }
+  ]
+}

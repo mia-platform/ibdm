@@ -1,0 +1,26 @@
+{
+  "action": "completed",
+  "workflow_run": {
+    "id": 7001,
+    "name": "CI",
+    "display_title": "Build #11",
+    "status": "completed",
+    "conclusion": "success",
+    "workflow_id": 5001,
+    "path": ".github/workflows/ci.yaml",
+    "repository": {
+      "id": 101,
+      "full_name": "acme-widgets/gizmo-service",
+      "html_url": "https://github.example.com/acme-widgets/gizmo-service"
+    },
+    "head_branch": "main",
+    "head_sha": "000000000000000000000000000000000000000b",
+    "event": "push",
+    "run_number": 11,
+    "run_attempt": 1,
+    "html_url": "https://github.example.com/acme-widgets/gizmo-service/actions/runs/7001",
+    "created_at": "2026-09-28T16:31:00Z",
+    "updated_at": "2026-09-28T16:31:00Z",
+    "run_started_at": "2026-09-28T16:31:00Z"
+  }
+}
