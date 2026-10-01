@@ -1,0 +1,39 @@
+{
+  "action": "deleted",
+  "repository": {
+    "id": 101,
+    "name": "gizmo-service",
+    "full_name": "acme-widgets/gizmo-service",
+    "owner": {
+      "login": "acme-widgets",
+      "id": 9001,
+      "type": "Organization"
+    },
+    "html_url": "https://github.example.com/acme-widgets/gizmo-service",
+    "description": "Gizmo service",
+    "language": "Go",
+    "visibility": "public",
+    "default_branch": "main",
+    "archived": false,
+    "fork": false,
+    "stargazers_count": 42,
+    "forks_count": 2,
+    "open_issues_count": 1,
+    "license": {
+      "key": "mit",
+      "name": "MIT License",
+      "spdx_id": "MIT"
+    },
+    "topics": [
+      "catalog",
+      "service"
+    ],
+    "created_at": "2025-01-10T09:00:00Z",
+    "updated_at": "2026-09-01T12:00:00Z",
+    "pushed_at": "2026-09-28T16:30:00Z",
+    "homepage": "https://gizmo.example.com"
+  },
+  "organization": {
+    "login": "acme-widgets"
+  }
+}

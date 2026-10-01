@@ -1,0 +1,51 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "github.mia-platform.eu/v1",
+      "data": {
+        "archived": false,
+        "created": "2025-01-10T09:00:00Z",
+        "defaultBranch": "main",
+        "description": "Gizmo service",
+        "fork": false,
+        "forksCount": 2,
+        "fullName": "acme-widgets/gizmo-service",
+        "htmlUrl": "https://github.example.com/acme-widgets/gizmo-service",
+        "id": 101,
+        "language": "Go",
+        "languages": {
+          "Go": 70,
+          "Shell": 30
+        },
+        "lastPush": "2026-09-28T16:30:00Z",
+        "lastUpdate": "2026-09-01T12:00:00Z",
+        "license": "MIT",
+        "name": "gizmo-service",
+        "openIssuesCount": 1,
+        "stargazersCount": 42,
+        "topics": [
+          "catalog",
+          "service"
+        ],
+        "visibility": "public"
+      },
+      "itemFamily": "repositories",
+      "metadata": {
+        "title": "acme-widgets/gizmo-service"
+      },
+      "name": "102e2e0aa5dcc7b23714445b3e719503f038fa93d07d8cecfcdc336d20445ca3",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/gizmo-service/languages",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    }
+  ]
+}

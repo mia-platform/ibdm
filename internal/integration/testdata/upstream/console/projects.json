@@ -1,0 +1,52 @@
+[
+  {
+    "_id": "64f1a0c0e1b2c3d4e5f60001",
+    "projectId": "storefront",
+    "name": "Storefront",
+    "tenantId": "acme-widgets",
+    "tenantName": "Acme Widgets",
+    "defaultBranch": "main",
+    "description": "Online storefront",
+    "repository": {
+      "providerId": "gitlab-acme",
+      "type": "gitlab"
+    },
+    "repositoryUrl": "https://git.example.com/acme-widgets/storefront",
+    "configurationGitPath": "acme-widgets/storefront-configuration",
+    "environments": [
+      {
+        "envId": "production",
+        "label": "Production"
+      },
+      {
+        "envId": "staging",
+        "label": "Staging"
+      }
+    ],
+    "info": {
+      "teamContact": "storefront-team@example.com"
+    },
+    "flavor": "application",
+    "lastUpdate": "2026-09-20T10:00:00Z"
+  },
+  {
+    "_id": "64f1a0c0e1b2c3d4e5f60002",
+    "projectId": "backoffice",
+    "name": "Backoffice",
+    "tenantId": "acme-widgets",
+    "defaultBranch": "main",
+    "repository": {
+      "providerId": "gitlab-acme",
+      "type": "gitlab"
+    },
+    "configurationGitPath": "acme-widgets/backoffice-configuration",
+    "environments": [
+      {
+        "envId": "production",
+        "label": "Production"
+      }
+    ],
+    "info": {},
+    "lastUpdate": "2026-09-21T11:30:00Z"
+  }
+]

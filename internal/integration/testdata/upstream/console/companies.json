@@ -1,0 +1,9 @@
+[
+  {
+    "companyId": "acme-widgets",
+    "name": "Acme Widgets"
+  },
+  {
+    "name": "Company without an id"
+  }
+]

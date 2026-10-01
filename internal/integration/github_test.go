@@ -151,6 +151,7 @@ func TestGitHubSync(t *testing.T) {
 				assert.Len(t, itemsOf(items, githubAPIVersion, "workflowruns"), 2)
 				assert.Len(t, itemsOf(items, relationshipsAPIVersion, "relationships"), 2)
 				assert.Equal(t, 2, run.upstream.calls(http.MethodGet, githubReposPath), "one listing, two pages")
+				assertRelationshipsResolve(t, items)
 			},
 		},
 		"G2 allow-list": {

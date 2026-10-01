@@ -1,0 +1,21 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "github.mia-platform.eu/v1",
+      "itemFamily": "repositories",
+      "name": "102e2e0aa5dcc7b23714445b3e719503f038fa93d07d8cecfcdc336d20445ca3",
+      "operation": "delete",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/gizmo-service/languages",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    }
+  ]
+}

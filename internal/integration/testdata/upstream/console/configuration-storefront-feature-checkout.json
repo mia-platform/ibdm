@@ -1,0 +1,10 @@
+{
+  "services": {
+    "checkout-api": {
+      "name": "checkout-api",
+      "type": "custom",
+      "advanced": false,
+      "dockerImage": "registry.example.com/acme-widgets/checkout-api:0.1.0"
+    }
+  }
+}

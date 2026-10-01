@@ -1,0 +1,33 @@
+{
+  "services": {
+    "catalog-api": {
+      "name": "catalog-api",
+      "type": "custom",
+      "advanced": false,
+      "dockerImage": "registry.example.com/acme-widgets/catalog-api",
+      "replicas": 2
+    },
+    "legacy-gateway": {
+      "name": "legacy-gateway",
+      "type": "custom",
+      "advanced": true,
+      "dockerImage": "registry.example.com/acme-widgets/legacy-gateway:1.0.0"
+    },
+    "api-gateway": {
+      "name": "api-gateway",
+      "type": "core",
+      "dockerImage": "registry.example.com/platform/api-gateway:7.0.0"
+    },
+    "orders-database": {
+      "name": "orders-database",
+      "type": "custom-resource",
+      "meta": {
+        "kind": "PostgresCluster",
+        "apiVersion": "databases.example.com/v1"
+      },
+      "spec": {
+        "instances": 3
+      }
+    }
+  }
+}
