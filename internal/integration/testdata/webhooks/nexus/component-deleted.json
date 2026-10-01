@@ -1,0 +1,15 @@
+{
+  "nodeId": "nexus-node-1",
+  "initiator": "ci-bot/10.0.0.12",
+  "repositoryName": "docker-hosted",
+  "action": "DELETED",
+  "component": {
+    "id": "short-id",
+    "componentId": "component-checkout-api",
+    "format": "docker",
+    "name": "acme-widgets/checkout-api",
+    "group": "",
+    "version": "2.0.1"
+  },
+  "timestamp": "2026-09-30T14:00:00.000Z"
+}

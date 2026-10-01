@@ -1,0 +1,51 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "sonarqube.mia-platform.eu/v1",
+      "data": {
+        "analysedAt": "2026-10-01T09:00:00Z",
+        "analysisKey": null,
+        "branch": "main",
+        "isMainBranch": true,
+        "issueCounts": null,
+        "issuesRead": null,
+        "projectKey": "acme-widgets:storefront",
+        "projectName": "Storefront",
+        "projectVersion": null,
+        "pullRequest": null,
+        "qualityGateConditions": [],
+        "qualityGateName": null,
+        "qualityGateStatus": null,
+        "repositoryUrl": null,
+        "revision": "9e8d7c6b5a493f2a9c1d0b8e7a6f5e4d3c2b1a0f",
+        "serverUrl": "https://sonarqube.example.com",
+        "status": "FAILED",
+        "taskId": "AYtaskStorefront0003",
+        "truncated": null
+      },
+      "itemFamily": "runs",
+      "metadata": {
+        "description": "Analysis FAILED",
+        "labels": {
+          "sonarqube.mia-platform.eu/branch": "main",
+          "sonarqube.mia-platform.eu/project": "acme-widgets-storefront",
+          "sonarqube.mia-platform.eu/status": "FAILED"
+        },
+        "links": [
+          {
+            "title": "Open in SonarQube",
+            "url": "https://sonarqube.example.com/dashboard?branch=main&id=acme-widgets%3Astorefront"
+          }
+        ],
+        "tags": [
+          "sonarqube"
+        ],
+        "title": "Storefront · main · 2026-10-01T09:00:00Z"
+      },
+      "name": "acme-widgets-storefront-01c46c10fa447a11",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": []
+}

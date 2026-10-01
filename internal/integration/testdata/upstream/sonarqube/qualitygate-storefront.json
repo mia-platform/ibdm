@@ -1,0 +1,6 @@
+{
+  "qualityGate": {
+    "name": "Acme way",
+    "default": false
+  }
+}

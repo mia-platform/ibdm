@@ -1,0 +1,49 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "gitlab.mia-platform.eu/v1",
+      "data": {
+        "accessLevel": 40,
+        "active": true,
+        "createdAt": "2026-03-01T09:00:00Z",
+        "description": "",
+        "expiresAt": "2027-03-01T00:00:00Z",
+        "id": 9101,
+        "lastUsedAt": "",
+        "name": "group-ci",
+        "resourceId": 301,
+        "resourceName": "Acme Widgets",
+        "resourceType": "group",
+        "revoked": false,
+        "scopes": [
+          "read_api"
+        ],
+        "userId": 78
+      },
+      "itemFamily": "accesstokens",
+      "metadata": {
+        "title": "group-ci"
+      },
+      "name": "19db637da41bc3dbd90cda43026bed0647a5684ecee45bb3b94b8c84e8d6bb08",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/v4/groups",
+      "query": "page=1&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/groups/301/access_tokens",
+      "query": "page=1&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/groups/302/access_tokens",
+      "query": "page=1&per_page=100"
+    }
+  ]
+}

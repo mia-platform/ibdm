@@ -1,0 +1,19 @@
+{
+  "paging": {
+    "pageIndex": 1,
+    "pageSize": 500,
+    "total": 2
+  },
+  "components": [
+    {
+      "key": "acme-widgets:storefront",
+      "name": "Storefront",
+      "qualifier": "TRK"
+    },
+    {
+      "key": "acme-widgets:backoffice",
+      "name": "Backoffice",
+      "qualifier": "TRK"
+    }
+  ]
+}

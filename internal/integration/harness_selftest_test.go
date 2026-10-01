@@ -75,6 +75,10 @@ func TestFakeUpstream(t *testing.T) {
 	require.Equal(t, http.StatusOK, status)
 	assert.JSONEq(t, `{"widgets": [{"name": "legacy-gizmo"}]}`, body, "a route can depend on a request header")
 
+	status, body, _ = doRequest(t, http.MethodPost, upstream.baseURL()+"/queries", []byte(`{"query": "MATCH w LIMIT 1 OFFSET 1;"}`), nil)
+	require.Equal(t, http.StatusOK, status)
+	assert.JSONEq(t, `{"widgets": [{"name": "sprocket"}]}`, body, "a route can depend on the request body")
+
 	assert.Empty(t, upstream.unexpectedRequests())
 
 	status, _, _ = doRequest(t, http.MethodGet, upstream.baseURL()+"/gadgets", nil, nil)
@@ -86,6 +90,7 @@ func TestFakeUpstream(t *testing.T) {
 		{Method: http.MethodGet, Path: "/widgets", Query: "page=2&per_page=10"},
 		{Method: http.MethodDelete, Path: "/widgets/gizmo"},
 		{Method: http.MethodGet, Path: "/widgets", Header: map[string]string{"X-Widget-Version": "2020-01-01"}},
+		{Method: http.MethodPost, Path: "/queries", Body: `{"query": "MATCH w LIMIT 1 OFFSET 1;"}`},
 		{Method: http.MethodGet, Path: "/gadgets"},
 	}, upstream.received(), "every request is recorded, with its sorted query and the recorded headers only")
 	assert.Equal(t, 3, upstream.calls(http.MethodGet, "/widgets"))

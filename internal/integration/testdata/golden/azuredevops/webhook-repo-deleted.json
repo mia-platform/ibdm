@@ -1,0 +1,12 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "azuredevops.mia-platform.eu/v1",
+      "itemFamily": "gitrepositories",
+      "name": "8431e3e2cf76550af2341d60a404aa22d15d90e00e639b9c1784a4e400468977",
+      "operation": "delete",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": []
+}

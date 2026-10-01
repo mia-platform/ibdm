@@ -1,0 +1,170 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "gitlab.mia-platform.eu/v1",
+      "data": {
+        "allowMergeOnSkippedPipeline": true,
+        "archived": false,
+        "buildsAccessLevel": "enabled",
+        "canCreateMergeRequestIn": true,
+        "containerRegistryEnabled": true,
+        "createdAt": "2025-02-01T09:00:00Z",
+        "creatorId": 42,
+        "defaultBranch": "main",
+        "description": "Storefront API",
+        "descriptionHtml": "<p>Storefront API</p>",
+        "emptyRepo": false,
+        "environmentsAccessLevel": "enabled",
+        "featureFlagsAccessLevel": "enabled",
+        "forkingAccessLevel": "enabled",
+        "forksCount": 1,
+        "httpUrlToRepo": "https://git.example.com/acme-widgets/storefront-api.git",
+        "id": 101,
+        "infrastructureAccessLevel": "enabled",
+        "issuesAccessLevel": "enabled",
+        "issuesEnabled": true,
+        "jobsEnabled": true,
+        "languages": {
+          "Go": 81.5,
+          "Shell": 18.5
+        },
+        "lastActivityAt": "2026-09-25T10:00:00Z",
+        "license": {
+          "key": "mit",
+          "name": "MIT License"
+        },
+        "mergeMethod": "merge",
+        "mergeRequestsAccessLevel": "enabled",
+        "mergeRequestsEnabled": true,
+        "name": "storefront-api",
+        "nameWithNamespace": "Acme Widgets / storefront-api",
+        "onlyAllowMergeIfPipelineSucceeds": true,
+        "owner": null,
+        "packagesEnabled": true,
+        "pagesAccessLevel": "private",
+        "path": "storefront-api",
+        "pathWithNamespace": "acme-widgets/storefront-api",
+        "publicJobs": true,
+        "readmeUrl": "https://git.example.com/acme-widgets/storefront-api/-/blob/main/README.md",
+        "releasesAccessLevel": "enabled",
+        "repositoryAccessLevel": "enabled",
+        "requestAccessEnabled": false,
+        "securityAndComplianceAccessLevel": "private",
+        "serviceDesksEnabled": false,
+        "snippetsAccessLevel": "disabled",
+        "snippetsEnabled": false,
+        "sshUrlToRepo": "git@git.example.com:acme-widgets/storefront-api.git",
+        "starCount": 4,
+        "tagList": [
+          "catalog"
+        ],
+        "topics": [
+          "catalog"
+        ],
+        "updatedAt": "2026-09-25T10:00:00Z",
+        "visibility": "private",
+        "webUrl": "https://git.example.com/acme-widgets/storefront-api",
+        "wikiAccessLevel": "disabled",
+        "wikiEnabled": false
+      },
+      "itemFamily": "projects",
+      "metadata": {
+        "title": "Acme Widgets / storefront-api"
+      },
+      "name": "c069c97ce50e8beb930529514b3f69c85dbc7adf7715c35a9c5f567e5d78efb9",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "gitlab.mia-platform.eu/v1",
+      "data": {
+        "allowMergeOnSkippedPipeline": false,
+        "archived": true,
+        "buildsAccessLevel": "enabled",
+        "canCreateMergeRequestIn": true,
+        "containerRegistryEnabled": true,
+        "createdAt": "2025-02-01T09:00:00Z",
+        "creatorId": 42,
+        "defaultBranch": "main",
+        "description": "",
+        "descriptionHtml": "",
+        "emptyRepo": false,
+        "environmentsAccessLevel": "enabled",
+        "featureFlagsAccessLevel": "enabled",
+        "forkingAccessLevel": "enabled",
+        "forksCount": 1,
+        "httpUrlToRepo": "https://git.example.com/acme-widgets/legacy-portal.git",
+        "id": 102,
+        "infrastructureAccessLevel": "enabled",
+        "issuesAccessLevel": "enabled",
+        "issuesEnabled": true,
+        "jobsEnabled": true,
+        "languages": {
+          "JavaScript": 100
+        },
+        "lastActivityAt": "2025-12-01T08:00:00Z",
+        "license": {},
+        "mergeMethod": "merge",
+        "mergeRequestsAccessLevel": "enabled",
+        "mergeRequestsEnabled": true,
+        "name": "legacy-portal",
+        "nameWithNamespace": "Acme Widgets / legacy-portal",
+        "onlyAllowMergeIfPipelineSucceeds": true,
+        "owner": null,
+        "packagesEnabled": true,
+        "pagesAccessLevel": "private",
+        "path": "legacy-portal",
+        "pathWithNamespace": "acme-widgets/legacy-portal",
+        "publicJobs": true,
+        "readmeUrl": "",
+        "releasesAccessLevel": "enabled",
+        "repositoryAccessLevel": "enabled",
+        "requestAccessEnabled": false,
+        "securityAndComplianceAccessLevel": "private",
+        "serviceDesksEnabled": false,
+        "snippetsAccessLevel": "disabled",
+        "snippetsEnabled": false,
+        "sshUrlToRepo": "git@git.example.com:acme-widgets/legacy-portal.git",
+        "starCount": 4,
+        "tagList": [
+          "catalog"
+        ],
+        "topics": [
+          "catalog"
+        ],
+        "updatedAt": "2025-12-01T08:00:00Z",
+        "visibility": "private",
+        "webUrl": "https://git.example.com/acme-widgets/legacy-portal",
+        "wikiAccessLevel": "disabled",
+        "wikiEnabled": false
+      },
+      "itemFamily": "projects",
+      "metadata": {
+        "title": "Acme Widgets / legacy-portal"
+      },
+      "name": "ecf9aa5c02a9854df7b195d83ad1428bf2a3d5d0714a671824b515e7e0b7fa27",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/v4/projects",
+      "query": "page=1&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/projects",
+      "query": "page=2&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/projects/101/languages"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/projects/102/languages"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "id": 301,
+    "name": "Acme Widgets",
+    "full_name": "Acme Widgets",
+    "full_path": "acme-widgets"
+  },
+  {
+    "id": 302,
+    "name": "Restricted",
+    "full_name": "Acme Widgets / Restricted",
+    "full_path": "acme-widgets/restricted"
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "serverUrl": "https://sonarqube.example.com",
+  "taskId": "AYtaskStorefront0002",
+  "status": "SUCCESS",
+  "analysedAt": "2026-10-01T07:30:00+0000",
+  "revision": "9e8d7c6b5a493f2a9c1d0b8e7a6f5e4d3c2b1a0f",
+  "changedAt": "2026-10-01T07:30:00+0000",
+  "project": {
+    "key": "acme-widgets:storefront",
+    "name": "Storefront",
+    "url": "https://sonarqube.example.com/dashboard?id=acme-widgets%3Astorefront"
+  },
+  "branch": {
+    "name": "main",
+    "type": "BRANCH",
+    "isMain": true,
+    "url": "https://sonarqube.example.com/dashboard?id=acme-widgets%3Astorefront"
+  },
+  "qualityGate": {
+    "name": "Acme way",
+    "status": "OK",
+    "conditions": [
+      {
+        "metric": "new_coverage",
+        "operator": "LESS_THAN",
+        "value": "84.0",
+        "status": "OK",
+        "errorThreshold": "80"
+      }
+    ]
+  },
+  "properties": {}
+}

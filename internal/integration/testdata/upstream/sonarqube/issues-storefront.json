@@ -1,0 +1,98 @@
+{
+  "total": 2,
+  "p": 1,
+  "ps": 500,
+  "paging": {
+    "pageIndex": 1,
+    "pageSize": 500,
+    "total": 2
+  },
+  "issues": [
+    {
+      "key": "AZacmeIssue000000001",
+      "rule": "java:S1192",
+      "severity": "CRITICAL",
+      "component": "acme-widgets:storefront:src/main/java/com/acme/Checkout.java",
+      "project": "acme-widgets:storefront",
+      "line": 42,
+      "hash": "a1b2c3d4e5f6",
+      "textRange": {
+        "startLine": 42,
+        "endLine": 42,
+        "startOffset": 10,
+        "endOffset": 31
+      },
+      "message": "Define a constant instead of duplicating this literal \"checkout\" 4 times.",
+      "effort": "10min",
+      "debt": "10min",
+      "author": "dev@example.com",
+      "tags": [
+        "design"
+      ],
+      "creationDate": "2026-09-01T10:00:00+0000",
+      "updateDate": "2026-09-30T08:15:00+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "issueStatus": "OPEN",
+      "status": "OPEN",
+      "quickFixAvailable": false,
+      "cleanCodeAttribute": "DISTINCT",
+      "cleanCodeAttributeCategory": "ADAPTABLE",
+      "impacts": [
+        {
+          "softwareQuality": "MAINTAINABILITY",
+          "severity": "HIGH"
+        }
+      ]
+    },
+    {
+      "key": "AZacmeIssue000000002",
+      "rule": "java:S2259",
+      "severity": "MAJOR",
+      "component": "acme-widgets:storefront:src/main/java/com/acme/Cart.java",
+      "project": "acme-widgets:storefront",
+      "line": 17,
+      "hash": "f6e5d4c3b2a1",
+      "textRange": {
+        "startLine": 17,
+        "endLine": 17,
+        "startOffset": 4,
+        "endOffset": 12
+      },
+      "message": "A \"NullPointerException\" could be thrown; \"cart\" is nullable here.",
+      "effort": "15min",
+      "debt": "15min",
+      "author": "dev@example.com",
+      "tags": [],
+      "creationDate": "2026-09-20T12:00:00+0000",
+      "updateDate": "2026-09-30T08:15:00+0000",
+      "type": "BUG",
+      "scope": "MAIN",
+      "issueStatus": "CONFIRMED",
+      "status": "CONFIRMED",
+      "quickFixAvailable": false,
+      "cleanCodeAttribute": "LOGICAL",
+      "cleanCodeAttributeCategory": "INTENTIONAL",
+      "impacts": [
+        {
+          "softwareQuality": "RELIABILITY",
+          "severity": "MEDIUM"
+        }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "key": "java:S1192",
+      "name": "String literals should not be duplicated",
+      "lang": "java",
+      "langName": "Java"
+    },
+    {
+      "key": "java:S2259",
+      "name": "Null pointers should not be dereferenced",
+      "lang": "java",
+      "langName": "Java"
+    }
+  ]
+}
