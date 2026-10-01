@@ -1,0 +1,93 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "console.mia-platform.eu/v1",
+      "data": {
+        "configuration": {
+          "advanced": false,
+          "dockerImage": "registry.example.com/acme-widgets/catalog-api:latest",
+          "name": "catalog-api",
+          "replicas": 2,
+          "type": "custom"
+        },
+        "projectId": "storefront",
+        "projectUniqueId": "64f1a0c0e1b2c3d4e5f60001",
+        "revisionName": "main",
+        "tenantId": "acme-widgets"
+      },
+      "itemFamily": "services",
+      "metadata": {
+        "owner": {
+          "ref": "storefront-team@example.com",
+          "type": "email"
+        },
+        "title": "catalog-api"
+      },
+      "name": "d8fbf694694a952467c0355e5c0eded8c10444511ab00e7dc1b54b1401915d13",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:d8fbf694694a952467c0355e5c0eded8c10444511ab00e7dc1b54b1401915d13",
+        "targetRef": "urn:mia-platform-catalog:nexus.mia-platform.eu:v1:DockerImage:95057abe512801fcf5f29c34f4e730e8a6d147b12c41ec1a741bddd74886a93b",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "5b692bef8f6e3ff9b2b6699eebade4125f071ca4464bb42225edfa9e08164761",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:d8fbf694694a952467c0355e5c0eded8c10444511ab00e7dc1b54b1401915d13",
+        "targetRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:64f1a0c0e1b2c3d4e5f60001",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "cacd41c0b52c49c15db1a1d131637e2f3ce75a34252ee21174cf4a28b0e4744c",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Service:d8fbf694694a952467c0355e5c0eded8c10444511ab00e7dc1b54b1401915d13",
+        "targetRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Revision:788b819e285bb943cf5b3201fe5b498d45bcdb304480371326976cdbc416f27a",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "df5672d3f4d051389e57fbc4f1b9da1f8a4b5f37e6188c1c5e95c44f577b581e",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60001/revisions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60001/revisions/feature-checkout/configuration"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60001/revisions/main/configuration"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60002/revisions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/backend/projects/64f1a0c0e1b2c3d4e5f60002/revisions/main/configuration"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+# Fake Mia-Platform Console API under the /api prefix, for the company acme-widgets: projects
+# storefront (revisions main and feature-checkout) and backoffice (revision main), and the cluster
+# prod-eu linked to both. Only storefront main holds services: one qualifying custom service, an
+# advanced one, a core one, and a custom resource.
+routes:
+  - method: GET
+    path: /api/backend/projects/
+    body: projects.json
+  - method: GET
+    path: /api/backend/projects/64f1a0c0e1b2c3d4e5f60001
+    query: {withTenant: "true"}
+    body: project-storefront.json
+  - method: GET
+    path: /api/backend/projects/64f1a0c0e1b2c3d4e5f60001/revisions
+    body: revisions-storefront.json
+  - method: GET
+    path: /api/backend/projects/64f1a0c0e1b2c3d4e5f60002/revisions
+    body: revisions-backoffice.json
+  - method: GET
+    path: /api/backend/projects/64f1a0c0e1b2c3d4e5f60001/revisions/main/configuration
+    body: configuration-storefront-main.json
+  - method: GET
+    path: /api/backend/projects/64f1a0c0e1b2c3d4e5f60001/revisions/feature-checkout/configuration
+    body: configuration-storefront-feature-checkout.json
+  - method: GET
+    path: /api/backend/projects/64f1a0c0e1b2c3d4e5f60002/revisions/main/configuration
+    body: configuration-backoffice-main.json
+  - method: GET
+    path: /api/user/companies
+    body: companies.json
+  - method: GET
+    path: /api/tenants/acme-widgets/clusters/
+    body: clusters-acme-widgets.json
