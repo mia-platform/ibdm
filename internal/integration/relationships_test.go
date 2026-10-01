@@ -15,14 +15,21 @@ import (
 
 const urnPrefix = "urn:mia-platform-catalog:"
 
-// itemKinds binds the item families of the internal mappings to the kind their URNs carry.
+// itemKinds binds the item families of the internal mappings to the kind their URNs carry. The
+// families shared by several integrations carry the same kind in all of them.
 var itemKinds = map[string]string{
+	"accesstokens":    "AccessToken",
 	"clusters":        "Cluster",
 	"customresources": "CustomResource",
+	"dockerimages":    "DockerImage",
+	"issues":          "Issue",
+	"pipelines":       "Pipeline",
 	"projects":        "Project",
 	"repositories":    "Repository",
 	"revisions":       "Revision",
+	"runs":            "Run",
 	"services":        "Service",
+	"vulnerabilities": "Vulnerability",
 	"workflowruns":    "WorkflowRun",
 }
 

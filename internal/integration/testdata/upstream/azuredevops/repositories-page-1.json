@@ -1,0 +1,43 @@
+{
+  "count": 2,
+  "value": [
+    {
+      "id": "a1b2c3d4-0000-4000-8000-000000000101",
+      "name": "storefront-api",
+      "url": "https://dev.azure.example.com/acme-widgets/_apis/git/repositories/a1b2c3d4-0000-4000-8000-000000000101",
+      "project": {
+        "id": "7f3c2a10-0000-4000-8000-000000000001",
+        "name": "Storefront",
+        "url": "https://dev.azure.example.com/acme-widgets/_apis/projects/7f3c2a10-0000-4000-8000-000000000001",
+        "state": "wellFormed",
+        "visibility": "private"
+      },
+      "size": 2048,
+      "remoteUrl": "https://acme-widgets@dev.azure.example.com/acme-widgets/Storefront/_git/storefront-api",
+      "sshUrl": "git@ssh.dev.azure.example.com:v3/acme-widgets/Storefront/storefront-api",
+      "webUrl": "https://dev.azure.example.com/acme-widgets/Storefront/_git/storefront-api",
+      "isDisabled": false,
+      "isInMaintenance": false,
+      "defaultBranch": "refs/heads/main"
+    },
+    {
+      "id": "a1b2c3d4-0000-4000-8000-000000000102",
+      "name": "storefront-web",
+      "url": "https://dev.azure.example.com/acme-widgets/_apis/git/repositories/a1b2c3d4-0000-4000-8000-000000000102",
+      "project": {
+        "id": "7f3c2a10-0000-4000-8000-000000000001",
+        "name": "Storefront",
+        "url": "https://dev.azure.example.com/acme-widgets/_apis/projects/7f3c2a10-0000-4000-8000-000000000001",
+        "state": "wellFormed",
+        "visibility": "private"
+      },
+      "size": 2048,
+      "remoteUrl": "https://acme-widgets@dev.azure.example.com/acme-widgets/Storefront/_git/storefront-web",
+      "sshUrl": "git@ssh.dev.azure.example.com:v3/acme-widgets/Storefront/storefront-web",
+      "webUrl": "https://dev.azure.example.com/acme-widgets/Storefront/_git/storefront-web",
+      "isDisabled": false,
+      "isInMaintenance": true,
+      "defaultBranch": "refs/heads/develop"
+    }
+  ]
+}

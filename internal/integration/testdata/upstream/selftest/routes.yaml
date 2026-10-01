@@ -16,6 +16,13 @@ routes:
     headers:
       Link: '<{{.BaseURL}}/widgets?page=2>; rel="next"'
     body: widgets-page-1.json
+  - method: POST
+    path: /queries
+    bodyContains: "OFFSET 0;"
+    body: widgets-page-1.json
+  - method: POST
+    path: /queries
+    body: widgets-page-2.json
   - method: DELETE
     path: /widgets/gizmo
     status: 204

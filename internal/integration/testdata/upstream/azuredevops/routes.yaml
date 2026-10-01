@@ -1,0 +1,19 @@
+# Fake Azure DevOps REST API for the organization acme-widgets, project Storefront: three git
+# repositories over two pages, linked by the X-MS-ContinuationToken header, one of them without a
+# default branch, and two teams, one without a description. Every URL in the bodies is static, so
+# the team identifiers, hashed from the url, do not depend on the address of the fake.
+routes:
+  - method: GET
+    path: /acme-widgets/_apis/git/repositories
+    query: {continuationToken: page-2-token}
+    body: repositories-page-2.json
+  - method: GET
+    path: /acme-widgets/_apis/git/repositories
+    query: {includeLinks: "true", includeAllUrls: "true", includeHidden: "true"}
+    headers:
+      X-MS-ContinuationToken: page-2-token
+    body: repositories-page-1.json
+  - method: GET
+    path: /acme-widgets/_apis/teams
+    query: {$expandIdentity: "true"}
+    body: teams.json

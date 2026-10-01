@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "img": {
+        "imageReference": "registry.example.com/acme-widgets/storefront-web:2.1.0",
+        "imageId": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pullString": "registry.example.com/acme-widgets/storefront-web:2.1.0"
+      },
+      "vuln": {
+        "name": "CVE-2026-1003",
+        "cvssScore": 5.3,
+        "cvssSource": "nvd",
+        "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssVersion": "3.1",
+        "severity": "Medium",
+        "hasExploit": false,
+        "hasFix": true,
+        "fixedInVersion": "3.0.15",
+        "publicationDate": "2026-04-02T00:00:00Z",
+        "packageName": "busybox",
+        "packageVersion": "3.0.13"
+      }
+    }
+  ],
+  "summary": {
+    "fetched_items_count": 1
+  }
+}

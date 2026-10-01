@@ -6,6 +6,7 @@
 package integration
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -37,6 +38,9 @@ type route struct {
 	// RequestHeaders, when set, must all be present in the request with these values, for
 	// upstreams whose answer depends on a header such as an API version.
 	RequestHeaders map[string]string `yaml:"requestHeaders"`
+	// BodyContains, when set, must be a substring of the request body, for upstreams that page
+	// through a body parameter, such as the OFFSET of a query.
+	BodyContains string `yaml:"bodyContains"`
 	// Status defaults to 200.
 	Status  int               `yaml:"status"`
 	Headers map[string]string `yaml:"headers"`
@@ -57,6 +61,7 @@ type recordedRequest struct {
 	Path   string            `json:"path"`
 	Query  string            `json:"query,omitempty"`
 	Header map[string]string `json:"header,omitempty"`
+	Body   string            `json:"body,omitempty"`
 }
 
 // fakeUpstream answers the requests of an ibdm source from fixture files and records them. It is
@@ -152,9 +157,15 @@ func (u *fakeUpstream) unexpectedRequests() []string {
 
 // handle records the request and answers it with the first matching route.
 func (u *fakeUpstream) handle(w http.ResponseWriter, r *http.Request) {
-	u.record(r)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		u.recordUnexpected("unreadable body: " + err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	u.record(r, string(body))
 
-	matched, ok := u.match(r)
+	matched, ok := u.match(r, string(body))
 	if !ok {
 		u.recordUnexpected(r.Method + " " + r.URL.String())
 		http.NotFound(w, r)
@@ -180,13 +191,13 @@ func (u *fakeUpstream) handle(w http.ResponseWriter, r *http.Request) {
 }
 
 // match returns the first route answering r.
-func (u *fakeUpstream) match(r *http.Request) (route, bool) {
+func (u *fakeUpstream) match(r *http.Request, body string) (route, bool) {
 	query := r.URL.Query()
 	for _, candidate := range u.routes {
 		if candidate.Method != r.Method || candidate.Path != r.URL.Path {
 			continue
 		}
-		if queryMatches(candidate.Query, query) && headersMatch(candidate.RequestHeaders, r.Header) {
+		if queryMatches(candidate.Query, query) && headersMatch(candidate.RequestHeaders, r.Header) && strings.Contains(body, candidate.BodyContains) {
 			return candidate, true
 		}
 	}
@@ -218,12 +229,13 @@ func (u *fakeUpstream) expand(value string) string {
 	return strings.ReplaceAll(value, baseURLPlaceholder, u.server.URL)
 }
 
-// record stores the request, with its query sorted and its recorded headers.
-func (u *fakeUpstream) record(r *http.Request) {
+// record stores the request, with its query sorted, its recorded headers and its body.
+func (u *fakeUpstream) record(r *http.Request, body string) {
 	request := recordedRequest{
 		Method: r.Method,
 		Path:   r.URL.Path,
 		Query:  r.URL.Query().Encode(),
+		Body:   body,
 	}
 	for _, header := range u.recordedHeaders {
 		if value := r.Header.Get(header); value != "" {

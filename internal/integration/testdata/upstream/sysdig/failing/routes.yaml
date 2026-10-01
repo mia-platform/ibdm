@@ -1,0 +1,6 @@
+# Fake Sysdig Secure API whose SysQL query always fails.
+routes:
+  - method: POST
+    path: /api/sysql/v2/query
+    status: 500
+    body: error.json

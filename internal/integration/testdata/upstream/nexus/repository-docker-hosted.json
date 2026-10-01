@@ -1,0 +1,6 @@
+{
+  "name": "docker-hosted",
+  "format": "docker",
+  "type": "hosted",
+  "url": "https://nexus.example.com/repository/docker-hosted"
+}
