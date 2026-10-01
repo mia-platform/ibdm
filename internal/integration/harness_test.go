@@ -95,24 +95,32 @@ func commandEnv(t *testing.T, env map[string]string) []string {
 	return commandEnv
 }
 
-// newCommand prepares the binary with args, the debug log level and the environment env.
-func newCommand(ctx context.Context, t *testing.T, env map[string]string, args ...string) *exec.Cmd {
+// newCommand prepares binary with args, the debug log level and the environment env.
+func newCommand(ctx context.Context, t *testing.T, binary string, env map[string]string, args ...string) *exec.Cmd {
 	t.Helper()
 
-	cmd := exec.CommandContext(ctx, ibdmBinary, append(args, logLevelArg)...)
+	cmd := exec.CommandContext(ctx, binary, append(args, logLevelArg)...)
 	cmd.Env = commandEnv(t, env)
 	return cmd
 }
 
-// runIBDM runs the binary to completion with args and the environment env, and fails the test
-// if it does not end within commandTimeout.
+// runIBDM runs the binary built by TestMain to completion with args and the environment env,
+// and fails the test if it does not end within commandTimeout.
 func runIBDM(t *testing.T, env map[string]string, args ...string) result {
+	t.Helper()
+
+	return runBinary(t, ibdmBinary, env, args...)
+}
+
+// runBinary runs binary to completion as runIBDM does. It lets a test run another ibdm binary,
+// such as a previous release.
+func runBinary(t *testing.T, binary string, env map[string]string, args ...string) result {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(t.Context(), commandTimeout)
 	defer cancel()
 
-	cmd := newCommand(ctx, t, env, args...)
+	cmd := newCommand(ctx, t, binary, env, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -199,7 +207,7 @@ func tryStart(t *testing.T, env map[string]string, args ...string) (*process, st
 	}
 
 	ctx, cancel := context.WithCancel(t.Context())
-	cmd := newCommand(ctx, t, serverEnv, args...)
+	cmd := newCommand(ctx, t, ibdmBinary, serverEnv, args...)
 	proc := &process{
 		baseURL: "http://127.0.0.1:" + strconv.Itoa(port),
 		stderr:  new(syncBuffer),
