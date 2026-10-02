@@ -119,7 +119,7 @@ func TestSysdigWebhook(t *testing.T) {
 		golden        string
 		check         func(t *testing.T, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"a failed Docker image scan writes one item per vulnerability": {
+		"a failed Docker image scan writes one item per vulnerability, documentsCurrentBehaviour": {
 			args:          []string{"--include-internal-mappings=all"},
 			payload:       "pipeline-failure-failed.json",
 			expectedItems: 3 + 3,
@@ -136,8 +136,8 @@ func TestSysdigWebhook(t *testing.T) {
 				assert.Equal(t, 1, upstream.calls(http.MethodGet, sysdigResultsPath+"res-failed-0001"))
 				assert.Zero(t, upstream.calls(http.MethodPost, sysdigSysQLPath), "the webhook does not query SysQL")
 
-				// documentsCurrentBehaviour: the webhook emits exploitable and no package data, while
-				// the mapping reads hasExploit, packageName and packageVersion, so they stay empty.
+				// Finding F-S1: the webhook emits exploitable and no package data, while the mapping
+				// reads hasExploit, packageName and packageVersion, so they stay empty.
 				critical := itemsOf(items, sysdigAPIVersion, "vulnerabilities")
 				for _, item := range critical {
 					spec, _ := item["data"].(map[string]any)

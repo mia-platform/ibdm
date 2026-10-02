@@ -36,6 +36,10 @@ const (
 	// logLevelArg makes every run log at debug level, so failures are easy to diagnose.
 	logLevelArg = "--log-level=debug"
 
+	// dataRaceMarker opens every report of the race detector. The Go runtime turns a race into
+	// exit code 66 only when the process would exit 0, so the report is the only reliable signal.
+	dataRaceMarker = "WARNING: DATA RACE"
+
 	logMessageKey = "@message"
 	logLevelKey   = "@level"
 )
@@ -80,6 +84,22 @@ func parseLogs(stderr string) []map[string]any {
 		}
 	}
 	return logs
+}
+
+// hasDataRace reports whether stderr holds a report of the race detector.
+func hasDataRace(stderr string) bool {
+	return strings.Contains(stderr, dataRaceMarker)
+}
+
+// assertNoDataRace fails the test when the stderr of an ibdm process holds a race report,
+// whatever its exit code, and prints the whole stderr. It never stops the test, so it is safe
+// in a cleanup.
+func assertNoDataRace(t *testing.T, stderr string) {
+	t.Helper()
+
+	if hasDataRace(stderr) {
+		t.Errorf("the race detector reported a data race in ibdm; stderr:\n%s", stderr)
+	}
 }
 
 // commandEnv builds the environment of the binary from env alone. The environment of the test
@@ -127,6 +147,7 @@ func runBinary(t *testing.T, binary string, env map[string]string, args ...strin
 
 	err := cmd.Run()
 	require.NoError(t, ctx.Err(), "ibdm %v did not end within %s; stderr:\n%s", args, commandTimeout, stderr.String())
+	assertNoDataRace(t, stderr.String())
 
 	exitCode := 0
 	if err != nil {
@@ -229,10 +250,16 @@ func tryStart(t *testing.T, env map[string]string, args ...string) (*process, st
 
 	if !waitReady(t, proc) {
 		stop()
+		assertNoDataRace(t, proc.stderr.String())
 		return nil, proc.stderr.String()
 	}
 
-	t.Cleanup(stop)
+	// The process is killed at cleanup; a race report it wrote while running is still in its
+	// stderr, and must fail the test.
+	t.Cleanup(func() {
+		stop()
+		assertNoDataRace(t, proc.stderr.String())
+	})
 	return proc, ""
 }
 

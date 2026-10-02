@@ -274,7 +274,7 @@ func TestGitHubSync(t *testing.T) {
 				assert.Len(t, itemsOf(run.catalog.received(), externalAPIVersion, "repositories"), 6, "both mappings write every repository")
 			},
 		},
-		"G12 a Catalog failure only affects its item": {
+		"G12 a Catalog failure only affects its item, documentsCurrentBehaviour": {
 			args:    []string{"--include-internal-mappings=all"},
 			prepare: failSprocketRepository,
 			golden:  "github/all",
