@@ -158,3 +158,42 @@ func TestGoldenNormalisation(t *testing.T) {
 	assert.Equal(t, upstream.baseURL(), upstream.received()[1].Header["X-Widget-Version"], "normalising leaves the record of the fake untouched")
 	assert.True(t, strings.HasPrefix(catalog.received()[0]["operationTime"].(string), "2026-10-01"), "and the received items too")
 }
+
+// TestDataRaceDetection proves that a report of the race detector in the stderr of an ibdm
+// process is recognised, between JSON log lines as it appears, and that clean stderr is not.
+func TestDataRaceDetection(t *testing.T) {
+	t.Parallel()
+
+	logLine := `{"@level":"info","@message":"github: using 2 internal mappings and 0 external mappings","@module":"ibdm:cmd"}`
+	raceReport := "==================\n" +
+		dataRaceMarker + "\n" +
+		"Write at 0x00c000123456 by goroutine 42:\n" +
+		"  github.com/mia-platform/ibdm/internal/pipeline.(*Pipeline).mappingData()\n" +
+		"==================\n"
+
+	testCases := map[string]struct {
+		stderr   string
+		expected bool
+	}{
+		"a race report between log lines": {
+			stderr:   logLine + "\n" + raceReport + logLine + "\n",
+			expected: true,
+		},
+		"log lines only": {
+			stderr:   logLine + "\n" + logLine + "\n",
+			expected: false,
+		},
+		"a plain error line": {
+			stderr:   "reserved domain mia-platform.eu in \"mapping.yaml\"\n",
+			expected: false,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, test.expected, hasDataRace(test.stderr))
+		})
+	}
+}
