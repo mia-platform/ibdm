@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sync"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/mia-platform/ibdm/internal/source"
@@ -34,6 +35,8 @@ type Source struct {
 	// clusterName is the human readable name of the cluster.
 	clusterName string
 	clientset   kubernetes.Interface
+	// dynamic reads the CRD-backed kinds (ingressroute, certificate) as unstructured objects.
+	dynamic dynamic.Interface
 
 	syncLock sync.Mutex
 }
@@ -57,10 +60,16 @@ func NewSource() (*Source, error) {
 		return nil, fmt.Errorf("%w: %w", ErrK8sSource, err)
 	}
 
+	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrK8sSource, err)
+	}
+
 	return &Source{
 		apiServer:   restConfig.Host,
 		clusterName: resolveClusterName(cfg.ClusterName, restConfig.Host),
 		clientset:   clientset,
+		dynamic:     dynamicClient,
 	}, nil
 }
 

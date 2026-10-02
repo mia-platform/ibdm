@@ -29,6 +29,12 @@ const (
 
 	// daemonSetType is the data type key for Kubernetes daemonsets.
 	daemonSetType = "daemonset"
+
+	// ingressRouteType is the data type key for Traefik ingress routes (CRD).
+	ingressRouteType = "ingressroute"
+
+	// certificateType is the data type key for cert-manager certificates (CRD).
+	certificateType = "certificate"
 )
 
 // timeSource is a package-level function for the current time, replaceable in tests.
@@ -47,6 +53,8 @@ var knownTypes = []struct {
 	{name: deploymentType, sync: (*Source).syncDeployments},
 	{name: statefulSetType, sync: (*Source).syncStatefulSets},
 	{name: daemonSetType, sync: (*Source).syncDaemonSets},
+	{name: ingressRouteType, sync: (*Source).syncIngressRoutes},
+	{name: certificateType, sync: (*Source).syncCertificates},
 }
 
 // StartSyncProcess performs a full synchronisation of the requested resource
