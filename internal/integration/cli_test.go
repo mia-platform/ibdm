@@ -86,6 +86,11 @@ func TestCLIStopsBeforeAnyTraffic(t *testing.T) {
 			expectedExitCode: 1,
 			expectedStderr:   []string{"reserved domain mia-platform.eu", "publish it to your own domain instead"},
 		},
+		"external mapping named like an internal one on a reserved domain suggests the include flag": {
+			args:             []string{"sync", "github", "-f", cliMapping("reserved-internal-name.yaml")},
+			expectedExitCode: 1,
+			expectedStderr:   []string{"reserved domain mia-platform.eu", "use --include-internal-mappings=repositories to load the internal mapping instead"},
+		},
 		"external mapping on a reserved subdomain is refused": {
 			args:             []string{"sync", "github", "-f", cliMapping("reserved-subdomain.yaml")},
 			expectedExitCode: 1,
