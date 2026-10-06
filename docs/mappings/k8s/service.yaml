@@ -1,0 +1,34 @@
+apiVersion: k8s.mia-platform-experimental.eu/v1
+itemFamily: services
+type: service
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "k8s-%s-service-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
+  metadata:
+    title: "{{ .name | toJSON }}"
+  spec:
+    name: "{{ .name | toJSON }}"
+    namespace: "{{ .namespace | toJSON }}"
+    labels: "{{ .labels | toJSON }}"
+    type: "{{ .type | toJSON }}"
+    clusterIPs: "{{ .clusterIPs | toJSON }}"
+    ports: "{{ .ports | toJSON }}"
+    loadBalancer: "{{ .loadBalancer | toJSON }}"
+    externalIPs: "{{ .externalIPs | toJSON }}"
+    externalName: "{{ .externalName | toJSON }}"
+    selector: "{{ .selector | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Service:%s" (printf "k8s-%s-service-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Namespace:%s" (printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Service:{{ printf "k8s-%s-service-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Namespace:{{ printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
