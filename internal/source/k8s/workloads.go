@@ -149,13 +149,27 @@ func workloadValues(meta *metav1.ObjectMeta, pod *corev1.PodSpec, apiServer stri
 		keyNamespace:     meta.Namespace,
 		"labels":         labels,
 		"containers":     containerInfos(pod.Containers),
-		"initContainers": containerInfos(pod.InitContainers),
+		"initContainers": initContainerInfos(pod.InitContainers),
 	}
 }
 
-// containerInfos converts containers into {name, image} maps, preserving the
-// spec order. The returned slice is never nil.
+// containerInfos converts containers into {name, image, resources} maps,
+// preserving the spec order. The returned slice is never nil.
 func containerInfos(containers []corev1.Container) []map[string]any {
+	infos := make([]map[string]any, 0, len(containers))
+	for _, container := range containers {
+		infos = append(infos, map[string]any{
+			"name":      container.Name,
+			"image":     container.Image,
+			"resources": resourceInfo(&container.Resources),
+		})
+	}
+	return infos
+}
+
+// initContainerInfos converts init containers into {name, image} maps,
+// preserving the spec order. The returned slice is never nil.
+func initContainerInfos(containers []corev1.Container) []map[string]any {
 	infos := make([]map[string]any, 0, len(containers))
 	for _, container := range containers {
 		infos = append(infos, map[string]any{
@@ -164,6 +178,24 @@ func containerInfos(containers []corev1.Container) []map[string]any {
 		})
 	}
 	return infos
+}
+
+// resourceInfo converts container resources into {requests, limits} maps of
+// resource name to canonical quantity string. Both maps are never nil.
+func resourceInfo(resources *corev1.ResourceRequirements) map[string]any {
+	return map[string]any{
+		"requests": quantityStrings(resources.Requests),
+		"limits":   quantityStrings(resources.Limits),
+	}
+}
+
+// quantityStrings renders every quantity of the list with its canonical string form.
+func quantityStrings(list corev1.ResourceList) map[string]string {
+	result := make(map[string]string, len(list))
+	for name, quantity := range list {
+		result[string(name)] = quantity.String()
+	}
+	return result
 }
 
 // replicasOrDefault returns the desired replicas, or the Kubernetes default when unset.
