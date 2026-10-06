@@ -29,20 +29,27 @@ func (s *Source) syncCluster(ctx context.Context, results chan<- source.Data) er
 	if err != nil {
 		return err
 	}
-	nodeInfos, totalCPUCores := buildNodeInfos(nodes)
 
 	return send(ctx, results, source.Data{
 		Type:      clusterType,
 		Operation: source.DataOperationUpsert,
-		Values: map[string]any{
-			keyAPIServer:    s.apiServer,
-			"clusterName":   s.clusterName,
-			"nodeCount":     len(nodeInfos),
-			"nodes":         nodeInfos,
-			"totalCPUCores": totalCPUCores,
-		},
-		Time: timeSource(),
+		Values:    clusterValues(s.apiServer, s.clusterName, nodes),
+		Time:      timeSource(),
 	})
+}
+
+// clusterValues builds the values of the cluster item from the node list. It is
+// shared by the sync and the watch mode.
+func clusterValues(apiServer, clusterName string, nodes []corev1.Node) map[string]any {
+	nodeInfos, totalCPUCores := buildNodeInfos(nodes)
+
+	return map[string]any{
+		keyAPIServer:    apiServer,
+		"clusterName":   clusterName,
+		"nodeCount":     len(nodeInfos),
+		"nodes":         nodeInfos,
+		"totalCPUCores": totalCPUCores,
+	}
 }
 
 // buildNodeInfos converts the nodes into plain maps sorted by name, and returns

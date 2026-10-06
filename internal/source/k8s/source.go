@@ -28,7 +28,7 @@ var (
 
 var _ source.SyncableSource = &Source{}
 
-// Source implements source.SyncableSource for a Kubernetes cluster.
+// Source implements source.SyncableSource and source.EventSource for a Kubernetes cluster.
 type Source struct {
 	// apiServer is the API server URL of the monitored cluster, used to derive the cluster identity.
 	apiServer string
