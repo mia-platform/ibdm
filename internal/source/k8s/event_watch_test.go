@@ -47,6 +47,14 @@ func TestEventHandlersNoOpUpdates(t *testing.T) {
 		return testPodSpec([]corev1.Container{testContainer("app", image)}, nil)
 	}
 	labels := map[string]string{"app": "web"}
+	withResources := func(requests, limits corev1.ResourceList) corev1.PodSpec {
+		container := testContainer("app", "img:1")
+		container.Resources = corev1.ResourceRequirements{Requests: requests, Limits: limits}
+		return testPodSpec([]corev1.Container{container}, nil)
+	}
+	cpu := func(quantity string) corev1.ResourceList {
+		return corev1.ResourceList{corev1.ResourceCPU: resource.MustParse(quantity)}
+	}
 
 	type variant = func() runtime.Object
 	tests := map[string]struct {
@@ -78,6 +86,12 @@ func TestEventHandlersNoOpUpdates(t *testing.T) {
 				func() runtime.Object {
 					return versioned(newDeployment("team-a", "web", map[string]string{"app": "api"}, int32Ptr(1), pod("img:1")), "2")
 				},
+				func() runtime.Object {
+					return versioned(newDeployment("team-a", "web", labels, int32Ptr(1), withResources(cpu("1"), nil)), "2")
+				},
+				func() runtime.Object {
+					return versioned(newDeployment("team-a", "web", labels, int32Ptr(1), withResources(nil, cpu("1"))), "2")
+				},
 			},
 		},
 		"statefulset": {
@@ -102,6 +116,9 @@ func TestEventHandlersNoOpUpdates(t *testing.T) {
 				func() runtime.Object {
 					return versioned(newStatefulSet("team-a", "db", map[string]string{"x": "y"}, int32Ptr(1), pod("img:1")), "2")
 				},
+				func() runtime.Object {
+					return versioned(newStatefulSet("team-a", "db", labels, int32Ptr(1), withResources(cpu("1"), nil)), "2")
+				},
 			},
 		},
 		"daemonset": {
@@ -118,6 +135,9 @@ func TestEventHandlersNoOpUpdates(t *testing.T) {
 				func() runtime.Object { return versioned(newDaemonSet("team-a", "agent", labels, pod("img:2")), "2") },
 				func() runtime.Object {
 					return versioned(newDaemonSet("team-a", "agent", map[string]string{"x": "y"}, pod("img:1")), "2")
+				},
+				func() runtime.Object {
+					return versioned(newDaemonSet("team-a", "agent", labels, withResources(nil, cpu("1"))), "2")
 				},
 			},
 		},

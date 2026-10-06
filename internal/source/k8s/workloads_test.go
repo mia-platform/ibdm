@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -155,8 +156,8 @@ func TestSyncWorkloads(t *testing.T) {
 			assert.Equal(t, "app", full["name"])
 			assert.Equal(t, map[string]string{"env": "prod"}, full["labels"])
 			assert.Equal(t, []map[string]any{
-				{"name": "web", "image": "nginx:1.27"},
-				{"name": "sidecar", "image": "proxy:2"},
+				{"name": "web", "image": "nginx:1.27", "resources": emptyResources()},
+				{"name": "sidecar", "image": "proxy:2", "resources": emptyResources()},
 			}, full["containers"])
 			assert.Equal(t, []map[string]any{
 				{"name": "init-b", "image": "busybox:1"},
@@ -175,6 +176,83 @@ func TestSyncWorkloads(t *testing.T) {
 				assert.NotContains(t, full, "replicas")
 				assert.NotContains(t, empty, "replicas")
 			}
+		})
+	}
+}
+
+func emptyResources() map[string]any {
+	return map[string]any{"requests": map[string]string{}, "limits": map[string]string{}}
+}
+
+func TestSyncWorkloadsContainerResources(t *testing.T) {
+	setupFixedTime(t)
+
+	for kindName, kind := range workloadKinds() {
+		t.Run(kindName, func(t *testing.T) {
+			both := testContainer("both", "img:1")
+			both.Resources = corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("500m"),
+					corev1.ResourceMemory: resource.MustParse("256Mi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			}
+			onlyRequests := testContainer("requests", "img:2")
+			onlyRequests.Resources.Requests = corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}
+			none := testContainer("none", "img:3")
+			extended := testContainer("extended", "img:4")
+			extended.Resources.Limits = corev1.ResourceList{
+				"nvidia.com/gpu":                resource.MustParse("2"),
+				corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+				"hugepages-2Mi":                 resource.MustParse("128Mi"),
+			}
+			canonical := testContainer("canonical", "img:5")
+			canonical.Resources.Requests = corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1000m"),
+				corev1.ResourceMemory: resource.MustParse("0.5"),
+			}
+			canonical.Resources.Limits = corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("0.5")}
+
+			initContainer := testContainer("init", "busybox:1")
+			initContainer.Resources.Requests = corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")}
+
+			pod := testPodSpec(
+				[]corev1.Container{both, onlyRequests, none, extended, canonical},
+				[]corev1.Container{initContainer},
+			)
+			s := newFakeSource(t, kind.build("team-a", "app", nil, nil, pod))
+			results := make(chan source.Data, 2)
+
+			require.NoError(t, kind.sync(s, t.Context(), results))
+			close(results)
+
+			items := collectData(results)
+			require.Len(t, items, 1)
+			assert.Equal(t, []map[string]any{
+				{"name": "both", "image": "img:1", "resources": map[string]any{
+					"requests": map[string]string{"cpu": "500m", "memory": "256Mi"},
+					"limits":   map[string]string{"cpu": "1", "memory": "1Gi"},
+				}},
+				{"name": "requests", "image": "img:2", "resources": map[string]any{
+					"requests": map[string]string{"cpu": "100m"},
+					"limits":   map[string]string{},
+				}},
+				{"name": "none", "image": "img:3", "resources": emptyResources()},
+				{"name": "extended", "image": "img:4", "resources": map[string]any{
+					"requests": map[string]string{},
+					"limits":   map[string]string{"nvidia.com/gpu": "2", "ephemeral-storage": "2Gi", "hugepages-2Mi": "128Mi"},
+				}},
+				{"name": "canonical", "image": "img:5", "resources": map[string]any{
+					"requests": map[string]string{"cpu": "1", "memory": "500m"},
+					"limits":   map[string]string{"cpu": "500m"},
+				}},
+			}, items[0].Values["containers"])
+			assert.Equal(t, []map[string]any{
+				{"name": "init", "image": "busybox:1"},
+			}, items[0].Values["initContainers"])
 		})
 	}
 }
