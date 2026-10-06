@@ -60,6 +60,30 @@ var (
 	}
 )
 
+// crdKinds lists the CRD-backed data types.
+var crdKinds = []crdKind{ingressRouteKind, certificateKind}
+
+// objectValues builds the values of one object of kind. It is shared by the
+// sync loop and the informer handlers.
+func (k crdKind) objectValues(obj *unstructured.Unstructured, apiServer string) map[string]any {
+	return k.values(apiServer, obj.Object)
+}
+
+// eventKind adapts kind to the generic event handlers, which receive the
+// *unstructured.Unstructured objects of a dynamic informer.
+func (k crdKind) eventKind() eventKind {
+	return eventKind{
+		name: k.dataType,
+		values: func(obj any, apiServer string) (map[string]any, error) {
+			unstructuredObj, ok := obj.(*unstructured.Unstructured)
+			if !ok || unstructuredObj == nil {
+				return nil, fmt.Errorf("%w: %T", errUnexpectedObject, obj)
+			}
+			return k.objectValues(unstructuredObj, apiServer), nil
+		},
+	}
+}
+
 // syncIngressRoutes emits one ingressroute item per Traefik IngressRoute.
 func (s *Source) syncIngressRoutes(ctx context.Context, results chan<- source.Data) error {
 	return s.syncCRD(ctx, results, ingressRouteKind)

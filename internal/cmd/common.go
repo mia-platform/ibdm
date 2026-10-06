@@ -67,6 +67,7 @@ var (
 		gcpSource:         gcpDescription,
 		githubSource:      githubDescription,
 		gitlabSource:      gitlabDescription,
+		k8sSource:         k8sDescription,
 		nexusSource:       nexusDescription,
 		sonarqubeSource:   sonarqubeDescription,
 		sysdigSource:      sysdigDescription,

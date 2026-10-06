@@ -39,6 +39,7 @@ func TestCompletion(t *testing.T) {
 				gcpSource + "\t" + gcpDescription,
 				githubSource + "\t" + githubDescription,
 				gitlabSource + "\t" + gitlabDescription,
+				k8sSource + "\t" + k8sDescription,
 				nexusSource + "\t" + nexusDescription,
 				sonarqubeSource + "\t" + sonarqubeDescription,
 				sysdigSource + "\t" + sysdigDescription,
