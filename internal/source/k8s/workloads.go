@@ -34,9 +34,7 @@ func (s *Source) syncDeployments(ctx context.Context, results chan<- source.Data
 			return list.Items, list.Continue, nil
 		},
 		func(deployment *appsv1.Deployment) error {
-			values := s.workloadValues(&deployment.ObjectMeta, &deployment.Spec.Template.Spec)
-			values["replicas"] = replicasOrDefault(deployment.Spec.Replicas)
-			return send(ctx, results, s.workloadData(deploymentType, values))
+			return send(ctx, results, s.workloadData(deploymentType, deploymentValues(deployment, s.apiServer)))
 		},
 	)
 }
@@ -52,9 +50,7 @@ func (s *Source) syncStatefulSets(ctx context.Context, results chan<- source.Dat
 			return list.Items, list.Continue, nil
 		},
 		func(statefulSet *appsv1.StatefulSet) error {
-			values := s.workloadValues(&statefulSet.ObjectMeta, &statefulSet.Spec.Template.Spec)
-			values["replicas"] = replicasOrDefault(statefulSet.Spec.Replicas)
-			return send(ctx, results, s.workloadData(statefulSetType, values))
+			return send(ctx, results, s.workloadData(statefulSetType, statefulSetValues(statefulSet, s.apiServer)))
 		},
 	)
 }
@@ -71,8 +67,7 @@ func (s *Source) syncDaemonSets(ctx context.Context, results chan<- source.Data)
 			return list.Items, list.Continue, nil
 		},
 		func(daemonSet *appsv1.DaemonSet) error {
-			values := s.workloadValues(&daemonSet.ObjectMeta, &daemonSet.Spec.Template.Spec)
-			return send(ctx, results, s.workloadData(daemonSetType, values))
+			return send(ctx, results, s.workloadData(daemonSetType, daemonSetValues(daemonSet, s.apiServer)))
 		},
 	)
 }
@@ -120,18 +115,38 @@ func (s *Source) workloadData(dataType string, values map[string]any) source.Dat
 	}
 }
 
+// deploymentValues builds the values of a deployment item.
+func deploymentValues(deployment *appsv1.Deployment, apiServer string) map[string]any {
+	values := workloadValues(&deployment.ObjectMeta, &deployment.Spec.Template.Spec, apiServer)
+	values["replicas"] = replicasOrDefault(deployment.Spec.Replicas)
+	return values
+}
+
+// statefulSetValues builds the values of a statefulset item.
+func statefulSetValues(statefulSet *appsv1.StatefulSet, apiServer string) map[string]any {
+	values := workloadValues(&statefulSet.ObjectMeta, &statefulSet.Spec.Template.Spec, apiServer)
+	values["replicas"] = replicasOrDefault(statefulSet.Spec.Replicas)
+	return values
+}
+
+// daemonSetValues builds the values of a daemonset item. DaemonSets have no
+// replicas field, so none is emitted.
+func daemonSetValues(daemonSet *appsv1.DaemonSet, apiServer string) map[string]any {
+	return workloadValues(&daemonSet.ObjectMeta, &daemonSet.Spec.Template.Spec, apiServer)
+}
+
 // workloadValues builds the values shared by every workload kind. Labels and
 // container lists are never nil so that they render as {} and [] in templates.
-func (s *Source) workloadValues(meta *metav1.ObjectMeta, pod *corev1.PodSpec) map[string]any {
+func workloadValues(meta *metav1.ObjectMeta, pod *corev1.PodSpec, apiServer string) map[string]any {
 	labels := make(map[string]string, len(meta.Labels))
 	for key, value := range meta.Labels {
 		labels[key] = value
 	}
 
 	return map[string]any{
-		keyAPIServer:     s.apiServer,
+		keyAPIServer:     apiServer,
 		keyName:          meta.Name,
-		"namespace":      meta.Namespace,
+		keyNamespace:     meta.Namespace,
 		"labels":         labels,
 		"containers":     containerInfos(pod.Containers),
 		"initContainers": containerInfos(pod.InitContainers),

@@ -35,6 +35,12 @@ const (
 
 	// certificateType is the data type key for cert-manager certificates (CRD).
 	certificateType = "certificate"
+
+	// serviceType is the data type key for Kubernetes services.
+	serviceType = "service"
+
+	// helmReleaseType is the data type key for deployed Helm releases.
+	helmReleaseType = "helmrelease"
 )
 
 // timeSource is a package-level function for the current time, replaceable in tests.
@@ -55,6 +61,8 @@ var knownTypes = []struct {
 	{name: daemonSetType, sync: (*Source).syncDaemonSets},
 	{name: ingressRouteType, sync: (*Source).syncIngressRoutes},
 	{name: certificateType, sync: (*Source).syncCertificates},
+	{name: serviceType, sync: (*Source).syncServices},
+	{name: helmReleaseType, sync: (*Source).syncHelmReleases},
 }
 
 // StartSyncProcess performs a full synchronisation of the requested resource

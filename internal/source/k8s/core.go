@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
@@ -103,25 +104,13 @@ func (s *Source) syncNamespaces(ctx context.Context, results chan<- source.Data)
 		}
 
 		for i := range list.Items {
-			namespace, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&list.Items[i])
+			values, err := namespaceValues(&list.Items[i], s.apiServer)
 			if err != nil {
 				log.Error("error converting namespace, skipping", "namespace", list.Items[i].Name, "error", err.Error())
 				continue
 			}
-			if metadata, ok := namespace["metadata"].(map[string]any); ok {
-				delete(metadata, "managedFields")
-			}
 
-			err = send(ctx, results, source.Data{
-				Type:      namespaceType,
-				Operation: source.DataOperationUpsert,
-				Values: map[string]any{
-					"namespace": namespace,
-					"apiServer": s.apiServer,
-				},
-				Time: timeSource(),
-			})
-			if err != nil {
+			if err := send(ctx, results, s.workloadData(namespaceType, values)); err != nil {
 				return err
 			}
 		}
@@ -131,6 +120,23 @@ func (s *Source) syncNamespaces(ctx context.Context, results chan<- source.Data)
 		}
 		options.Continue = list.Continue
 	}
+}
+
+// namespaceValues builds the values of a namespace item. The namespace is
+// converted into an unstructured map without its managed fields.
+func namespaceValues(namespace *corev1.Namespace, apiServer string) (map[string]any, error) {
+	converted, err := runtime.DefaultUnstructuredConverter.ToUnstructured(namespace)
+	if err != nil {
+		return nil, fmt.Errorf("converting namespace: %w", err)
+	}
+	if metadata, ok := converted["metadata"].(map[string]any); ok {
+		delete(metadata, "managedFields")
+	}
+
+	return map[string]any{
+		keyNamespace: converted,
+		keyAPIServer: apiServer,
+	}, nil
 }
 
 // listAllNodes returns every node of the cluster, following the pagination
@@ -155,4 +161,117 @@ func (s *Source) listAllNodes(ctx context.Context) ([]corev1.Node, error) {
 		}
 		options.Continue = list.Continue
 	}
+}
+
+// Value keys used only by service items.
+const (
+	keyType     = "type"
+	keyPort     = "port"
+	keyIP       = "ip"
+	keyHostname = "hostname"
+)
+
+// syncServices emits one service item per service of the cluster.
+func (s *Source) syncServices(ctx context.Context, results chan<- source.Data) error {
+	return listPages(ctx, "services",
+		func(ctx context.Context, options metav1.ListOptions) ([]corev1.Service, string, error) {
+			list, err := s.clientset.CoreV1().Services(metav1.NamespaceAll).List(ctx, options)
+			if err != nil {
+				return nil, "", err
+			}
+			return list.Items, list.Continue, nil
+		},
+		func(service *corev1.Service) error {
+			return send(ctx, results, s.workloadData(serviceType, serviceValues(service, s.apiServer)))
+		},
+	)
+}
+
+// serviceValues builds the values of a service item. Maps and lists are never
+// nil so that they render as {} and [] in templates.
+func serviceValues(service *corev1.Service, apiServer string) map[string]any {
+	kind := string(service.Spec.Type)
+	if kind == "" {
+		kind = string(corev1.ServiceTypeClusterIP)
+	}
+
+	return map[string]any{
+		keyAPIServer:   apiServer,
+		keyName:        service.Name,
+		keyNamespace:   service.Namespace,
+		keyLabels:      copyStringMap(service.Labels),
+		keyType:        kind,
+		"clusterIPs":   serviceClusterIPs(&service.Spec),
+		"ports":        servicePorts(service.Spec.Ports),
+		"loadBalancer": serviceLoadBalancer(service.Status.LoadBalancer.Ingress),
+		"externalIPs":  append([]string{}, service.Spec.ExternalIPs...),
+		"externalName": service.Spec.ExternalName,
+		"selector":     copyStringMap(service.Spec.Selector),
+	}
+}
+
+// copyStringMap returns a non-nil copy of in.
+func copyStringMap(in map[string]string) map[string]string {
+	out := make(map[string]string, len(in))
+	for key, value := range in {
+		out[key] = value
+	}
+	return out
+}
+
+// serviceClusterIPs returns spec.clusterIPs, falling back to spec.clusterIP.
+// "None" (headless) is kept as is. The returned slice is never nil.
+func serviceClusterIPs(spec *corev1.ServiceSpec) []string {
+	if len(spec.ClusterIPs) > 0 {
+		return append([]string{}, spec.ClusterIPs...)
+	}
+	if spec.ClusterIP != "" {
+		return []string{spec.ClusterIP}
+	}
+	return []string{}
+}
+
+// servicePorts converts service ports into plain maps, preserving the spec
+// order. The returned slice is never nil.
+func servicePorts(ports []corev1.ServicePort) []map[string]any {
+	infos := make([]map[string]any, 0, len(ports))
+	for _, port := range ports {
+		protocol := string(port.Protocol)
+		if protocol == "" {
+			protocol = string(corev1.ProtocolTCP)
+		}
+
+		infos = append(infos, map[string]any{
+			keyName:      port.Name,
+			"protocol":   protocol,
+			keyPort:      int(port.Port),
+			"targetPort": targetPortValue(port),
+			"nodePort":   int(port.NodePort),
+		})
+	}
+	return infos
+}
+
+// targetPortValue returns the target port as a number or as a port name. When
+// the target port is unset Kubernetes targets the service port itself.
+func targetPortValue(port corev1.ServicePort) any {
+	target := port.TargetPort
+	switch {
+	case target.Type == intstr.String && target.StrVal != "":
+		return target.StrVal
+	case target.Type == intstr.Int && target.IntVal != 0:
+		return int(target.IntVal)
+	default:
+		return int(port.Port)
+	}
+}
+
+// serviceLoadBalancer converts load balancer ingress points into {ip, hostname}
+// maps. The returned slice is never nil.
+func serviceLoadBalancer(ingress []corev1.LoadBalancerIngress) []map[string]any {
+	infos := make([]map[string]any, 0, len(ingress))
+	for _, entry := range ingress {
+		infos = append(infos, map[string]any{keyIP: entry.IP, keyHostname: entry.Hostname})
+	}
+	return infos
 }
