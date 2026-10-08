@@ -1,0 +1,16 @@
+apiVersion: mia-platform.eu/v1
+itemFamily: relationships
+type: ingressRouteServiceRelationship
+syncable: true
+mappings:
+  identifier: |-
+    {{ $src := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:IngressRoute:%s" (printf "k8s-%s-ingressroute-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum) -}}
+    {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu" -}}
+    {{- $tgt := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Service:%s" (printf "k8s-%s-service-%s-%s" (replace "https://" "" .apiServer) .serviceNamespace .serviceName | sha256sum) -}}
+    {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+  spec:
+    sourceRef: |-
+      urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:IngressRoute:{{ printf "k8s-%s-ingressroute-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
+    targetRef: |-
+      urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Service:{{ printf "k8s-%s-service-%s-%s" (replace "https://" "" .apiServer) .serviceNamespace .serviceName | sha256sum }}
+    typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
