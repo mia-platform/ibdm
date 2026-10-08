@@ -44,6 +44,9 @@ const (
 
 	// networkPolicyType is the data type key for Kubernetes network policies.
 	networkPolicyType = "networkpolicy"
+
+	// podType is the data type key for Kubernetes pods (experimental).
+	podType = "pod"
 )
 
 // timeSource is a package-level function for the current time, replaceable in tests.
@@ -67,9 +70,11 @@ var knownTypes = []struct {
 	{name: serviceType, sync: (*Source).syncServices},
 	{name: helmReleaseType, sync: (*Source).syncHelmReleases},
 	{name: networkPolicyType, sync: (*Source).syncNetworkPolicies},
+	{name: podType, sync: (*Source).syncPods},
 	{name: ingressRouteServiceRelationshipType, sync: (*Source).syncIngressRouteServiceRelationships},
 	{name: workloadHelmReleaseRelationshipType, sync: (*Source).syncWorkloadHelmReleaseRelationships},
 	{name: serviceWorkloadRelationshipType, sync: (*Source).syncServiceWorkloadRelationships},
+	{name: podOwnerRelationshipType, sync: (*Source).syncPodOwnerRelationships},
 }
 
 // StartSyncProcess performs a full synchronisation of the requested resource

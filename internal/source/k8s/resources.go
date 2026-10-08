@@ -11,8 +11,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strconv"
+	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -437,7 +440,7 @@ func containerInfos(containers []corev1.Container) []map[string]any {
 	for _, container := range containers {
 		infos = append(infos, map[string]any{
 			"name":      container.Name,
-			"image":     container.Image,
+			keyImage:    container.Image,
 			"resources": resourceInfo(&container.Resources),
 		})
 	}
@@ -813,5 +816,329 @@ func helmReleaseValues(secret *corev1.Secret, release *helmRelease, apiServer st
 		"appVersion":    release.Chart.Metadata.AppVersion,
 		"firstDeployed": string(release.Info.FirstDeployed),
 		"lastDeployed":  string(release.Info.LastDeployed),
+	}
+}
+
+// Pod owner kinds handled when deriving the owner of a pod.
+const (
+	kindReplicaSet = "ReplicaSet"
+
+	// podTemplateHashLabel is set by the Deployment controller on the pods of a ReplicaSet,
+	// and ReplicaSet names end with "-" followed by its value.
+	podTemplateHashLabel = "pod-template-hash"
+
+	// volumeTypeUnknown is the volume type reported when no volume source is set.
+	volumeTypeUnknown = "unknown"
+)
+
+// Value keys used only by pod items.
+const (
+	keyAnnotations       = "annotations"
+	keyCreationTimestamp = "creationTimestamp"
+	keyOwner             = "owner"
+	keyContainers        = "containers"
+	keyResources         = "resources"
+	keySecurityContext   = "securityContext"
+	keySeccompProfile    = "seccompProfile"
+	keyLocalhostProfile  = "localhostProfile"
+	keyRunAsUser         = "runAsUser"
+	keyRunAsGroup        = "runAsGroup"
+	keyRunAsNonRoot      = "runAsNonRoot"
+	keyValue             = "value"
+	keyEffect            = "effect"
+	keyRef               = "ref"
+	keyImage             = "image"
+)
+
+// listPods calls handle for every pod of the cluster that is worth reporting,
+// following the pagination continue token until the last page. Pods that have
+// run to completion (phase Succeeded) are skipped.
+func (s *Source) listPods(ctx context.Context, handle func(pod *corev1.Pod) error) error {
+	return listPages(ctx, "pods",
+		func(ctx context.Context, options metav1.ListOptions) ([]corev1.Pod, string, error) {
+			list, err := s.clientset.CoreV1().Pods(metav1.NamespaceAll).List(ctx, options)
+			if err != nil {
+				return nil, "", err
+			}
+			return list.Items, list.Continue, nil
+		},
+		func(pod *corev1.Pod) error {
+			if isCompletedPod(pod) {
+				return nil
+			}
+			return handle(pod)
+		},
+	)
+}
+
+// isCompletedPod reports whether obj is a pod that has run to completion (phase
+// Succeeded). Such pods are not items, in sync and in watch mode.
+func isCompletedPod(obj any) bool {
+	pod, ok := obj.(*corev1.Pod)
+	return ok && pod != nil && pod.Status.Phase == corev1.PodSucceeded
+}
+
+// syncPods emits one pod item per pod of the cluster, except the completed ones.
+func (s *Source) syncPods(ctx context.Context, results chan<- source.Data) error {
+	return s.listPods(ctx, func(pod *corev1.Pod) error {
+		return send(ctx, results, s.workloadData(podType, podValues(pod, s.apiServer)))
+	})
+}
+
+// podValues builds the values of a pod item. Maps and lists are never nil so
+// that they render as {} and [] in templates. Fast changing status fields,
+// environment values and volume contents are deliberately left out.
+func podValues(pod *corev1.Pod, apiServer string) map[string]any {
+	return map[string]any{
+		keyAPIServer:         apiServer,
+		keyName:              pod.Name,
+		keyNamespace:         pod.Namespace,
+		keyLabels:            copyStringMap(pod.Labels),
+		keyAnnotations:       copyStringMap(pod.Annotations),
+		keyCreationTimestamp: formatTime(pod.CreationTimestamp),
+		keyOwner:             podOwnerValues(pod),
+		"nodeName":           pod.Spec.NodeName,
+		"phase":              string(pod.Status.Phase),
+		"podIP":              pod.Status.PodIP,
+		"startTime":          formatTimePtr(pod.Status.StartTime),
+		"reason":             pod.Status.Reason,
+		keyContainers:        podContainerInfos(pod),
+		"serviceAccountName": pod.Spec.ServiceAccountName,
+		"hostNetwork":        pod.Spec.HostNetwork,
+		"hostPID":            pod.Spec.HostPID,
+		"hostIPC":            pod.Spec.HostIPC,
+		"nodeSelector":       copyStringMap(pod.Spec.NodeSelector),
+		"tolerations":        tolerationValues(pod.Spec.Tolerations),
+		keySecurityContext:   podSecurityContextValues(pod.Spec.SecurityContext),
+		"imagePullSecrets":   imagePullSecretNames(pod.Spec.ImagePullSecrets),
+		"volumes":            volumeValues(pod.Spec.Volumes),
+	}
+}
+
+// formatTime renders t as an RFC3339 UTC string, or "" when it is the zero time.
+func formatTime(t metav1.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
+// formatTimePtr is formatTime for an optional time.
+func formatTimePtr(t *metav1.Time) string {
+	if t == nil {
+		return ""
+	}
+	return formatTime(*t)
+}
+
+// podOwner returns the kind and name of the controller of the pod, and false
+// when the pod has no owner. A ReplicaSet created by a Deployment is reported
+// as that Deployment, recognised by the pod-template-hash suffix of its name.
+func podOwner(pod *corev1.Pod) (string, string, bool) {
+	refs := pod.OwnerReferences
+	if len(refs) == 0 {
+		return "", "", false
+	}
+
+	owner := refs[0]
+	for _, ref := range refs {
+		if ref.Controller != nil && *ref.Controller {
+			owner = ref
+			break
+		}
+	}
+
+	if owner.Kind == kindReplicaSet {
+		if hash := pod.Labels[podTemplateHashLabel]; hash != "" {
+			if deployment, found := strings.CutSuffix(owner.Name, "-"+hash); found && deployment != "" {
+				return kindDeployment, deployment, true
+			}
+		}
+	}
+	return owner.Kind, owner.Name, true
+}
+
+// podOwnerValues returns {kind, name} of the pod owner, or {} without owner.
+func podOwnerValues(pod *corev1.Pod) map[string]any {
+	kind, name, found := podOwner(pod)
+	if !found {
+		return map[string]any{}
+	}
+	return map[string]any{keyKind: kind, keyName: name}
+}
+
+// podContainerInfos converts the containers of a pod, in spec order, into
+// {name, image, imageID, resources, securityContext} maps. The image ID comes
+// from the container status with the same name. The returned slice is never nil.
+func podContainerInfos(pod *corev1.Pod) []map[string]any {
+	imageIDs := make(map[string]string, len(pod.Status.ContainerStatuses))
+	for _, status := range pod.Status.ContainerStatuses {
+		imageIDs[status.Name] = status.ImageID
+	}
+
+	infos := make([]map[string]any, 0, len(pod.Spec.Containers))
+	for _, container := range pod.Spec.Containers {
+		infos = append(infos, map[string]any{
+			keyName:            container.Name,
+			keyImage:           container.Image,
+			"imageID":          imageIDs[container.Name],
+			keyResources:       resourceInfo(&container.Resources),
+			keySecurityContext: containerSecurityContextValues(container.SecurityContext),
+		})
+	}
+	return infos
+}
+
+// containerSecurityContextValues projects the security context of a container,
+// keeping only the keys that are set. A missing context gives {}.
+func containerSecurityContextValues(sc *corev1.SecurityContext) map[string]any {
+	values := map[string]any{}
+	if sc == nil {
+		return values
+	}
+
+	setIfNotNil(values, "privileged", sc.Privileged)
+	setIfNotNil(values, keyRunAsNonRoot, sc.RunAsNonRoot)
+	setIfNotNil(values, keyRunAsUser, sc.RunAsUser)
+	setIfNotNil(values, keyRunAsGroup, sc.RunAsGroup)
+	setIfNotNil(values, "readOnlyRootFilesystem", sc.ReadOnlyRootFilesystem)
+	setIfNotNil(values, "allowPrivilegeEscalation", sc.AllowPrivilegeEscalation)
+	if sc.Capabilities != nil {
+		values["capabilities"] = map[string]any{
+			"add":  capabilityNames(sc.Capabilities.Add),
+			"drop": capabilityNames(sc.Capabilities.Drop),
+		}
+	}
+	if sc.SeccompProfile != nil {
+		values[keySeccompProfile] = seccompProfileValues(sc.SeccompProfile)
+	}
+	return values
+}
+
+// podSecurityContextValues projects the pod level security context, keeping only
+// the keys that are set. A missing context gives {}.
+func podSecurityContextValues(sc *corev1.PodSecurityContext) map[string]any {
+	values := map[string]any{}
+	if sc == nil {
+		return values
+	}
+
+	setIfNotNil(values, keyRunAsUser, sc.RunAsUser)
+	setIfNotNil(values, keyRunAsGroup, sc.RunAsGroup)
+	setIfNotNil(values, keyRunAsNonRoot, sc.RunAsNonRoot)
+	setIfNotNil(values, "fsGroup", sc.FSGroup)
+	if len(sc.SupplementalGroups) > 0 {
+		values["supplementalGroups"] = append([]int64{}, sc.SupplementalGroups...)
+	}
+	if sc.SeccompProfile != nil {
+		values[keySeccompProfile] = seccompProfileValues(sc.SeccompProfile)
+	}
+	return values
+}
+
+// setIfNotNil stores *value under key when value is not nil.
+func setIfNotNil[T any](values map[string]any, key string, value *T) {
+	if value != nil {
+		values[key] = *value
+	}
+}
+
+// capabilityNames converts Linux capabilities to strings. The result is never nil.
+func capabilityNames(capabilities []corev1.Capability) []string {
+	names := make([]string, 0, len(capabilities))
+	for _, capability := range capabilities {
+		names = append(names, string(capability))
+	}
+	return names
+}
+
+// seccompProfileValues returns {type} plus localhostProfile when set.
+func seccompProfileValues(profile *corev1.SeccompProfile) map[string]any {
+	values := map[string]any{keyType: string(profile.Type)}
+	if profile.LocalhostProfile != nil && *profile.LocalhostProfile != "" {
+		values[keyLocalhostProfile] = *profile.LocalhostProfile
+	}
+	return values
+}
+
+// tolerationValues converts tolerations keeping only the keys that are set
+// in each one. The returned slice is never nil.
+func tolerationValues(tolerations []corev1.Toleration) []map[string]any {
+	values := make([]map[string]any, 0, len(tolerations))
+	for _, toleration := range tolerations {
+		value := map[string]any{}
+		setIfNotEmpty(value, keyKey, toleration.Key)
+		setIfNotEmpty(value, keyOperator, string(toleration.Operator))
+		setIfNotEmpty(value, keyValue, toleration.Value)
+		setIfNotEmpty(value, keyEffect, string(toleration.Effect))
+		setIfNotNil(value, "tolerationSeconds", toleration.TolerationSeconds)
+		values = append(values, value)
+	}
+	return values
+}
+
+// setIfNotEmpty stores value under key when it is not empty.
+func setIfNotEmpty(values map[string]any, key, value string) {
+	if value != "" {
+		values[key] = value
+	}
+}
+
+// imagePullSecretNames returns the names of the image pull secrets. The result is never nil.
+func imagePullSecretNames(references []corev1.LocalObjectReference) []string {
+	names := make([]string, 0, len(references))
+	for _, reference := range references {
+		names = append(names, reference.Name)
+	}
+	return names
+}
+
+// volumeValues converts volumes into {name, type, ref} maps. Only the name of
+// the referenced object is reported, never its contents. The returned slice is never nil.
+func volumeValues(volumes []corev1.Volume) []map[string]any {
+	values := make([]map[string]any, 0, len(volumes))
+	for i := range volumes {
+		volumeType := volumeSourceType(&volumes[i].VolumeSource)
+		values = append(values, map[string]any{
+			keyName: volumes[i].Name,
+			keyType: volumeType,
+			keyRef:  volumeSourceRef(&volumes[i].VolumeSource),
+		})
+	}
+	return values
+}
+
+// volumeSourceType returns the Kubernetes field name of the volume source that is
+// set, or "unknown" when none is.
+func volumeSourceType(source *corev1.VolumeSource) string {
+	value := reflect.ValueOf(source).Elem()
+	valueType := value.Type()
+	for i := range value.NumField() {
+		if value.Field(i).Kind() != reflect.Pointer || value.Field(i).IsNil() {
+			continue
+		}
+		if name, _, _ := strings.Cut(valueType.Field(i).Tag.Get("json"), ","); name != "" {
+			return name
+		}
+	}
+	return volumeTypeUnknown
+}
+
+// volumeSourceRef returns the identifier of the object a volume points to
+// (secret, config map, claim, host path or CSI driver), or "" when not applicable.
+func volumeSourceRef(source *corev1.VolumeSource) string {
+	switch {
+	case source.Secret != nil:
+		return source.Secret.SecretName
+	case source.ConfigMap != nil:
+		return source.ConfigMap.Name
+	case source.PersistentVolumeClaim != nil:
+		return source.PersistentVolumeClaim.ClaimName
+	case source.HostPath != nil:
+		return source.HostPath.Path
+	case source.CSI != nil:
+		return source.CSI.Driver
+	default:
+		return ""
 	}
 }

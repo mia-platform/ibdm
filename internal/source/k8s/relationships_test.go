@@ -177,11 +177,11 @@ func TestRelationshipTypesAreKnownAndStreamable(t *testing.T) {
 	}
 	assert.False(t, isStreamable("unknownRelationship"))
 
-	last := knownTypes[len(knownTypes)-3:]
+	last := knownTypes[len(knownTypes)-4 : len(knownTypes)-1]
 	assert.Equal(t, ingressRouteServiceRelationshipType, last[0].name)
 	assert.Equal(t, workloadHelmReleaseRelationshipType, last[1].name)
 	assert.Equal(t, serviceWorkloadRelationshipType, last[2].name)
-	assert.Equal(t, networkPolicyType, knownTypes[len(knownTypes)-4].name)
+	assert.Equal(t, podType, knownTypes[len(knownTypes)-5].name)
 }
 
 func TestSyncIngressRouteServiceRelationships(t *testing.T) {
@@ -834,8 +834,8 @@ func TestServiceWorkloadRelationshipIsKnownAndStreamable(t *testing.T) {
 
 	assert.True(t, isStreamable(swType))
 	assert.True(t, isKnownType(swType))
-	assert.Equal(t, swType, knownTypes[len(knownTypes)-1].name)
-	assert.Equal(t, workloadHelmReleaseRelationshipType, knownTypes[len(knownTypes)-2].name)
+	assert.Equal(t, swType, knownTypes[len(knownTypes)-2].name)
+	assert.Equal(t, workloadHelmReleaseRelationshipType, knownTypes[len(knownTypes)-3].name)
 }
 
 func TestStartEventStreamServiceWorkloadRelationships(t *testing.T) {
@@ -1184,4 +1184,108 @@ func TestBindReconcilers(t *testing.T) {
 	handlers := stream.sourceHandlers(findEventKind(t, deploymentType), map[string]struct{}{swType: {}})
 	assert.Len(t, handlers, 1, "the relationship type alone still needs the workload informers")
 	assert.Empty(t, stream.sourceHandlers(findEventKind(t, namespaceType), map[string]struct{}{swType: {}}))
+}
+
+func podOwnerPair(namespace, pod, ownerKind, ownerName string) map[string]any {
+	return map[string]any{
+		"apiServer": testAPIServer,
+		"namespace": namespace,
+		"name":      pod,
+		"ownerKind": ownerKind,
+		"ownerName": ownerName,
+	}
+}
+
+func TestPodOwnerPairs(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		pod  *corev1.Pod
+		want []map[string]any
+	}{
+		"deployment through replicaset": {
+			pod:  newPod("n", "web-abc-1", withLabels("pod-template-hash", "abc"), ownedBy("ReplicaSet", "web-abc", boolPtr(true))),
+			want: []map[string]any{podOwnerPair("n", "web-abc-1", "Deployment", "web")},
+		},
+		"statefulset": {
+			pod:  newPod("n", "db-0", ownedBy("StatefulSet", "db", boolPtr(true))),
+			want: []map[string]any{podOwnerPair("n", "db-0", "StatefulSet", "db")},
+		},
+		"daemonset": {
+			pod:  newPod("n", "agent-x", ownedBy("DaemonSet", "agent", nil)),
+			want: []map[string]any{podOwnerPair("n", "agent-x", "DaemonSet", "agent")},
+		},
+		"replicaset without hash": {pod: newPod("n", "p", ownedBy("ReplicaSet", "web-abc", nil))},
+		"job":                     {pod: newPod("n", "p", ownedBy("Job", "batch", nil))},
+		"no owner":                {pod: newPod("n", "p")},
+		"controller is a job":     {pod: newPod("n", "p", ownedBy("DaemonSet", "agent", nil), ownedBy("Job", "batch", boolPtr(true)))},
+		"custom controller kind":  {pod: newPod("n", "p", ownedBy("Rollout", "web", boolPtr(true)))},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := podOwnerPairs(test.pod, testAPIServer)
+			if test.want == nil {
+				assert.Empty(t, got)
+				return
+			}
+			assert.Equal(t, test.want, pairValues(got))
+		})
+	}
+}
+
+func TestSyncPodOwnerRelationships(t *testing.T) {
+	setupFixedTime(t)
+
+	s := newFakeSource(t,
+		newPod("team-a", "web-abc-1", withLabels("pod-template-hash", "abc"), ownedBy("ReplicaSet", "web-abc", boolPtr(true))),
+		newPod("team-a", "db-0", ownedBy("StatefulSet", "db", boolPtr(true))),
+		newPod("team-a", "job-1", ownedBy("Job", "batch", boolPtr(true))),
+		newPod("team-a", "bare"),
+		newPod("team-a", "done-1", withPhase(corev1.PodSucceeded), ownedBy("DaemonSet", "agent", boolPtr(true))),
+		newPod("team-a", "agent-1", withPhase(corev1.PodFailed), ownedBy("DaemonSet", "agent", boolPtr(true))),
+	)
+
+	items, err := syncOne(t, (*Source).syncPodOwnerRelationships, s)
+	require.NoError(t, err)
+
+	got := map[string]source.Data{}
+	for _, item := range items {
+		assert.Equal(t, podOwnerRelationshipType, item.Type)
+		assert.Equal(t, source.DataOperationUpsert, item.Operation)
+		assert.Equal(t, testFixedTime, item.Time)
+		got[item.Values["name"].(string)] = item //nolint:forcetypeassert // always a string
+	}
+	require.Len(t, got, 3)
+	assert.Equal(t, podOwnerPair("team-a", "web-abc-1", "Deployment", "web"), got["web-abc-1"].Values)
+	assert.Equal(t, podOwnerPair("team-a", "db-0", "StatefulSet", "db"), got["db-0"].Values)
+	assert.Equal(t, podOwnerPair("team-a", "agent-1", "DaemonSet", "agent"), got["agent-1"].Values)
+}
+
+func TestSyncPodOwnerRelationshipsErrors(t *testing.T) {
+	setupFixedTime(t)
+
+	t.Run("list error", func(t *testing.T) {
+		s := newFakeSource(t, newPod("team-a", "db-0", ownedBy("StatefulSet", "db", boolPtr(true))))
+		fakeClient, ok := s.clientset.(*fake.Clientset)
+		require.True(t, ok)
+		fakeClient.PrependReactor("list", "pods", func(k8stesting.Action) (bool, runtime.Object, error) {
+			return true, nil, errors.New("forbidden")
+		})
+
+		items, err := syncOne(t, (*Source).syncPodOwnerRelationships, s)
+		require.ErrorIs(t, err, ErrRetrievingAssets)
+		assert.Empty(t, items)
+	})
+
+	t.Run("canceled while sending", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		s := newFakeSource(t, newPod("team-a", "db-0", ownedBy("StatefulSet", "db", boolPtr(true))))
+
+		done := make(chan error, 1)
+		go func() { done <- s.syncPodOwnerRelationships(ctx, make(chan source.Data)) }()
+		cancel()
+		require.ErrorIs(t, <-done, context.Canceled)
+	})
 }
