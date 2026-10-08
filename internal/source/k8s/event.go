@@ -104,6 +104,13 @@ var eventKinds = []eventKind{
 		},
 		values: typedValues(infallible(serviceValues)),
 	},
+	{
+		name: networkPolicyType,
+		informer: func(f informers.SharedInformerFactory) cache.SharedIndexInformer {
+			return f.Networking().V1().NetworkPolicies().Informer()
+		},
+		values: typedValues(infallible(networkPolicyValues)),
+	},
 }
 
 // infallible adapts a builder that cannot fail to the fallible signature.
@@ -148,7 +155,7 @@ func withoutNamespaceResourceVersion(values map[string]any) map[string]any {
 
 // isStreamable reports whether name is a data type supported in watch mode.
 func isStreamable(name string) bool {
-	if name == helmReleaseType || name == clusterType {
+	if name == helmReleaseType || name == clusterType || name == serviceWorkloadRelationshipType || isRelationshipType(name) {
 		return true
 	}
 	return slices.ContainsFunc(eventKinds, func(kind eventKind) bool { return kind.name == name }) ||
@@ -170,6 +177,8 @@ type eventStream struct {
 	apiServer   string
 	clusterName string
 	results     chan<- source.Data
+	// reconcilers emit the relationship types derived from several informers.
+	reconcilers []*pairReconciler
 }
 
 // StartEventStream streams the changes of the requested resource types as they
@@ -178,7 +187,10 @@ type eventStream struct {
 // the objects that already exist are emitted first. Updates that do not change any
 // emitted value are skipped. The cluster item is built from a node informer and is
 // emitted once after the nodes synced, then only when its values change; it is never
-// deleted. The CRD-backed types (ingressroute, certificate) use dynamic informers; a
+// deleted. serviceWorkloadRelationship is emitted by a pairReconciler fed by the
+// service and workload informers (started even when their item types are not
+// requested): nothing until all have synced, then the full pair set once, then only
+// the differences. The CRD-backed types (ingressroute, certificate) use dynamic informers; a
 // CRD that is not installed is skipped. Unknown types are skipped with a debug log,
 // and an informer that fails to start or sync does not prevent the others from running.
 func (s *Source) StartEventStream(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) error {
@@ -197,13 +209,17 @@ func (s *Source) StartEventStream(ctx context.Context, typesToStream map[string]
 	factory := informers.NewSharedInformerFactory(s.clientset, informerResync)
 	var active []runningInformer
 
+	stream.reconcilers = stream.newReconcilers(requested)
+
 	for _, kind := range eventKinds {
-		if _, ok := requested[kind.name]; !ok {
+		handlers := stream.sourceHandlers(kind, requested)
+		if len(handlers) == 0 {
 			continue
 		}
+		// One informer per kind, shared by the item and the relationship handlers.
 		informer := kind.informer(factory)
-		if stream.register(kind.name, informer, stream.handlers(kind)) {
-			active = append(active, runningInformer{name: kind.name, informer: informer})
+		if stream.register(kind.name, informer, handlers...) {
+			active = append(active, runningInformer{name: kind.name, informer: informer, onSynced: stream.bindReconcilers(kind.name, informer)})
 		}
 	}
 
@@ -217,10 +233,11 @@ func (s *Source) StartEventStream(ctx context.Context, typesToStream map[string]
 
 	dynamicFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(s.dynamic, informerResync, metav1.NamespaceAll, nil)
 	for _, kind := range crdKinds {
-		if _, ok := requested[kind.dataType]; !ok {
+		handlers := stream.sourceHandlers(kind.eventKind(), requested)
+		if len(handlers) == 0 {
 			continue
 		}
-		if running, ok := s.crdInformer(stream, dynamicFactory, kind); ok {
+		if running, ok := s.crdInformer(stream, dynamicFactory, kind, handlers); ok {
 			active = append(active, running)
 		}
 	}
@@ -264,7 +281,7 @@ func (s *Source) StartEventStream(ctx context.Context, typesToStream map[string]
 // crdInformer resolves the GVR of kind through discovery and registers a dynamic
 // informer for it. A CRD that is not installed is skipped quietly; any other
 // failure is logged and drops this type only. It reports false when the type is skipped.
-func (s *Source) crdInformer(stream *eventStream, factory dynamicinformer.DynamicSharedInformerFactory, kind crdKind) (runningInformer, bool) {
+func (s *Source) crdInformer(stream *eventStream, factory dynamicinformer.DynamicSharedInformerFactory, kind crdKind, handlers []cache.ResourceEventHandler) (runningInformer, bool) {
 	gvr, found, err := s.resolveGVR(stream.ctx, kind)
 	if err != nil {
 		if stream.ctx.Err() == nil {
@@ -278,7 +295,7 @@ func (s *Source) crdInformer(stream *eventStream, factory dynamicinformer.Dynami
 	}
 
 	informer := factory.ForResource(gvr).Informer()
-	if !stream.register(kind.dataType, informer, stream.handlers(kind.eventKind())) {
+	if !stream.register(kind.dataType, informer, handlers...) {
 		return runningInformer{}, false
 	}
 	return runningInformer{name: kind.dataType, informer: informer}, true
@@ -286,7 +303,7 @@ func (s *Source) crdInformer(stream *eventStream, factory dynamicinformer.Dynami
 
 // register installs the handlers and the watch error logging on informer. It
 // reports false, after logging, when the informer cannot be set up.
-func (e *eventStream) register(name string, informer cache.SharedIndexInformer, handler cache.ResourceEventHandler) bool {
+func (e *eventStream) register(name string, informer cache.SharedIndexInformer, handlers ...cache.ResourceEventHandler) bool {
 	err := informer.SetWatchErrorHandlerWithContext(func(ctx context.Context, _ *cache.Reflector, err error) {
 		if ctx.Err() == nil {
 			e.log.Warn("error watching resources, retrying", "type", name, "error", err.Error())
@@ -297,9 +314,11 @@ func (e *eventStream) register(name string, informer cache.SharedIndexInformer, 
 		return false
 	}
 
-	if _, err := informer.AddEventHandler(handler); err != nil {
-		e.log.Error("error registering informer handler", "type", name, "error", err.Error())
-		return false
+	for _, handler := range handlers {
+		if _, err := informer.AddEventHandler(handler); err != nil {
+			e.log.Error("error registering informer handler", "type", name, "error", err.Error())
+			return false
+		}
 	}
 	return true
 }

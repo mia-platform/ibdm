@@ -41,6 +41,9 @@ const (
 
 	// helmReleaseType is the data type key for deployed Helm releases.
 	helmReleaseType = "helmrelease"
+
+	// networkPolicyType is the data type key for Kubernetes network policies.
+	networkPolicyType = "networkpolicy"
 )
 
 // timeSource is a package-level function for the current time, replaceable in tests.
@@ -63,6 +66,10 @@ var knownTypes = []struct {
 	{name: certificateType, sync: (*Source).syncCertificates},
 	{name: serviceType, sync: (*Source).syncServices},
 	{name: helmReleaseType, sync: (*Source).syncHelmReleases},
+	{name: networkPolicyType, sync: (*Source).syncNetworkPolicies},
+	{name: ingressRouteServiceRelationshipType, sync: (*Source).syncIngressRouteServiceRelationships},
+	{name: workloadHelmReleaseRelationshipType, sync: (*Source).syncWorkloadHelmReleaseRelationships},
+	{name: serviceWorkloadRelationshipType, sync: (*Source).syncServiceWorkloadRelationships},
 }
 
 // StartSyncProcess performs a full synchronisation of the requested resource

@@ -97,6 +97,15 @@ func (s *Source) syncCertificates(ctx context.Context, results chan<- source.Dat
 // syncCRD resolves the GVR of kind through discovery and lists every object of
 // the cluster. A kind whose CRD is not installed is skipped without error.
 func (s *Source) syncCRD(ctx context.Context, results chan<- source.Data, kind crdKind) error {
+	return s.listCRD(ctx, kind, kind.dataType, func(obj *unstructured.Unstructured) error {
+		return send(ctx, results, s.workloadData(kind.dataType, kind.values(s.apiServer, obj.Object)))
+	})
+}
+
+// listCRD resolves the GVR of kind through discovery and calls handle for every
+// object of the cluster. A kind whose CRD is not installed is skipped without
+// error; dataType is the type being synced, used for logging.
+func (s *Source) listCRD(ctx context.Context, kind crdKind, dataType string, handle func(*unstructured.Unstructured) error) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	gvr, found, err := s.resolveGVR(ctx, kind)
@@ -104,7 +113,7 @@ func (s *Source) syncCRD(ctx context.Context, results chan<- source.Data, kind c
 		return err
 	}
 	if !found {
-		log.Info("CRD not installed, skipping type", "type", kind.dataType, "group", kind.group, "resource", kind.resource)
+		log.Info("CRD not installed, skipping type", "type", dataType, "group", kind.group, "resource", kind.resource)
 		return nil
 	}
 
@@ -116,9 +125,7 @@ func (s *Source) syncCRD(ctx context.Context, results chan<- source.Data, kind c
 			}
 			return list.Items, list.GetContinue(), nil
 		},
-		func(obj *unstructured.Unstructured) error {
-			return send(ctx, results, s.workloadData(kind.dataType, kind.values(s.apiServer, obj.Object)))
-		},
+		handle,
 	)
 }
 
