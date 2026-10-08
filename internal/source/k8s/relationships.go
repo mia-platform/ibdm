@@ -35,6 +35,10 @@ const (
 	// Service and the workloads whose pod template its selector matches.
 	serviceWorkloadRelationshipType = "serviceWorkloadRelationship"
 
+	// podOwnerRelationshipType is the data type key of the links between a Pod and
+	// the Deployment, StatefulSet or DaemonSet owning it (experimental).
+	podOwnerRelationshipType = "podOwnerRelationship"
+
 	// helmReleaseNameAnnotation and helmReleaseNamespaceAnnotation are set by Helm
 	// on every object it installs.
 	helmReleaseNameAnnotation      = "meta.helm.sh/release-name"
@@ -52,6 +56,8 @@ const (
 	keyServiceName       = "serviceName"
 	keyWorkloadKind      = "workloadKind"
 	keyWorkloadName      = "workloadName"
+	keyOwnerKind         = "ownerKind"
+	keyOwnerName         = "ownerName"
 	keyReleaseName       = "releaseName"
 	keyReleaseNamespace  = "releaseNamespace"
 	relationKeySeparator = "/"
@@ -104,6 +110,11 @@ var relationshipBindings = []relationshipBinding{
 		pairs: typedPairs(func(daemonSet *appsv1.DaemonSet, apiServer string) []relation {
 			return workloadReleasePairs(kindDaemonSet, &daemonSet.ObjectMeta, apiServer)
 		}),
+	},
+	{
+		relType:    podOwnerRelationshipType,
+		sourceType: podType,
+		pairs:      typedPairs(podOwnerPairs),
 	},
 }
 
@@ -727,4 +738,42 @@ func indexedIn(indexer cache.Indexer, namespace string) []any {
 		return nil
 	}
 	return objects
+}
+
+// podOwnerPairs returns the relation between a pod and the Deployment, StatefulSet
+// or DaemonSet owning it, or nil for any other owner (Job, ReplicaSet without a
+// Deployment, ...) and for pods without owner. A completed pod (see isCompletedPod)
+// has no pairs, as it is not a pod item: a pod that completes loses its link.
+func podOwnerPairs(pod *corev1.Pod, apiServer string) []relation {
+	if isCompletedPod(pod) {
+		return nil
+	}
+	kind, name, found := podOwner(pod)
+	if !found {
+		return nil
+	}
+	switch kind {
+	case kindDeployment, kindStatefulSet, kindDaemonSet:
+	default:
+		return nil
+	}
+
+	return []relation{{
+		key: kind + relationKeySeparator + name,
+		values: map[string]any{
+			keyAPIServer: apiServer,
+			keyNamespace: pod.Namespace,
+			keyName:      pod.Name,
+			keyOwnerKind: kind,
+			keyOwnerName: name,
+		},
+	}}
+}
+
+// syncPodOwnerRelationships emits one item per pod owned by a Deployment,
+// StatefulSet or DaemonSet. Completed pods are skipped.
+func (s *Source) syncPodOwnerRelationships(ctx context.Context, results chan<- source.Data) error {
+	return s.listPods(ctx, func(pod *corev1.Pod) error {
+		return s.sendRelations(ctx, results, podOwnerRelationshipType, podOwnerPairs(pod, s.apiServer))
+	})
 }

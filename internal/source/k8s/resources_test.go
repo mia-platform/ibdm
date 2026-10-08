@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1680,4 +1681,529 @@ func TestStartSyncProcessHelmReleaseErrorIsolation(t *testing.T) {
 	items := collectData(results)
 	require.Len(t, items, 1)
 	assert.Equal(t, namespaceType, items[0].Type)
+}
+
+func newPod(namespace, name string, mutate ...func(*corev1.Pod)) *corev1.Pod {
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name}}
+	for _, fn := range mutate {
+		fn(pod)
+	}
+	return pod
+}
+
+func ownedBy(kind, name string, controller *bool) func(*corev1.Pod) {
+	return func(pod *corev1.Pod) {
+		pod.OwnerReferences = append(pod.OwnerReferences, metav1.OwnerReference{Kind: kind, Name: name, Controller: controller})
+	}
+}
+
+func withPhase(phase corev1.PodPhase) func(*corev1.Pod) {
+	return func(pod *corev1.Pod) { pod.Status.Phase = phase }
+}
+
+func withLabels(pairs ...string) func(*corev1.Pod) {
+	return func(pod *corev1.Pod) { pod.Labels = lbl(pairs...) }
+}
+
+func boolPtr(v bool) *bool { return &v }
+
+func int64Ptr(v int64) *int64 { return &v }
+
+func stringPtr(v string) *string { return &v }
+
+func syncOnePod(t *testing.T, pod *corev1.Pod) map[string]any {
+	t.Helper()
+	items, err := syncOne(t, (*Source).syncPods, newFakeSource(t, pod))
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	return items[0].Values
+}
+
+func TestSyncPodsEnvelope(t *testing.T) {
+	setupFixedTime(t)
+
+	s := newFakeSource(t, newPod("team-a", "web-0"), newPod("team-b", "web-0"))
+	items, err := syncOne(t, (*Source).syncPods, s)
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+	for _, item := range items {
+		assert.Equal(t, podType, item.Type)
+		assert.Equal(t, source.DataOperationUpsert, item.Operation)
+		assert.Equal(t, testFixedTime, item.Time)
+		assert.Equal(t, testAPIServer, item.Values["apiServer"])
+	}
+}
+
+func TestPodValuesEmptyPod(t *testing.T) {
+	t.Parallel()
+
+	got := podValues(newPod("team-a", "bare"), testAPIServer)
+	want := map[string]any{
+		"apiServer":          testAPIServer,
+		"name":               "bare",
+		"namespace":          "team-a",
+		"labels":             map[string]string{},
+		"annotations":        map[string]string{},
+		"creationTimestamp":  "",
+		"owner":              map[string]any{},
+		"nodeName":           "",
+		"phase":              "",
+		"podIP":              "",
+		"startTime":          "",
+		"reason":             "",
+		"containers":         []map[string]any{},
+		"serviceAccountName": "",
+		"hostNetwork":        false,
+		"hostPID":            false,
+		"hostIPC":            false,
+		"nodeSelector":       map[string]string{},
+		"tolerations":        []map[string]any{},
+		"securityContext":    map[string]any{},
+		"imagePullSecrets":   []string{},
+		"volumes":            []map[string]any{},
+	}
+	assert.Equal(t, want, got)
+}
+
+func TestPodValuesFull(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, 1, 2, 3, 4, 5, 0, time.FixedZone("x", 3600))
+	started := metav1.NewTime(time.Date(2026, 1, 2, 3, 4, 10, 0, time.UTC))
+	pod := newPod("team-a", "web-abc-xyz",
+		withLabels("app", "web", "pod-template-hash", "abc"),
+		ownedBy("ReplicaSet", "web-abc", boolPtr(true)),
+		func(p *corev1.Pod) {
+			p.Annotations = map[string]string{"note": "Hello, World", "empty": ""}
+			p.CreationTimestamp = metav1.NewTime(created)
+			p.Spec.NodeName = "node-1"
+			p.Spec.ServiceAccountName = "web-sa"
+			p.Spec.HostNetwork = true
+			p.Spec.HostPID = true
+			p.Spec.HostIPC = true
+			p.Spec.NodeSelector = map[string]string{"disk": "ssd"}
+			p.Spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: "regcred"}, {Name: "other"}}
+			p.Status.Phase = corev1.PodFailed
+			p.Status.PodIP = "10.0.0.7"
+			p.Status.StartTime = &started
+			p.Status.Reason = "Evicted"
+		},
+	)
+
+	got := podValues(pod, testAPIServer)
+	assert.Equal(t, map[string]string{"note": "Hello, World", "empty": ""}, got["annotations"])
+	assert.Equal(t, map[string]string{"app": "web", "pod-template-hash": "abc"}, got["labels"])
+	assert.Equal(t, "2026-01-02T02:04:05Z", got["creationTimestamp"])
+	assert.Equal(t, "2026-01-02T03:04:10Z", got["startTime"])
+	assert.Equal(t, map[string]any{"kind": "Deployment", "name": "web"}, got["owner"])
+	assert.Equal(t, "node-1", got["nodeName"])
+	assert.Equal(t, "Failed", got["phase"])
+	assert.Equal(t, "10.0.0.7", got["podIP"])
+	assert.Equal(t, "Evicted", got["reason"])
+	assert.Equal(t, "web-sa", got["serviceAccountName"])
+	assert.Equal(t, true, got["hostNetwork"])
+	assert.Equal(t, true, got["hostPID"])
+	assert.Equal(t, true, got["hostIPC"])
+	assert.Equal(t, map[string]string{"disk": "ssd"}, got["nodeSelector"])
+	assert.Equal(t, []string{"regcred", "other"}, got["imagePullSecrets"])
+}
+
+func TestPodValuesDoNotAliasInputs(t *testing.T) {
+	t.Parallel()
+
+	pod := newPod("team-a", "web", withLabels("a", "b"))
+	pod.Annotations = map[string]string{"k": "v"}
+	got := podValues(pod, testAPIServer)
+	labels, ok := got["labels"].(map[string]string)
+	require.True(t, ok)
+	labels["x"] = "y"
+	assert.Equal(t, map[string]string{"a": "b"}, pod.Labels)
+}
+
+func TestPodOwnerDerivation(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		pod  *corev1.Pod
+		want map[string]any
+	}{
+		"replicaset of a deployment": {
+			pod:  newPod("n", "p", withLabels("pod-template-hash", "5d8f7"), ownedBy("ReplicaSet", "my-app-5d8f7", boolPtr(true))),
+			want: map[string]any{"kind": "Deployment", "name": "my-app"},
+		},
+		"replicaset without the hash label": {
+			pod:  newPod("n", "p", ownedBy("ReplicaSet", "my-app-5d8f7", boolPtr(true))),
+			want: map[string]any{"kind": "ReplicaSet", "name": "my-app-5d8f7"},
+		},
+		"replicaset whose name does not end with the hash": {
+			pod:  newPod("n", "p", withLabels("pod-template-hash", "zzzz"), ownedBy("ReplicaSet", "my-app-5d8f7", nil)),
+			want: map[string]any{"kind": "ReplicaSet", "name": "my-app-5d8f7"},
+		},
+		"replicaset named exactly like the suffix": {
+			pod:  newPod("n", "p", withLabels("pod-template-hash", "abc"), ownedBy("ReplicaSet", "-abc", nil)),
+			want: map[string]any{"kind": "ReplicaSet", "name": "-abc"},
+		},
+		"statefulset": {
+			pod:  newPod("n", "p", ownedBy("StatefulSet", "db", boolPtr(true))),
+			want: map[string]any{"kind": "StatefulSet", "name": "db"},
+		},
+		"daemonset": {
+			pod:  newPod("n", "p", ownedBy("DaemonSet", "agent", nil)),
+			want: map[string]any{"kind": "DaemonSet", "name": "agent"},
+		},
+		"job": {
+			pod:  newPod("n", "p", ownedBy("Job", "batch-1", boolPtr(true))),
+			want: map[string]any{"kind": "Job", "name": "batch-1"},
+		},
+		"no owner": {
+			pod:  newPod("n", "p"),
+			want: map[string]any{},
+		},
+		"controller preferred over first": {
+			pod: newPod("n", "p",
+				ownedBy("Foo", "first", nil),
+				ownedBy("StatefulSet", "db", boolPtr(true)),
+				ownedBy("Bar", "third", boolPtr(false)),
+			),
+			want: map[string]any{"kind": "StatefulSet", "name": "db"},
+		},
+		"first when no controller": {
+			pod:  newPod("n", "p", ownedBy("Foo", "first", boolPtr(false)), ownedBy("Bar", "second", nil)),
+			want: map[string]any{"kind": "Foo", "name": "first"},
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, test.want, podValues(test.pod, testAPIServer)["owner"])
+		})
+	}
+}
+
+func TestSyncPodsSkipsSucceeded(t *testing.T) {
+	setupFixedTime(t)
+
+	s := newFakeSource(t,
+		newPod("n", "done", withPhase(corev1.PodSucceeded)),
+		newPod("n", "failed", withPhase(corev1.PodFailed)),
+		newPod("n", "pending", withPhase(corev1.PodPending)),
+		newPod("n", "running", withPhase(corev1.PodRunning)),
+		newPod("n", "unknown", withPhase(corev1.PodUnknown)),
+		newPod("n", "nophase"),
+	)
+	items, err := syncOne(t, (*Source).syncPods, s)
+	require.NoError(t, err)
+
+	names := make([]string, 0, len(items))
+	for _, item := range items {
+		names = append(names, item.Values["name"].(string)) //nolint:forcetypeassert // always a string
+	}
+	assert.ElementsMatch(t, []string{"failed", "pending", "running", "unknown", "nophase"}, names)
+}
+
+func TestPodContainers(t *testing.T) {
+	t.Parallel()
+
+	pod := newPod("n", "p", func(p *corev1.Pod) {
+		p.Spec.InitContainers = []corev1.Container{{Name: "init", Image: "init:1"}}
+		p.Spec.Containers = []corev1.Container{
+			{
+				Name:  "app",
+				Image: "app:1",
+				Env:   []corev1.EnvVar{{Name: "SECRET", Value: "do-not-leak"}},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("500m")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+			{Name: "sidecar", Image: "side:2"},
+		}
+		p.Status.ContainerStatuses = []corev1.ContainerStatus{
+			{Name: "other", ImageID: "docker://other"},
+			{Name: "app", ImageID: "docker://sha256:abc", Ready: true, RestartCount: 3},
+		}
+	})
+
+	got := podValues(pod, testAPIServer)["containers"]
+	want := []map[string]any{
+		{
+			"name": "app", "image": "app:1", "imageID": "docker://sha256:abc",
+			"resources":       map[string]any{"requests": map[string]string{"cpu": "500m"}, "limits": map[string]string{"memory": "1Gi"}},
+			"securityContext": map[string]any{},
+		},
+		{
+			"name": "sidecar", "image": "side:2", "imageID": "",
+			"resources":       emptyResources(),
+			"securityContext": map[string]any{},
+		},
+	}
+	assert.Equal(t, want, got)
+}
+
+func TestPodSecurityContexts(t *testing.T) {
+	t.Parallel()
+
+	t.Run("container: every key", func(t *testing.T) {
+		t.Parallel()
+		sc := &corev1.SecurityContext{
+			Privileged:               boolPtr(false),
+			RunAsNonRoot:             boolPtr(true),
+			RunAsUser:                int64Ptr(1000),
+			RunAsGroup:               int64Ptr(0),
+			ReadOnlyRootFilesystem:   boolPtr(true),
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities:             &corev1.Capabilities{Add: []corev1.Capability{"NET_ADMIN"}, Drop: []corev1.Capability{"ALL"}},
+			SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost, LocalhostProfile: stringPtr("profiles/a.json")},
+		}
+		assert.Equal(t, map[string]any{
+			"privileged":               false,
+			"runAsNonRoot":             true,
+			"runAsUser":                int64(1000),
+			"runAsGroup":               int64(0),
+			"readOnlyRootFilesystem":   true,
+			"allowPrivilegeEscalation": false,
+			"capabilities":             map[string]any{"add": []string{"NET_ADMIN"}, "drop": []string{"ALL"}},
+			"seccompProfile":           map[string]any{"type": "Localhost", "localhostProfile": "profiles/a.json"},
+		}, containerSecurityContextValues(sc))
+	})
+
+	t.Run("container: only set keys", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, map[string]any{"privileged": true}, containerSecurityContextValues(&corev1.SecurityContext{Privileged: boolPtr(true)}))
+		assert.Equal(t, map[string]any{}, containerSecurityContextValues(&corev1.SecurityContext{}))
+		assert.Equal(t, map[string]any{}, containerSecurityContextValues(nil))
+		assert.Equal(t,
+			map[string]any{"capabilities": map[string]any{"add": []string{}, "drop": []string{"ALL"}}},
+			containerSecurityContextValues(&corev1.SecurityContext{Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}}),
+		)
+		assert.Equal(t,
+			map[string]any{"seccompProfile": map[string]any{"type": "RuntimeDefault"}},
+			containerSecurityContextValues(&corev1.SecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault, LocalhostProfile: stringPtr("")}}),
+		)
+	})
+
+	t.Run("container in the pod values", func(t *testing.T) {
+		t.Parallel()
+		pod := newPod("n", "p", func(p *corev1.Pod) {
+			p.Spec.Containers = []corev1.Container{{Name: "c", SecurityContext: &corev1.SecurityContext{RunAsUser: int64Ptr(5)}}}
+		})
+		containers, ok := podValues(pod, testAPIServer)["containers"].([]map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, map[string]any{"runAsUser": int64(5)}, containers[0]["securityContext"])
+	})
+
+	t.Run("pod: every key", func(t *testing.T) {
+		t.Parallel()
+		sc := &corev1.PodSecurityContext{
+			RunAsUser:          int64Ptr(1),
+			RunAsGroup:         int64Ptr(2),
+			RunAsNonRoot:       boolPtr(true),
+			FSGroup:            int64Ptr(3),
+			SupplementalGroups: []int64{4, 5},
+			SeccompProfile:     &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+			SELinuxOptions:     &corev1.SELinuxOptions{User: "ignored"},
+		}
+		assert.Equal(t, map[string]any{
+			"runAsUser":          int64(1),
+			"runAsGroup":         int64(2),
+			"runAsNonRoot":       true,
+			"fsGroup":            int64(3),
+			"supplementalGroups": []int64{4, 5},
+			"seccompProfile":     map[string]any{"type": "RuntimeDefault"},
+		}, podSecurityContextValues(sc))
+	})
+
+	t.Run("pod: only set keys", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, map[string]any{}, podSecurityContextValues(nil))
+		assert.Equal(t, map[string]any{}, podSecurityContextValues(&corev1.PodSecurityContext{}))
+		assert.Equal(t, map[string]any{"fsGroup": int64(9)}, podSecurityContextValues(&corev1.PodSecurityContext{FSGroup: int64Ptr(9)}))
+	})
+}
+
+func TestPodTolerations(t *testing.T) {
+	t.Parallel()
+
+	got := tolerationValues([]corev1.Toleration{
+		{Key: "dedicated", Operator: corev1.TolerationOpEqual, Value: "gpu", Effect: corev1.TaintEffectNoSchedule},
+		{Operator: corev1.TolerationOpExists},
+		{Key: "node.kubernetes.io/not-ready", Operator: corev1.TolerationOpExists, Effect: corev1.TaintEffectNoExecute, TolerationSeconds: int64Ptr(300)},
+		{},
+	})
+	assert.Equal(t, []map[string]any{
+		{"key": "dedicated", "operator": "Equal", "value": "gpu", "effect": "NoSchedule"},
+		{"operator": "Exists"},
+		{"key": "node.kubernetes.io/not-ready", "operator": "Exists", "effect": "NoExecute", "tolerationSeconds": int64(300)},
+		{},
+	}, got)
+	assert.Equal(t, []map[string]any{}, tolerationValues(nil))
+}
+
+func TestPodVolumes(t *testing.T) {
+	t.Parallel()
+
+	volumes := []corev1.Volume{
+		{Name: "sec", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "my-secret", Items: []corev1.KeyToPath{{Key: "password", Path: "p"}}}}},
+		{Name: "cfg", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "my-config"}}}},
+		{Name: "data", VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "my-claim"}}},
+		{Name: "tmp", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		{Name: "host", VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/var/log"}}},
+		{Name: "proj", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{{
+			Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: "hidden"}},
+		}}}}},
+		{Name: "down", VolumeSource: corev1.VolumeSource{DownwardAPI: &corev1.DownwardAPIVolumeSource{}}},
+		{Name: "csi", VolumeSource: corev1.VolumeSource{CSI: &corev1.CSIVolumeSource{Driver: "csi.example.com", VolumeAttributes: map[string]string{"token": "do-not-leak"}}}},
+		{Name: "share", VolumeSource: corev1.VolumeSource{NFS: &corev1.NFSVolumeSource{Server: "nfs.example.com", Path: "/export"}}},
+		{Name: "none"},
+	}
+
+	got := volumeValues(volumes)
+	assert.Equal(t, []map[string]any{
+		{"name": "sec", "type": "secret", "ref": "my-secret"},
+		{"name": "cfg", "type": "configMap", "ref": "my-config"},
+		{"name": "data", "type": "persistentVolumeClaim", "ref": "my-claim"},
+		{"name": "tmp", "type": "emptyDir", "ref": ""},
+		{"name": "host", "type": "hostPath", "ref": "/var/log"},
+		{"name": "proj", "type": "projected", "ref": ""},
+		{"name": "down", "type": "downwardAPI", "ref": ""},
+		{"name": "csi", "type": "csi", "ref": "csi.example.com"},
+		{"name": "share", "type": "nfs", "ref": ""},
+		{"name": "none", "type": "unknown", "ref": ""},
+	}, got)
+
+	encoded, err := json.Marshal(got)
+	require.NoError(t, err)
+	for _, leaked := range []string{"password", "hidden", "do-not-leak", "nfs.example.com", "/export"} {
+		assert.NotContains(t, string(encoded), leaked)
+	}
+	assert.Equal(t, []map[string]any{}, volumeValues(nil))
+}
+
+func TestSyncPodsValuesThroughFakeClientset(t *testing.T) {
+	setupFixedTime(t)
+
+	values := syncOnePod(t, newPod("team-a", "web", ownedBy("DaemonSet", "agent", nil)))
+	assert.Equal(t, map[string]any{"kind": "DaemonSet", "name": "agent"}, values["owner"])
+}
+
+func TestSyncPodsEmpty(t *testing.T) {
+	t.Parallel()
+
+	items, err := syncOne(t, (*Source).syncPods, newFakeSource(t))
+	require.NoError(t, err)
+	assert.Empty(t, items)
+}
+
+func TestSyncPodsPagination(t *testing.T) {
+	setupFixedTime(t)
+
+	var limits []string
+	s := newHTTPSource(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/pods", r.URL.Path)
+		limits = append(limits, r.URL.Query().Get("limit"))
+		if r.URL.Query().Get("continue") == "" {
+			writeJSON(t, w, corev1.PodList{
+				ListMeta: metav1.ListMeta{Continue: "page-2"},
+				Items:    []corev1.Pod{*newPod("team-a", "one")},
+			})
+			return
+		}
+		assert.Equal(t, "page-2", r.URL.Query().Get("continue"))
+		writeJSON(t, w, corev1.PodList{Items: []corev1.Pod{*newPod("team-b", "two"), *newPod("team-b", "done", withPhase(corev1.PodSucceeded))}})
+	}))
+
+	items, err := syncOne(t, (*Source).syncPods, s)
+	require.NoError(t, err)
+	assert.Len(t, items, 2)
+	assert.Equal(t, []string{"500", "500"}, limits)
+}
+
+func TestSyncPodsListError(t *testing.T) {
+	t.Parallel()
+
+	s := newHTTPSource(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	require.ErrorIs(t, s.syncPods(t.Context(), make(chan source.Data, 1)), ErrRetrievingAssets)
+}
+
+func TestSyncPodsContextCanceled(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	s := newFakeSource(t, newPod("team-a", "web"))
+	require.ErrorIs(t, s.syncPods(ctx, make(chan source.Data)), context.Canceled)
+}
+
+func TestSyncPodsCanceledWhileSending(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	s := newFakeSource(t, newPod("team-a", "web"))
+
+	done := make(chan error, 1)
+	go func() { done <- s.syncPods(ctx, make(chan source.Data)) }()
+	cancel()
+
+	require.ErrorIs(t, <-done, context.Canceled)
+}
+
+func TestStartSyncProcessPodDispatchOrder(t *testing.T) {
+	setupFixedTime(t)
+
+	s := newFakeSource(t,
+		newNamespace("team-a", nil),
+		newService("team-a", "web", nil, corev1.ServiceSpec{}),
+		newPod("team-a", "web-0", ownedBy("StatefulSet", "web", boolPtr(true))),
+	)
+	results := make(chan source.Data, 10)
+
+	types := map[string]source.Extra{podOwnerRelationshipType: {}, podType: {}, serviceType: {}, namespaceType: {}, "unknown": {}}
+	require.NoError(t, s.StartSyncProcess(t.Context(), types, results))
+	close(results)
+
+	items := collectData(results)
+	gotTypes := make([]string, 0, len(items))
+	for _, item := range items {
+		gotTypes = append(gotTypes, item.Type)
+	}
+	assert.Equal(t, []string{namespaceType, serviceType, podType, podOwnerRelationshipType}, gotTypes)
+}
+
+func TestStartSyncProcessPodErrorIsolation(t *testing.T) {
+	setupFixedTime(t)
+
+	// pods are forbidden, namespaces are still served.
+	s := newHTTPSource(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/namespaces" {
+			writeJSON(t, w, corev1.NamespaceList{Items: []corev1.Namespace{*newNamespace("team-a", nil)}})
+			return
+		}
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	results := make(chan source.Data, 10)
+
+	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{namespaceType: {}, podType: {}}, results)
+	require.ErrorIs(t, err, ErrK8sSource)
+	require.ErrorIs(t, err, ErrRetrievingAssets)
+	close(results)
+
+	items := collectData(results)
+	require.Len(t, items, 1)
+	assert.Equal(t, namespaceType, items[0].Type)
+}
+
+func TestPodTypesAreKnownAndStreamable(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{podType, podOwnerRelationshipType} {
+		assert.True(t, isKnownType(name), name)
+		assert.True(t, isStreamable(name), name)
+	}
+	assert.Equal(t, networkPolicyType, knownTypes[9].name)
+	assert.Equal(t, podType, knownTypes[10].name)
+	assert.Equal(t, podOwnerRelationshipType, knownTypes[len(knownTypes)-1].name)
 }

@@ -1233,3 +1233,380 @@ func TestClusterEmitter(t *testing.T) {
 	require.Len(t, results, 1)
 	assert.Equal(t, 2, (<-results).Values["nodeCount"])
 }
+
+var podsGVR = corev1.SchemeGroupVersion.WithResource("pods")
+
+// podAt returns a copy of pod with the given resource version, after applying mutate.
+func podAt(pod *corev1.Pod, version string, mutate ...func(*corev1.Pod)) *corev1.Pod {
+	copied := pod.DeepCopy()
+	copied.ResourceVersion = version
+	for _, fn := range mutate {
+		fn(copied)
+	}
+	return copied
+}
+
+func withAnnotation(key, value string) func(*corev1.Pod) {
+	return func(pod *corev1.Pod) {
+		pod.Annotations = map[string]string{key: value}
+	}
+}
+
+func onNode1(pod *corev1.Pod) { pod.Spec.NodeName = "node-1" }
+
+func withPodIP(ip string) func(*corev1.Pod) {
+	return func(pod *corev1.Pod) { pod.Status.PodIP = ip }
+}
+
+// withContainer sets the single container of the pod, with its status.
+func withContainer(image, imageID string, ready bool, restarts int32, state corev1.ContainerState) func(*corev1.Pod) {
+	return func(pod *corev1.Pod) {
+		pod.Spec.Containers = []corev1.Container{testContainer("app", image)}
+		pod.Status.ContainerStatuses = []corev1.ContainerStatus{{
+			Name: "app", Image: image, ImageID: imageID, Ready: ready, RestartCount: restarts, State: state,
+		}}
+	}
+}
+
+// withStatusNoise changes only fields that are not part of the emitted values.
+func withStatusNoise(ready bool, restarts int32, state corev1.ContainerState) func(*corev1.Pod) {
+	return func(pod *corev1.Pod) {
+		pod.Status.Conditions = append(pod.Status.Conditions, corev1.PodCondition{Type: corev1.PodReady, Status: corev1.ConditionTrue, Reason: "r" + strconv.Itoa(int(restarts))})
+		pod.Status.ContainerStatuses[0].Ready = ready
+		pod.Status.ContainerStatuses[0].RestartCount = restarts
+		pod.Status.ContainerStatuses[0].State = state
+	}
+}
+
+func podItem(t *testing.T, operation source.DataOperation, pod *corev1.Pod) source.Data {
+	t.Helper()
+	return source.Data{Type: podType, Operation: operation, Values: podValues(pod, testAPIServer), Time: testFixedTime}
+}
+
+func ownedPod(name string, mutate ...func(*corev1.Pod)) *corev1.Pod {
+	return newPod("team-a", name, append([]func(*corev1.Pod){ownedBy("StatefulSet", "db", boolPtr(true))}, mutate...)...)
+}
+
+func TestPodIsStreamable(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{podType, podOwnerRelationshipType} {
+		assert.True(t, isKnownType(name), name)
+		assert.True(t, isStreamable(name), name)
+	}
+	assert.NotNil(t, findEventKind(t, podType).excluded)
+	for _, kind := range eventKinds {
+		if kind.name != podType {
+			assert.Nil(t, kind.excluded, kind.name)
+		}
+	}
+}
+
+func TestStartEventStreamPodSnapshotSkipsSucceeded(t *testing.T) {
+	running := newPod("team-a", "running", withPhase(corev1.PodRunning))
+	pending := newPod("team-a", "pending", withPhase(corev1.PodPending))
+	failed := newPod("team-a", "failed", withPhase(corev1.PodFailed))
+	done := newPod("team-a", "done", withPhase(corev1.PodSucceeded))
+
+	harness := startStream(t, []string{podType}, running, pending, failed, done)
+	assert.ElementsMatch(t, []source.Data{
+		podItem(t, source.DataOperationUpsert, running),
+		podItem(t, source.DataOperationUpsert, pending),
+		podItem(t, source.DataOperationUpsert, failed),
+	}, harness.nextN(3))
+	harness.waitWatches(1)
+	assert.Empty(t, harness.results)
+}
+
+func TestStartEventStreamPodLiveChanges(t *testing.T) {
+	base := newPod("team-a", "web-0", withPhase(corev1.PodPending), withContainer("img:1", "id:1", false, 0, corev1.ContainerState{}))
+	base.ResourceVersion = "1"
+
+	harness := startStream(t, []string{podType})
+	harness.waitWatches(1)
+
+	// create
+	harness.create(podsGVR, base, "team-a")
+	assert.Equal(t, podItem(t, source.DataOperationUpsert, base), harness.next())
+
+	// real changes emit exactly one upsert each, interleaved with status only updates
+	// that emit nothing: the next item received is always the real change.
+	running := corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}
+	current := base
+	version := 1
+	apply := func(mutate ...func(*corev1.Pod)) *corev1.Pod {
+		version++
+		current = podAt(current, strconv.Itoa(version), mutate...)
+		harness.update(podsGVR, current, "team-a")
+		return current
+	}
+
+	realChanges := map[string]func(*corev1.Pod){
+		"annotation": withAnnotation("note", "x"),
+		"label":      func(pod *corev1.Pod) { pod.Labels = map[string]string{"app": "web"} },
+		"nodeName":   onNode1,
+		"phase":      withPhase(corev1.PodRunning),
+		"podIP":      withPodIP("10.0.0.7"),
+		"imageID":    withContainer("img:1", "id:2", false, 0, corev1.ContainerState{}),
+	}
+	for _, name := range []string{"annotation", "label", "nodeName", "phase", "podIP", "imageID"} {
+		// status only updates: conditions, ready, restartCount and state
+		apply(withStatusNoise(true, 1, running))
+		apply(withStatusNoise(false, 2, corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 1}}))
+
+		want := apply(realChanges[name])
+		assert.Equal(t, podItem(t, source.DataOperationUpsert, want), harness.next(), name)
+	}
+
+	// delete carries the last known values
+	harness.remove(podsGVR, "team-a", "web-0")
+	assert.Equal(t, podItem(t, source.DataOperationDelete, current), harness.next())
+	assert.Empty(t, harness.results)
+}
+
+func TestStartEventStreamPodCompletion(t *testing.T) {
+	running := newPod("team-a", "job-0", withPhase(corev1.PodRunning))
+	running.ResourceVersion = "1"
+	other := newPod("team-a", "other", withPhase(corev1.PodRunning))
+	done := newPod("team-a", "old-done", withPhase(corev1.PodSucceeded))
+	done.ResourceVersion = "1"
+
+	harness := startStream(t, []string{podType}, running, other, done)
+	harness.nextN(2)
+	harness.waitWatches(1)
+
+	// Running -> Succeeded deletes the item with the values of the previous object.
+	completed := podAt(running, "2", withPhase(corev1.PodSucceeded))
+	harness.update(podsGVR, completed, "team-a")
+	assert.Equal(t, podItem(t, source.DataOperationDelete, running), harness.next())
+
+	// Further updates and the deletion of a completed pod emit nothing; the deletion
+	// of an already completed pod present in the snapshot as well.
+	harness.update(podsGVR, podAt(completed, "3", withAnnotation("k", "v")), "team-a")
+	harness.remove(podsGVR, "team-a", "job-0")
+	harness.remove(podsGVR, "team-a", "old-done")
+
+	// A Succeeded pod created later is ignored.
+	harness.create(podsGVR, newPod("team-a", "late-done", withPhase(corev1.PodSucceeded)), "team-a")
+
+	// The sentinel proves that nothing was emitted before it.
+	sentinel := newPod("team-a", "sentinel", withPhase(corev1.PodRunning))
+	harness.create(podsGVR, sentinel, "team-a")
+	assert.Equal(t, podItem(t, source.DataOperationUpsert, sentinel), harness.next())
+
+	// A completed pod that becomes not completed again is upserted.
+	harness.update(podsGVR, podAt(other, "5", withPhase(corev1.PodSucceeded)), "team-a")
+	assert.Equal(t, podItem(t, source.DataOperationDelete, other), harness.next())
+	revived := podAt(other, "6", withPhase(corev1.PodRunning))
+	harness.update(podsGVR, revived, "team-a")
+	assert.Equal(t, podItem(t, source.DataOperationUpsert, revived), harness.next())
+	assert.Empty(t, harness.results)
+}
+
+func TestEventHandlersPodExcluded(t *testing.T) {
+	setupFixedTime(t)
+	results := make(chan source.Data, 10)
+	stream := &eventStream{ctx: t.Context(), log: nilLogger(t), apiServer: testAPIServer, results: results}
+	handler := stream.handlers(findEventKind(t, podType))
+
+	active := podAt(newPod("team-a", "web-0", withPhase(corev1.PodRunning)), "1")
+	completed := podAt(active, "2", withPhase(corev1.PodSucceeded))
+	completedAgain := podAt(completed, "3", withAnnotation("k", "v"))
+	revived := podAt(completed, "4", withPhase(corev1.PodRunning))
+
+	handler.OnAdd(completed, false)
+	handler.OnUpdate(completed, completedAgain)
+	handler.OnDelete(completed)
+	handler.OnDelete(cache.DeletedFinalStateUnknown{Key: "team-a/web-0", Obj: completed})
+	assert.Empty(t, results)
+
+	handler.OnUpdate(active, completed)
+	assert.Equal(t, podItem(t, source.DataOperationDelete, active), <-results)
+
+	handler.OnUpdate(completed, revived)
+	assert.Equal(t, podItem(t, source.DataOperationUpsert, revived), <-results)
+
+	// tombstone of a live pod is a delete with its values.
+	handler.OnDelete(cache.DeletedFinalStateUnknown{Key: "team-a/web-0", Obj: revived})
+	assert.Equal(t, podItem(t, source.DataOperationDelete, revived), <-results)
+
+	// the normal path keeps the resource version and no-op skips.
+	handler.OnUpdate(active, podAt(active, "1", onNode1))
+	handler.OnUpdate(active, podAt(active, "9"))
+	assert.Empty(t, results)
+	handler.OnUpdate(active, podAt(active, "9", onNode1))
+	assert.Len(t, results, 1)
+}
+
+func TestIsCompletedPod(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, isCompletedPod(newPod("n", "p", withPhase(corev1.PodSucceeded))))
+	assert.False(t, isCompletedPod(newPod("n", "p", withPhase(corev1.PodFailed))))
+	assert.False(t, isCompletedPod(newPod("n", "p")))
+	assert.False(t, isCompletedPod((*corev1.Pod)(nil)))
+	assert.False(t, isCompletedPod("not a pod"))
+}
+
+func TestStartEventStreamPodTombstoneDeleteOfLivePod(t *testing.T) {
+	// covered at handler level by TestEventHandlersPodExcluded; here a stream deletion
+	// of a pod seen in the snapshot yields its delete.
+	pod := newPod("team-a", "web-0", withPhase(corev1.PodRunning))
+	harness := startStream(t, []string{podType}, pod)
+	harness.nextN(1)
+	harness.waitWatches(1)
+
+	harness.remove(podsGVR, "team-a", "web-0")
+	assert.Equal(t, podItem(t, source.DataOperationDelete, pod), harness.next())
+}
+
+func TestStartEventStreamPodOwnerRelationships(t *testing.T) {
+	const relType = podOwnerRelationshipType
+
+	web := newPod("team-a", "web-abc-1", withPhase(corev1.PodRunning), withLabels("pod-template-hash", "abc"), ownedBy("ReplicaSet", "web-abc", boolPtr(true)))
+	db := ownedPod("db-0", withPhase(corev1.PodRunning), withContainer("img:1", "id:1", false, 0, corev1.ContainerState{}))
+	agent := newPod("team-b", "agent-x", withPhase(corev1.PodPending), ownedBy("DaemonSet", "agent", boolPtr(true)))
+	node := newPod("team-a", "static", ownedBy("Node", "node-1", boolPtr(true)))
+	job := newPod("team-a", "batch-1", ownedBy("Job", "batch", boolPtr(true)))
+	bare := newPod("team-a", "bare")
+	done := ownedPod("db-old", withPhase(corev1.PodSucceeded))
+
+	t.Run("snapshot", func(t *testing.T) {
+		harness := startStream(t, []string{relType}, web, db, agent, node, job, bare, done)
+
+		assert.ElementsMatch(t, []source.Data{
+			relationData(relType, source.DataOperationUpsert, podOwnerPair("team-a", "web-abc-1", "Deployment", "web")),
+			relationData(relType, source.DataOperationUpsert, podOwnerPair("team-a", "db-0", "StatefulSet", "db")),
+			relationData(relType, source.DataOperationUpsert, podOwnerPair("team-b", "agent-x", "DaemonSet", "agent")),
+		}, harness.nextN(3))
+		harness.waitWatches(1)
+		assert.Empty(t, harness.results)
+	})
+
+	t.Run("add, status updates, completion and delete", func(t *testing.T) {
+		harness := startStream(t, []string{relType})
+		harness.waitWatches(1)
+		pair := podOwnerPair("team-a", "db-0", "StatefulSet", "db")
+
+		created := podAt(db, "1")
+		harness.create(podsGVR, created, "team-a")
+		assert.Equal(t, relationData(relType, source.DataOperationUpsert, pair), harness.next())
+
+		// not emitting owners and succeeded pods
+		harness.create(podsGVR, node, "team-a")
+		harness.create(podsGVR, job, "team-a")
+		harness.create(podsGVR, bare, "team-a")
+		harness.create(podsGVR, done, "team-a")
+
+		// status only and unrelated updates emit nothing
+		running := corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}
+		harness.update(podsGVR, podAt(created, "2", withStatusNoise(true, 3, running)), "team-a")
+		harness.update(podsGVR, podAt(created, "3", onNode1, withAnnotation("k", "v")), "team-a")
+
+		// completion deletes the link, then nothing more is emitted for the pod
+		completed := podAt(created, "4", withPhase(corev1.PodSucceeded))
+		harness.update(podsGVR, completed, "team-a")
+		assert.Equal(t, relationData(relType, source.DataOperationDelete, pair), harness.next())
+		harness.remove(podsGVR, "team-a", "db-0")
+
+		// the pod that was never emitted before is the first emission after the above
+		fresh := podAt(db, "1", func(pod *corev1.Pod) { pod.Name = "db-1" })
+		harness.create(podsGVR, fresh, "team-a")
+		assert.Equal(t, relationData(relType, source.DataOperationUpsert, podOwnerPair("team-a", "db-1", "StatefulSet", "db")), harness.next())
+
+		harness.remove(podsGVR, "team-a", "db-1")
+		assert.Equal(t, relationData(relType, source.DataOperationDelete, podOwnerPair("team-a", "db-1", "StatefulSet", "db")), harness.next())
+		assert.Empty(t, harness.results)
+	})
+
+	t.Run("owner change", func(t *testing.T) {
+		harness := startStream(t, []string{relType}, podAt(db, "1"))
+		harness.nextN(1)
+		harness.waitWatches(1)
+
+		changed := podAt(db, "2", func(pod *corev1.Pod) {
+			pod.OwnerReferences = []metav1.OwnerReference{{Kind: "DaemonSet", Name: "agent", Controller: boolPtr(true)}}
+		})
+		harness.update(podsGVR, changed, "team-a")
+		assert.Equal(t, []source.Data{
+			relationData(relType, source.DataOperationUpsert, podOwnerPair("team-a", "db-0", "DaemonSet", "agent")),
+			relationData(relType, source.DataOperationDelete, podOwnerPair("team-a", "db-0", "StatefulSet", "db")),
+		}, harness.nextN(2))
+	})
+
+	t.Run("tombstone", func(t *testing.T) {
+		results := make(chan source.Data, 10)
+		stream := &eventStream{ctx: t.Context(), log: nilLogger(t), apiServer: testAPIServer, results: results}
+		handler := stream.relationHandlers(relationshipBindings[len(relationshipBindings)-1])
+		setupFixedTime(t)
+
+		handler.OnDelete(cache.DeletedFinalStateUnknown{Key: "team-a/db-0", Obj: db})
+		require.Len(t, results, 1)
+		assert.Equal(t, relationData(relType, source.DataOperationDelete, podOwnerPair("team-a", "db-0", "StatefulSet", "db")), <-results)
+
+		handler.OnDelete(cache.DeletedFinalStateUnknown{Key: "x", Obj: done})
+		handler.OnAdd(done, false)
+		assert.Empty(t, results)
+	})
+}
+
+func TestPodOwnerPairsIgnoreCompletedPods(t *testing.T) {
+	t.Parallel()
+
+	assert.Empty(t, podOwnerPairs(ownedPod("db-0", withPhase(corev1.PodSucceeded)), testAPIServer))
+	assert.Len(t, podOwnerPairs(ownedPod("db-0", withPhase(corev1.PodFailed)), testAPIServer), 1)
+}
+
+func TestStartEventStreamPodRelationshipOnlyStartsPodInformer(t *testing.T) {
+	harness := startStream(t, []string{podOwnerRelationshipType}, ownedPod("db-0"))
+	harness.nextN(1)
+	harness.waitWatches(1)
+
+	for _, action := range harness.client.Actions() {
+		assert.Equal(t, "pods", action.GetResource().Resource, action.GetVerb())
+	}
+	assert.Empty(t, harness.watches)
+}
+
+func TestStartEventStreamPodAndRelationshipShareInformer(t *testing.T) {
+	pod := ownedPod("db-0", withPhase(corev1.PodRunning))
+	harness := startStream(t, []string{podType, podOwnerRelationshipType}, pod)
+
+	types := map[string]int{}
+	for _, data := range harness.nextN(2) {
+		types[data.Type]++
+	}
+	assert.Equal(t, map[string]int{podType: 1, podOwnerRelationshipType: 1}, types)
+	harness.waitWatches(1)
+
+	var lists, watches int
+	for _, action := range harness.client.Actions() {
+		if action.GetResource().Resource != "pods" {
+			continue
+		}
+		switch action.GetVerb() {
+		case "list":
+			lists++
+		case "watch":
+			watches++
+		}
+	}
+	assert.Equal(t, 1, lists)
+	assert.Equal(t, 1, watches)
+
+	// a completion deletes both
+	harness.update(podsGVR, podAt(pod, "2", withPhase(corev1.PodSucceeded)), "team-a")
+	got := harness.nextN(2)
+	types = map[string]int{}
+	for _, data := range got {
+		assert.Equal(t, source.DataOperationDelete, data.Operation)
+		types[data.Type]++
+	}
+	assert.Equal(t, map[string]int{podType: 1, podOwnerRelationshipType: 1}, types)
+}
+
+func TestStartEventStreamPodStopsOnCancellation(t *testing.T) {
+	harness := startStream(t, []string{podType})
+	harness.waitWatches(1)
+	harness.shutdown()
+}

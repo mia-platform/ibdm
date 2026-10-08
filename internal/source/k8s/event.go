@@ -63,6 +63,9 @@ type eventKind struct {
 	// comparable, when set, strips from the values the fields that change on every
 	// update without carrying information, before old and new values are compared.
 	comparable func(values map[string]any) map[string]any
+	// excluded, when set, reports the objects that are not items: they are never
+	// emitted, and an object becoming excluded is deleted.
+	excluded func(obj any) bool
 }
 
 // eventKinds lists the data types streamed by plain typed informers. helmrelease,
@@ -110,6 +113,14 @@ var eventKinds = []eventKind{
 			return f.Networking().V1().NetworkPolicies().Informer()
 		},
 		values: typedValues(infallible(networkPolicyValues)),
+	},
+	{
+		name: podType,
+		informer: func(f informers.SharedInformerFactory) cache.SharedIndexInformer {
+			return f.Core().V1().Pods().Informer()
+		},
+		values:   typedValues(infallible(podValues)),
+		excluded: isCompletedPod,
 	},
 }
 
@@ -367,7 +378,9 @@ func (e *eventStream) emit(dataType string, operation source.DataOperation, valu
 
 // handlers returns the handlers translating informer events of kind into data.
 // Update events that do not change the resource version, or whose values equal
-// the previous ones, are ignored.
+// the previous ones, are ignored. Objects matching kind.excluded are not items:
+// their events are ignored, except the update that makes an object excluded, which
+// deletes it, and the one that makes it no longer excluded, which upserts it.
 func (e *eventStream) handlers(kind eventKind) cache.ResourceEventHandler {
 	emitObject := func(obj any, operation source.DataOperation) {
 		values, err := kind.values(obj, e.apiServer)
@@ -390,18 +403,42 @@ func (e *eventStream) handlers(kind eventKind) cache.ResourceEventHandler {
 		return reflect.DeepEqual(oldValues, newValues)
 	}
 
+	excluded := func(obj any) bool {
+		return kind.excluded != nil && kind.excluded(obj)
+	}
+
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
+			if excluded(obj) {
+				return
+			}
 			emitObject(obj, source.DataOperationUpsert)
 		},
 		UpdateFunc: func(oldObj, newObj any) {
+			oldExcluded, newExcluded := excluded(oldObj), excluded(newObj)
+			switch {
+			case oldExcluded && newExcluded:
+				return
+			case newExcluded:
+				// The object stopped being an item: it was emitted so far, delete it.
+				emitObject(oldObj, source.DataOperationDelete)
+				return
+			case oldExcluded:
+				// The object became an item: it was never emitted.
+				emitObject(newObj, source.DataOperationUpsert)
+				return
+			}
 			if sameResourceVersion(oldObj, newObj) || unchanged(oldObj, newObj) {
 				return
 			}
 			emitObject(newObj, source.DataOperationUpsert)
 		},
 		DeleteFunc: func(obj any) {
-			emitObject(unwrapTombstone(obj), source.DataOperationDelete)
+			obj = unwrapTombstone(obj)
+			if excluded(obj) {
+				return
+			}
+			emitObject(obj, source.DataOperationDelete)
 		},
 	}
 }

@@ -1,0 +1,16 @@
+apiVersion: mia-platform.eu/v1
+itemFamily: relationships
+type: podOwnerRelationship
+syncable: true
+mappings:
+  identifier: |-
+    {{ $src := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Pod:%s" (printf "k8s-%s-pod-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum) -}}
+    {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+    {{- $tgt := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:%s:%s" .ownerKind (printf "k8s-%s-%s-%s-%s" (replace "https://" "" .apiServer) (lower .ownerKind) .namespace .ownerName | sha256sum) -}}
+    {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+  spec:
+    sourceRef: |-
+      urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Pod:{{ printf "k8s-%s-pod-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
+    targetRef: |-
+      urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:{{ .ownerKind }}:{{ printf "k8s-%s-%s-%s-%s" (replace "https://" "" .apiServer) (lower .ownerKind) .namespace .ownerName | sha256sum }}
+    typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
