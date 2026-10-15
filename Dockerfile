@@ -5,6 +5,9 @@ ARG TARGETPLATFORM
 ARG CMD_NAME
 ENV COMMAND_NAME=${CMD_NAME}
 
+# TODO: remove once the alpine base image ships zlib >= 1.3.2-r1
+RUN apk upgrade --no-cache zlib
+
 COPY ${TARGETPLATFORM}/${CMD_NAME} /usr/local/bin/
 
 USER 1000:1000
