@@ -17,8 +17,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/mia-platform/ibdm/internal/logger"
@@ -37,7 +39,17 @@ const (
 	// helmStatusLabel and helmStatusDeployed identify the current revision of a Helm release.
 	helmStatusLabel    = "status"
 	helmStatusDeployed = "deployed"
+
+	// helmStatusPendingInstall, helmStatusPendingUpgrade and helmStatusPendingRollback
+	// mark a revision Helm is still writing: the release it belongs to is alive.
+	helmStatusPendingInstall  = "pending-install"
+	helmStatusPendingUpgrade  = "pending-upgrade"
+	helmStatusPendingRollback = "pending-rollback"
 )
+
+// helmLiveStatuses are the revision statuses that keep a Helm release alive when
+// its deployed revision leaves the deployed set, as happens during an upgrade or rollback.
+var helmLiveStatuses = []string{helmStatusDeployed, helmStatusPendingInstall, helmStatusPendingUpgrade, helmStatusPendingRollback}
 
 // informerSyncTimeout is the time after which an informer that has not completed
 // its initial sync is reported as failing; it keeps retrying afterwards.
@@ -187,7 +199,9 @@ type eventStream struct {
 	log         logger.Logger
 	apiServer   string
 	clusterName string
-	results     chan<- source.Data
+	// clientset reads the live Helm release Secrets before a release is deleted.
+	clientset kubernetes.Interface
+	results   chan<- source.Data
 	// reconcilers emit the relationship types derived from several informers.
 	reconcilers []*pairReconciler
 }
@@ -216,7 +230,7 @@ func (s *Source) StartEventStream(ctx context.Context, typesToStream map[string]
 		requested[name] = struct{}{}
 	}
 
-	stream := &eventStream{ctx: ctx, log: log, apiServer: s.apiServer, clusterName: s.clusterName, results: results}
+	stream := &eventStream{ctx: ctx, log: log, apiServer: s.apiServer, clusterName: s.clusterName, clientset: s.clientset, results: results}
 	factory := informers.NewSharedInformerFactory(s.clientset, informerResync)
 	var active []runningInformer
 
@@ -490,7 +504,9 @@ func (e *eventStream) helmHandlers(informer cache.SharedIndexInformer) cache.Res
 			}
 		},
 		DeleteFunc: func(obj any) {
-			if secret, ok := unwrapTombstone(obj).(*corev1.Secret); ok && secret.Labels[helmOwnerLabel] == helmOwnerValue {
+			// The server-side filter only reports deployed Secrets, with their last matching state;
+			// a Secret that already left the deployed set was handled when it left.
+			if secret, ok := unwrapTombstone(obj).(*corev1.Secret); ok && isDeployedHelmSecret(secret) {
 				e.helmGone(indexer, secret)
 			}
 		},
@@ -522,11 +538,18 @@ func (e *eventStream) helmUpsert(indexer cache.Indexer, secret *corev1.Secret) {
 }
 
 // helmGone handles a Helm release Secret that disappeared from the deployed set. A
-// release is deleted only when no other deployed Secret of the same release remains:
-// on an upgrade the old revision becomes superseded while the release lives on.
+// release is deleted only when no other deployed Secret of the same release remains
+// in the cache and the live check of helmReleaseAlive finds no revision keeping it
+// alive: on an upgrade or rollback the old revision is superseded while the new one
+// is still pending, so the release lives on and the new revision is upserted when
+// it becomes deployed.
 func (e *eventStream) helmGone(indexer cache.Indexer, secret *corev1.Secret) {
 	remaining := newestDeployedHelmSecret(indexer, secret)
 	if remaining == nil {
+		if e.helmReleaseAlive(secret) {
+			e.log.Debug("helm release revision superseded, release still alive", "secret", secret.Name, "namespace", secret.Namespace)
+			return
+		}
 		e.emitHelmSecret(secret, source.DataOperationDelete)
 		return
 	}
@@ -535,6 +558,30 @@ func (e *eventStream) helmGone(indexer cache.Indexer, secret *corev1.Secret) {
 	if helmSecretRevision(secret) > helmSecretRevision(remaining) {
 		e.emitHelmSecret(remaining, source.DataOperationUpsert)
 	}
+}
+
+// helmReleaseAlive reports whether the release stored in secret still has, on the
+// API server, another revision that is deployed or being written by Helm. The informer
+// cache cannot answer this: it only holds deployed Secrets, and a pending revision is
+// not deployed yet. When the lookup fails the release is reported as not alive, so a
+// failing API call never keeps a dead release in the Catalog.
+func (e *eventStream) helmReleaseAlive(secret *corev1.Secret) bool {
+	selector := labels.SelectorFromSet(labels.Set{
+		helmOwnerLabel: helmOwnerValue,
+		helmNameLabel:  secret.Labels[helmNameLabel],
+	}).String()
+
+	list, err := e.clientset.CoreV1().Secrets(secret.Namespace).List(e.ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		if e.ctx.Err() == nil {
+			e.log.Warn("error checking helm release revisions, deleting release", "secret", secret.Name, "namespace", secret.Namespace, "error", err.Error())
+		}
+		return false
+	}
+
+	return slices.ContainsFunc(list.Items, func(candidate corev1.Secret) bool {
+		return candidate.Name != secret.Name && slices.Contains(helmLiveStatuses, candidate.Labels[helmStatusLabel])
+	})
 }
 
 // emitHelmSecret decodes secret and emits the matching helmrelease data. A Secret

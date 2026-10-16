@@ -269,8 +269,8 @@ objects. After that:
 - Creating or changing an object sends an update, deleting it sends a deletion of the item and of its relationships.
 - A change that does not alter any field of the item (for example a status change of a deployment) sends nothing.
 - The `cluster` item is sent once at the start and again whenever the data of the nodes changes. It is never deleted.
-- A Helm upgrade updates the release item, and does not delete it. A release is deleted only when no deployed revision
-  of it remains.
+- A Helm upgrade or rollback updates the release item, and does not delete it. A release is deleted only when it has
+  no deployed revision left and Helm is not writing a new one, as happens when the release is uninstalled.
 - A Pod that completes (phase `Succeeded`) is removed from the Catalog together with its relationships.
 - Relationships that depend on both ends, such as the one between a service and its workloads, are recomputed when either
   side changes, adding the new links and removing the ones that no longer match.

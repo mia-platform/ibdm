@@ -4,6 +4,7 @@
 package k8s
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"strconv"
@@ -362,41 +363,103 @@ func TestStartEventStreamUnsupportedTypesOnly(t *testing.T) {
 	assert.Empty(t, results)
 }
 
-func TestStartEventStreamHelmUpgradeEmitsNoDelete(t *testing.T) {
-	harness := startStream(t, []string{helmReleaseType}, helmSecret(t, "team-a", "shop", 1, "deployed"))
-	first := harness.next()
-	assert.Equal(t, 1, first.Values["revision"])
-	harness.waitWatches(1)
+// helmSecretName is the name Helm gives to the Secret storing revision of release.
+func helmSecretName(release string, revision int) string {
+	return "sh.helm.release.v1." + release + ".v" + strconv.Itoa(revision)
+}
 
-	// helm upgrade: the new revision is deployed and the old one becomes superseded.
-	harness.create(secretsGVR, helmSecret(t, "team-a", "shop", 2, "deployed"), "team-a")
-	upgraded := harness.next()
-	assert.Equal(t, source.DataOperationUpsert, upgraded.Operation)
-	assert.Equal(t, 2, upgraded.Values["revision"])
+// replayHelmRevisionSwitch replays on harness the order in which Helm writes its
+// release Secrets on an upgrade or a rollback of release in team-a: the target
+// revision is created with pendingStatus, the current one is superseded, the target
+// is marked deployed. When filtered is true the current revision leaves the deployed
+// set as the label-filtered watch reports it, a delete carrying the last deployed state;
+// otherwise it is updated to superseded and then removed.
+func replayHelmRevisionSwitch(t *testing.T, harness *streamHarness, release string, current, target int, pendingStatus string, filtered bool) {
+	t.Helper()
+	harness.create(secretsGVR, helmSecret(t, "team-a", release, target, pendingStatus), "team-a")
+	if filtered {
+		harness.remove(secretsGVR, "team-a", helmSecretName(release, current))
+	} else {
+		harness.update(secretsGVR, helmSecret(t, "team-a", release, current, "superseded"), "team-a")
+		harness.remove(secretsGVR, "team-a", helmSecretName(release, current))
+	}
+	harness.update(secretsGVR, helmSecret(t, "team-a", release, target, "deployed"), "team-a")
+}
 
-	harness.update(secretsGVR, helmSecret(t, "team-a", "shop", 1, "superseded"), "team-a")
+// assertOnlyRevisionUpsert checks that the next data is the upsert of revision of
+// shop, and that nothing else is emitted before a sentinel release.
+func assertOnlyRevisionUpsert(t *testing.T, harness *streamHarness, revision int) {
+	t.Helper()
+	switched := harness.next()
+	assert.Equal(t, source.DataOperationUpsert, switched.Operation)
+	assert.Equal(t, "shop", switched.Values[keyName])
+	assert.Equal(t, revision, switched.Values["revision"])
 
-	// the sentinel release proves nothing was emitted for the superseded revision.
+	// the sentinel release proves nothing else was emitted for the release.
 	harness.create(secretsGVR, helmSecret(t, "team-a", "sentinel", 1, "deployed"), "team-a")
 	sentinel := harness.next()
 	assert.Equal(t, source.DataOperationUpsert, sentinel.Operation)
 	assert.Equal(t, "sentinel", sentinel.Values[keyName])
+}
 
-	// the real server reports the leave as a delete of the old revision.
-	harness.remove(secretsGVR, "team-a", "sh.helm.release.v1.shop.v1")
-	harness.create(secretsGVR, helmSecret(t, "team-a", "sentinel-two", 1, "deployed"), "team-a")
-	assert.Equal(t, "sentinel-two", harness.next().Values[keyName])
+func TestStartEventStreamHelmUpgradeEmitsNoDelete(t *testing.T) {
+	tests := map[string]struct {
+		filtered bool
+	}{
+		"old revision updated to superseded": {},
+		"old revision reported as a delete":  {filtered: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			harness := startStream(t, []string{helmReleaseType}, helmSecret(t, "team-a", "shop", 1, "deployed"))
+			first := harness.next()
+			assert.Equal(t, 1, first.Values["revision"])
+			harness.waitWatches(1)
+
+			replayHelmRevisionSwitch(t, harness, "shop", 1, 2, helmStatusPendingUpgrade, test.filtered)
+			assertOnlyRevisionUpsert(t, harness, 2)
+		})
+	}
+}
+
+func TestStartEventStreamHelmRollbackEmitsNoDelete(t *testing.T) {
+	tests := map[string]struct {
+		filtered bool
+	}{
+		"current revision updated to superseded": {},
+		"current revision reported as a delete":  {filtered: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			harness := startStream(t, []string{helmReleaseType},
+				helmSecret(t, "team-a", "shop", 1, "superseded"),
+				helmSecret(t, "team-a", "shop", 2, "deployed"),
+			)
+			first := harness.next()
+			assert.Equal(t, 2, first.Values["revision"])
+			harness.waitWatches(1)
+
+			replayHelmRevisionSwitch(t, harness, "shop", 2, 3, helmStatusPendingRollback, test.filtered)
+			assertOnlyRevisionUpsert(t, harness, 3)
+		})
+	}
 }
 
 func TestStartEventStreamHelmUninstallEmitsDelete(t *testing.T) {
 	harness := startStream(t, []string{helmReleaseType},
-		helmSecret(t, "team-a", "shop", 1, "deployed"),
+		helmSecret(t, "team-a", "shop", 1, "superseded"),
+		helmSecret(t, "team-a", "shop", 2, "deployed"),
 		helmSecret(t, "team-a", "blog", 4, "deployed"),
 	)
 	harness.nextN(2)
 	harness.waitWatches(1)
 
-	harness.remove(secretsGVR, "team-a", "sh.helm.release.v1.shop.v1")
+	// helm uninstall: the deployed revision becomes uninstalling, then every revision is deleted.
+	harness.update(secretsGVR, helmSecret(t, "team-a", "shop", 2, "uninstalling"), "team-a")
+	harness.remove(secretsGVR, "team-a", helmSecretName("shop", 1))
+	harness.remove(secretsGVR, "team-a", helmSecretName("shop", 2))
 	deleted := harness.next()
 	assert.Equal(t, source.DataOperationDelete, deleted.Operation)
 	assert.Equal(t, helmReleaseType, deleted.Type)
@@ -409,6 +472,113 @@ func TestStartEventStreamHelmUninstallEmitsDelete(t *testing.T) {
 	deleted = harness.next()
 	assert.Equal(t, source.DataOperationDelete, deleted.Operation)
 	assert.Equal(t, "blog", deleted.Values[keyName])
+
+	// the sentinel release proves that exactly one delete was emitted for each release.
+	harness.create(secretsGVR, helmSecret(t, "team-a", "sentinel", 1, "deployed"), "team-a")
+	assert.Equal(t, "sentinel", harness.next().Values[keyName])
+}
+
+func TestStartEventStreamHelmUninstallFilteredDeleteEmitsDelete(t *testing.T) {
+	harness := startStream(t, []string{helmReleaseType}, helmSecret(t, "team-a", "shop", 1, "deployed"))
+	harness.next()
+	harness.waitWatches(1)
+
+	// the label-filtered watch reports the deployed revision leaving the set as a delete.
+	harness.remove(secretsGVR, "team-a", helmSecretName("shop", 1))
+	deleted := harness.next()
+	assert.Equal(t, source.DataOperationDelete, deleted.Operation)
+	assert.Equal(t, "shop", deleted.Values[keyName])
+}
+
+func TestHelmGoneLookupFailureEmitsDelete(t *testing.T) {
+	setupFixedTime(t)
+	client := fake.NewClientset()
+	client.PrependReactor("list", "secrets", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("api server unavailable")
+	})
+	var logs bytes.Buffer
+	results := make(chan source.Data, 10)
+	stream := &eventStream{ctx: t.Context(), log: logger.NewLogger(&logs), apiServer: testAPIServer, clientset: client, results: results}
+
+	stream.helmGone(newSecretIndexer(t), helmSecret(t, "team-a", "shop", 1, "deployed"))
+
+	close(results)
+	items := collectData(results)
+	require.Len(t, items, 1)
+	assert.Equal(t, source.DataOperationDelete, items[0].Operation)
+	assert.Equal(t, "shop", items[0].Values[keyName])
+	assert.Contains(t, logs.String(), `"@level":"warn"`)
+	assert.Contains(t, logs.String(), "error checking helm release revisions")
+	assert.Contains(t, logs.String(), "sh.helm.release.v1.shop.v1")
+	assert.NotContains(t, logs.String(), "web-chart")
+}
+
+func TestHelmGoneLookupFailsWhileStopping(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	client := fake.NewClientset()
+	client.PrependReactor("list", "secrets", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, context.Canceled
+	})
+	var logs bytes.Buffer
+	results := make(chan source.Data)
+	stream := &eventStream{ctx: ctx, log: logger.NewLogger(&logs), apiServer: testAPIServer, clientset: client, results: results}
+
+	stream.helmGone(newSecretIndexer(t), helmSecret(t, "team-a", "shop", 1, "deployed"))
+	assert.NotContains(t, logs.String(), "error checking helm release revisions")
+}
+
+func TestHelmReleaseAlive(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		live []runtime.Object
+		want bool
+	}{
+		"no other revision": {
+			live: []runtime.Object{helmSecret(t, "team-a", "shop", 1, "superseded")},
+		},
+		"only superseded, failed and uninstalling revisions": {
+			live: []runtime.Object{
+				helmSecret(t, "team-a", "shop", 1, "superseded"),
+				helmSecret(t, "team-a", "shop", 2, "failed"),
+				helmSecret(t, "team-a", "shop", 3, "uninstalling"),
+			},
+		},
+		"live revisions of other releases and namespaces": {
+			live: []runtime.Object{
+				helmSecret(t, "team-a", "blog", 2, "deployed"),
+				helmSecret(t, "team-b", "shop", 2, "pending-upgrade"),
+			},
+		},
+		"pending upgrade": {
+			live: []runtime.Object{helmSecret(t, "team-a", "shop", 2, "pending-upgrade")},
+			want: true,
+		},
+		"pending rollback": {
+			live: []runtime.Object{helmSecret(t, "team-a", "shop", 2, "pending-rollback")},
+			want: true,
+		},
+		"pending install": {
+			live: []runtime.Object{helmSecret(t, "team-a", "shop", 2, "pending-install")},
+			want: true,
+		},
+		"deployed": {
+			live: []runtime.Object{helmSecret(t, "team-a", "shop", 2, "deployed")},
+			want: true,
+		},
+		"the gone revision itself does not count": {
+			live: []runtime.Object{helmSecret(t, "team-a", "shop", 1, "deployed")},
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			stream := &eventStream{ctx: t.Context(), log: nilLogger(t), clientset: fake.NewClientset(test.live...)}
+			assert.Equal(t, test.want, stream.helmReleaseAlive(helmSecret(t, "team-a", "shop", 1, "deployed")))
+		})
+	}
 }
 
 func TestStartEventStreamHelmIgnoresNonHelmSecrets(t *testing.T) {
@@ -558,8 +728,9 @@ func TestEventHandlersTombstoneDelete(t *testing.T) {
 
 func TestEventHandlersHelmTombstoneDelete(t *testing.T) {
 	results := make(chan source.Data, 10)
-	stream := &eventStream{ctx: t.Context(), log: nilLogger(t), apiServer: testAPIServer, results: results}
-	informer := informers.NewSharedInformerFactory(fake.NewClientset(), 0).Core().V1().Secrets().Informer()
+	client := fake.NewClientset()
+	stream := &eventStream{ctx: t.Context(), log: nilLogger(t), apiServer: testAPIServer, clientset: client, results: results}
+	informer := informers.NewSharedInformerFactory(client, 0).Core().V1().Secrets().Informer()
 	handler := stream.helmHandlers(informer)
 
 	handler.OnDelete(cache.DeletedFinalStateUnknown{Key: "team-a/x", Obj: helmSecret(t, "team-a", "shop", 1, "deployed")})
@@ -628,7 +799,7 @@ func TestHelmReleaseRevisionSelection(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			setupFixedTime(t)
 			results := make(chan source.Data, 10)
-			stream := &eventStream{ctx: t.Context(), log: nilLogger(t), apiServer: testAPIServer, results: results}
+			stream := &eventStream{ctx: t.Context(), log: nilLogger(t), apiServer: testAPIServer, clientset: fake.NewClientset(), results: results}
 			indexer := newSecretIndexer(t, test.cached...)
 
 			if test.gone != nil {
@@ -867,8 +1038,9 @@ func TestEventHandlersNoOpUpdates(t *testing.T) {
 func TestEventHandlersHelmNoOpUpdates(t *testing.T) {
 	setupFixedTime(t)
 	results := make(chan source.Data, 10)
-	stream := &eventStream{ctx: t.Context(), log: nilLogger(t), apiServer: testAPIServer, results: results}
-	informer := informers.NewSharedInformerFactory(fake.NewClientset(), 0).Core().V1().Secrets().Informer()
+	client := fake.NewClientset()
+	stream := &eventStream{ctx: t.Context(), log: nilLogger(t), apiServer: testAPIServer, clientset: client, results: results}
+	informer := informers.NewSharedInformerFactory(client, 0).Core().V1().Secrets().Informer()
 	handler := stream.helmHandlers(informer)
 
 	old := versioned(helmSecret(t, "team-a", "shop", 1, "deployed"), "1")
