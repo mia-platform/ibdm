@@ -19,10 +19,14 @@ words:
   - HMAC
   - ibdm
   - itds
+  - kubeconfig
+  - kubelet
+  - milli
   - mylib
   - mytoken
   - postgresqldb
   - postgresqldbs
+  - SCTP
   - sonarqube
   - Sonatype
   - syft
@@ -35,6 +39,7 @@ ignoreWords:
   - Dsonar
   - acks
   - apiv
+  - appsv
   - assetpb
   - azblob
   - azcore
@@ -42,6 +47,8 @@ ignoreWords:
   - azidentity
   - azsystemevents
   - bbtoken
+  - clusterip
+  - corev
   - errln
   - errorresultid
   - fakeazcore
@@ -52,16 +59,22 @@ ignoreWords:
   - gomod
   - gopath
   - hclog
+  - metav
   - mygroup
   - myresult
   - mysecret
   - myuser
+  - networkingv
+  - nomatch
+  - nophase
   - noprefixhex
   - octocat
   - pubsubpb
+  - sclusters
   - structpb
   - sysdiglabs
   - sysql
+  - Vjcm
   - vtpm
   - vulndb
   - vulns

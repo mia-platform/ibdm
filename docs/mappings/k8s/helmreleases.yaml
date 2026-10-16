@@ -1,0 +1,33 @@
+apiVersion: k8s.mia-platform-experimental.eu/v1
+itemFamily: helmreleases
+type: helmrelease
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "k8s-%s-helmrelease-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
+  metadata:
+    title: "{{ .name | toJSON }}"
+  spec:
+    name: "{{ .name | toJSON }}"
+    namespace: "{{ .namespace | toJSON }}"
+    revision: "{{ .revision }}"
+    status: "{{ .status | toJSON }}"
+    chartName: "{{ .chartName | toJSON }}"
+    chartVersion: "{{ .chartVersion | toJSON }}"
+    appVersion: "{{ .appVersion | toJSON }}"
+    firstDeployed: "{{ .firstDeployed | toJSON }}"
+    lastDeployed: "{{ .lastDeployed | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:HelmRelease:%s" (printf "k8s-%s-helmrelease-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Namespace:%s" (printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:HelmRelease:{{ printf "k8s-%s-helmrelease-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:k8s.mia-platform-experimental.eu:v1:Namespace:{{ printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
