@@ -45,7 +45,7 @@ const (
 	// networkPolicyType is the data type key for Kubernetes network policies.
 	networkPolicyType = "networkpolicy"
 
-	// podType is the data type key for Kubernetes pods (experimental).
+	// podType is the data type key for Kubernetes pods.
 	podType = "pod"
 )
 

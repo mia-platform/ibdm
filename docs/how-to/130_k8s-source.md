@@ -197,7 +197,7 @@ only the files you need.
 | `helmreleases.yaml` | `helmrelease` | `HelmRelease` | ✅ | ✅ |
 | `ingressroutes.yaml` | `ingressroute` | `IngressRoute` | ✅ | ✅ |
 | `certificates.yaml` | `certificate` | `Certificate` | ✅ | ✅ |
-| `pods.yaml` | `pod` (experimental) | `Pod` | ✅ | ✅ |
+| `pods.yaml` | `pod` | `Pod` | ✅ | ✅ |
 
 Every item type has to be registered in the Catalog before IBDM sends items of that type.
 
@@ -218,7 +218,7 @@ Every item type has to be registered in the Catalog before IBDM sends items of t
 The mapping files are the reference for the exact fields. Environment variables, Secret and volume contents are never
 read into any item.
 
-The `pod` type is experimental. Pods that completed (phase `Succeeded`) are not synchronised, and fields that change
+Pods that completed (phase `Succeeded`) are not synchronised, and fields that change
 all the time, such as the readiness, the restart count and the container state, are not part of the item.
 
 ### Relationships

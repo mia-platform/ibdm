@@ -36,7 +36,7 @@ const (
 	serviceWorkloadRelationshipType = "serviceWorkloadRelationship"
 
 	// podOwnerRelationshipType is the data type key of the links between a Pod and
-	// the Deployment, StatefulSet or DaemonSet owning it (experimental).
+	// the Deployment, StatefulSet or DaemonSet owning it.
 	podOwnerRelationshipType = "podOwnerRelationship"
 
 	// helmReleaseNameAnnotation and helmReleaseNamespaceAnnotation are set by Helm
