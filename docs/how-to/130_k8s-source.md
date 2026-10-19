@@ -188,16 +188,16 @@ only the files you need.
 | Mapping file | Type | Item kind | Sync | Run |
 | --- | --- | --- | --- | --- |
 | `clusters.yaml` | `cluster` | `K8sCluster` | ✅ | ✅ |
-| `namespaces.yaml` | `namespace` | `Namespace` | ✅ | ✅ |
-| `deployments.yaml` | `deployment` | `Deployment` | ✅ | ✅ |
-| `statefulsets.yaml` | `statefulset` | `StatefulSet` | ✅ | ✅ |
-| `daemonsets.yaml` | `daemonset` | `DaemonSet` | ✅ | ✅ |
-| `services.yaml` | `service` | `Service` | ✅ | ✅ |
-| `networkpolicies.yaml` | `networkpolicy` | `NetworkPolicy` | ✅ | ✅ |
-| `helmreleases.yaml` | `helmrelease` | `HelmRelease` | ✅ | ✅ |
-| `ingressroutes.yaml` | `ingressroute` | `IngressRoute` | ✅ | ✅ |
-| `certificates.yaml` | `certificate` | `Certificate` | ✅ | ✅ |
-| `pods.yaml` | `pod` | `Pod` | ✅ | ✅ |
+| `namespaces.yaml` | `namespace` | `K8sNamespace` | ✅ | ✅ |
+| `deployments.yaml` | `deployment` | `K8sDeployment` | ✅ | ✅ |
+| `statefulsets.yaml` | `statefulset` | `K8sStatefulSet` | ✅ | ✅ |
+| `daemonsets.yaml` | `daemonset` | `K8sDaemonSet` | ✅ | ✅ |
+| `services.yaml` | `service` | `K8sService` | ✅ | ✅ |
+| `networkpolicies.yaml` | `networkpolicy` | `K8sNetworkPolicy` | ✅ | ✅ |
+| `helmreleases.yaml` | `helmrelease` | `K8sHelmRelease` | ✅ | ✅ |
+| `ingressroutes.yaml` | `ingressroute` | `TraefikIngressRoute` | ✅ | ✅ |
+| `certificates.yaml` | `certificate` | `K8sCertificate` | ✅ | ✅ |
+| `pods.yaml` | `pod` | `K8sPod` | ✅ | ✅ |
 
 Every item type has to be registered in the Catalog before IBDM sends items of that type.
 
@@ -229,10 +229,10 @@ like every type they are synchronised only when their mapping file is present:
 
 | Mapping file | Type | Relationship |
 | --- | --- | --- |
-| `ingressroute-service-relationships.yaml` | `ingressRouteServiceRelationship` | `IngressRoute` `dependency` `Service`. Only `Service` targets are linked, and a route that points to a Traefik internal service (such as `api@internal`) gets no link. |
-| `workload-helmrelease-relationships.yaml` | `workloadHelmReleaseRelationship` | Workload `part-of` `HelmRelease`, from the `meta.helm.sh/release-name` and `meta.helm.sh/release-namespace` annotations that Helm adds to the objects it creates. |
-| `service-workload-relationships.yaml` | `serviceWorkloadRelationship` | `Service` `dependency` workload, when the selector of the service matches the pod template labels of the workload in the same namespace. |
-| `pod-owner-relationships.yaml` | `podOwnerRelationship` | `Pod` `part-of` its Deployment, StatefulSet or DaemonSet. Pods owned by anything else, such as a Job, are not linked. |
+| `ingressroute-service-relationships.yaml` | `ingressRouteServiceRelationship` | `TraefikIngressRoute` `dependency` `K8sService`. Only Kubernetes `Service` targets are linked, and a route that points to a Traefik internal service (such as `api@internal`) gets no link. |
+| `workload-helmrelease-relationships.yaml` | `workloadHelmReleaseRelationship` | Workload (`K8sDeployment`, `K8sStatefulSet` or `K8sDaemonSet`) `part-of` `K8sHelmRelease`, from the `meta.helm.sh/release-name` and `meta.helm.sh/release-namespace` annotations that Helm adds to the objects it creates. |
+| `service-workload-relationships.yaml` | `serviceWorkloadRelationship` | `K8sService` `dependency` workload (`K8sDeployment`, `K8sStatefulSet` or `K8sDaemonSet`), when the selector of the service matches the pod template labels of the workload in the same namespace. |
+| `pod-owner-relationships.yaml` | `podOwnerRelationship` | `K8sPod` `part-of` the `K8sDeployment`, `K8sStatefulSet` or `K8sDaemonSet` that owns it. Pods owned by anything else, such as a Job, are not linked. |
 
 These links connect items by identifier, so they only resolve to something when the item types on both ends are
 synchronised too.

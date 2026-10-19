@@ -1,5 +1,5 @@
 apiVersion: k8s.mia-platform.eu/v1
-itemFamily: certificates
+itemFamily: k8scertificates
 type: certificate
 syncable: true
 mappings:
@@ -22,12 +22,12 @@ mappings:
       itemFamily: relationships
       deletePolicy: "cascade"
       identifier: |-
-        {{ $src := printf "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:Certificate:%s" (printf "k8s-%s-certificate-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum) -}}
+        {{ $src := printf "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sCertificate:%s" (printf "k8s-%s-certificate-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum) -}}
         {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
-        {{- $tgt := printf "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:Namespace:%s" (printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum) -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:%s" (printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum) -}}
         {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
-        urn:mia-platform-catalog:k8s.mia-platform.eu:v1:Certificate:{{ printf "k8s-%s-certificate-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
+        urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sCertificate:{{ printf "k8s-%s-certificate-%s-%s" (replace "https://" "" .apiServer) .namespace .name | sha256sum }}
       targetRef: |-
-        urn:mia-platform-catalog:k8s.mia-platform.eu:v1:Namespace:{{ printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum }}
+        urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:{{ printf "%s-%s" (replace "https://" "" .apiServer) .namespace | sha256sum }}
       typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
