@@ -14,6 +14,7 @@ import (
 
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/logger"
+	"github.com/mia-platform/ibdm/internal/mappings"
 )
 
 // externalDocument is an external mapping document of type mappingType writing itemFamily in a
@@ -21,6 +22,19 @@ import (
 func externalDocument(mappingType, itemFamily, extra, syncable string) string {
 	return "type: " + mappingType + "\napiVersion: my-org.example.com/v1\nitemFamily: " + itemFamily + "\n" + extra + syncable +
 		"mappings:\n  identifier: \"{{ .id }}\"\n  spec:\n    key: \"{{ .value }}\"\n"
+}
+
+// relationshipMappingConfig parses an internal mapping of mappingType writing the generic
+// relationship item type.
+func relationshipMappingConfig(tb testing.TB, name, mappingType string) *config.MappingConfig {
+	tb.Helper()
+
+	document := "type: " + mappingType + "\napiVersion: " + mappings.RelationshipsAPIVersion + "\nitemFamily: " + mappings.RelationshipsItemFamily +
+		"\nmappings:\n  identifier: \"{{ .id }}\"\n  spec:\n    sourceRef: \"{{ .source }}\"\n"
+	configs, err := config.NewMappingConfigsFromReader(strings.NewReader(document), "my-source/"+name+".yaml")
+	require.NoError(tb, err)
+	require.Len(tb, configs, 1)
+	return configs[0]
 }
 
 // writeExternalFiles writes files into a temporary directory and returns their paths in lexical order.
@@ -110,6 +124,18 @@ func TestResolveMappers(t *testing.T) {
 			allowSharedItemTypes: true,
 			expectedOrder:        map[string][]string{"a-type": {"my-a"}, "b-type": {"my-b"}},
 			expectedLog:          []string{"their items may overwrite each other"},
+		},
+		"internal mappings sharing the generic relationship item type start without the flag": {
+			internal: func(tb testing.TB) []*config.MappingConfig {
+				tb.Helper()
+				return []*config.MappingConfig{
+					relationshipMappingConfig(tb, "a-relationships", "a-relationship"),
+					relationshipMappingConfig(tb, "b-relationships", "b-relationship"),
+				}
+			},
+			selection:     all,
+			expectedOrder: map[string][]string{"a-relationship": {"a-relationships"}, "b-relationship": {"b-relationships"}},
+			unexpectedLog: []string{"overwrite"},
 		},
 		"one type writing two item types is not flagged": {
 			internal: testInternalSet,

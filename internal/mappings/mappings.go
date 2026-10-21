@@ -44,6 +44,7 @@ var (
 		"gcp":          "gcp",
 		"github":       "github",
 		"gitlab":       "gitlab",
+		"k8s":          "k8s",
 		"nexus":        "nexus",
 		"sonarqube":    "sonarqube",
 		"sysdig":       "sysdig",

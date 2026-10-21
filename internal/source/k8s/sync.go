@@ -82,7 +82,7 @@ var knownTypes = []struct {
 // Unknown types are skipped with a debug log message. A failure in one type is
 // logged and does not prevent the remaining types from being synchronised; the
 // collected failures are returned at the end.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	if !s.syncLock.TryLock() {
 		log.Debug("sync process already running")

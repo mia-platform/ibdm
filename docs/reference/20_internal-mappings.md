@@ -88,6 +88,26 @@ starting point for your own external mappings.
 | `pipelines` | `pipeline` | `gitlab.mia-platform.eu/v1` `pipelines` | — |
 | `projects` | `project` | `gitlab.mia-platform.eu/v1` `projects` | — |
 
+## `k8s`
+
+| Name | Type | Item type (`apiVersion` `itemFamily`) | Root `extra` |
+| --- | --- | --- | --- |
+| `certificates` | `certificate` | `k8s.mia-platform.eu/v1` `k8scertificates` | — |
+| `clusters` | `cluster` | `k8s.mia-platform.eu/v1` `k8sclusters` | — |
+| `daemonsets` | `daemonset` | `k8s.mia-platform.eu/v1` `k8sdaemonsets` | — |
+| `deployments` | `deployment` | `k8s.mia-platform.eu/v1` `k8sdeployments` | — |
+| `helmreleases` | `helmrelease` | `k8s.mia-platform.eu/v1` `k8shelmreleases` | — |
+| `ingressroute-service-relationships` | `ingressRouteServiceRelationship` | `mia-platform.eu/v1` `relationships` | — |
+| `ingressroutes` | `ingressroute` | `k8s.mia-platform.eu/v1` `traefikingressroutes` | — |
+| `namespaces` | `namespace` | `k8s.mia-platform.eu/v1` `k8snamespaces` | — |
+| `networkpolicies` | `networkpolicy` | `k8s.mia-platform.eu/v1` `k8snetworkpolicies` | — |
+| `pod-owner-relationships` | `podOwnerRelationship` | `mia-platform.eu/v1` `relationships` | — |
+| `pods` | `pod` | `k8s.mia-platform.eu/v1` `k8spods` | — |
+| `service-workload-relationships` | `serviceWorkloadRelationship` | `mia-platform.eu/v1` `relationships` | — |
+| `services` | `service` | `k8s.mia-platform.eu/v1` `k8sservices` | — |
+| `statefulsets` | `statefulset` | `k8s.mia-platform.eu/v1` `k8sstatefulsets` | — |
+| `workload-helmrelease-relationships` | `workloadHelmReleaseRelationship` | `mia-platform.eu/v1` `relationships` | — |
+
 ## `nexus`
 
 | Name | Type | Item type (`apiVersion` `itemFamily`) | Root `extra` |

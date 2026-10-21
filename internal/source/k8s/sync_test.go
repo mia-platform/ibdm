@@ -20,16 +20,16 @@ func TestStartSyncProcessDispatch(t *testing.T) {
 	setupFixedTime(t)
 
 	testCases := map[string]struct {
-		types       map[string]source.Extra
+		types       map[string]source.MappingExtras
 		expectTypes []string
 	}{
-		"cluster only":   {types: map[string]source.Extra{clusterType: {}}, expectTypes: []string{clusterType}},
-		"namespace only": {types: map[string]source.Extra{namespaceType: {}}, expectTypes: []string{namespaceType, namespaceType}},
+		"cluster only":   {types: map[string]source.MappingExtras{clusterType: {}}, expectTypes: []string{clusterType}},
+		"namespace only": {types: map[string]source.MappingExtras{namespaceType: {}}, expectTypes: []string{namespaceType, namespaceType}},
 		"both types": {
-			types:       map[string]source.Extra{clusterType: {}, namespaceType: {}},
+			types:       map[string]source.MappingExtras{clusterType: {}, namespaceType: {}},
 			expectTypes: []string{clusterType, namespaceType, namespaceType},
 		},
-		"unknown types are skipped": {types: map[string]source.Extra{"node": {}, "unknown": {}}},
+		"unknown types are skipped": {types: map[string]source.MappingExtras{"node": {}, "unknown": {}}},
 	}
 
 	for name, tc := range testCases {
@@ -68,7 +68,7 @@ func TestStartSyncProcessErrorIsolation(t *testing.T) {
 	}))
 	results := make(chan source.Data, 10)
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{clusterType: {}, namespaceType: {}}, results)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{clusterType: {}, namespaceType: {}}, results)
 	require.ErrorIs(t, err, ErrK8sSource)
 	require.ErrorIs(t, err, ErrRetrievingAssets)
 	close(results)
@@ -86,7 +86,7 @@ func TestStartSyncProcessLock(t *testing.T) {
 	t.Cleanup(s.syncLock.Unlock)
 
 	results := make(chan source.Data, 10)
-	require.NoError(t, s.StartSyncProcess(t.Context(), map[string]source.Extra{namespaceType: {}}, results))
+	require.NoError(t, s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{namespaceType: {}}, results))
 	assert.Empty(t, results)
 }
 
@@ -99,7 +99,7 @@ func TestStartSyncProcessContextCanceled(t *testing.T) {
 	s := newFakeSource(t, newNamespace("team-a", nil))
 	results := make(chan source.Data, 10)
 
-	require.NoError(t, s.StartSyncProcess(ctx, map[string]source.Extra{clusterType: {}, namespaceType: {}}, results))
+	require.NoError(t, s.StartSyncProcess(ctx, map[string]source.MappingExtras{clusterType: {}, namespaceType: {}}, results))
 	assert.Empty(t, results)
 }
 
@@ -111,7 +111,7 @@ func TestStartSyncProcessCanceledDuringType(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- s.StartSyncProcess(ctx, map[string]source.Extra{namespaceType: {}}, make(chan source.Data))
+		done <- s.StartSyncProcess(ctx, map[string]source.MappingExtras{namespaceType: {}}, make(chan source.Data))
 	}()
 	cancel()
 

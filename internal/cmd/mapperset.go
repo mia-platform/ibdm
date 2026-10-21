@@ -137,10 +137,14 @@ func checkExternalNames(external []*config.MappingConfig, internalNames []string
 }
 
 // checkSharedItemTypes rejects mappings writing the same item type, whose items may overwrite
-// each other, unless allowed: then every shared item type is reported as a warning.
+// each other, unless allowed: then every shared item type is reported as a warning. The generic
+// relationship item type is never reported (mappings.ShareableItemType).
 func checkSharedItemTypes(log logger.Logger, configs []*config.MappingConfig, allowed bool) error {
 	writers := make(map[string][]string)
 	for _, mapping := range configs {
+		if mappings.ShareableItemType(mapping.APIVersion, mapping.ItemFamily) {
+			continue
+		}
 		itemType := mapping.APIVersion + " " + mapping.ItemFamily
 		writers[itemType] = append(writers[itemType], mapping.Name)
 	}

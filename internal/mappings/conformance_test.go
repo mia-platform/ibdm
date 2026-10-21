@@ -124,6 +124,8 @@ func fileProblems(fsys fs.FS, file, baseName string, types map[string]string) []
 // itemTypeProblems is part of conformance tier 1: no two bundled mappings, across every source,
 // write the same item type definition. Sharing one is allowed for user mappings only with an
 // explicit acknowledgement at startup, so a bundled pair would block every run that selects both.
+// The generic relationship item type is the exception (ShareableItemType): its identifiers cannot
+// overlap across mappings relating different kinds of items.
 func itemTypeProblems(fsys fs.FS, directories map[string]string) []string {
 	problems := make([]string, 0)
 	owners := make(map[string]string)
@@ -134,6 +136,9 @@ func itemTypeProblems(fsys fs.FS, directories map[string]string) []string {
 			continue
 		}
 		for _, mapping := range configs {
+			if ShareableItemType(mapping.APIVersion, mapping.ItemFamily) {
+				continue
+			}
 			itemType := mapping.APIVersion + " " + mapping.ItemFamily
 			owner := source + "/" + mapping.Name
 			if other, shared := owners[itemType]; shared {
@@ -224,7 +229,7 @@ func TestBundledMappingsConformance(t *testing.T) {
 			require.NoError(t, err)
 			total += len(configs)
 		}
-		require.Equal(t, 45, total, "update this count and the documentation when bundled mappings are added or removed")
+		require.Equal(t, 60, total, "update this count and the documentation when bundled mappings are added or removed")
 	})
 }
 
@@ -329,6 +334,54 @@ func TestConformanceChecksCatchDefects(t *testing.T) {
 			problems := test.check(fsys)
 			require.NotEmpty(t, problems)
 			require.Contains(t, strings.Join(problems, "\n"), test.expected)
+		})
+	}
+}
+
+// TestItemTypeProblemsSharedRelationships proves the one exception of the distinct item type
+// check: several bundled mappings, in one source or across sources, may write the generic
+// relationship item type, while any other shared item type is still reported.
+func TestItemTypeProblemsSharedRelationships(t *testing.T) {
+	t.Parallel()
+
+	relationships := func(mappingType string) string {
+		document := strings.Replace(validDocument(mappingType), "apiVersion: console.mia-platform.eu/v1", "apiVersion: "+RelationshipsAPIVersion, 1)
+		return strings.Replace(document, "itemFamily: my-items", "itemFamily: "+RelationshipsItemFamily, 1)
+	}
+	directories := map[string]string{"first-source": "first-source", "second-source": "second-source"}
+
+	testCases := map[string]struct {
+		files    map[string]string
+		expected []string
+	}{
+		"relationship mappings in one source and across sources": {
+			files: map[string]string{
+				"first-source/a-relationships.yaml":  relationships("a-relationship"),
+				"first-source/b-relationships.yaml":  relationships("b-relationship"),
+				"second-source/c-relationships.yaml": relationships("c-relationship"),
+			},
+			expected: []string{},
+		},
+		"another shared item type next to relationship mappings": {
+			files: map[string]string{
+				"first-source/a-relationships.yaml":  relationships("a-relationship"),
+				"second-source/b-relationships.yaml": relationships("b-relationship"),
+				"first-source/a.yaml":                validDocument("a-type"),
+				"second-source/b.yaml":               validDocument("b-type"),
+			},
+			expected: []string{"first-source/a and second-source/b both write the item type console.mia-platform.eu/v1 my-items"},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			fsys := fstest.MapFS{}
+			for file, content := range test.files {
+				fsys[file] = &fstest.MapFile{Data: []byte(content)}
+			}
+			require.Equal(t, test.expected, itemTypeProblems(fsys, directories))
 		})
 	}
 }

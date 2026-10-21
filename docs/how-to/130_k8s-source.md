@@ -13,23 +13,58 @@ connection settings.
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 ### Sync
 
 ```bash
-ibdm sync k8s --mapping-file <path to mapping file or folder>
+ibdm sync k8s --include-internal-mappings=all
 ```
 
-Performs a one-off synchronisation: lists every resource of the types you configured and exits. Use it for an initial
+Performs a one-off synchronisation: lists every resource of the selected types and exits. Use it for an initial
 load, for scheduled runs, or for trying a mapping with `--local-output`.
 
 ### Run (Watch)
 
 ```bash
-ibdm run k8s --mapping-file <path to mapping file or folder>
+ibdm run k8s --include-internal-mappings=all
 ```
 
 Starts a long-running process that watches the cluster. It first sends everything that already exists, like a sync, and
 then sends every creation, change and deletion as it happens. See [Sync and Watch Behaviour](#sync-and-watch-behaviour).
+
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list k8s` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+| Internal mapping | Sync | Run (watch) | Its relationships point at |
+| --- | --- | --- | --- |
+| `clusters` | yes | yes | the Console `Cluster` item (see [Cluster Identity and the Console Link](#cluster-identity-and-the-console-link)) |
+| `namespaces` | yes | yes | `clusters` |
+| `deployments`, `statefulsets`, `daemonsets`, `services`, `networkpolicies`, `helmreleases`, `ingressroutes`, `certificates`, `pods` | yes | yes | `namespaces` |
+| `ingressroute-service-relationships` | yes | yes | `ingressroutes`, `services` |
+| `workload-helmrelease-relationships` | yes | yes | `deployments`, `statefulsets`, `daemonsets`, `helmreleases` |
+| `service-workload-relationships` | yes | yes | `services`, `deployments`, `statefulsets`, `daemonsets` |
+| `pod-owner-relationships` | yes | yes | `pods`, `deployments`, `statefulsets`, `daemonsets` |
+
+Every mapping reads the Kubernetes objects it needs on its own, so any selection works: a
+relationship mapping selected alone still lists the objects it is derived from, without writing
+them. Selecting a resource mapping together with a relationship mapping derived from it lists those
+objects twice during a sync.
+
+A relationship points at an item only through its identifier, so it points at nothing when the
+mapping of the item at the other end is not selected: for example, `pods` without `namespaces`
+creates relationships towards namespace items that do not exist, and `pod-owner-relationships`
+without `pods` creates relationships from pod items that do not exist. The Catalog accepts such
+relationships without error.
+
+The four `…-relationships` mappings write the generic relationship item type,
+`mia-platform.eu/v1` `relationships`, like the relationships of the other mappings: selecting
+several of them needs no `--allow-shared-item-types`.
 
 ## Configuration
 
@@ -181,23 +216,23 @@ The token is read once, when IBDM starts. This is enough for a token that does n
 
 ## Supported Data Types
 
-The types to synchronise are chosen by the mapping files you pass to IBDM: a type is only synchronised when a mapping
-file for it is present. The ready-made mappings live in `docs/mappings/k8s`, and you can pass the whole folder or copy
-only the files you need.
+A type is only synchronised when a mapping for it is selected: an internal mapping with
+`--include-internal-mappings`, or your own mapping passed with `--mapping-file`. `ibdm mappings show k8s <name>` prints
+an internal mapping, as a starting point for your own.
 
-| Mapping file | Type | Item kind | Sync | Run |
+| Internal mapping | Type | Item kind | Sync | Run |
 | --- | --- | --- | --- | --- |
-| `clusters.yaml` | `cluster` | `K8sCluster` | ✅ | ✅ |
-| `namespaces.yaml` | `namespace` | `K8sNamespace` | ✅ | ✅ |
-| `deployments.yaml` | `deployment` | `K8sDeployment` | ✅ | ✅ |
-| `statefulsets.yaml` | `statefulset` | `K8sStatefulSet` | ✅ | ✅ |
-| `daemonsets.yaml` | `daemonset` | `K8sDaemonSet` | ✅ | ✅ |
-| `services.yaml` | `service` | `K8sService` | ✅ | ✅ |
-| `networkpolicies.yaml` | `networkpolicy` | `K8sNetworkPolicy` | ✅ | ✅ |
-| `helmreleases.yaml` | `helmrelease` | `K8sHelmRelease` | ✅ | ✅ |
-| `ingressroutes.yaml` | `ingressroute` | `TraefikIngressRoute` | ✅ | ✅ |
-| `certificates.yaml` | `certificate` | `K8sCertificate` | ✅ | ✅ |
-| `pods.yaml` | `pod` | `K8sPod` | ✅ | ✅ |
+| `clusters` | `cluster` | `K8sCluster` | ✅ | ✅ |
+| `namespaces` | `namespace` | `K8sNamespace` | ✅ | ✅ |
+| `deployments` | `deployment` | `K8sDeployment` | ✅ | ✅ |
+| `statefulsets` | `statefulset` | `K8sStatefulSet` | ✅ | ✅ |
+| `daemonsets` | `daemonset` | `K8sDaemonSet` | ✅ | ✅ |
+| `services` | `service` | `K8sService` | ✅ | ✅ |
+| `networkpolicies` | `networkpolicy` | `K8sNetworkPolicy` | ✅ | ✅ |
+| `helmreleases` | `helmrelease` | `K8sHelmRelease` | ✅ | ✅ |
+| `ingressroutes` | `ingressroute` | `TraefikIngressRoute` | ✅ | ✅ |
+| `certificates` | `certificate` | `K8sCertificate` | ✅ | ✅ |
+| `pods` | `pod` | `K8sPod` | ✅ | ✅ |
 
 Every item type has to be registered in the Catalog before IBDM sends items of that type.
 
@@ -215,7 +250,7 @@ Every item type has to be registered in the Catalog before IBDM sends items of t
 | `certificate` | `name`, `namespace`, `labels`, `dnsNames`, `issuer`, `status` and `statusReason` of the `Ready` condition, `renewalTime`, `notAfter`. |
 | `pod` | `name`, `namespace`, `labels`, `annotations`, `owner`, `nodeName`, `phase`, `podIP`, `startTime`, `containers` with the running `imageID`, `resources` and `securityContext`, the service account, `volumes` (type and referenced name only), `tolerations`, `nodeSelector`, the host network flags and the pod security context. |
 
-The mapping files are the reference for the exact fields. Environment variables, Secret and volume contents are never
+The internal mappings (`ibdm mappings show k8s <name>`) are the reference for the exact fields. Environment variables, Secret and volume contents are never
 read into any item.
 
 Pods that completed (phase `Succeeded`) are not synchronised, and fields that change
@@ -225,14 +260,14 @@ all the time, such as the readiness, the restart count and the container state, 
 
 Every namespaced item is linked to its namespace with a `part-of` relationship, and every namespace is linked to the
 cluster. The relationships that cannot be expressed inside the mapping of a single item have their own types, and
-like every type they are synchronised only when their mapping file is present:
+like every type they are synchronised only when their mapping is selected:
 
-| Mapping file | Type | Relationship |
+| Internal mapping | Type | Relationship |
 | --- | --- | --- |
-| `ingressroute-service-relationships.yaml` | `ingressRouteServiceRelationship` | `TraefikIngressRoute` `dependency` `K8sService`. Only Kubernetes `Service` targets are linked, and a route that points to a Traefik internal service (such as `api@internal`) gets no link. |
-| `workload-helmrelease-relationships.yaml` | `workloadHelmReleaseRelationship` | Workload (`K8sDeployment`, `K8sStatefulSet` or `K8sDaemonSet`) `part-of` `K8sHelmRelease`, from the `meta.helm.sh/release-name` and `meta.helm.sh/release-namespace` annotations that Helm adds to the objects it creates. |
-| `service-workload-relationships.yaml` | `serviceWorkloadRelationship` | `K8sService` `dependency` workload (`K8sDeployment`, `K8sStatefulSet` or `K8sDaemonSet`), when the selector of the service matches the pod template labels of the workload in the same namespace. |
-| `pod-owner-relationships.yaml` | `podOwnerRelationship` | `K8sPod` `part-of` the `K8sDeployment`, `K8sStatefulSet` or `K8sDaemonSet` that owns it. Pods owned by anything else, such as a Job, are not linked. |
+| `ingressroute-service-relationships` | `ingressRouteServiceRelationship` | `TraefikIngressRoute` `dependency` `K8sService`. Only Kubernetes `Service` targets are linked, and a route that points to a Traefik internal service (such as `api@internal`) gets no link. |
+| `workload-helmrelease-relationships` | `workloadHelmReleaseRelationship` | Workload (`K8sDeployment`, `K8sStatefulSet` or `K8sDaemonSet`) `part-of` `K8sHelmRelease`, from the `meta.helm.sh/release-name` and `meta.helm.sh/release-namespace` annotations that Helm adds to the objects it creates. |
+| `service-workload-relationships` | `serviceWorkloadRelationship` | `K8sService` `dependency` workload (`K8sDeployment`, `K8sStatefulSet` or `K8sDaemonSet`), when the selector of the service matches the pod template labels of the workload in the same namespace. |
+| `pod-owner-relationships` | `podOwnerRelationship` | `K8sPod` `part-of` the `K8sDeployment`, `K8sStatefulSet` or `K8sDaemonSet` that owns it. Pods owned by anything else, such as a Job, are not linked. |
 
 These links connect items by identifier, so they only resolve to something when the item types on both ends are
 synchronised too.
@@ -255,7 +290,7 @@ The same address is part of every identifier, so changing it creates new items i
 ### Sync
 
 A sync lists every requested type in pages. A failure while reading one type is logged and does not stop the other
-types, and the failures are reported when the sync ends. A type with no mapping file is skipped, and a custom resource
+types, and the failures are reported when the sync ends. A type with no selected mapping is skipped, and a custom resource
 that is not installed on the cluster is skipped with an informational log.
 
 A sync only creates and updates items: it never removes the ones of objects that no longer exist. Use `ibdm run` to
@@ -296,7 +331,7 @@ There is no periodic full resync: the watches are the only source of changes.
 | `the server has asked for the client to provide credentials` | The token is wrong, expired, or belongs to another cluster. Check it with `curl -sk -H "Authorization: Bearer $K8S_BEARER_TOKEN" "$K8S_API_SERVER/api/v1/namespaces"`. |
 | `forbidden` errors for some types | The ServiceAccount lacks the rule for that resource. Add it to the ClusterRole. |
 | `informer did not sync in time` | The cluster cannot be reached or is slow. It keeps retrying, so check the network between IBDM and the API server. |
-| Nothing is printed for a type | The mapping file for that type is missing, or its custom resource is not installed. |
+| Nothing is printed for a type | No mapping for that type is selected (check the resolved-set log line at start), or its custom resource is not installed. |
 | The Console link points to nothing | `K8S_API_SERVER` differs from the URL registered in the Console. See [Cluster Identity](#cluster-identity-and-the-console-link). |
 | TLS errors | Set `K8S_CA_CERT`, or use `K8S_INSECURE_SKIP_VERIFY=true` for tests only. |
 | The cluster uses OIDC and token mode fails | The address may be an authentication proxy that rejects ServiceAccount tokens. Use the address of the API server itself, or kubeconfig mode with an `exec` plugin. |

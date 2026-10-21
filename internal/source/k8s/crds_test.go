@@ -381,26 +381,26 @@ func TestStartSyncProcessCRDs(t *testing.T) {
 
 	testCases := map[string]struct {
 		served []*metav1.APIResourceList
-		types  map[string]source.Extra
+		types  map[string]source.MappingExtras
 		expect []string
 	}{
 		"both in order": {
 			served: allServed(),
-			types:  map[string]source.Extra{certificateType: {}, ingressRouteType: {}, namespaceType: {}},
+			types:  map[string]source.MappingExtras{certificateType: {}, ingressRouteType: {}, namespaceType: {}},
 			expect: []string{namespaceType, ingressRouteType, certificateType},
 		},
 		"traefik not installed does not affect others": {
 			served: []*metav1.APIResourceList{serverResources("cert-manager.io/v1", certificatesRes)},
-			types:  map[string]source.Extra{certificateType: {}, ingressRouteType: {}, namespaceType: {}},
+			types:  map[string]source.MappingExtras{certificateType: {}, ingressRouteType: {}, namespaceType: {}},
 			expect: []string{namespaceType, certificateType},
 		},
 		"nothing installed": {
-			types:  map[string]source.Extra{certificateType: {}, ingressRouteType: {}, namespaceType: {}},
+			types:  map[string]source.MappingExtras{certificateType: {}, ingressRouteType: {}, namespaceType: {}},
 			expect: []string{namespaceType},
 		},
 		"unknown types skipped": {
 			served: allServed(),
-			types:  map[string]source.Extra{"helmrelease": {}},
+			types:  map[string]source.MappingExtras{"helmrelease": {}},
 		},
 	}
 
@@ -447,7 +447,7 @@ func TestStartSyncProcessCRDErrorIsolation(t *testing.T) {
 		})
 
 		results := make(chan source.Data, 10)
-		err := s.StartSyncProcess(t.Context(), map[string]source.Extra{ingressRouteType: {}, certificateType: {}}, results)
+		err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{ingressRouteType: {}, certificateType: {}}, results)
 		require.ErrorIs(t, err, ErrK8sSource)
 		require.ErrorIs(t, err, ErrRetrievingAssets)
 		close(results)
@@ -466,7 +466,7 @@ func TestStartSyncProcessCRDErrorIsolation(t *testing.T) {
 		})
 
 		results := make(chan source.Data, 10)
-		err := s.StartSyncProcess(t.Context(), map[string]source.Extra{ingressRouteType: {}, certificateType: {}}, results)
+		err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{ingressRouteType: {}, certificateType: {}}, results)
 		require.ErrorIs(t, err, ErrRetrievingAssets)
 		close(results)
 		assert.Empty(t, collectData(results))

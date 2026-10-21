@@ -137,8 +137,12 @@ Catalog item, and the last mapping to write it wins. `ibdm` cannot tell in advan
 will overlap, so it refuses to start when two mappings of a run write the same item type, and lists
 them. Pass `--allow-shared-item-types` to start anyway: every shared item type is then logged as a
 warning, and avoiding colliding identifiers is the responsibility of whoever writes the mappings.
-The internal mappings never share an item type with each other, and an external mapping cannot write
-a system item type, so the check only ever concerns your external mappings.
+
+The generic relationship item type, `mia-platform.eu/v1` `relationships`, is the one exception: any
+number of mappings may write it. A relationship identifier hashes its source, relationship type and
+target URNs, so mappings relating different kinds of items cannot produce the same one. Apart from
+it, the internal mappings never share an item type with each other, and an external mapping cannot
+write a system item type, so the check only ever concerns your external mappings.
 
 ## Template Functions
 
