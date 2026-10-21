@@ -1,0 +1,93 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "dnsNames": [
+          "shop.example.com"
+        ],
+        "issuer": {
+          "group": "",
+          "kind": "ClusterIssuer",
+          "name": "letsencrypt"
+        },
+        "labels": {},
+        "name": "shop-example-com",
+        "namespace": "storefront",
+        "notAfter": "2026-12-29T09:00:00Z",
+        "renewalTime": "2026-11-29T09:00:00Z",
+        "status": "True",
+        "statusReason": "Ready"
+      },
+      "itemFamily": "k8scertificates",
+      "metadata": {
+        "title": "shop-example-com"
+      },
+      "name": "d6f9150351b4a8508fdd705a036b98fc3e1e42558ff1101955ac46206f01e7c9",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sCertificate:d6f9150351b4a8508fdd705a036b98fc3e1e42558ff1101955ac46206f01e7c9",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "072ae8072c9b5d14d98e1bc627fdbe30d7709da8ff815de34902e4d60098c978",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/cert-manager.io/v1",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/cert-manager.io/v1/certificates",
+      "query": "limit=500&timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    }
+  ]
+}

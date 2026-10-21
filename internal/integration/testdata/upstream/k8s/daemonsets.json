@@ -1,0 +1,53 @@
+{
+  "kind": "DaemonSetList",
+  "apiVersion": "apps/v1",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "log-agent",
+        "uid": "uid-log-agent",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "platform",
+        "labels": {
+          "app": "log-agent"
+        }
+      },
+      "spec": {
+        "selector": {
+          "matchLabels": {
+            "app": "log-agent"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "log-agent"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "agent",
+                "image": "registry.example.com/platform/log-agent:3.2.1",
+                "resources": {
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "256Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "512Mi"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

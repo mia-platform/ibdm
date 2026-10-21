@@ -1,0 +1,38 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sPod:7e9da98514a80529c11490e08ac973645208a9f48213837444609bf0990a9120",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sStatefulSet:d414ea89c908086febd275910fa212532cec4b8f938d5331eb6c15a492d91450",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "0139aa3ede10a1399cb5baa0940540e1242a770eab53ced79320075ee11c3b7a",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sPod:2cf6fc7f64f7a61117528b5b5ac6695c6be246aaeea81ac12d4d99df4f365f6f",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sDeployment:dfa7dded5672c67f8982b754712b8001a9eb5a7c86aca48d1980c2bb68720d54",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "c419cfde946cd7565e2d64af0397c6db476cbf8e2374068a49fe26c007d2cc63",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/v1/pods",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    }
+  ]
+}

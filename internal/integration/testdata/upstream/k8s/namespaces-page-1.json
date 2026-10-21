@@ -1,0 +1,25 @@
+{
+  "kind": "NamespaceList",
+  "apiVersion": "v1",
+  "metadata": {
+    "resourceVersion": "1000",
+    "continue": "namespaces-page-2"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "storefront",
+        "uid": "uid-storefront",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "labels": {
+          "team": "storefront"
+        }
+      },
+      "spec": {},
+      "status": {
+        "phase": "Active"
+      }
+    }
+  ]
+}
