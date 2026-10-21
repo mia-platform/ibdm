@@ -113,7 +113,9 @@ When two or more mappings of a run write the same item type, meaning the same `a
 `itemFamily`, their items may overwrite each other whenever their identifiers overlap. `ibdm`
 refuses to start in that case, and lists every shared item type with the mappings writing it.
 Pass `--allow-shared-item-types` to start anyway: every shared item type is then logged as a
-warning. One mapping type writing several item types is always allowed.
+warning. One mapping type writing several item types is always allowed, and so is the generic
+relationship item type, `mia-platform.eu/v1` `relationships`, which several internal mappings write:
+relationship identifiers cannot overlap across mappings relating different kinds of items.
 
 ### External Mappings on an Internal Type
 
