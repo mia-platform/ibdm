@@ -1,0 +1,47 @@
+{
+  "kind": "NetworkPolicyList",
+  "apiVersion": "networking.k8s.io/v1",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "catalog-api-ingress",
+        "uid": "uid-catalog-api-ingress",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app": "catalog-api"
+          }
+        },
+        "policyTypes": [
+          "Ingress"
+        ],
+        "ingress": [
+          {
+            "from": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "team": "platform"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8080
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

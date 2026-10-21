@@ -1,0 +1,1100 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "dnsNames": [
+          "shop.example.com"
+        ],
+        "issuer": {
+          "group": "",
+          "kind": "ClusterIssuer",
+          "name": "letsencrypt"
+        },
+        "labels": {},
+        "name": "shop-example-com",
+        "namespace": "storefront",
+        "notAfter": "2026-12-29T09:00:00Z",
+        "renewalTime": "2026-11-29T09:00:00Z",
+        "status": "True",
+        "statusReason": "Ready"
+      },
+      "itemFamily": "k8scertificates",
+      "metadata": {
+        "title": "shop-example-com"
+      },
+      "name": "d6f9150351b4a8508fdd705a036b98fc3e1e42558ff1101955ac46206f01e7c9",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "name": "k8s-api.example.com",
+        "nodeCount": 2,
+        "nodes": [
+          {
+            "architecture": "amd64",
+            "cpuCapacity": 4,
+            "kernelVersion": "6.8.0-45-generic",
+            "kubeletVersion": "v1.31.2",
+            "name": "worker-a",
+            "osImage": "Ubuntu 24.04 LTS",
+            "taints": [
+              {
+                "effect": "NoSchedule",
+                "key": "dedicated",
+                "value": "databases"
+              }
+            ]
+          },
+          {
+            "architecture": "arm64",
+            "cpuCapacity": 2.5,
+            "kernelVersion": "6.8.0-45-generic",
+            "kubeletVersion": "v1.31.2",
+            "name": "worker-b",
+            "osImage": "Ubuntu 24.04 LTS",
+            "taints": []
+          }
+        ],
+        "totalCPUCores": 6.5
+      },
+      "itemFamily": "k8sclusters",
+      "metadata": {
+        "title": "k8s-api.example.com"
+      },
+      "name": "1c75847e1c8ea89e64b05c9c3eb5c05a17d442109949d9e87c49a174dcf4f4ef",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "containers": [
+          {
+            "image": "registry.example.com/platform/log-agent:3.2.1",
+            "name": "agent",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              }
+            }
+          }
+        ],
+        "initContainers": [],
+        "labels": {
+          "app": "log-agent"
+        },
+        "name": "log-agent",
+        "namespace": "platform"
+      },
+      "itemFamily": "k8sdaemonsets",
+      "metadata": {
+        "title": "log-agent"
+      },
+      "name": "0c34f73dd7c7c0c870acca8a716740efb6ee2e404f4d08533d4a9446ce8c2f9e",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "containers": [
+          {
+            "image": "registry.example.com/acme-widgets/catalog-api:1.4.0",
+            "name": "api",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              }
+            }
+          }
+        ],
+        "initContainers": [
+          {
+            "image": "registry.example.com/acme-widgets/catalog-api-migrate:1.4.0",
+            "name": "migrate"
+          }
+        ],
+        "labels": {
+          "app": "catalog-api",
+          "app.kubernetes.io/managed-by": "Helm"
+        },
+        "name": "catalog-api",
+        "namespace": "storefront",
+        "replicas": 2
+      },
+      "itemFamily": "k8sdeployments",
+      "metadata": {
+        "title": "catalog-api"
+      },
+      "name": "dfa7dded5672c67f8982b754712b8001a9eb5a7c86aca48d1980c2bb68720d54",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "appVersion": "1.4.0",
+        "chartName": "catalog-api",
+        "chartVersion": "1.4.0",
+        "firstDeployed": "2026-01-10T09:00:00Z",
+        "lastDeployed": "2026-09-30T14:00:00Z",
+        "name": "catalog-api",
+        "namespace": "storefront",
+        "revision": 3,
+        "status": "deployed"
+      },
+      "itemFamily": "k8shelmreleases",
+      "metadata": {
+        "title": "catalog-api"
+      },
+      "name": "bb82e0bd84b0fae6648aa514252cc90596819af95a5a63d91efbf4aa3b3691dc",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "labels": {
+          "team": "storefront"
+        },
+        "name": "storefront"
+      },
+      "itemFamily": "k8snamespaces",
+      "metadata": {
+        "title": "storefront"
+      },
+      "name": "309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "labels": {
+          "team": "platform"
+        },
+        "name": "platform"
+      },
+      "itemFamily": "k8snamespaces",
+      "metadata": {
+        "title": "platform"
+      },
+      "name": "9ba8614b18ed1c21efc105562f7577d941890bf1d8606d303fac9b2336d270a0",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "egress": [],
+        "ingress": [
+          {
+            "from": [
+              {
+                "namespaceSelector": {
+                  "matchExpressions": [],
+                  "matchLabels": {
+                    "team": "platform"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "port": 8080,
+                "protocol": "TCP"
+              }
+            ]
+          }
+        ],
+        "labels": {},
+        "name": "catalog-api-ingress",
+        "namespace": "storefront",
+        "podSelector": {
+          "matchExpressions": [],
+          "matchLabels": {
+            "app": "catalog-api"
+          }
+        },
+        "policyTypes": [
+          "Ingress"
+        ]
+      },
+      "itemFamily": "k8snetworkpolicies",
+      "metadata": {
+        "title": "catalog-api-ingress"
+      },
+      "name": "3b801fdbc3724ec24968fe396578183ec5dd9b218c0ff8986c0557dab64c5ea8",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "annotations": {},
+        "containers": [
+          {
+            "image": "registry.example.com/acme-widgets/catalog-api:1.4.0",
+            "imageID": "registry.example.com/acme-widgets/catalog-api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "name": "api",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              }
+            },
+            "securityContext": {}
+          }
+        ],
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "hostIPC": false,
+        "hostNetwork": false,
+        "hostPID": false,
+        "imagePullSecrets": [],
+        "labels": {
+          "app": "catalog-api",
+          "pod-template-hash": "7d9f8b6c4"
+        },
+        "name": "catalog-api-7d9f8b6c4-x2k9p",
+        "namespace": "storefront",
+        "nodeName": "worker-a",
+        "nodeSelector": {},
+        "owner": {
+          "kind": "Deployment",
+          "name": "catalog-api"
+        },
+        "phase": "Running",
+        "podIP": "10.244.1.7",
+        "reason": "",
+        "securityContext": {},
+        "serviceAccountName": "default",
+        "startTime": "2026-09-30T14:01:00Z",
+        "tolerations": [],
+        "volumes": []
+      },
+      "itemFamily": "k8spods",
+      "metadata": {
+        "title": "catalog-api-7d9f8b6c4-x2k9p"
+      },
+      "name": "2cf6fc7f64f7a61117528b5b5ac6695c6be246aaeea81ac12d4d99df4f365f6f",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "annotations": {},
+        "containers": [
+          {
+            "image": "registry.example.com/library/postgres:16.4",
+            "imageID": "registry.example.com/library/postgres@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "name": "postgres",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              }
+            },
+            "securityContext": {}
+          }
+        ],
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "hostIPC": false,
+        "hostNetwork": false,
+        "hostPID": false,
+        "imagePullSecrets": [],
+        "labels": {
+          "app": "orders-db"
+        },
+        "name": "orders-db-0",
+        "namespace": "storefront",
+        "nodeName": "worker-a",
+        "nodeSelector": {},
+        "owner": {
+          "kind": "StatefulSet",
+          "name": "orders-db"
+        },
+        "phase": "Running",
+        "podIP": "10.244.1.7",
+        "reason": "",
+        "securityContext": {},
+        "serviceAccountName": "default",
+        "startTime": "2026-09-30T14:01:00Z",
+        "tolerations": [],
+        "volumes": []
+      },
+      "itemFamily": "k8spods",
+      "metadata": {
+        "title": "orders-db-0"
+      },
+      "name": "7e9da98514a80529c11490e08ac973645208a9f48213837444609bf0990a9120",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "annotations": {},
+        "containers": [
+          {
+            "image": "registry.example.com/platform/report:0.3.0",
+            "imageID": "registry.example.com/platform/report@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "name": "report",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              }
+            },
+            "securityContext": {}
+          }
+        ],
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "hostIPC": false,
+        "hostNetwork": false,
+        "hostPID": false,
+        "imagePullSecrets": [],
+        "labels": {
+          "job-name": "nightly-report-29012345"
+        },
+        "name": "nightly-report-29012345-q8w7e",
+        "namespace": "platform",
+        "nodeName": "worker-a",
+        "nodeSelector": {},
+        "owner": {
+          "kind": "Job",
+          "name": "nightly-report-29012345"
+        },
+        "phase": "Running",
+        "podIP": "10.244.1.7",
+        "reason": "",
+        "securityContext": {},
+        "serviceAccountName": "default",
+        "startTime": "2026-09-30T14:01:00Z",
+        "tolerations": [],
+        "volumes": []
+      },
+      "itemFamily": "k8spods",
+      "metadata": {
+        "title": "nightly-report-29012345-q8w7e"
+      },
+      "name": "f510a829b9723bf3fc5236fffd38979de138a72102eca79324e656ec8b251bf1",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "clusterIPs": [
+          "None"
+        ],
+        "externalIPs": [],
+        "externalName": "",
+        "labels": {},
+        "loadBalancer": [],
+        "name": "orders-db",
+        "namespace": "storefront",
+        "ports": [
+          {
+            "name": "postgres",
+            "nodePort": 0,
+            "port": 5432,
+            "protocol": "TCP",
+            "targetPort": 5432
+          }
+        ],
+        "selector": {
+          "app": "orders-db"
+        },
+        "type": "ClusterIP"
+      },
+      "itemFamily": "k8sservices",
+      "metadata": {
+        "title": "orders-db"
+      },
+      "name": "1f6429a7b381b7106ff1f5f45597bc3949b83d7872b871f80537e3f5563db75b",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "clusterIPs": [],
+        "externalIPs": [],
+        "externalName": "billing.example.com",
+        "labels": {},
+        "loadBalancer": [],
+        "name": "legacy-billing",
+        "namespace": "storefront",
+        "ports": [],
+        "selector": {},
+        "type": "ExternalName"
+      },
+      "itemFamily": "k8sservices",
+      "metadata": {
+        "title": "legacy-billing"
+      },
+      "name": "2c2568b442708c8f1f6eb66654d3cde9aea10f4cba4fb30e6384bcf9f277007f",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "clusterIPs": [
+          "10.96.10.20"
+        ],
+        "externalIPs": [],
+        "externalName": "",
+        "labels": {
+          "app": "catalog-api"
+        },
+        "loadBalancer": [],
+        "name": "catalog-api",
+        "namespace": "storefront",
+        "ports": [
+          {
+            "name": "http",
+            "nodePort": 0,
+            "port": 80,
+            "protocol": "TCP",
+            "targetPort": 8080
+          }
+        ],
+        "selector": {
+          "app": "catalog-api"
+        },
+        "type": "ClusterIP"
+      },
+      "itemFamily": "k8sservices",
+      "metadata": {
+        "title": "catalog-api"
+      },
+      "name": "fa7fe8c29faa3c6a11c0277f557158cd6fa3c08b0d686f9b7c09440bfa159a8d",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "containers": [
+          {
+            "image": "registry.example.com/library/postgres:16.4",
+            "name": "postgres",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              }
+            }
+          }
+        ],
+        "initContainers": [],
+        "labels": {
+          "app": "orders-db"
+        },
+        "name": "orders-db",
+        "namespace": "storefront",
+        "replicas": 1
+      },
+      "itemFamily": "k8sstatefulsets",
+      "metadata": {
+        "title": "orders-db"
+      },
+      "name": "d414ea89c908086febd275910fa212532cec4b8f938d5331eb6c15a492d91450",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "k8s.mia-platform.eu/v1",
+      "data": {
+        "entryPoints": [
+          "websecure"
+        ],
+        "labels": {
+          "app": "catalog-api"
+        },
+        "name": "storefront",
+        "namespace": "storefront",
+        "routes": [
+          {
+            "match": "Host(`shop.example.com`) && PathPrefix(`/api`)",
+            "middlewares": [
+              {
+                "name": "rate-limit",
+                "namespace": ""
+              }
+            ],
+            "services": [
+              {
+                "kind": "",
+                "name": "catalog-api",
+                "namespace": "",
+                "port": 80
+              }
+            ]
+          },
+          {
+            "match": "Host(`shop.example.com`) && PathPrefix(`/dashboard`)",
+            "middlewares": [],
+            "services": [
+              {
+                "kind": "TraefikService",
+                "name": "api@internal",
+                "namespace": "",
+                "port": ""
+              }
+            ]
+          }
+        ],
+        "tls": {
+          "certResolver": "",
+          "options": "",
+          "secretName": "shop-example-com-tls"
+        }
+      },
+      "itemFamily": "traefikingressroutes",
+      "metadata": {
+        "title": "storefront"
+      },
+      "name": "6747b52bc7f9c094b10156384b8a033e9e6ad59ce1777064a31a85d71faacdef",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sPod:7e9da98514a80529c11490e08ac973645208a9f48213837444609bf0990a9120",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sStatefulSet:d414ea89c908086febd275910fa212532cec4b8f938d5331eb6c15a492d91450",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "0139aa3ede10a1399cb5baa0940540e1242a770eab53ced79320075ee11c3b7a",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sCertificate:d6f9150351b4a8508fdd705a036b98fc3e1e42558ff1101955ac46206f01e7c9",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "072ae8072c9b5d14d98e1bc627fdbe30d7709da8ff815de34902e4d60098c978",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sService:1f6429a7b381b7106ff1f5f45597bc3949b83d7872b871f80537e3f5563db75b",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "0bd9cbc118a1ebfef4b24c5c93a7ed89c19f96a81aaa919a7bb31dc6ad6e43c6",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:TraefikIngressRoute:6747b52bc7f9c094b10156384b8a033e9e6ad59ce1777064a31a85d71faacdef",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "1af8695526a52c8300ad769425025ff98b5fc3241e7a303fbe7ce335f1a7663a",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sService:1f6429a7b381b7106ff1f5f45597bc3949b83d7872b871f80537e3f5563db75b",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sStatefulSet:d414ea89c908086febd275910fa212532cec4b8f938d5331eb6c15a492d91450",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "227c7a89bca1f9c9de459dc455566ae02fa26234382db946022f322caa758319",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sHelmRelease:bb82e0bd84b0fae6648aa514252cc90596819af95a5a63d91efbf4aa3b3691dc",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "2410d660eaba0c3f01709318c71b1408e38a4790db7bd327ac670a2cd2d39042",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sPod:f510a829b9723bf3fc5236fffd38979de138a72102eca79324e656ec8b251bf1",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:9ba8614b18ed1c21efc105562f7577d941890bf1d8606d303fac9b2336d270a0",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "4dab7762910222e8d643a3df8648a2647bb07e5a2581fc6a95a7882a8736af3a",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sDeployment:dfa7dded5672c67f8982b754712b8001a9eb5a7c86aca48d1980c2bb68720d54",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sHelmRelease:bb82e0bd84b0fae6648aa514252cc90596819af95a5a63d91efbf4aa3b3691dc",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "5327f57c9b8b640dde73f759c628504cdcd6fcb8c70237f049d0319b12323b4b",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sPod:2cf6fc7f64f7a61117528b5b5ac6695c6be246aaeea81ac12d4d99df4f365f6f",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "55dade67b917a8acd23280b7c851e6aa88cbf4c939665213428713af43bd7d54",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sStatefulSet:d414ea89c908086febd275910fa212532cec4b8f938d5331eb6c15a492d91450",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "5b38120af6622b95517b44650bc07a61faf664ccec8e86d16342665d379535f7",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sDaemonSet:0c34f73dd7c7c0c870acca8a716740efb6ee2e404f4d08533d4a9446ce8c2f9e",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:9ba8614b18ed1c21efc105562f7577d941890bf1d8606d303fac9b2336d270a0",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "686079518b858e79af5f6cbbd60448ab7e04d88fceb82261c2281dd6f8fdb67d",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sService:fa7fe8c29faa3c6a11c0277f557158cd6fa3c08b0d686f9b7c09440bfa159a8d",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sDeployment:dfa7dded5672c67f8982b754712b8001a9eb5a7c86aca48d1980c2bb68720d54",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "897f98d9e61699fc6aa628ae6f0869a699b1ad051bc454b7baa25128640aadb9",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sDeployment:dfa7dded5672c67f8982b754712b8001a9eb5a7c86aca48d1980c2bb68720d54",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "91f32e51e5ba60f2dfed81bec1be44f08e1eb79a242b3d46bbb78aacac2b5bf5",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sService:2c2568b442708c8f1f6eb66654d3cde9aea10f4cba4fb30e6384bcf9f277007f",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "99dde5f58f6de530dd465719b48bcc4b4ecb5e0bbdf634ad668c119636bd2796",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sPod:7e9da98514a80529c11490e08ac973645208a9f48213837444609bf0990a9120",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "9f540a2f983e46157bc29cc83ac5834b2b6b570886fe7006a3e256186d6616a5",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNetworkPolicy:3b801fdbc3724ec24968fe396578183ec5dd9b218c0ff8986c0557dab64c5ea8",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "b3eeec187f33919de7afb6074f1dd34fc80e9fff59d05b31958b9443d19873ee",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sService:fa7fe8c29faa3c6a11c0277f557158cd6fa3c08b0d686f9b7c09440bfa159a8d",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "bad6c590efd0f27e4ef361a1ef64f1f7a37a62537c47e48c5976cad22840b33a",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sPod:2cf6fc7f64f7a61117528b5b5ac6695c6be246aaeea81ac12d4d99df4f365f6f",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sDeployment:dfa7dded5672c67f8982b754712b8001a9eb5a7c86aca48d1980c2bb68720d54",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "c419cfde946cd7565e2d64af0397c6db476cbf8e2374068a49fe26c007d2cc63",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:9ba8614b18ed1c21efc105562f7577d941890bf1d8606d303fac9b2336d270a0",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sCluster:1c75847e1c8ea89e64b05c9c3eb5c05a17d442109949d9e87c49a174dcf4f4ef",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "d03ce9a5cbbbab850864fd68e8063c1fec4068d6bd9814dec19e017ab2bcd5d5",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:TraefikIngressRoute:6747b52bc7f9c094b10156384b8a033e9e6ad59ce1777064a31a85d71faacdef",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sService:fa7fe8c29faa3c6a11c0277f557158cd6fa3c08b0d686f9b7c09440bfa159a8d",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "e5588c6b8404a0604111294d7d726bdc467f1f6bafeaadfa6c0130f581a5bb0b",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sNamespace:309b46411e30c6fa4997de5544cca09f8335f10e39b70abc8d2d27a3851f241c",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sCluster:1c75847e1c8ea89e64b05c9c3eb5c05a17d442109949d9e87c49a174dcf4f4ef",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "eb49c42bcc3de96cc5fc09cb973f79c8076a917bff000a7caf77675b32a4af94",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Cluster:6f6f9477b5a055d339b5c52fd0835963590b0bb168942f7004f59ef1f0681582",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sCluster:1c75847e1c8ea89e64b05c9c3eb5c05a17d442109949d9e87c49a174dcf4f4ef",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "fe19a7be0a36180189e7126fce25df1436760cff8686defc9ddefa3e07978ca4",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/namespaces",
+      "query": "continue=namespaces-page-2&limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/namespaces",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/nodes",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pods",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pods",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/secrets",
+      "query": "labelSelector=owner%3Dhelm%2Cstatus%3Ddeployed&limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/services",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/services",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/daemonsets",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/daemonsets",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/daemonsets",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/deployments",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/deployments",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/deployments",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/statefulsets",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/statefulsets",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/statefulsets",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/cert-manager.io/v1",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/cert-manager.io/v1/certificates",
+      "query": "limit=500&timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/networking.k8s.io/v1/networkpolicies",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/traefik.io/v1alpha1",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/traefik.io/v1alpha1",
+      "query": "timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/traefik.io/v1alpha1/ingressroutes",
+      "query": "limit=500&timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/traefik.io/v1alpha1/ingressroutes",
+      "query": "limit=500&timeout=30s",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sService:1f6429a7b381b7106ff1f5f45597bc3949b83d7872b871f80537e3f5563db75b",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sStatefulSet:d414ea89c908086febd275910fa212532cec4b8f938d5331eb6c15a492d91450",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "227c7a89bca1f9c9de459dc455566ae02fa26234382db946022f322caa758319",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sService:fa7fe8c29faa3c6a11c0277f557158cd6fa3c08b0d686f9b7c09440bfa159a8d",
+        "targetRef": "urn:mia-platform-catalog:k8s.mia-platform.eu:v1:K8sDeployment:dfa7dded5672c67f8982b754712b8001a9eb5a7c86aca48d1980c2bb68720d54",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "897f98d9e61699fc6aa628ae6f0869a699b1ad051bc454b7baa25128640aadb9",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/v1/services",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/daemonsets",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/deployments",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/apis/apps/v1/statefulsets",
+      "query": "limit=500",
+      "header": {
+        "Authorization": "Bearer test-token"
+      }
+    }
+  ]
+}

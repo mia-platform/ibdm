@@ -1,0 +1,65 @@
+{
+  "kind": "DeploymentList",
+  "apiVersion": "apps/v1",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "catalog-api",
+        "uid": "uid-catalog-api",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront",
+        "labels": {
+          "app": "catalog-api",
+          "app.kubernetes.io/managed-by": "Helm"
+        },
+        "annotations": {
+          "meta.helm.sh/release-name": "catalog-api",
+          "meta.helm.sh/release-namespace": "storefront"
+        }
+      },
+      "spec": {
+        "replicas": 2,
+        "selector": {
+          "matchLabels": {
+            "app": "catalog-api"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "catalog-api"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "api",
+                "image": "registry.example.com/acme-widgets/catalog-api:1.4.0",
+                "resources": {
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "256Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "512Mi"
+                  }
+                }
+              }
+            ],
+            "initContainers": [
+              {
+                "name": "migrate",
+                "image": "registry.example.com/acme-widgets/catalog-api-migrate:1.4.0"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

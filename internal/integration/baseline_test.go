@@ -30,7 +30,7 @@ type baselineCase struct {
 	env         func(t *testing.T, upstream *fakeUpstream, catalog *fakeCatalog) map[string]string
 }
 
-// baselineCases lists the eight integrations the fakes can serve, with the fixtures and the
+// baselineCases lists the nine integrations the fakes can serve, with the fixtures and the
 // environment of their full-selection sync scenario.
 var baselineCases = []baselineCase{
 	{slug: "azure-devops", upstreamDir: azuredevopsUpstreamDir, env: withoutT(azuredevopsEnv)},
@@ -38,6 +38,7 @@ var baselineCases = []baselineCase{
 	{slug: "console", upstreamDir: consoleUpstreamDir, env: withoutT(consoleEnv)},
 	{slug: "github", upstreamDir: githubUpstreamDir, env: withoutT(githubEnv)},
 	{slug: "gitlab", upstreamDir: gitlabUpstreamDir, env: withoutT(gitlabEnv)},
+	{slug: "k8s", upstreamDir: k8sUpstreamDir, env: withoutT(k8sEnv)},
 	{slug: "nexus", upstreamDir: nexusUpstreamDir, env: func(t *testing.T, upstream *fakeUpstream, catalog *fakeCatalog) map[string]string {
 		t.Helper()
 		return nexusEnv(t, upstream, catalog, "")

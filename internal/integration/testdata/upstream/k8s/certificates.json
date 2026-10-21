@@ -1,0 +1,41 @@
+{
+  "apiVersion": "cert-manager.io/v1",
+  "kind": "CertificateList",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "apiVersion": "cert-manager.io/v1",
+      "kind": "Certificate",
+      "metadata": {
+        "name": "shop-example-com",
+        "uid": "uid-shop-example-com",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront"
+      },
+      "spec": {
+        "secretName": "shop-example-com-tls",
+        "dnsNames": [
+          "shop.example.com"
+        ],
+        "issuerRef": {
+          "name": "letsencrypt",
+          "kind": "ClusterIssuer"
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Ready",
+            "status": "True",
+            "reason": "Ready"
+          }
+        ],
+        "notAfter": "2026-12-29T09:00:00Z",
+        "renewalTime": "2026-11-29T09:00:00Z"
+      }
+    }
+  ]
+}

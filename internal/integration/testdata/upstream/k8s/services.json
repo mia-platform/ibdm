@@ -1,0 +1,80 @@
+{
+  "kind": "ServiceList",
+  "apiVersion": "v1",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "catalog-api",
+        "uid": "uid-catalog-api",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront",
+        "labels": {
+          "app": "catalog-api"
+        }
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "clusterIPs": [
+          "10.96.10.20"
+        ],
+        "selector": {
+          "app": "catalog-api"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "protocol": "TCP",
+            "port": 80,
+            "targetPort": 8080
+          }
+        ]
+      },
+      "status": {}
+    },
+    {
+      "metadata": {
+        "name": "orders-db",
+        "uid": "uid-orders-db",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "clusterIPs": [
+          "None"
+        ],
+        "selector": {
+          "app": "orders-db"
+        },
+        "ports": [
+          {
+            "name": "postgres",
+            "protocol": "TCP",
+            "port": 5432,
+            "targetPort": 5432
+          }
+        ]
+      },
+      "status": {}
+    },
+    {
+      "metadata": {
+        "name": "legacy-billing",
+        "uid": "uid-legacy-billing",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront"
+      },
+      "spec": {
+        "type": "ExternalName",
+        "externalName": "billing.example.com"
+      },
+      "status": {}
+    }
+  ]
+}

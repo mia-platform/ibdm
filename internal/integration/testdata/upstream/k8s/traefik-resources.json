@@ -1,0 +1,18 @@
+{
+  "kind": "APIResourceList",
+  "apiVersion": "v1",
+  "groupVersion": "traefik.io/v1alpha1",
+  "resources": [
+    {
+      "name": "ingressroutes",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "IngressRoute",
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}

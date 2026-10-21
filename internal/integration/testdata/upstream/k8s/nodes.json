@@ -1,0 +1,62 @@
+{
+  "kind": "NodeList",
+  "apiVersion": "v1",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "worker-a",
+        "uid": "uid-worker-a",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "labels": {
+          "kubernetes.io/os": "linux"
+        }
+      },
+      "spec": {
+        "taints": [
+          {
+            "key": "dedicated",
+            "value": "databases",
+            "effect": "NoSchedule"
+          }
+        ]
+      },
+      "status": {
+        "capacity": {
+          "cpu": "4",
+          "memory": "16Gi"
+        },
+        "nodeInfo": {
+          "kubeletVersion": "v1.31.2",
+          "osImage": "Ubuntu 24.04 LTS",
+          "kernelVersion": "6.8.0-45-generic",
+          "architecture": "amd64"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "worker-b",
+        "uid": "uid-worker-b",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1"
+      },
+      "spec": {},
+      "status": {
+        "capacity": {
+          "cpu": "2500m",
+          "memory": "8Gi"
+        },
+        "nodeInfo": {
+          "kubeletVersion": "v1.31.2",
+          "osImage": "Ubuntu 24.04 LTS",
+          "kernelVersion": "6.8.0-45-generic",
+          "architecture": "arm64"
+        }
+      }
+    }
+  ]
+}

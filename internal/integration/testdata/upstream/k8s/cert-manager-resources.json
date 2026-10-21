@@ -1,0 +1,18 @@
+{
+  "kind": "APIResourceList",
+  "apiVersion": "v1",
+  "groupVersion": "cert-manager.io/v1",
+  "resources": [
+    {
+      "name": "certificates",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "Certificate",
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}
