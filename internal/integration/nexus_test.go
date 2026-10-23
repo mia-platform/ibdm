@@ -114,7 +114,7 @@ func TestNexusSync(t *testing.T) {
 		golden string
 		check  func(t *testing.T, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"N1 all internal mappings, docker components with assets only": {
+		"all internal mappings, docker components with assets only": {
 			args:   []string{"--include-internal-mappings=all"},
 			golden: "nexus/all",
 			check: func(t *testing.T, items []map[string]any, upstream *fakeUpstream) {
@@ -135,7 +135,7 @@ func TestNexusSync(t *testing.T) {
 				assertRelationshipsResolve(t, items)
 			},
 		},
-		"N2 a specific repository narrows the walk": {
+		"a specific repository narrows the walk": {
 			args:   []string{"--include-internal-mappings=all"},
 			env:    map[string]string{"NEXUS_SPECIFIC_REPOSITORY": "docker-hosted"},
 			golden: "nexus/specific-repository",
@@ -147,7 +147,7 @@ func TestNexusSync(t *testing.T) {
 				assert.Zero(t, nexusCountQuery(t, upstream, nexusComponentsPath, "repository", "maven-releases"))
 			},
 		},
-		"N3 an external mapping on the dockerimage type fans out": {
+		"an external mapping on the dockerimage type fans out": {
 			args:   []string{"--include-internal-mappings=all", "-f", filepath.Join(nexusMappingsDir, "fanout")},
 			golden: "nexus/fanout",
 			check: func(t *testing.T, items []map[string]any, _ *fakeUpstream) {
@@ -220,7 +220,7 @@ func TestNexusWebhook(t *testing.T) {
 		golden        string
 		check         func(t *testing.T, items []map[string]any, upstream *fakeUpstream, proc *process)
 	}{
-		"NW1 a signed CREATED event fetches and writes the component": {
+		"a signed CREATED event fetches and writes the component": {
 			secret:        webhookSecret,
 			payload:       "component-created.json",
 			expectedCode:  http.StatusNoContent,
@@ -232,7 +232,7 @@ func TestNexusWebhook(t *testing.T) {
 				assert.Equal(t, 1, upstream.calls(http.MethodGet, nexusCatalogAPIPath))
 			},
 		},
-		"NW2 a signed DELETED event deletes without any fetch": {
+		"a signed DELETED event deletes without any fetch": {
 			secret:        webhookSecret,
 			payload:       "component-deleted.json",
 			expectedCode:  http.StatusNoContent,
@@ -246,19 +246,19 @@ func TestNexusWebhook(t *testing.T) {
 				assert.Empty(t, upstream.received())
 			},
 		},
-		"NW3 a badly signed event is refused": {
+		"a badly signed event is refused": {
 			secret:       webhookSecret,
 			payload:      "component-created.json",
 			signWith:     nexusWrongSecret,
 			expectedCode: http.StatusInternalServerError,
 		},
-		"NW4 an unsigned event is refused when a secret is set": {
+		"an unsigned event is refused when a secret is set": {
 			secret:       webhookSecret,
 			payload:      "component-created.json",
 			unsigned:     true,
 			expectedCode: http.StatusInternalServerError,
 		},
-		"NW5 without a secret an unsigned event is accepted": {
+		"without a secret an unsigned event is accepted": {
 			payload:       "component-created.json",
 			unsigned:      true,
 			expectedCode:  http.StatusNoContent,
@@ -269,12 +269,12 @@ func TestNexusWebhook(t *testing.T) {
 				assert.Equal(t, "upsert", items[0]["operation"])
 			},
 		},
-		"NW6 without a secret a signed event is refused, documentsCurrentBehaviour": {
+		"without a secret a signed event is refused, documentsCurrentBehaviour": {
 			payload:      "component-created.json",
 			signWith:     nexusWrongSecret,
 			expectedCode: http.StatusInternalServerError,
 		},
-		"NW7 a non-docker component event is ignored": {
+		"a non-docker component event is ignored": {
 			secret:       webhookSecret,
 			payload:      "component-created-maven.json",
 			expectedCode: http.StatusNoContent,
@@ -283,7 +283,7 @@ func TestNexusWebhook(t *testing.T) {
 				assert.Empty(t, upstream.received(), "the component is not fetched")
 			},
 		},
-		"NW8 an event without a timestamp is skipped": {
+		"an event without a timestamp is skipped": {
 			secret:       webhookSecret,
 			payload:      "component-created-no-timestamp.json",
 			expectedCode: http.StatusNoContent,

@@ -34,7 +34,7 @@ func TestGitHubWebhook(t *testing.T) {
 		golden        string
 		check         func(t *testing.T, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"W1 a signed repository event is written": {
+		"a signed repository event is written": {
 			args:          []string{"--include-internal-mappings=all"},
 			event:         "repository",
 			payload:       "repository-created.json",
@@ -47,7 +47,7 @@ func TestGitHubWebhook(t *testing.T) {
 				assert.Equal(t, 1, upstream.calls(http.MethodGet, githubGizmoLangsPath), "the event is enriched with the languages")
 			},
 		},
-		"W2 a repository deleted event deletes the item": {
+		"a repository deleted event deletes the item": {
 			args:          []string{"--include-internal-mappings=all"},
 			event:         "repository",
 			payload:       "repository-deleted.json",
@@ -60,20 +60,20 @@ func TestGitHubWebhook(t *testing.T) {
 				assert.NotContains(t, items[0], "data", "a delete carries no spec")
 			},
 		},
-		"W3 a badly signed event is refused": {
+		"a badly signed event is refused": {
 			args:         []string{"--include-internal-mappings=all"},
 			event:        "repository",
 			payload:      "repository-created.json",
 			secret:       "not-the-webhook-secret",
 			expectedCode: http.StatusInternalServerError,
 		},
-		"W4 an event of a type no selected mapping handles is ignored": {
+		"an event of a type no selected mapping handles is ignored": {
 			args:         []string{"--include-internal-mappings=repositories"},
 			event:        "workflow_run",
 			payload:      "workflow-run-completed.json",
 			expectedCode: http.StatusNoContent,
 		},
-		"W5 an external mapping on an internal type fans out": {
+		"an external mapping on an internal type fans out": {
 			args:          []string{"--include-internal-mappings=repositories", "-f", githubMapping("fanout")},
 			event:         "repository",
 			payload:       "repository-created.json",

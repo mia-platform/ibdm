@@ -63,7 +63,7 @@ func TestBitbucketSync(t *testing.T) {
 		golden           string
 		check            func(t *testing.T, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"B1 all internal mappings, with workspace discovery and absolute next URLs": {
+		"all internal mappings, with workspace discovery and absolute next URLs": {
 			args:             []string{"--include-internal-mappings=all"},
 			expectedPipeline: 1,
 			golden:           "bitbucket/all",
@@ -83,7 +83,7 @@ func TestBitbucketSync(t *testing.T) {
 				assertRelationshipsResolve(t, items)
 			},
 		},
-		"B2 repositories alone fetch no pipeline": {
+		"repositories alone fetch no pipeline": {
 			args:   []string{"--include-internal-mappings=repositories"},
 			golden: "bitbucket/repositories-only",
 			check: func(t *testing.T, items []map[string]any, upstream *fakeUpstream) {
@@ -92,7 +92,7 @@ func TestBitbucketSync(t *testing.T) {
 				assert.Zero(t, upstream.calls(http.MethodGet, bitbucketGizmoPipelinesPath))
 			},
 		},
-		"B3 pipelines alone list the repositories without writing them": {
+		"pipelines alone list the repositories without writing them": {
 			args:             []string{"--include-internal-mappings=pipelines"},
 			expectedPipeline: 1,
 			golden:           "bitbucket/pipelines-only",
@@ -111,7 +111,7 @@ func TestBitbucketSync(t *testing.T) {
 				}
 			},
 		},
-		"B4 a configured workspace with basic auth skips the discovery": {
+		"a configured workspace with basic auth skips the discovery": {
 			args: []string{"--include-internal-mappings=repositories"},
 			env: map[string]string{
 				"BITBUCKET_WORKSPACE":    "acme-widgets",
@@ -173,7 +173,7 @@ func TestBitbucketWebhook(t *testing.T) {
 		golden        string
 		check         func(t *testing.T, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"BW1 a signed repo:push event is written, enriched from the API": {
+		"a signed repo:push event is written, enriched from the API": {
 			args:          []string{"--include-internal-mappings=all"},
 			eventKey:      "repo:push",
 			payload:       "repo-push-gizmo-service.json",
@@ -187,14 +187,14 @@ func TestBitbucketWebhook(t *testing.T) {
 					"the item is rendered from the repository the API returned, not from the payload")
 			},
 		},
-		"BW2 a badly signed event is refused": {
+		"a badly signed event is refused": {
 			args:         []string{"--include-internal-mappings=all"},
 			eventKey:     "repo:push",
 			payload:      "repo-push-gizmo-service.json",
 			secret:       "not-the-webhook-secret",
 			expectedCode: http.StatusInternalServerError,
 		},
-		"BW3 a failed enrichment falls back to the payload": {
+		"a failed enrichment falls back to the payload": {
 			args:          []string{"--include-internal-mappings=repositories"},
 			eventKey:      "repo:updated",
 			payload:       "repo-updated-legacy-tool.json",
@@ -207,7 +207,7 @@ func TestBitbucketWebhook(t *testing.T) {
 				assert.Equal(t, []any{"Legacy tool (as sent in the webhook payload)"}, specValues(t, items, "description"))
 			},
 		},
-		"BW4 pipelines are never produced by the webhook": {
+		"pipelines are never produced by the webhook": {
 			args:         []string{"--include-internal-mappings=pipelines"},
 			eventKey:     "repo:push",
 			payload:      "repo-push-gizmo-service.json",

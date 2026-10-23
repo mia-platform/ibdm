@@ -63,8 +63,8 @@ func githubSignature(body []byte, secret string) string {
 	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
 }
 
-// consoleSignature signs body as the Mia-Platform Console does: a plain SHA-256 of the body
-// followed by the secret, hex encoded. It is not an HMAC.
+// consoleSignature signs body as the Mia-Platform Console does: the SHA-256 of the body followed
+// by the secret, hex encoded.
 func consoleSignature(body []byte, secret string) string {
 	hash := sha256.New()
 	hash.Write(body)

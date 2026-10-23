@@ -106,9 +106,9 @@ func TestAzureDevOpsSync(t *testing.T) {
 	}
 }
 
-// TestAzureDevOpsSyncErrorStatusDocumentsCurrentBehaviour documents that the source does not
-// check the response status: an error answer decodes as a page without items, and the sync ends
-// successfully with nothing written and no error logged (plan §8.2, B-4).
+// TestAzureDevOpsSyncErrorStatusDocumentsCurrentBehaviour documents how the source handles an
+// error answer of the upstream API: it is read as a page without items, so the sync ends with
+// nothing written and no error logged.
 func TestAzureDevOpsSyncErrorStatusDocumentsCurrentBehaviour(t *testing.T) {
 	t.Parallel()
 

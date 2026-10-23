@@ -138,7 +138,7 @@ func TestGitHubSync(t *testing.T) {
 		golden  string
 		check   func(t *testing.T, run githubRun)
 	}{
-		"G1 all internal mappings, over two pages": {
+		"all internal mappings, over two pages": {
 			args:   []string{"--include-internal-mappings=all"},
 			golden: "github/all",
 			check: func(t *testing.T, run githubRun) {
@@ -154,7 +154,7 @@ func TestGitHubSync(t *testing.T) {
 				assertRelationshipsResolve(t, items)
 			},
 		},
-		"G2 allow-list": {
+		"allow-list": {
 			args:   []string{"--include-internal-mappings=repositories"},
 			golden: "github/repositories-only",
 			check: func(t *testing.T, run githubRun) {
@@ -164,11 +164,11 @@ func TestGitHubSync(t *testing.T) {
 				assert.Zero(t, run.upstream.calls(http.MethodGet, githubGizmoRunsPath), "workflow runs are not fetched when not selected")
 			},
 		},
-		"G3 include minus exclude is the same as the allow-list": {
+		"include minus exclude is the same as the allow-list": {
 			args:   []string{"--include-internal-mappings=all", "--exclude-internal-mappings=workflowruns"},
 			golden: "github/repositories-only",
 		},
-		"G4 an external mapping on an internal type fans out": {
+		"an external mapping on an internal type fans out": {
 			args:   []string{"--include-internal-mappings=repositories", "-f", githubMapping("fanout")},
 			golden: "github/fanout",
 			check: func(t *testing.T, run githubRun) {
@@ -179,7 +179,7 @@ func TestGitHubSync(t *testing.T) {
 				assert.Len(t, itemsOf(items, externalAPIVersion, "repositorycards"), 3)
 				assert.Equal(t, 1, run.upstream.calls(http.MethodGet, githubGizmoLangsPath), "both mappings share one fetch: same extra")
 
-				// G11: the resolved set is reported before any work.
+				// The resolved set is reported before any work.
 				report := "github: using 1 internal mappings and 1 external mappings"
 				require.True(t, run.result.hasLog(levelInfo, report), "stderr:\n%s", run.result.stderr)
 				for _, record := range run.result.logs {
@@ -190,7 +190,7 @@ func TestGitHubSync(t *testing.T) {
 				}
 			},
 		},
-		"G5 each mapping renders its own copy of the payload": {
+		"each mapping renders its own copy of the payload": {
 			args:   []string{"--include-internal-mappings=repositories", "-f", githubMapping("deepcopy")},
 			golden: "github/deepcopy",
 			check: func(t *testing.T, run githubRun) {
@@ -203,7 +203,7 @@ func TestGitHubSync(t *testing.T) {
 				assert.Equal(t, githubRepositoryNames, sortedSpecValues(t, itemsOf(items, githubAPIVersion, "repositories"), "name"))
 			},
 		},
-		"G6 a different extra apiVersion makes a second listing": {
+		"a different extra apiVersion makes a second listing": {
 			args:   []string{"--include-internal-mappings=repositories", "-f", githubMapping("extra-version")},
 			golden: "github/extra-version",
 			check: func(t *testing.T, run githubRun) {
@@ -223,7 +223,7 @@ func TestGitHubSync(t *testing.T) {
 				}, sortedSpecValues(t, itemsOf(items, externalAPIVersion, "legacyrepositories"), "description"))
 			},
 		},
-		"G7 a root createIf declines payloads": {
+		"a root createIf declines payloads": {
 			args:   []string{"--include-internal-mappings=repositories", "-f", githubMapping("createif")},
 			golden: "github/createif",
 			check: func(t *testing.T, run githubRun) {
@@ -235,7 +235,7 @@ func TestGitHubSync(t *testing.T) {
 				assert.Len(t, itemsOf(items, githubAPIVersion, "repositories"), 3, "the other mapping is not affected")
 			},
 		},
-		"G8 sync skips a mapping declared not syncable": {
+		"sync skips a mapping declared not syncable": {
 			args:   []string{"--include-internal-mappings=repositories", "-f", githubMapping("not-syncable")},
 			golden: "github/repositories-only",
 			check: func(t *testing.T, run githubRun) {
@@ -250,7 +250,7 @@ func TestGitHubSync(t *testing.T) {
 				}
 			},
 		},
-		"G9 a mapping failing on a payload does not stop the others": {
+		"a mapping failing on a payload does not stop the others": {
 			args:   []string{"--include-internal-mappings=repositories", "-f", githubMapping("failing")},
 			golden: "github/failing",
 			check: func(t *testing.T, run githubRun) {
@@ -261,7 +261,7 @@ func TestGitHubSync(t *testing.T) {
 				assert.Equal(t, 1, countLogs(run.result.logs, levelError, "error applying mapper templates"))
 			},
 		},
-		"G10 shared item types start when allowed": {
+		"shared item types start when allowed": {
 			args: []string{
 				"--include-internal-mappings=repositories", "--allow-shared-item-types",
 				"-f", cliMapping("shared-item-type-a.yaml"), "-f", cliMapping("shared-item-type-b.yaml"),
@@ -274,7 +274,7 @@ func TestGitHubSync(t *testing.T) {
 				assert.Len(t, itemsOf(run.catalog.received(), externalAPIVersion, "repositories"), 6, "both mappings write every repository")
 			},
 		},
-		"G12 a Catalog failure only affects its item, documentsCurrentBehaviour": {
+		"a Catalog failure only affects its item, documentsCurrentBehaviour": {
 			args:    []string{"--include-internal-mappings=all"},
 			prepare: failSprocketRepository,
 			golden:  "github/all",
@@ -285,7 +285,7 @@ func TestGitHubSync(t *testing.T) {
 					"the failure is logged, and the sync still exits 0: documents the current behaviour")
 			},
 		},
-		"G14 workflow runs alone list the repositories without writing them": {
+		"workflow runs alone list the repositories without writing them": {
 			args:   []string{"--include-internal-mappings=workflowruns"},
 			golden: "github/workflowruns-only",
 			check: func(t *testing.T, run githubRun) {

@@ -86,7 +86,7 @@ func k8sRelationshipEnds(t *testing.T, items []map[string]any, end, prefix strin
 
 // TestK8sSync covers ibdm sync k8s end to end, and checks the claims of the "Internal Mappings
 // and Their Dependencies" and "Sync" sections of docs/how-to/130_k8s-source.md. ibdm run k8s is
-// out of scope (plan U-4).
+// not covered.
 func TestK8sSync(t *testing.T) {
 	t.Parallel()
 
@@ -97,7 +97,7 @@ func TestK8sSync(t *testing.T) {
 		golden           string
 		check            func(t *testing.T, run result, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"K1 all internal mappings": {
+		"all internal mappings": {
 			args:   []string{"--include-internal-mappings=all"},
 			golden: "k8s/all",
 			check: func(t *testing.T, run result, items []map[string]any, upstream *fakeUpstream) {
@@ -123,7 +123,7 @@ func TestK8sSync(t *testing.T) {
 				assert.Equal(t, 2, upstream.calls(http.MethodGet, "/api/v1/namespaces"), "both namespace pages, through the continue token")
 			},
 		},
-		"K2 a relationship mapping alone lists its objects without writing them": {
+		"a relationship mapping alone lists its objects without writing them": {
 			args:   []string{"--include-internal-mappings=pod-owner-relationships"},
 			golden: "k8s/pod-owner-relationships-only",
 			check: func(t *testing.T, _ result, items []map[string]any, upstream *fakeUpstream) {
@@ -135,7 +135,7 @@ func TestK8sSync(t *testing.T) {
 				assert.Equal(t, 1, k8sRelationshipEnds(t, items, "targetRef", k8sStatefulSetURNPrefix))
 			},
 		},
-		"K3 a resource and a relationship derived from it list the objects twice": {
+		"a resource and a relationship derived from it list the objects twice": {
 			args:   []string{"--include-internal-mappings=pods,pod-owner-relationships"},
 			golden: "k8s/pods-and-owners",
 			check: func(t *testing.T, _ result, items []map[string]any, upstream *fakeUpstream) {
@@ -144,7 +144,7 @@ func TestK8sSync(t *testing.T) {
 				assert.Len(t, itemsOf(items, k8sAPIVersion, "k8spods"), 3)
 			},
 		},
-		"K4 service to workload links follow the selectors": {
+		"service to workload links follow the selectors": {
 			args:   []string{"--include-internal-mappings=service-workload-relationships"},
 			golden: "k8s/service-workload-relationships-only",
 			check: func(t *testing.T, _ result, items []map[string]any, upstream *fakeUpstream) {
@@ -157,7 +157,7 @@ func TestK8sSync(t *testing.T) {
 				assert.Equal(t, 1, k8sRelationshipEnds(t, items, "targetRef", k8sStatefulSetURNPrefix), "orders-db selects the StatefulSet")
 			},
 		},
-		"K5 a custom resource that is not installed is skipped": {
+		"a custom resource that is not installed is skipped": {
 			args: []string{"--include-internal-mappings=ingressroutes,certificates"},
 			overrides: func(t *testing.T) []route {
 				t.Helper()
@@ -173,7 +173,7 @@ func TestK8sSync(t *testing.T) {
 				assert.Zero(t, upstream.calls(http.MethodGet, k8sIngressRoutesPath))
 			},
 		},
-		"K6 a failing type is logged, the others are written, and the sync fails at the end": {
+		"a failing type is logged, the others are written, and the sync fails at the end": {
 			args: []string{"--include-internal-mappings=all"},
 			overrides: func(t *testing.T) []route {
 				t.Helper()
