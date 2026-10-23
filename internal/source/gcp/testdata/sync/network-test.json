@@ -3,36 +3,36 @@
 		"seconds": 1760454037,
 		"nanos": 914391000
 	},
-	"name": "//compute.googleapis.com/projects/console-infrastructure-lab/global/networks/my-custom-network",
+	"name": "//compute.googleapis.com/projects/example-project/global/networks/my-custom-network",
 	"asset_type": "compute.googleapis.com/Network",
 	"resource": {
 		"version": "v1",
 		"discovery_document_uri": "https://www.googleapis.com/discovery/v1/apis/compute/v1/rest",
 		"discovery_name": "Network",
-		"parent": "//cloudresourcemanager.googleapis.com/projects/20318464073",
+		"parent": "//cloudresourcemanager.googleapis.com/projects/123456789012",
 		"data": {
 			"autoCreateSubnetworks": false,
 			"creationTimestamp": "2025-06-04T03:49:01.971-07:00",
 			"description": "",
-			"id": "7361511452343900786",
+			"id": "1234567890123456789",
 			"mtu": 1460,
 			"name": "my-custom-network",
 			"networkFirewallPolicyEnforcementOrder": "AFTER_CLASSIC_FIREWALL",
 			"routingConfig": {
 				"routingMode": "REGIONAL"
 			},
-			"selfLink": "https://www.googleapis.com/compute/v1/projects/console-infrastructure-lab/global/networks/my-custom-network",
-			"selfLinkWithId": "https://www.googleapis.com/compute/v1/projects/console-infrastructure-lab/global/networks/7361511452343900786",
+			"selfLink": "https://www.googleapis.com/compute/v1/projects/example-project/global/networks/my-custom-network",
+			"selfLinkWithId": "https://www.googleapis.com/compute/v1/projects/example-project/global/networks/1234567890123456789",
 			"subnetworks": [
-				"https://www.googleapis.com/compute/v1/projects/console-infrastructure-lab/regions/europe-west1/subnetworks/europe"
+				"https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west1/subnetworks/europe"
 			]
 		},
 		"location": "global"
 	},
 	"AccessContextPolicy": null,
 	"ancestors": [
-		"projects/20318464073",
-		"folders/918177713511",
-		"organizations/566099688680"
+		"projects/123456789012",
+		"folders/234567890123",
+		"organizations/345678901234"
 	]
 }

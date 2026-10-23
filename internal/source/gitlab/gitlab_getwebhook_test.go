@@ -35,6 +35,10 @@ func TestGetWebhook_ReturnsCorrectPathAndMethod(t *testing.T) {
 	assert.Equal(t, "/hooks/gitlab", webhook.Path)
 }
 
+// noDataGracePeriod bounds the wait of the cases expecting no data: the handler dispatches
+// asynchronously, so absence can only be observed over a window.
+const noDataGracePeriod = 100 * time.Millisecond
+
 func TestWebhookHandler(t *testing.T) {
 	validToken := "super-secret"
 	validProjectID := float64(5)
@@ -148,9 +152,11 @@ func TestWebhookHandler(t *testing.T) {
 			require.NoError(t, handlerErr)
 
 			if !tc.expectData {
-				// TODO: improve this removing sleep function and using a non-blocking read on the channel instead
-				time.Sleep(100 * time.Millisecond)
-				assert.Empty(t, results)
+				select {
+				case data := <-results:
+					t.Fatalf("no data expected, but the webhook dispatched %+v", data)
+				case <-time.After(noDataGracePeriod):
+				}
 				return
 			}
 

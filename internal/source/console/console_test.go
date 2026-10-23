@@ -653,9 +653,9 @@ func TestSource_listClusters(t *testing.T) {
 	tenant1 := map[string]any{"companyId": "t1", "name": "Tenant One"}
 	cluster1 := map[string]any{
 		"_id":       "c1",
-		"clusterId": "demo-azure",
+		"clusterId": "cluster-1",
 		"connection": map[string]any{
-			"url": "https://paas-demo.hcp.northeurope.azmk8s.io",
+			"url": "https://my-cluster.example.com",
 		},
 		"distribution": "AKS",
 		"runtimeInfo": map[string]any{
@@ -671,9 +671,9 @@ func TestSource_listClusters(t *testing.T) {
 	}
 	clusterWithoutLinkedProjects := map[string]any{
 		"_id":       "c1",
-		"clusterId": "demo-azure",
+		"clusterId": "cluster-1",
 		"connection": map[string]any{
-			"url": "https://paas-demo.hcp.northeurope.azmk8s.io",
+			"url": "https://my-cluster.example.com",
 		},
 		"distribution": "AKS",
 		"runtimeInfo": map[string]any{
@@ -854,12 +854,12 @@ func Test_buildServiceData(t *testing.T) {
 			expected: map[string]any{"name": "svc"},
 		},
 		"image without tag gets :latest appended": {
-			input:    map[string]any{"dockerImage": "nexus.host/board/app"},
-			expected: map[string]any{"dockerImage": "nexus.host/board/app:latest"},
+			input:    map[string]any{"dockerImage": "registry.example.com/team/app"},
+			expected: map[string]any{"dockerImage": "registry.example.com/team/app:latest"},
 		},
 		"image with explicit version is unchanged": {
-			input:    map[string]any{"dockerImage": "nexus.host/board/app:8.1.2"},
-			expected: map[string]any{"dockerImage": "nexus.host/board/app:8.1.2"},
+			input:    map[string]any{"dockerImage": "registry.example.com/team/app:8.1.2"},
+			expected: map[string]any{"dockerImage": "registry.example.com/team/app:8.1.2"},
 		},
 		"registry with port and no tag gets :latest appended": {
 			input:    map[string]any{"dockerImage": "registry:5000/app"},
