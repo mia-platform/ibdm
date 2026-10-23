@@ -88,9 +88,9 @@ create a webhook with:
 
 SonarQube signs every delivery with `hex(hmac_sha256(secret, body))` in the
 `X-Sonar-Webhook-HMAC-SHA256` header, and `ibdm` refuses a delivery whose signature is missing or
-does not match. SonarQube holds no token the platform issues, so this signature is the only
-authentication of the route: publish it unauthenticated at the edge, and keep the secret set in
-any deployment that is reachable.
+does not match. SonarQube cannot send any other credential, so this signature is the only
+authentication of the route: if a gateway in front of `ibdm` requires authentication, let this path
+through without it, and keep the secret set in any deployment that is reachable.
 
 The webhook is answered as soon as the signature is verified and the body parsed, and the issues
 are read afterwards: SonarQube times a webhook out after ten seconds, and reading a large project

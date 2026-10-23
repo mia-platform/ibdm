@@ -41,7 +41,7 @@ All configuration is read from environment variables.
 | `NEXUS_TOKEN_PASSCODE` | Yes | _(empty)_ | Nexus user token passcode — second part of the token pair. Sent as the HTTP Basic Auth password. |
 | `NEXUS_HTTP_TIMEOUT` | No | `30s` | Timeout for HTTP requests, parsed as a Go `time.Duration`. |
 | `NEXUS_SPECIFIC_REPOSITORY` | No | _(empty)_ | Restrict sync to this single repository name. When not set, all repositories are iterated. |
-| `NEXUS_WEBHOOK_SECRET` | No | _(empty)_ | HMAC-SHA1 secret for webhook signature validation. When set, every inbound request must carry a valid `X-Nexus-Webhook-Signature` header. When empty, signature validation is skipped. |
+| `NEXUS_WEBHOOK_SECRET` | No | _(empty)_ | HMAC-SHA1 secret for webhook signature validation. When set, every inbound request must carry a valid `X-Nexus-Webhook-Signature` header. When empty, unsigned requests are accepted and signed requests are rejected. |
 | `NEXUS_WEBHOOK_PATH` | No | `/nexus/webhook` | HTTP path on which the webhook listener accepts inbound events. |
 
 ## Supported Data Types
@@ -92,8 +92,10 @@ When `NEXUS_WEBHOOK_SECRET` is set, each inbound request is validated against th
 `X-Nexus-Webhook-Signature` header using HMAC-SHA1. Requests with a missing or invalid signature
 are rejected with an HTTP error.
 
-When `NEXUS_WEBHOOK_SECRET` is not set, signature validation is disabled and all requests are
-accepted. This is useful for internal deployments where network-level controls are sufficient.
+When `NEXUS_WEBHOOK_SECRET` is not set, requests without a signature are accepted, and requests
+that carry one are rejected, because `ibdm` has no secret to verify them with. Without a secret the
+webhook endpoint is unauthenticated: set one whenever the webhook path is reachable from outside a
+trusted network.
 
 To enable Nexus to send a signature, configure the **Secret Key** field when creating the webhook
 in the Nexus administration UI.

@@ -7,7 +7,7 @@ the operating system you are using:
 
 ## Go
 
-If you have [Golang] installed with a version >= 1.13 in your system and you have the `$GOPATH`env
+If you have [Golang] installed with version 1.27 or later in your system and you have the `$GOPATH`env
 set, you can install `ibdm` like this:
 
 ```sh

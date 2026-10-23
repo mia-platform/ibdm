@@ -94,7 +94,7 @@ Setting variables of both modes is a configuration error.
 
 | Env Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `K8S_API_SERVER` | Token mode | _(empty)_ | URL of the API server, for example `https://34.0.0.1`. Must be an `http` or `https` URL. |
+| `K8S_API_SERVER` | Token mode | _(empty)_ | URL of the API server, for example `https://203.0.113.10`. Must be an `http` or `https` URL. |
 | `K8S_BEARER_TOKEN` | Token mode | _(empty)_ | ServiceAccount token used to authenticate. |
 | `K8S_CA_CERT` | No | _(empty)_ | Base64 encoded PEM bundle of the certificate authority of the API server. |
 | `K8S_INSECURE_SKIP_VERIFY` | No | `false` | Skips the verification of the API server certificate. For local tests only. |

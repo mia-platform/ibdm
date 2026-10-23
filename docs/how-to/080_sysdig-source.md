@@ -83,7 +83,9 @@ Authenticates with the SysQL API using `SYSDIG_API_TOKEN`, sent as
 Authenticates with the Vulnerability API using `SYSDIG_BEARER_TOKEN`, sent as
 `Authorization: Bearer <token>` on every enrichment request.
 
-Incoming webhook requests from Sysdig carry no signature — no shared secret is required.
+Incoming webhook requests from Sysdig carry no signature — no shared secret is required. The webhook
+endpoint is therefore unauthenticated: publish it only where Sysdig can reach it and others cannot, or
+behind a gateway that authenticates the requests.
 
 ## Supported Data Types
 
