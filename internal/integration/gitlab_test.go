@@ -70,7 +70,7 @@ func TestGitLabSync(t *testing.T) {
 		golden           string
 		check            func(t *testing.T, result result, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"GL1 all internal mappings, over two pages": {
+		"all internal mappings, over two pages": {
 			args:   []string{"--include-internal-mappings=all"},
 			golden: "gitlab/all",
 			check: func(t *testing.T, result result, items []map[string]any, upstream *fakeUpstream) {
@@ -88,7 +88,7 @@ func TestGitLabSync(t *testing.T) {
 				assertRelationshipsResolve(t, items)
 			},
 		},
-		"GL2 projects alone fetch projects and their languages only": {
+		"projects alone fetch projects and their languages only": {
 			args:   []string{"--include-internal-mappings=projects"},
 			golden: "gitlab/projects-only",
 			check: func(t *testing.T, result result, items []map[string]any, upstream *fakeUpstream) {
@@ -99,7 +99,7 @@ func TestGitLabSync(t *testing.T) {
 				assert.Zero(t, countLogsAtLevel(result.logs, levelError))
 			},
 		},
-		"GL3 pipelines alone produce nothing": {
+		"pipelines alone produce nothing": {
 			args:   []string{"--include-internal-mappings=pipelines"},
 			golden: "gitlab/pipelines-only",
 			check: func(t *testing.T, result result, items []map[string]any, upstream *fakeUpstream) {
@@ -111,7 +111,7 @@ func TestGitLabSync(t *testing.T) {
 				assert.Zero(t, countLogsAtLevel(result.logs, levelWarn), "no warning that the selection produces nothing")
 			},
 		},
-		"GL4 the documented projects and pipelines selection": {
+		"the documented projects and pipelines selection": {
 			args:   []string{"--include-internal-mappings=projects,pipelines"},
 			golden: "gitlab/projects-pipelines",
 			check: func(t *testing.T, result result, items []map[string]any, upstream *fakeUpstream) {
@@ -126,7 +126,7 @@ func TestGitLabSync(t *testing.T) {
 				assert.Zero(t, countLogsAtLevel(result.logs, levelError))
 			},
 		},
-		"GL5 access tokens alone walk the groups only": {
+		"access tokens alone walk the groups only": {
 			args:   []string{"--include-internal-mappings=accesstokens"},
 			golden: "gitlab/accesstokens-only",
 			check: func(t *testing.T, _ result, items []map[string]any, upstream *fakeUpstream) {
@@ -137,7 +137,7 @@ func TestGitLabSync(t *testing.T) {
 				assert.Zero(t, upstream.calls(http.MethodGet, gitlabProjectsPath), "no project walk")
 			},
 		},
-		"GL6 a failing languages call aborts the sync, documentsCurrentBehaviour": {
+		"a failing languages call aborts the sync, documentsCurrentBehaviour": {
 			args: []string{"--include-internal-mappings=projects"},
 			routes: func(t *testing.T) []route {
 				t.Helper()
@@ -194,7 +194,7 @@ func TestGitLabWebhook(t *testing.T) {
 		golden        string
 		check         func(t *testing.T, items []map[string]any, upstream *fakeUpstream, proc *process)
 	}{
-		"GLW1 a pipeline hook writes the project and the pipeline": {
+		"a pipeline hook writes the project and the pipeline": {
 			args:          []string{"--include-internal-mappings=all"},
 			event:         "Pipeline Hook",
 			payload:       "pipeline-hook.json",
@@ -214,7 +214,7 @@ func TestGitLabWebhook(t *testing.T) {
 				assertRelationshipsResolve(t, items)
 			},
 		},
-		"GLW2 a push hook writes the project": {
+		"a push hook writes the project": {
 			args:          []string{"--include-internal-mappings=all"},
 			event:         "Push Hook",
 			payload:       "push-hook.json",
@@ -228,7 +228,7 @@ func TestGitLabWebhook(t *testing.T) {
 				assert.Equal(t, 1, upstream.calls(http.MethodGet, gitlabLanguages101Path))
 			},
 		},
-		"GLW3 a wrong token is refused": {
+		"a wrong token is refused": {
 			args:         []string{"--include-internal-mappings=all"},
 			event:        "Push Hook",
 			payload:      "push-hook.json",
@@ -239,7 +239,7 @@ func TestGitLabWebhook(t *testing.T) {
 				assert.Empty(t, upstream.received())
 			},
 		},
-		"GLW4 a pipeline hook with projects alone writes nothing, documentsCurrentBehaviour": {
+		"a pipeline hook with projects alone writes nothing, documentsCurrentBehaviour": {
 			args:         []string{"--include-internal-mappings=projects"},
 			event:        "Pipeline Hook",
 			payload:      "pipeline-hook.json",
@@ -251,7 +251,7 @@ func TestGitLabWebhook(t *testing.T) {
 				}, webhookTimeout, pollInterval, "the event is fully fetched before the selection is checked")
 			},
 		},
-		"GLW5 a pipeline hook with pipelines alone writes nothing": {
+		"a pipeline hook with pipelines alone writes nothing": {
 			args:         []string{"--include-internal-mappings=pipelines"},
 			event:        "Pipeline Hook",
 			payload:      "pipeline-hook.json",

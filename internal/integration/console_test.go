@@ -93,7 +93,7 @@ func TestConsoleSync(t *testing.T) {
 		golden string
 		check  func(t *testing.T, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"C1 all internal mappings": {
+		"all internal mappings": {
 			args:   []string{"--include-internal-mappings=all"},
 			golden: "console/all",
 			check: func(t *testing.T, items []map[string]any, upstream *fakeUpstream) {
@@ -112,7 +112,7 @@ func TestConsoleSync(t *testing.T) {
 				assertRelationshipsResolve(t, items, nexusURNGroup)
 			},
 		},
-		"C2 projects alone still walk revisions and configurations": {
+		"projects alone still walk revisions and configurations": {
 			args:   []string{"--include-internal-mappings=projects"},
 			golden: "console/projects-only",
 			check: func(t *testing.T, items []map[string]any, upstream *fakeUpstream) {
@@ -122,7 +122,7 @@ func TestConsoleSync(t *testing.T) {
 				assert.Zero(t, upstream.calls(http.MethodGet, consoleCompaniesPath), "the cluster walk does not run")
 			},
 		},
-		"C3 excluding projects leaves relationships towards missing project items": {
+		"excluding projects leaves relationships towards missing project items": {
 			args:   []string{"--include-internal-mappings=all", "--exclude-internal-mappings=projects"},
 			golden: "console/all-but-projects",
 			check: func(t *testing.T, items []map[string]any, _ *fakeUpstream) {
@@ -132,7 +132,7 @@ func TestConsoleSync(t *testing.T) {
 					"revisions, the service and the custom resource still point at project items nothing creates")
 			},
 		},
-		"C4 the cluster walk alone": {
+		"the cluster walk alone": {
 			args:   []string{"--include-internal-mappings=clusters,cluster-project-relationships"},
 			golden: "console/clusters",
 			check: func(t *testing.T, items []map[string]any, upstream *fakeUpstream) {
@@ -144,7 +144,7 @@ func TestConsoleSync(t *testing.T) {
 				assert.Zero(t, projectWalkCalls(upstream), "the project walk does not run")
 			},
 		},
-		"C5 services alone walk projects and revisions without writing them": {
+		"services alone walk projects and revisions without writing them": {
 			args:   []string{"--include-internal-mappings=services"},
 			golden: "console/services-only",
 			check: func(t *testing.T, items []map[string]any, upstream *fakeUpstream) {
@@ -159,7 +159,7 @@ func TestConsoleSync(t *testing.T) {
 				assert.Equal(t, 1, targets[revisionURNPrefix], "towards a revision item nothing creates")
 			},
 		},
-		"C6 cluster-project-relationships alone still work": {
+		"cluster-project-relationships alone still work": {
 			args:   []string{"--include-internal-mappings=cluster-project-relationships"},
 			golden: "console/cluster-relationships-only",
 			check: func(t *testing.T, items []map[string]any, _ *fakeUpstream) {
@@ -227,7 +227,7 @@ func TestConsoleWebhook(t *testing.T) {
 		golden        string
 		check         func(t *testing.T, items []map[string]any, upstream *fakeUpstream, proc *process)
 	}{
-		"W6 a signed project event is written": {
+		"a signed project event is written": {
 			args:          []string{"--include-internal-mappings=all"},
 			payload:       "project-created-nested.json",
 			expectedCode:  http.StatusNoContent,
@@ -239,7 +239,7 @@ func TestConsoleWebhook(t *testing.T) {
 				assert.Empty(t, upstream.received(), "a project event is written as received, without any fetch")
 			},
 		},
-		"W7 a configuration event fetches the project and its configuration": {
+		"a configuration event fetches the project and its configuration": {
 			args:          []string{"--include-internal-mappings=all"},
 			payload:       "configuration-saved.json",
 			expectedCode:  http.StatusNoContent,
@@ -259,23 +259,23 @@ func TestConsoleWebhook(t *testing.T) {
 				assertRelationshipsResolve(t, items, nexusURNGroup)
 			},
 		},
-		"W8 a badly signed event is refused": {
+		"a badly signed event is refused": {
 			args:         []string{"--include-internal-mappings=all"},
 			payload:      "project-created-nested.json",
 			secret:       "not-the-webhook-secret",
 			expectedCode: http.StatusInternalServerError,
 		},
-		"W9 the webhook never produces clusters": {
+		"the webhook never produces clusters": {
 			args:         []string{"--include-internal-mappings=clusters,cluster-project-relationships"},
 			payload:      "configuration-saved.json",
 			expectedCode: http.StatusNoContent,
 		},
-		"W10 configuration events are ignored when only projects are selected": {
+		"configuration events are ignored when only projects are selected": {
 			args:         []string{"--include-internal-mappings=projects"},
 			payload:      "configuration-saved.json",
 			expectedCode: http.StatusNoContent,
 		},
-		"W11 a flat project event payload cannot render the projects mapping, documentsCurrentBehaviour": {
+		"a flat project event payload cannot render the projects mapping, documentsCurrentBehaviour": {
 			args:         []string{"--include-internal-mappings=projects"},
 			payload:      "project-created-flat.json",
 			expectedCode: http.StatusNoContent,

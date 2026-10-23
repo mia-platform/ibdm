@@ -64,7 +64,7 @@ func TestSonarQubeSync(t *testing.T) {
 		golden string
 		check  func(t *testing.T, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"SQ1 all internal mappings": {
+		"all internal mappings": {
 			args:   []string{"--include-internal-mappings=all"},
 			golden: "sonarqube/all",
 			check: func(t *testing.T, items []map[string]any, upstream *fakeUpstream) {
@@ -82,7 +82,7 @@ func TestSonarQubeSync(t *testing.T) {
 				assert.Equal(t, 2, upstream.calls(http.MethodGet, sonarqubeIssuesPath), "one issue search per project")
 			},
 		},
-		"SQ2 runs alone read no issue": {
+		"runs alone read no issue": {
 			args:   []string{"--include-internal-mappings=runs"},
 			golden: "sonarqube/runs-only",
 			check: func(t *testing.T, items []map[string]any, upstream *fakeUpstream) {
@@ -94,7 +94,7 @@ func TestSonarQubeSync(t *testing.T) {
 				}
 			},
 		},
-		"SQ3 issues alone have no relationship to a run": {
+		"issues alone have no relationship to a run": {
 			args:   []string{"--include-internal-mappings=issues"},
 			golden: "sonarqube/issues-only",
 			check: func(t *testing.T, items []map[string]any, upstream *fakeUpstream) {
@@ -157,7 +157,7 @@ func TestSonarQubeWebhook(t *testing.T) {
 		golden        string
 		check         func(t *testing.T, items []map[string]any, upstream *fakeUpstream)
 	}{
-		"SW1 a signed successful analysis records the run and its issues": {
+		"a signed successful analysis records the run and its issues": {
 			args:          []string{"--include-internal-mappings=all"},
 			payload:       "analysis-success.json",
 			expectedCode:  http.StatusNoContent,
@@ -176,7 +176,7 @@ func TestSonarQubeWebhook(t *testing.T) {
 				assert.Contains(t, upstream.received()[0].Query, "branch=main")
 			},
 		},
-		"SW2 a failed analysis records only its run": {
+		"a failed analysis records only its run": {
 			args:          []string{"--include-internal-mappings=all"},
 			payload:       "analysis-failed.json",
 			expectedCode:  http.StatusNoContent,
@@ -189,24 +189,24 @@ func TestSonarQubeWebhook(t *testing.T) {
 				assert.Empty(t, upstream.received(), "no issue is read for an analysis that did not complete")
 			},
 		},
-		"SW3 issues alone ignore a failed analysis": {
+		"issues alone ignore a failed analysis": {
 			args:         []string{"--include-internal-mappings=issues"},
 			payload:      "analysis-failed.json",
 			expectedCode: http.StatusNoContent,
 		},
-		"SW4 a badly signed delivery is refused": {
+		"a badly signed delivery is refused": {
 			args:         []string{"--include-internal-mappings=all"},
 			payload:      "analysis-success.json",
 			secret:       "not-the-webhook-secret",
 			expectedCode: http.StatusInternalServerError,
 		},
-		"SW5 an unsigned delivery is refused while a secret is set": {
+		"an unsigned delivery is refused while a secret is set": {
 			args:         []string{"--include-internal-mappings=all"},
 			payload:      "analysis-success.json",
 			unsigned:     true,
 			expectedCode: http.StatusInternalServerError,
 		},
-		"SW6 an unsigned delivery is accepted when explicitly allowed without a secret": {
+		"an unsigned delivery is accepted when explicitly allowed without a secret": {
 			args:          []string{"--include-internal-mappings=runs"},
 			env:           map[string]string{"SONARQUBE_WEBHOOK_SECRET": "", "SONARQUBE_WEBHOOK_ALLOW_UNSIGNED": "true"},
 			payload:       "analysis-success.json",

@@ -82,7 +82,7 @@ func TestSysdigSync(t *testing.T) {
 				t.Helper()
 				assert.Empty(t, items)
 				assert.Equal(t, 1, upstream.calls(http.MethodPost, sysdigSysQLPath))
-				assert.Equal(t, 1, countLogs(result.logs, levelError, "error syncing data type"), "per-type errors are logged and swallowed")
+				assert.Equal(t, 1, countLogs(result.logs, levelError, "error syncing data type"), "per-type errors are logged, and the sync goes on")
 			},
 		},
 	}
@@ -107,8 +107,8 @@ func TestSysdigSync(t *testing.T) {
 	}
 }
 
-// TestSysdigWebhook covers ibdm run sysdig end to end. Sysdig notifications carry no signature,
-// so there is no rejected-authentication case: an unsigned notification is accepted.
+// TestSysdigWebhook covers ibdm run sysdig end to end. Sysdig sends its notifications without a
+// signature, as the how-to page documents, so every test posts an unsigned notification.
 func TestSysdigWebhook(t *testing.T) {
 	t.Parallel()
 
@@ -136,8 +136,8 @@ func TestSysdigWebhook(t *testing.T) {
 				assert.Equal(t, 1, upstream.calls(http.MethodGet, sysdigResultsPath+"res-failed-0001"))
 				assert.Zero(t, upstream.calls(http.MethodPost, sysdigSysQLPath), "the webhook does not query SysQL")
 
-				// Finding F-S1: the webhook emits exploitable and no package data, while the mapping
-				// reads hasExploit, packageName and packageVersion, so they stay empty.
+				// The webhook result carries the exploit and package data under other names than the
+				// mapping reads (hasExploit, packageName, packageVersion): those fields stay empty.
 				critical := itemsOf(items, sysdigAPIVersion, "vulnerabilities")
 				for _, item := range critical {
 					spec, _ := item["data"].(map[string]any)
