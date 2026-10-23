@@ -40,8 +40,8 @@ func TestProjectSlug(t *testing.T) {
 	assert.Equal(t, "org-acme-my-service", projectSlug("org.acme:my-service"))
 	assert.Equal(t, projectSlugFallback, projectSlug("///"))
 	assert.Len(t, projectSlug("a-very-long-project-key-that-goes-well-past-forty-characters"), projectSlugLimit)
-	// Only ASCII is lowercased, exactly as catalog-sonarqube-webhook did: the
-	// Kelvin sign would otherwise become a "k".
+	// Only ASCII is lowercased, so that slugs stay stable: the Kelvin sign
+	// would otherwise become a "k".
 	assert.Equal(t, "a-b", projectSlug("AKB"))
 }
 
