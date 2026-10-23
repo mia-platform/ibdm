@@ -55,6 +55,10 @@ The first two variables are used if you start the integration in sync mode using
 The other three are needed if you start the source for exposing a webhook for receiving events from
 Microsoft Azure DevOps.
 
+When neither `AZURE_DEVOPS_WEBHOOK_USER` nor `AZURE_DEVOPS_WEBHOOK_PASSWORD` is set, the webhook accepts
+requests without authentication. Set both, and configure the same basic authentication credentials in
+the Azure DevOps service hook.
+
 If you set `AZURE_DEVOPS_WEBHOOK_USER` you need to also set `AZURE_DEVOPS_WEBHOOK_PASSWORD` and their
 values must be the same set in the Azure DevOps dashboard during the webhook registration.
 

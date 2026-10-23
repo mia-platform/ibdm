@@ -143,7 +143,7 @@ export GITHUB_URL=https://github.example.com/api/v3
 ## Example
 
 ```sh
-export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+export GITHUB_TOKEN="<your-token>"
 export GITHUB_ORG="mia-platform"
 export GITHUB_WEBHOOK_SECRET="my-webhook-secret"
 
