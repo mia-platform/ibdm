@@ -103,6 +103,12 @@ func StatusCode(ctx *fiber.Ctx, err error) int {
 	return ctx.Response().StatusCode()
 }
 
+// requestPath returns the path of the request as received, without its query string: a query can
+// carry credentials, such as a token passed as a parameter, and must never reach the logs.
+func requestPath(ctx *fiber.Ctx) string {
+	return string(ctx.Request().URI().PathOriginal())
+}
+
 func logIncomingRequest(ctx *fiber.Ctx, logger Logger) {
 	logger.
 		Trace(IncomingRequestMessage,
@@ -114,7 +120,7 @@ func logIncomingRequest(ctx *fiber.Ctx, logger Logger) {
 					},
 				},
 			},
-			"url", url{Path: string(ctx.Request().URI().RequestURI())},
+			"url", url{Path: requestPath(ctx)},
 			"host", host{
 				ForwardedHost: ctx.Get(fiber.HeaderXForwardedHost, ""),
 				Hostname:      removePort(string(ctx.Request().Host())),
@@ -140,7 +146,7 @@ func logRequestCompleted(ctx *fiber.Ctx, logger Logger, startTime time.Time, err
 					},
 				},
 			},
-			"url", url{Path: string(ctx.Request().URI().RequestURI())},
+			"url", url{Path: requestPath(ctx)},
 			"host", host{
 				ForwardedHost: ctx.Get(fiber.HeaderXForwardedHost, ""),
 				Hostname:      removePort(string(ctx.Request().Host())),

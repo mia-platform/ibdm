@@ -165,3 +165,27 @@ func TestWebhookHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestValidWebhookToken(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		provided string
+		expected bool
+	}{
+		"the configured token":      {provided: "test-webhook-token", expected: true},
+		"another token":             {provided: "another-token", expected: false},
+		"a prefix of the token":     {provided: "test-webhook", expected: false},
+		"the token with a suffix":   {provided: "test-webhook-token-extra", expected: false},
+		"an empty token":            {provided: "", expected: false},
+		"the token in another case": {provided: "TEST-WEBHOOK-TOKEN", expected: false},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, test.expected, validWebhookToken(test.provided, "test-webhook-token"))
+		})
+	}
+}

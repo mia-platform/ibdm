@@ -510,12 +510,12 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 
 			var ev event
 			if err := json.Unmarshal(body, &ev); err != nil {
-				log.Error(ErrUnmarshalingEvent.Error(), "body", string(body), "error", err.Error())
+				log.Error(ErrUnmarshalingEvent.Error(), "bodySize", len(body), "error", err.Error())
 				return fmt.Errorf("%w: %w", ErrUnmarshalingEvent, err)
 			}
 
 			if !ev.IsTypeIn(webhookTypes) {
-				log.Debug("ignoring event with unlisted type", "eventName ", ev.EventName, "resource", ev.GetResource())
+				log.Debug("ignoring event with unlisted type", "eventName", ev.EventName, "resource", ev.GetResource())
 				return nil
 			}
 
