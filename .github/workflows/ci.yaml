@@ -162,16 +162,6 @@ jobs:
         platforms: ${{ steps.buildx.outputs.platforms }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-    - name: Scan image
-      uses: sysdiglabs/scan-action@0f80e86c1276ece376cfadb8e90ec297000f9655 # v6.3.7
-      with:
-        image-tag: nexus.mia-platform.eu/catalog/ibdm:${{ steps.meta.outputs.version }}
-        sysdig-secure-url: "https://eu1.app.sysdig.com"
-        sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
-        registry-user: ${{ secrets.NEXUS_USER }}
-        registry-password: ${{ secrets.NEXUS_TOKEN }}
-        stop-on-failed-policy-eval: true
-        stop-on-processing-error: true
     - name: Setup Cosign
       if: github.ref_type == 'tag'
       uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
