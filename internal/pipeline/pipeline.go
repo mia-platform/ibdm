@@ -5,6 +5,7 @@ package pipeline
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/mia-platform/ibdm/internal/destination"
@@ -23,6 +24,8 @@ type dataPipeline = func(ctx context.Context, channel chan<- source.Data) error
 
 // DataMapper couples a mapper with the metadata needed to build destination payloads.
 type DataMapper struct {
+	// Name identifies the mapping within the loaded set.
+	Name       string
 	APIVersion string
 	ItemFamily string
 	Extra      source.Extra
@@ -32,26 +35,43 @@ type DataMapper struct {
 // Pipeline orchestrates the flow from a source through mappers into a destination.
 type Pipeline struct {
 	source        any
-	mappers       map[string]DataMapper
-	mapperTypes   map[string]source.Extra
+	mappers       map[string][]DataMapper
+	mapperTypes   map[string]source.MappingExtras
 	destination   destination.Sender
 	serverCreator func(ctx context.Context) (server.Server, error)
 }
 
 // New wires together the given source, mappers, and destination into a Pipeline.
-func New(ctx context.Context, src any, mappers map[string]DataMapper, destination destination.Sender) (*Pipeline, error) {
-	mapperTypes := make(map[string]source.Extra, len(mappers))
-	for dataType, mapping := range mappers {
-		mapperTypes[dataType] = mapping.Extra
-	}
-
+// mappers groups the mappings by data type. Every mapping registered for a type
+// renders each emission of that type, in slice order.
+func New(ctx context.Context, src any, mappers map[string][]DataMapper, destination destination.Sender) (*Pipeline, error) {
 	return &Pipeline{
 		source:        src,
 		mappers:       mappers,
-		mapperTypes:   mapperTypes,
+		mapperTypes:   mappingExtras(mappers),
 		destination:   destination,
 		serverCreator: server.NewServer,
 	}, nil
+}
+
+// mappingExtras builds the configuration handed to sources: for every type, the
+// extra of each mapping registered for it, keyed by mapping name. A type without
+// any mapping is left out, so sources are never asked for data nobody maps.
+func mappingExtras(mappers map[string][]DataMapper) map[string]source.MappingExtras {
+	mapperTypes := make(map[string]source.MappingExtras, len(mappers))
+	for dataType, dataMappers := range mappers {
+		if len(dataMappers) == 0 {
+			continue
+		}
+
+		extras := make(source.MappingExtras, len(dataMappers))
+		for _, dataMapper := range dataMappers {
+			extras[dataMapper.Name] = dataMapper.Extra
+		}
+		mapperTypes[dataType] = extras
+	}
+
+	return mapperTypes
 }
 
 // Start begins streaming data from a source.EventSource or source.WebhookSource.
@@ -161,7 +181,8 @@ func (p *Pipeline) Stop(ctx context.Context, timeout time.Duration) error {
 	return closableSource.Close(ctx, timeout)
 }
 
-// mappingData consumes channel entries, runs the matching mapper, and forwards results.
+// mappingData consumes channel entries, runs every mapper registered for their type that
+// the entry targets, and forwards the results.
 func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) {
 	log := logger.FromContext(ctx).WithName(loggerName)
 	for {
@@ -173,55 +194,167 @@ func (p *Pipeline) mappingData(ctx context.Context, channel <-chan source.Data) 
 			if !ok {
 				return
 			}
-			dataMapper, found := p.mappers[data.Type]
-			if !found {
+			dataMappers := p.mappers[data.Type]
+			if len(dataMappers) == 0 {
 				log.Debug("data type not mapped, skipping", "type", data.Type)
 				continue
 			}
 
-			log.Trace("sending data", "type", data.Type, "operation", data.Operation.String())
-			dataToSend := &destination.Data{
-				APIVersion:    dataMapper.APIVersion,
-				ItemFamily:    dataMapper.ItemFamily,
-				OperationTime: data.Timestamp(),
+			for _, dataMapper := range targetedMappers(log, data, dataMappers) {
+				p.applyMapper(ctx, data, dataMapper)
 			}
-			parentResourceInfo := mapper.ParentItemInfo{
-				APIVersion: dataMapper.APIVersion,
-				ItemFamily: dataMapper.ItemFamily,
-			}
-			switch data.Operation {
-			case source.DataOperationUpsert:
-				output, extra, err := dataMapper.Mapper.ApplyTemplates(data.Values, parentResourceInfo)
-				if err != nil {
-					log.Error("error applying mapper templates", "type", data.Type, "error", err)
-					continue
-				}
-				dataToSend.Name = output.Identifier
-				if output.Metadata != nil {
-					dataToSend.Metadata = output.Metadata
-				}
-				dataToSend.Data = output.Spec
-				if err := p.destination.SendData(ctx, dataToSend); err != nil {
-					log.Error("error sending data to destination", "type", data.Type, "error", err)
-					continue
-				}
-				p.upsertExtraMappedData(ctx, data, extra)
-			case source.DataOperationDelete:
-				identifier, extra, err := dataMapper.Mapper.ApplyIdentifierTemplate(data.Values)
-				dataToSend.Name = identifier
-				if err != nil {
-					log.Error("error applying mapper templates", "type", data.Type, "error", err)
-					continue
-				}
-				if err := p.destination.DeleteData(ctx, dataToSend); err != nil {
-					log.Error("error deleting data from destination", "type", data.Type, "error", err)
-					continue
-				}
-				p.deleteExtraMappedData(ctx, data, extra)
-			}
-
-			log.Trace("data sent", "type", data.Type, "operation", data.Operation.String())
 		}
+	}
+}
+
+// targetedMappers selects the mappers data targets among dataMappers, the mappers registered
+// for its type. A nil data.Mappings selects every mapper. Otherwise the mappers it names are
+// selected, in registration order and each once; a name matching no mapper of the type is
+// reported and ignored. A non-nil empty data.Mappings is a source bug: it is reported and
+// selects nothing, because rendering every mapping for data meant for none could write items
+// built from a payload their templates were not written for.
+func targetedMappers(log logger.Logger, data source.Data, dataMappers []DataMapper) []DataMapper {
+	if data.Mappings == nil {
+		return dataMappers
+	}
+
+	if len(data.Mappings) == 0 {
+		log.Error("source emitted data targeting no mapping, dropping it", "type", data.Type, "operation", data.Operation.String())
+		return nil
+	}
+
+	selected := make([]DataMapper, 0, len(data.Mappings))
+	for _, dataMapper := range dataMappers {
+		if slices.Contains(data.Mappings, dataMapper.Name) {
+			selected = append(selected, dataMapper)
+		}
+	}
+
+	targets := slices.Compact(slices.Sorted(slices.Values(data.Mappings)))
+	for _, target := range targets {
+		registered := slices.ContainsFunc(dataMappers, func(dataMapper DataMapper) bool { return dataMapper.Name == target })
+		if !registered {
+			log.Warn("data targets a mapping not registered for its type, ignoring it", "type", data.Type, "mapping", target)
+		}
+	}
+
+	return selected
+}
+
+// applyMapper renders data with dataMapper and forwards the result to the destination.
+// A failure is logged and stops only this mapping, so the other mappings registered
+// for the same type still run.
+func (p *Pipeline) applyMapper(ctx context.Context, data source.Data, dataMapper DataMapper) {
+	log := logger.FromContext(ctx).WithName(loggerName)
+
+	// every template of this mapping, on upsert and on delete, works on a private copy of the
+	// payload: data is a value parameter, so the copy never reaches the other mappings.
+	data.Values = copyValues(data.Values)
+
+	log.Trace("sending data", "type", data.Type, "mapping", dataMapper.Name, "operation", data.Operation.String())
+	dataToSend := &destination.Data{
+		APIVersion:    dataMapper.APIVersion,
+		ItemFamily:    dataMapper.ItemFamily,
+		OperationTime: data.Timestamp(),
+	}
+	parentResourceInfo := mapper.ParentItemInfo{
+		APIVersion: dataMapper.APIVersion,
+		ItemFamily: dataMapper.ItemFamily,
+	}
+	switch data.Operation {
+	case source.DataOperationUpsert:
+		// the guard runs after the target selection of mappingData, so it only ever sees
+		// payloads meant for its mapping
+		create, err := dataMapper.Mapper.ShouldCreate(data.Values)
+		if err != nil {
+			log.Error("error evaluating createIf", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		if !create {
+			log.Trace("mapping declined payload", "type", data.Type, "mapping", dataMapper.Name)
+			return
+		}
+
+		output, extra, err := dataMapper.Mapper.ApplyTemplates(data.Values, parentResourceInfo)
+		if err != nil {
+			log.Error("error applying mapper templates", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		dataToSend.Name = output.Identifier
+		if output.Metadata != nil {
+			dataToSend.Metadata = output.Metadata
+		}
+		dataToSend.Data = output.Spec
+		if err := p.destination.SendData(ctx, dataToSend); err != nil {
+			log.Error("error sending data to destination", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		p.upsertExtraMappedData(ctx, data, extra)
+	case source.DataOperationDelete:
+		// the createIf guard is deliberately not evaluated on delete: delete payloads are frequently
+		// id-only, so a guard written against the full payload could not run on them, and deleting an
+		// item that was never created is inert. The azure source applies the same rule to its
+		// sub-types, see subTypesToEmit in internal/source/azure/subtypes.go.
+		identifier, extra, err := dataMapper.Mapper.ApplyIdentifierTemplate(data.Values)
+		dataToSend.Name = identifier
+		if err != nil {
+			log.Error("error applying mapper templates", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		if err := p.destination.DeleteData(ctx, dataToSend); err != nil {
+			log.Error("error deleting data from destination", "type", data.Type, "mapping", dataMapper.Name, "error", err)
+			return
+		}
+		p.deleteExtraMappedData(ctx, data, extra)
+	}
+
+	log.Trace("data sent", "type", data.Type, "mapping", dataMapper.Name, "operation", data.Operation.String())
+}
+
+// copyValues returns a deep copy of a source payload. Templates may write into their input with
+// the set function, which stores values in place, and several mappings can render the same
+// payload: each mapping must render the payload its source emitted, not one an earlier mapping
+// modified. The copy recurses into every map[string]any, []any and []map[string]any at any depth,
+// the containers a template can reach and write into. Every other value is assigned as is: it is
+// a scalar, or a typed value such as map[string]float64 that set cannot write into, because set
+// only accepts a map[string]any. A nil payload returns nil.
+func copyValues(values map[string]any) map[string]any {
+	if values == nil {
+		return nil
+	}
+
+	copied := make(map[string]any, len(values))
+	for key, value := range values {
+		copied[key] = copyValue(value)
+	}
+	return copied
+}
+
+// copyValue deep-copies the containers copyValues recurses into and returns any other value as is.
+func copyValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		return copyValues(typed)
+	case []any:
+		if typed == nil {
+			return typed
+		}
+		copied := make([]any, len(typed))
+		for i, element := range typed {
+			copied[i] = copyValue(element)
+		}
+		return copied
+	case []map[string]any:
+		if typed == nil {
+			return typed
+		}
+		copied := make([]map[string]any, len(typed))
+		for i, element := range typed {
+			copied[i] = copyValues(element)
+		}
+		return copied
+	default:
+		return value
 	}
 }
 

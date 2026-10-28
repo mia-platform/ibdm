@@ -1,0 +1,61 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "console.mia-platform.eu/v1",
+      "data": {
+        "clusterId": "prod-eu",
+        "connection": {
+          "url": "https://prod-eu.k8s.example.com"
+        },
+        "distribution": "gke",
+        "runtimeInfo": {
+          "version": "1.31"
+        },
+        "tenantId": "acme-widgets",
+        "url": "prod-eu.k8s.example.com",
+        "vendor": "gke"
+      },
+      "itemFamily": "clusters",
+      "metadata": {
+        "title": "prod-eu"
+      },
+      "name": "bf97c4aeb1f17dbba1fea8baa0063c6baa67783875cd03a42fa61b7a1995f155",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:64f1a0c0e1b2c3d4e5f60002",
+        "targetRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Cluster:bf97c4aeb1f17dbba1fea8baa0063c6baa67783875cd03a42fa61b7a1995f155",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "1488160e5e417d994c3bbbdf0442e1fc6622733f25b7fec86c388d410a85b923",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Project:64f1a0c0e1b2c3d4e5f60001",
+        "targetRef": "urn:mia-platform-catalog:console.mia-platform.eu:v1:Cluster:bf97c4aeb1f17dbba1fea8baa0063c6baa67783875cd03a42fa61b7a1995f155",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "a0b3b77613d99a0b729f8644bf6738fec68f34039ba6edf9ee3cce6401f4f934",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/tenants/acme-widgets/clusters/"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/companies"
+    }
+  ]
+}

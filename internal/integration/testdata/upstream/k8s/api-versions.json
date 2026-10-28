@@ -1,0 +1,12 @@
+{
+  "kind": "APIVersions",
+  "versions": [
+    "v1"
+  ],
+  "serverAddressByClientCIDRs": [
+    {
+      "clientCIDR": "0.0.0.0/0",
+      "serverAddress": "k8s-api.example.com:443"
+    }
+  ]
+}

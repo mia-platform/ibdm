@@ -105,7 +105,7 @@ func TestWebhookHandlerUnknownEvent(t *testing.T) {
 			ID:        "Some Other Alert",
 			EventData: webhookEventData{Name: "Some Other Alert"},
 		},
-		Timestamp: 1777471695260063,
+		Timestamp: 1767225600000000,
 	})
 	require.NoError(t, err)
 
@@ -120,9 +120,9 @@ func TestWebhookHandlerUnknownEvent(t *testing.T) {
 func TestWebhookHandlerValidEventViaEventID(t *testing.T) {
 	t.Parallel()
 
-	resultID := "18aad9169a529683f1a57da4199aeb00"
+	resultID := "0123456789abcdef0123456789abcdef"
 	eventURL := fmt.Sprintf("https://eu1.app.sysdig.com/secure/#/vulnerabilities/results/%s/overview", resultID)
-	timestampMicros := int64(1777471695260063)
+	timestampMicros := int64(1767225600000000)
 	expectedTime := time.UnixMicro(timestampMicros)
 
 	apiResponse := resultResponse{
@@ -164,7 +164,7 @@ func TestWebhookHandlerValidEventViaEventID(t *testing.T) {
 		vulnClient: vc,
 	}
 
-	typesToStream := map[string]source.Extra{
+	typesToStream := map[string]source.MappingExtras{
 		vulnerabilityType: {},
 	}
 
@@ -209,7 +209,7 @@ func TestWebhookHandlerValidEventViaEventDataName(t *testing.T) {
 
 	resultID := "abcdef1234567890abcdef1234567890"
 	eventURL := fmt.Sprintf("https://app.sysdigcloud.com/secure/#/vulnerabilities/results/%s/overview", resultID)
-	timestampMicros := int64(1777471695260063)
+	timestampMicros := int64(1767225600000000)
 
 	apiResponse := resultResponse{
 		Result: resultData{
@@ -244,7 +244,7 @@ func TestWebhookHandlerValidEventViaEventDataName(t *testing.T) {
 	}
 
 	results := make(chan source.Data, 10)
-	typesToStream := map[string]source.Extra{vulnerabilityType: {}}
+	typesToStream := map[string]source.MappingExtras{vulnerabilityType: {}}
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
 	require.NoError(t, err)
@@ -292,7 +292,7 @@ func TestWebhookHandlerProcessorError(t *testing.T) {
 		vulnClient: vc,
 	}
 
-	typesToStream := map[string]source.Extra{vulnerabilityType: {}}
+	typesToStream := map[string]source.MappingExtras{vulnerabilityType: {}}
 	results := make(chan source.Data, 10)
 
 	webhook, err := s.GetWebhook(t.Context(), typesToStream, results)
@@ -303,7 +303,7 @@ func TestWebhookHandlerProcessorError(t *testing.T) {
 			ID:  pipelineFailureAlertKey,
 			URL: eventURL,
 		},
-		Timestamp: 1777471695260063,
+		Timestamp: 1767225600000000,
 	})
 	require.NoError(t, err)
 

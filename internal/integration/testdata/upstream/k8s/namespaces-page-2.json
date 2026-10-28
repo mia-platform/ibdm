@@ -1,0 +1,24 @@
+{
+  "kind": "NamespaceList",
+  "apiVersion": "v1",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "platform",
+        "uid": "uid-platform",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "labels": {
+          "team": "platform"
+        }
+      },
+      "spec": {},
+      "status": {
+        "phase": "Active"
+      }
+    }
+  ]
+}

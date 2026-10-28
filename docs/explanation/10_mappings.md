@@ -67,6 +67,83 @@ Extra templates cover the `extra` section that is meant to create, for each mapp
 
 A more comprehensive documentation can be found in [Extra Mappings](./20_extra_mappings.md).
 
+## Fan-out
+
+Several mappings can share the same `type`.
+Every payload the source emits for that `type` is then rendered by each of those mappings, and each
+mapping produces its own item, with its own `apiVersion`, `itemFamily`, templates and extra items.
+Deletes fan out the same way: every mapping of the `type` sends its own delete.
+
+Mappings sharing a `type` render in a fixed order: the selected internal mappings first, in lexical
+order of name, then the external mappings in the order their files are loaded, meaning the order of
+the `--mapping-file` flags and, within a directory, the lexical order of the file names. The order is
+therefore the same at every run. A mapping that fails on a payload, because a template errors or the Catalog rejects
+the item, logs the error and does not prevent the other mappings from rendering it.
+Every mapping renders its own copy of the payload, so a template that writes into its input, for
+example with [`set`](../reference/10_mappings.md#set), does not affect the other mappings.
+
+Each mapping sends its own items to the Mia-Platform Catalog, so N mappings on a `type` mean N
+writes for every payload of that `type`.
+
+### Which Mappings Receive a Payload
+
+Three mechanisms decide which of the mappings sharing a `type` render a payload:
+
+- **Fan-out**: by default, every mapping of the `type` receives every payload.
+- **Source targeting**: when mappings sharing a `type` ask the source for different data, the source
+	addresses each payload only to the mappings it was fetched for, identifying them by their
+	[`name`](../reference/10_mappings.md#name). The mappings of a `type` that all ask for the same data
+	keep receiving every payload.
+- **`createIf`**: a mapping can decline a payload on upsert with a [`createIf`](../reference/10_mappings.md#createif) guard, evaluated against the payload. Source targeting runs first, so a guard only sees payloads meant for its mapping.
+
+Source targeting applies to these sources:
+
+- **Azure**, event stream: the resource is fetched once per distinct `extra.apiVersion` among the
+	mappings of its `type`, and every mapping receives the payload fetched with its own `apiVersion`.
+	A mapping without `apiVersion` receives no event, as before. The sync is unaffected, because the
+	Resource Graph queries it runs take no `apiVersion`.
+- **GitHub**: repositories are listed once per distinct `extra.apiVersion` among the repository
+	mappings, and each listing reaches the mappings of its version. Workflow runs are fetched once per
+	distinct `extra.apiVersion` among the workflow run mappings. Repository and push webhooks fetch the
+	repository languages once per version.
+- **Azure DevOps**: a webhook event reaches only the mappings whose `extra.eventNames` list it, and every `type` with such a mapping receives it.
+
+Every other source sends every payload to every mapping of its `type`.
+
+Every distinct `apiVersion` costs one more fetch: for the GitHub source, one more listing of every
+repository of the organization.
+
+### Mappings That Need Different Data
+
+Fan-out suits mappings that are different renderings of the same payload.
+When two mappings need data the source must fetch or select differently, and the difference is not
+one the source targets on, they should not share a `type`.
+Give each of them its own `type` and let the source emit that `type` itself: this is a change to
+the source, not to the mappings.
+
+The Azure resource sub-types are an example: the source emits the `functionapps` type, next to
+`Microsoft.Web/sites`, for the App Service sites whose kind marks them as function apps, as the
+[Azure how-to](../how-to/030_azure-source.md#resource-sub-types) describes.
+
+When the difference lies only in the payload the mappings already receive, a `createIf` guard on
+each mapping is enough.
+
+### Colliding Items
+
+No uniqueness is enforced on `type`: several mappings can share one. Several mappings can also write
+the same item type, meaning the same `apiVersion` and `itemFamily`, but not by accident. When two
+mappings produce items with the same `apiVersion`, `itemFamily` and identifier, they write the same
+Catalog item, and the last mapping to write it wins. `ibdm` cannot tell in advance whether identifiers
+will overlap, so it refuses to start when two mappings of a run write the same item type, and lists
+them. Pass `--allow-shared-item-types` to start anyway: every shared item type is then logged as a
+warning, and avoiding colliding identifiers is the responsibility of whoever writes the mappings.
+
+The generic relationship item type, `mia-platform.eu/v1` `relationships`, is the one exception: any
+number of mappings may write it. A relationship identifier hashes its source, relationship type and
+target URNs, so mappings relating different kinds of items cannot produce the same one. Apart from
+it, the internal mappings never share an item type with each other, and an external mapping cannot
+write a system item type, so the check only ever concerns your external mappings.
+
 ## Template Functions
 
 The [Mappings Reference](../reference/10_mappings.md) lists the helper functions you can call inside

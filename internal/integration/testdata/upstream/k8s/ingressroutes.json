@@ -1,0 +1,58 @@
+{
+  "apiVersion": "traefik.io/v1alpha1",
+  "kind": "IngressRouteList",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "apiVersion": "traefik.io/v1alpha1",
+      "kind": "IngressRoute",
+      "metadata": {
+        "name": "storefront",
+        "uid": "uid-storefront",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront",
+        "labels": {
+          "app": "catalog-api"
+        }
+      },
+      "spec": {
+        "entryPoints": [
+          "websecure"
+        ],
+        "routes": [
+          {
+            "match": "Host(`shop.example.com`) && PathPrefix(`/api`)",
+            "kind": "Rule",
+            "services": [
+              {
+                "name": "catalog-api",
+                "port": 80
+              }
+            ],
+            "middlewares": [
+              {
+                "name": "rate-limit"
+              }
+            ]
+          },
+          {
+            "match": "Host(`shop.example.com`) && PathPrefix(`/dashboard`)",
+            "kind": "Rule",
+            "services": [
+              {
+                "name": "api@internal",
+                "kind": "TraefikService"
+              }
+            ]
+          }
+        ],
+        "tls": {
+          "secretName": "shop-example-com-tls"
+        }
+      }
+    }
+  ]
+}

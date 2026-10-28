@@ -1,0 +1,55 @@
+{
+  "kind": "StatefulSetList",
+  "apiVersion": "apps/v1",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "orders-db",
+        "uid": "uid-orders-db",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront",
+        "labels": {
+          "app": "orders-db"
+        }
+      },
+      "spec": {
+        "replicas": 1,
+        "serviceName": "orders-db",
+        "selector": {
+          "matchLabels": {
+            "app": "orders-db"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "orders-db"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "postgres",
+                "image": "registry.example.com/library/postgres:16.4",
+                "resources": {
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "256Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "512Mi"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

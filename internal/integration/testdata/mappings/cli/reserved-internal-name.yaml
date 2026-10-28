@@ -1,0 +1,8 @@
+name: repositories
+type: repository
+apiVersion: mia-platform.eu/v1
+itemFamily: repositories
+mappings:
+  identifier: "{{ .repository.id }}"
+  spec:
+    name: "{{ .repository.name }}"

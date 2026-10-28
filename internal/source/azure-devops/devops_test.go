@@ -4,8 +4,10 @@
 package azuredevops
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,8 +16,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
 )
+
+// testMappingName names the single mapping a test registers for a type, reproducing the
+// one-extra-per-type configuration sources received before extras were grouped by mapping.
+const testMappingName = "my-mapping"
 
 func TestNewSource(t *testing.T) {
 	testCases := map[string]struct {
@@ -111,7 +118,7 @@ func TestMultipleSyncStart(t *testing.T) {
 		},
 	}
 
-	typesToFilter := map[string]source.Extra{
+	typesToFilter := map[string]source.MappingExtras{
 		gitRepositoryType: {},
 	}
 	go func() {
@@ -129,12 +136,53 @@ func TestMultipleSyncStart(t *testing.T) {
 	assert.ErrorIs(t, ctx.Err(), context.Canceled)
 }
 
+func TestEventNamesContain(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		extra    source.Extra
+		expected bool
+	}{
+		"listed event": {
+			extra:    source.Extra{extraEventNamesKey: []any{"git.push", "git.repo.created"}},
+			expected: true,
+		},
+		"listed event with different casing": {
+			extra:    source.Extra{extraEventNamesKey: []any{"GIT.REPO.CREATED"}},
+			expected: true,
+		},
+		"event not listed": {
+			extra: source.Extra{extraEventNamesKey: []any{"git.push"}},
+		},
+		"non string entries are skipped": {
+			extra: source.Extra{extraEventNamesKey: []any{42, nil}},
+		},
+		"eventNames not a list": {
+			extra: source.Extra{extraEventNamesKey: "git.repo.created"},
+		},
+		"no eventNames": {
+			extra: source.Extra{},
+		},
+		"nil extra": {
+			extra: nil,
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, test.expected, eventNamesContain(test.extra, "git.repo.created"))
+		})
+	}
+}
+
 func TestWebhookHandler(t *testing.T) {
 	t.Parallel()
 
 	testCases := map[string]struct {
 		config        config
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		headers       http.Header
 		body          string
 		expectedData  source.Data
@@ -146,10 +194,10 @@ func TestWebhookHandler(t *testing.T) {
 				WebhookUser:     "user",
 				WebhookPassword: "password",
 			},
-			typesToStream: map[string]source.Extra{
-				"gitrepository": {
+			typesToStream: map[string]source.MappingExtras{
+				"gitrepository": {testMappingName: {
 					"eventNames": []any{"git.repo.created"},
-				},
+				}},
 			},
 			body: repoCreatedPayload,
 			headers: http.Header{
@@ -160,17 +208,17 @@ func TestWebhookHandler(t *testing.T) {
 				Operation: source.DataOperationUpsert,
 				Time:      time.Date(2022, 12, 12, 12, 34, 56, 549845900, time.UTC),
 				Values: map[string]any{
-					"id":   "278d5cd2-584d-4b63-824a-2ba458937249",
+					"id":   "00000000-0000-0000-0000-000000000002",
 					"name": "Fabrikam-Fiber-Git",
-					"url":  "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/git/repositories/278d5cd2-584d-4b63-824a-2ba458937249",
+					"url":  "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/git/repositories/00000000-0000-0000-0000-000000000002",
 					"project": map[string]any{
-						"id":             "6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+						"id":             "00000000-0000-0000-0000-000000000003",
 						"name":           "Fabrikam-Fiber-Git",
-						"url":            "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+						"url":            "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/00000000-0000-0000-0000-000000000003",
 						"state":          "wellFormed",
 						"revision":       float64(11),
 						"visibility":     "private",
-						"lastUpdateTime": "2026-02-02T11:47:33.561308+00:00",
+						"lastUpdateTime": "2024-01-01T11:47:33.561308+00:00",
 					},
 					"defaultBranch": "refs/heads/master",
 					"size":          float64(728),
@@ -184,10 +232,10 @@ func TestWebhookHandler(t *testing.T) {
 			config: config{
 				WebhookPath: "/azure-devops/webhook",
 			},
-			typesToStream: map[string]source.Extra{
-				"gitrepository": {
+			typesToStream: map[string]source.MappingExtras{
+				"gitrepository": {testMappingName: {
 					"eventNames": []any{"git.repo.renamed"},
-				},
+				}},
 			},
 			body: repoRenamedPayload,
 			expectedData: source.Data{
@@ -195,17 +243,17 @@ func TestWebhookHandler(t *testing.T) {
 				Operation: source.DataOperationUpsert,
 				Time:      time.Date(2022, 12, 12, 12, 34, 56, 549845900, time.UTC),
 				Values: map[string]any{
-					"id":   "278d5cd2-584d-4b63-824a-2ba458937249",
+					"id":   "00000000-0000-0000-0000-000000000002",
 					"name": "Fabrikam-Fiber-Git",
-					"url":  "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/git/repositories/278d5cd2-584d-4b63-824a-2ba458937249",
+					"url":  "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/git/repositories/00000000-0000-0000-0000-000000000002",
 					"project": map[string]any{
-						"id":             "6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+						"id":             "00000000-0000-0000-0000-000000000003",
 						"name":           "Contoso",
-						"url":            "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+						"url":            "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/00000000-0000-0000-0000-000000000003",
 						"state":          "wellFormed",
 						"revision":       float64(11),
 						"visibility":     "private",
-						"lastUpdateTime": "2026-02-02T13:09:14.238036+00:00",
+						"lastUpdateTime": "2024-01-01T13:09:14.238036+00:00",
 					},
 					"defaultBranch": "refs/heads/master",
 					"size":          float64(728),
@@ -219,10 +267,10 @@ func TestWebhookHandler(t *testing.T) {
 			config: config{
 				WebhookPath: "/azure-devops/webhook",
 			},
-			typesToStream: map[string]source.Extra{
-				"gitrepository": {
+			typesToStream: map[string]source.MappingExtras{
+				"gitrepository": {testMappingName: {
 					"eventNames": []any{"git.repo.deleted"},
-				},
+				}},
 			},
 			body: repoDeletedPayload,
 			expectedData: source.Data{
@@ -231,20 +279,20 @@ func TestWebhookHandler(t *testing.T) {
 				Time:      time.Date(2022, 12, 12, 12, 34, 56, 549845900, time.UTC),
 				Values: map[string]any{
 					"project": map[string]any{
-						"id":             "6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+						"id":             "00000000-0000-0000-0000-000000000003",
 						"name":           "Contoso",
-						"url":            "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+						"url":            "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/00000000-0000-0000-0000-000000000003",
 						"state":          "wellFormed",
 						"revision":       float64(11),
 						"visibility":     "private",
-						"lastUpdateTime": "2026-02-02T11:52:41.2405443+00:00",
+						"lastUpdateTime": "2024-01-01T11:52:41.2405443+00:00",
 					},
-					"repositoryId":   "278d5cd2-584d-4b63-824a-2ba458937249",
+					"repositoryId":   "00000000-0000-0000-0000-000000000002",
 					"repositoryName": "Fabrikam-Fiber-Git",
 					"isHardDelete":   false,
 					"initiatedBy": map[string]any{
 						"displayName": "John Johnson",
-						"id":          "c6917b69-506a-6a69-81a5-81a7fed0bff9",
+						"id":          "00000000-0000-0000-0000-000000000007",
 						"uniqueName":  "user@fabrikamfiber.com",
 					},
 					"utcTimestamp": "2022-12-12T12:34:56.5498459Z",
@@ -290,26 +338,26 @@ func TestWebhookHandler(t *testing.T) {
 
 const (
 	repoCreatedPayload = `{
-	"subscriptionId": "8ec9745b-5b8a-4e19-a538-90693987c736",
+	"subscriptionId": "00000000-0000-0000-0000-000000000004",
 	"notificationId": 6,
-	"id": "03c164c2-8912-4d5e-8009-3707d5f83734",
+	"id": "00000000-0000-0000-0000-000000000001",
 	"eventType": "git.repo.created",
 	"publisherId": "tfs",
 	"message": null,
 	"detailedMessage": null,
 	"resource": {
 		"repository": {
-			"id": "278d5cd2-584d-4b63-824a-2ba458937249",
+			"id": "00000000-0000-0000-0000-000000000002",
 			"name": "Fabrikam-Fiber-Git",
-			"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/git/repositories/278d5cd2-584d-4b63-824a-2ba458937249",
+			"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/git/repositories/00000000-0000-0000-0000-000000000002",
 			"project": {
-				"id": "6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+				"id": "00000000-0000-0000-0000-000000000003",
 				"name": "Fabrikam-Fiber-Git",
-				"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+				"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/00000000-0000-0000-0000-000000000003",
 				"state": "wellFormed",
 				"revision": 11,
 				"visibility": "private",
-				"lastUpdateTime": "2026-02-02T11:47:33.561308+00:00"
+				"lastUpdateTime": "2024-01-01T11:47:33.561308+00:00"
 			},
 			"defaultBranch": "refs/heads/master",
 			"size": 728,
@@ -319,7 +367,7 @@ const (
 		},
 		"initiatedBy": {
 			"displayName": "Ivan Yurev",
-			"id": "c6917b69-506a-6a69-81a5-81a7fed0bff9",
+			"id": "00000000-0000-0000-0000-000000000007",
 			"uniqueName": "user@fabrikamfiber.com"
 		},
 		"utcTimestamp": "2022-12-12T12:34:56.5498459Z"
@@ -327,22 +375,22 @@ const (
 	"resourceVersion": "1.0-preview.1",
 	"resourceContainers": {
 		"collection": {
-			"id": "c12d0eb8-e382-443b-9f9c-c52cba5014c2"
+			"id": "00000000-0000-0000-0000-000000000006"
 		},
 		"account": {
-			"id": "f844ec47-a9db-4511-8281-8b63f4eaf94e"
+			"id": "00000000-0000-0000-0000-000000000008"
 		},
 		"project": {
-			"id": "be9b3917-87e6-42a4-a549-2bc06a7a878f"
+			"id": "00000000-0000-0000-0000-000000000005"
 		}
 	},
-	"createdDate": "2026-02-02T11:47:33.9085576Z"
+	"createdDate": "2024-01-01T11:47:33.9085576Z"
 }`
 
 	repoRenamedPayload = `{
-	"subscriptionId": "8ec9745b-5b8a-4e19-a538-90693987c736",
+	"subscriptionId": "00000000-0000-0000-0000-000000000004",
 	"notificationId": 10,
-	"id": "03c164c2-8912-4d5e-8009-3707d5f83734",
+	"id": "00000000-0000-0000-0000-000000000001",
 	"eventType": "git.repo.renamed",
 	"publisherId": "tfs",
 	"message": null,
@@ -351,17 +399,17 @@ const (
 		"oldName": "Diber-Git",
 		"newName": "Fabrikam-Fiber-Git",
 		"repository": {
-			"id": "278d5cd2-584d-4b63-824a-2ba458937249",
+			"id": "00000000-0000-0000-0000-000000000002",
 			"name": "Fabrikam-Fiber-Git",
-			"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/git/repositories/278d5cd2-584d-4b63-824a-2ba458937249",
+			"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/git/repositories/00000000-0000-0000-0000-000000000002",
 			"project": {
-				"id": "6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+				"id": "00000000-0000-0000-0000-000000000003",
 				"name": "Contoso",
-				"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+				"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/00000000-0000-0000-0000-000000000003",
 				"state": "wellFormed",
 				"revision": 11,
 				"visibility": "private",
-				"lastUpdateTime": "2026-02-02T13:09:14.238036+00:00"
+				"lastUpdateTime": "2024-01-01T13:09:14.238036+00:00"
 			},
 			"defaultBranch": "refs/heads/master",
 			"size": 728,
@@ -371,7 +419,7 @@ const (
 		},
 		"initiatedBy": {
 			"displayName": "John Johnson",
-			"id": "c6917b69-506a-6a69-81a5-81a7fed0bff9",
+			"id": "00000000-0000-0000-0000-000000000007",
 			"uniqueName": "user@fabrikamfiber.com"
 		},
 		"utcTimestamp": "2022-12-12T12:34:56.5498459Z"
@@ -379,42 +427,42 @@ const (
 	"resourceVersion": "1.0-preview.1",
 	"resourceContainers": {
 		"collection": {
-			"id": "c12d0eb8-e382-443b-9f9c-c52cba5014c2"
+			"id": "00000000-0000-0000-0000-000000000006"
 		},
 		"account": {
-			"id": "f844ec47-a9db-4511-8281-8b63f4eaf94e"
+			"id": "00000000-0000-0000-0000-000000000008"
 		},
 		"project": {
-			"id": "be9b3917-87e6-42a4-a549-2bc06a7a878f"
+			"id": "00000000-0000-0000-0000-000000000005"
 		}
 	},
-	"createdDate": "2026-02-02T13:09:14.6837777Z"
+	"createdDate": "2024-01-01T13:09:14.6837777Z"
 }`
 
 	repoDeletedPayload = `{
-	"subscriptionId": "8ec9745b-5b8a-4e19-a538-90693987c736",
+	"subscriptionId": "00000000-0000-0000-0000-000000000004",
 	"notificationId": 9,
-	"id": "03c164c2-8912-4d5e-8009-3707d5f83734",
+	"id": "00000000-0000-0000-0000-000000000001",
 	"eventType": "git.repo.deleted",
 	"publisherId": "tfs",
 	"message": null,
 	"detailedMessage": null,
 	"resource": {
 		"project": {
-			"id": "6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+			"id": "00000000-0000-0000-0000-000000000003",
 			"name": "Contoso",
-			"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/6ce954b1-ce1f-45d1-b94d-e6bf2464ba2c",
+			"url": "https://fabrikam-fiber-inc.visualstudio.com/DefaultCollection/_apis/projects/00000000-0000-0000-0000-000000000003",
 			"state": "wellFormed",
 			"revision": 11,
 			"visibility": "private",
-			"lastUpdateTime": "2026-02-02T11:52:41.2405443+00:00"
+			"lastUpdateTime": "2024-01-01T11:52:41.2405443+00:00"
 		},
-		"repositoryId": "278d5cd2-584d-4b63-824a-2ba458937249",
+		"repositoryId": "00000000-0000-0000-0000-000000000002",
 		"repositoryName": "Fabrikam-Fiber-Git",
 		"isHardDelete": false,
 		"initiatedBy": {
 			"displayName": "John Johnson",
-			"id": "c6917b69-506a-6a69-81a5-81a7fed0bff9",
+			"id": "00000000-0000-0000-0000-000000000007",
 			"uniqueName": "user@fabrikamfiber.com"
 		},
 		"utcTimestamp": "2022-12-12T12:34:56.5498459Z"
@@ -422,15 +470,121 @@ const (
 	"resourceVersion": "1.0-preview.1",
 	"resourceContainers": {
 		"collection": {
-			"id": "c12d0eb8-e382-443b-9f9c-c52cba5014c2"
+			"id": "00000000-0000-0000-0000-000000000006"
 		},
 		"account": {
-			"id": "f844ec47-a9db-4511-8281-8b63f4eaf94e"
+			"id": "00000000-0000-0000-0000-000000000008"
 		},
 		"project": {
-			"id": "be9b3917-87e6-42a4-a549-2bc06a7a878f"
+			"id": "00000000-0000-0000-0000-000000000005"
 		}
 	},
-	"createdDate": "2026-02-02T11:52:41.2982716Z"
+	"createdDate": "2024-01-01T11:52:41.2982716Z"
 }`
 )
+
+// createdResource returns the resource of repoCreatedPayload and the repository object it holds.
+func createdResource(t *testing.T) (map[string]any, map[string]any) {
+	t.Helper()
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal([]byte(repoCreatedPayload), &payload))
+	resource, ok := payload["resource"].(map[string]any)
+	require.True(t, ok)
+	repository, ok := resource["repository"].(map[string]any)
+	require.True(t, ok)
+	return resource, repository
+}
+
+func TestDispatchWebhookEventTargeting(t *testing.T) {
+	t.Parallel()
+
+	const auditType = "repositoryaudit"
+	resource, repository := createdResource(t)
+	eventTime := time.Date(2022, 12, 12, 12, 34, 56, 549845900, time.UTC)
+	listsCreated := source.Extra{extraEventNamesKey: []any{"git.repo.created"}}
+	listsDeleted := source.Extra{extraEventNamesKey: []any{"git.repo.deleted"}}
+
+	testCases := map[string]struct {
+		typesToStream map[string]source.MappingExtras
+		expectedData  []source.Data
+	}{
+		"every type with a mapping listing the event receives it in lexical order with its own payload": {
+			typesToStream: map[string]source.MappingExtras{
+				auditType:         {"my-audits": listsCreated},
+				gitRepositoryType: {"my-repos": listsCreated},
+				teamType:          {"my-teams": nil},
+			},
+			expectedData: []source.Data{
+				// the repository unwrap applies to the git repository type alone and does not leak
+				// into the type handled after it
+				{Type: gitRepositoryType, Operation: source.DataOperationUpsert, Time: eventTime, Values: repository},
+				{Type: auditType, Operation: source.DataOperationUpsert, Time: eventTime, Values: resource},
+			},
+		},
+		"only the mappings listing the event are targeted": {
+			typesToStream: map[string]source.MappingExtras{
+				gitRepositoryType: {
+					"a-repos": listsCreated,
+					"b-repos": listsDeleted,
+					"c-repos": nil,
+				},
+			},
+			expectedData: []source.Data{
+				{Type: gitRepositoryType, Operation: source.DataOperationUpsert, Time: eventTime, Values: repository, Mappings: []string{"a-repos"}},
+			},
+		},
+		"every mapping listing the event stays untargeted": {
+			typesToStream: map[string]source.MappingExtras{
+				gitRepositoryType: {
+					"a-repos": listsCreated,
+					"b-repos": {extraEventNamesKey: []any{"git.repo.deleted", "GIT.REPO.CREATED"}},
+				},
+			},
+			expectedData: []source.Data{
+				{Type: gitRepositoryType, Operation: source.DataOperationUpsert, Time: eventTime, Values: repository},
+			},
+		},
+		"no mapping listing the event emits nothing": {
+			typesToStream: map[string]source.MappingExtras{
+				gitRepositoryType: {"my-repos": listsDeleted},
+				teamType:          {"my-teams": nil},
+			},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			dataChannel := make(chan source.Data, 10)
+			dispatchWebhookEvent(logger.NewLogger(&bytes.Buffer{}), []byte(repoCreatedPayload), test.typesToStream, dataChannel)
+			close(dataChannel)
+
+			var receivedData []source.Data
+			for data := range dataChannel {
+				receivedData = append(receivedData, data)
+			}
+			require.Equal(t, test.expectedData, receivedData)
+		})
+	}
+}
+
+func TestDispatchWebhookEventPayloadsAreNotShared(t *testing.T) {
+	t.Parallel()
+
+	listsCreated := source.Extra{extraEventNamesKey: []any{"git.repo.created"}}
+	dataChannel := make(chan source.Data, 10)
+	dispatchWebhookEvent(logger.NewLogger(&bytes.Buffer{}), []byte(repoCreatedPayload), map[string]source.MappingExtras{
+		"firstaudit":  {"first-audits": listsCreated},
+		"secondaudit": {"second-audits": listsCreated},
+	}, dataChannel)
+	close(dataChannel)
+
+	first, second := <-dataChannel, <-dataChannel
+	require.Equal(t, first.Values, second.Values)
+
+	// a mapping function writing into the top level of one payload must not reach the other one
+	first.Values["written"] = true
+	require.NotContains(t, second.Values, "written")
+}

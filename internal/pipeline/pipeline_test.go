@@ -4,10 +4,12 @@
 package pipeline
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/destination"
 	fakedestination "github.com/mia-platform/ibdm/internal/destination/fake"
+	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/mapper"
 	"github.com/mia-platform/ibdm/internal/server"
 	fakeserver "github.com/mia-platform/ibdm/internal/server/fake"
@@ -88,33 +91,35 @@ var (
 	}
 )
 
-func testMappers(tb testing.TB, extra []config.Extra) map[string]DataMapper {
+func testMappers(tb testing.TB, extra []config.Extra) map[string][]DataMapper {
 	tb.Helper()
 
-	return map[string]DataMapper{
-		"type1": func() DataMapper {
+	return map[string][]DataMapper{
+		"type1": {func() DataMapper {
 			mapper, err := mapper.New("{{ .id }}", nil, map[string]string{
 				"field1": "{{ .field1 }}",
 				"field2": "{{ .field2 }}",
 			}, extra)
 			require.NoError(tb, err)
 			return DataMapper{
+				Name:       "type1-mapping",
 				APIVersion: "v1",
 				ItemFamily: "family",
 				Mapper:     mapper,
 			}
-		}(),
-		"type2": func() DataMapper {
+		}()},
+		"type2": {func() DataMapper {
 			mapper, err := mapper.New("{{ .identifier }}", nil, map[string]string{
 				"attributeA": "{{ .attributeA }}",
 			}, extra)
 			require.NoError(tb, err)
 			return DataMapper{
+				Name:       "type2-mapping",
 				APIVersion: "v2",
 				ItemFamily: "family2",
 				Mapper:     mapper,
 			}
-		}(),
+		}()},
 	}
 }
 
@@ -387,7 +392,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		},
 		"valid webhook pipeline return mapped data without extra mappings": {
 			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.MappingExtras, dataChan chan<- source.Data) error {
 					dataChan <- type1
 					dataChan <- type2
 					close(c)
@@ -418,7 +423,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		},
 		"valid webhook pipeline return mapped data with extra mappings": {
 			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.MappingExtras, dataChan chan<- source.Data) error {
 					dataChan <- type1
 					dataChan <- type2
 					close(c)
@@ -461,7 +466,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		},
 		"valid webhook pipeline return deletion with extra mappings delete cascade": {
 			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.MappingExtras, dataChan chan<- source.Data) error {
 					dataChan <- type1D
 					dataChan <- deleteExtra
 					close(c)
@@ -488,7 +493,7 @@ func TestStreamPipelineWebhook(t *testing.T) {
 		},
 		"valid webhook pipeline return mapped data with multiple extra mappings": {
 			source: func(c chan<- struct{}) any {
-				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.Extra, dataChan chan<- source.Data) error {
+				return fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(ctx context.Context, _ map[string]source.MappingExtras, dataChan chan<- source.Data) error {
 					dataChan <- type1
 					close(c)
 					return nil
@@ -597,7 +602,7 @@ func TestStreamPipelineCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	destination := fakedestination.NewFakeDestination(t)
-	pipeline, err := New(ctx, fakesource.NewFakeEventSource(t, nil, make(chan<- struct{})), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeEventSource(t, nil, make(chan<- struct{})), map[string][]DataMapper{}, destination)
 	require.NoError(t, err)
 	cancel()
 
@@ -616,7 +621,7 @@ func TestStreamClosableSource(t *testing.T) {
 	syncChan := make(chan struct{})
 
 	destination := fakedestination.NewFakeDestination(t)
-	pipeline, err := New(ctx, fakesource.NewFakeEventSource(t, []source.Data{}, syncChan), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeEventSource(t, []source.Data{}, syncChan), map[string][]DataMapper{}, destination)
 	require.NoError(t, err)
 	go func() {
 		err := pipeline.Start(ctx)
@@ -640,7 +645,7 @@ func TestNotClosableSourceStop(t *testing.T) {
 	destination := fakedestination.NewFakeDestination(t)
 
 	syncChan := make(chan struct{})
-	pipeline, err := New(ctx, fakesource.NewFakeUnclosableEventSource(t, nil, syncChan), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeUnclosableEventSource(t, nil, syncChan), map[string][]DataMapper{}, destination)
 	require.NoError(t, err)
 	go func() {
 		err := pipeline.Start(ctx)
@@ -728,7 +733,7 @@ func TestSyncPipelineCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	destination := fakedestination.NewFakeDestination(t)
-	pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, nil), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, nil), map[string][]DataMapper{}, destination)
 	require.NoError(t, err)
 	cancel()
 
@@ -745,11 +750,742 @@ func TestSyncClosableSource(t *testing.T) {
 	defer cancel()
 
 	destination := fakedestination.NewFakeDestination(t)
-	pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, []source.Data{}), map[string]DataMapper{}, destination)
+	pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, []source.Data{}), map[string][]DataMapper{}, destination)
 	require.NoError(t, err)
 	assert.NoError(t, pipeline.Stop(ctx, 2*time.Second))
 	assert.NoError(t, pipeline.Sync(ctx))
 
 	assert.Empty(t, destination.SentData)
 	assert.Empty(t, destination.DeletedData)
+}
+
+var _ destination.Sender = &failingDestination{}
+
+// failingDestination records data like the fake destination but rejects every
+// item belonging to failItemFamily.
+type failingDestination struct {
+	*fakedestination.FakeDestination
+
+	failItemFamily string
+}
+
+func (d *failingDestination) SendData(ctx context.Context, data *destination.Data) error {
+	if data.ItemFamily == d.failItemFamily {
+		return assert.AnError
+	}
+	return d.FakeDestination.SendData(ctx, data)
+}
+
+func (d *failingDestination) DeleteData(ctx context.Context, data *destination.Data) error {
+	if data.ItemFamily == d.failItemFamily {
+		return assert.AnError
+	}
+	return d.FakeDestination.DeleteData(ctx, data)
+}
+
+// newTestDataMapper builds a DataMapper for type1 payloads rendering into itemFamily.
+func newTestDataMapper(tb testing.TB, name, itemFamily, identifierTemplate, specTemplate string, extra []config.Extra) DataMapper {
+	tb.Helper()
+
+	mapper, err := mapper.New(identifierTemplate, nil, map[string]string{"field1": specTemplate}, extra)
+	require.NoError(tb, err)
+	return DataMapper{
+		Name:       name,
+		APIVersion: "v1",
+		ItemFamily: itemFamily,
+		Mapper:     mapper,
+	}
+}
+
+// validTestDataMapper renders type1 payloads successfully on upsert and delete.
+func validTestDataMapper(tb testing.TB, name, itemFamily string, extra []config.Extra) DataMapper {
+	tb.Helper()
+	return newTestDataMapper(tb, name, itemFamily, "{{ .id }}", "{{ .field1 }}", extra)
+}
+
+// fanOutUpsert is the item validTestDataMapper renders from type1 for itemFamily.
+func fanOutUpsert(itemFamily string) *destination.Data {
+	return &destination.Data{
+		APIVersion:    "v1",
+		ItemFamily:    itemFamily,
+		Name:          "item1",
+		Metadata:      map[string]any{},
+		Data:          map[string]any{"field1": "value1"},
+		OperationTime: "2024-06-01T12:00:00Z",
+	}
+}
+
+// fanOutDelete is the deletion validTestDataMapper renders from type1D for itemFamily.
+func fanOutDelete(itemFamily string) *destination.Data {
+	return &destination.Data{
+		APIVersion:    "v1",
+		ItemFamily:    itemFamily,
+		Name:          "item1",
+		OperationTime: "2024-06-01T12:00:00Z",
+	}
+}
+
+func TestPipelineFanOut(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		mappers          func(tb testing.TB) []DataMapper
+		data             []source.Data
+		failItemFamily   string
+		expectedData     []*destination.Data
+		expectedDeletion []*destination.Data
+	}{
+		"every mapping sharing a type renders an upsert in slice order": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					validTestDataMapper(tb, "first", "family-a", nil),
+					validTestDataMapper(tb, "second", "family-b", nil),
+					validTestDataMapper(tb, "third", "family-c", nil),
+				}
+			},
+			data:         []source.Data{type1},
+			expectedData: []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-b"), fanOutUpsert("family-c")},
+		},
+		"every mapping sharing a type renders a delete in slice order": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					validTestDataMapper(tb, "first", "family-a", nil),
+					validTestDataMapper(tb, "second", "family-b", nil),
+					validTestDataMapper(tb, "third", "family-c", nil),
+				}
+			},
+			data:             []source.Data{type1D},
+			expectedDeletion: []*destination.Data{fanOutDelete("family-a"), fanOutDelete("family-b"), fanOutDelete("family-c")},
+		},
+		"every emission fans out independently": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					validTestDataMapper(tb, "first", "family-a", nil),
+					validTestDataMapper(tb, "second", "family-b", nil),
+				}
+			},
+			data:             []source.Data{type1, type1D, type1},
+			expectedData:     []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-b"), fanOutUpsert("family-a"), fanOutUpsert("family-b")},
+			expectedDeletion: []*destination.Data{fanOutDelete("family-a"), fanOutDelete("family-b")},
+		},
+		"template failure on upsert is isolated to its mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					validTestDataMapper(tb, "first", "family-a", nil),
+					newTestDataMapper(tb, "broken", "family-broken", "{{ .id }}", "{{ .missingField }}", nil),
+					validTestDataMapper(tb, "third", "family-c", nil),
+				}
+			},
+			data:         []source.Data{type1},
+			expectedData: []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-c")},
+		},
+		"template failure on delete is isolated to its mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					validTestDataMapper(tb, "first", "family-a", nil),
+					newTestDataMapper(tb, "broken", "family-broken", "{{ .missingField }}", "{{ .field1 }}", nil),
+					validTestDataMapper(tb, "third", "family-c", nil),
+				}
+			},
+			data:             []source.Data{type1D},
+			expectedDeletion: []*destination.Data{fanOutDelete("family-a"), fanOutDelete("family-c")},
+		},
+		"destination failure on upsert is isolated to its mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					validTestDataMapper(tb, "first", "family-a", nil),
+					validTestDataMapper(tb, "second", "family-b", nil),
+					validTestDataMapper(tb, "third", "family-c", nil),
+				}
+			},
+			data:           []source.Data{type1},
+			failItemFamily: "family-b",
+			expectedData:   []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-c")},
+		},
+		"destination failure on delete is isolated to its mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					validTestDataMapper(tb, "first", "family-a", nil),
+					validTestDataMapper(tb, "second", "family-b", nil),
+					validTestDataMapper(tb, "third", "family-c", nil),
+				}
+			},
+			data:             []source.Data{type1D},
+			failItemFamily:   "family-b",
+			expectedDeletion: []*destination.Data{fanOutDelete("family-a"), fanOutDelete("family-c")},
+		},
+		"each mapping emits its own extra right after its item": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					validTestDataMapper(tb, "first", "family-a", []config.Extra{getExtra(tb, config.DeletePolicyNone, 0)}),
+					validTestDataMapper(tb, "second", "family-b", nil),
+				}
+			},
+			data: []source.Data{type1},
+			expectedData: []*destination.Data{
+				fanOutUpsert("family-a"),
+				{
+					APIVersion: "relationships/v1",
+					ItemFamily: "relationships",
+					Name:       "relationship--value1--value2--dependency",
+					Data: map[string]any{
+						"sourceRef": "urn:mia-platform-catalog:resource.custom-platform:v1:Family1:null:value2",
+						"targetRef": "urn:mia-platform-catalog:mia-platform.eu:v1:Family:null:item1",
+						"typeRef":   "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:null:dependency",
+					},
+					OperationTime: "2024-06-01T12:00:00Z",
+				},
+				fanOutUpsert("family-b"),
+			},
+		},
+		"unmapped type is skipped": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{validTestDataMapper(tb, "first", "family-a", nil)}
+			},
+			data: []source.Data{unknownType},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			defer cancel()
+
+			destination := &failingDestination{
+				FakeDestination: fakedestination.NewFakeDestination(t),
+				failItemFamily:  test.failItemFamily,
+			}
+			mappers := map[string][]DataMapper{"type1": test.mappers(t)}
+			pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, test.data), mappers, destination)
+			require.NoError(t, err)
+
+			require.NoError(t, pipeline.Sync(ctx))
+			require.Equal(t, test.expectedData, destination.SentData)
+			require.Equal(t, test.expectedDeletion, destination.DeletedData)
+		})
+	}
+}
+
+func TestPipelineUnmappedTypeSkippedOnce(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		mappers map[string][]DataMapper
+	}{
+		"type without an entry": {
+			mappers: map[string][]DataMapper{},
+		},
+		"type with an empty mapping list": {
+			mappers: map[string][]DataMapper{"type1": {}},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			logs := &bytes.Buffer{}
+			log := logger.NewLogger(logs)
+			log.SetLevel(logger.DEBUG)
+			ctx, cancel := context.WithTimeout(logger.WithContext(t.Context(), log), 1*time.Second)
+			defer cancel()
+
+			destination := fakedestination.NewFakeDestination(t)
+			pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, []source.Data{type1}), test.mappers, destination)
+			require.NoError(t, err)
+
+			require.NoError(t, pipeline.Sync(ctx))
+			require.Empty(t, destination.SentData)
+			require.Empty(t, destination.DeletedData)
+			require.Equal(t, 1, strings.Count(logs.String(), "data type not mapped, skipping"))
+		})
+	}
+}
+
+func TestMappingExtras(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		mappers        map[string][]DataMapper
+		expectedExtras map[string]source.MappingExtras
+	}{
+		"no mappers": {
+			mappers:        map[string][]DataMapper{},
+			expectedExtras: map[string]source.MappingExtras{},
+		},
+		"single mapping per type passes its extra under its name": {
+			mappers: map[string][]DataMapper{
+				"type1": {{Name: "first", Extra: source.Extra{"apiVersion": "2024-01-01"}}},
+				"type2": {{Name: "second"}},
+			},
+			expectedExtras: map[string]source.MappingExtras{
+				"type1": {"first": {"apiVersion": "2024-01-01"}},
+				"type2": {"second": nil},
+			},
+		},
+		"every mapping sharing a type passes its own extra": {
+			mappers: map[string][]DataMapper{
+				"type1": {
+					{Name: "first", Extra: source.Extra{"apiVersion": "2024-01-01"}},
+					{Name: "second", Extra: source.Extra{"apiVersion": "2025-01-01"}},
+					{Name: "third"},
+				},
+			},
+			expectedExtras: map[string]source.MappingExtras{
+				"type1": {
+					"first":  {"apiVersion": "2024-01-01"},
+					"second": {"apiVersion": "2025-01-01"},
+					"third":  nil,
+				},
+			},
+		},
+		"type without mappings is not passed to the source": {
+			mappers: map[string][]DataMapper{
+				"type1": {},
+				"type2": {{Name: "second"}},
+			},
+			expectedExtras: map[string]source.MappingExtras{"type2": {"second": nil}},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, test.expectedExtras, mappingExtras(test.mappers))
+		})
+	}
+}
+
+// capturingSyncableSource records the configuration the pipeline hands to the source.
+type capturingSyncableSource struct {
+	received map[string]source.MappingExtras
+}
+
+func (c *capturingSyncableSource) StartSyncProcess(_ context.Context, typesToSync map[string]source.MappingExtras, _ chan<- source.Data) error {
+	c.received = typesToSync
+	return nil
+}
+
+func TestSyncPipelinePassesMappingExtras(t *testing.T) {
+	t.Parallel()
+
+	src := &capturingSyncableSource{}
+	mappers := map[string][]DataMapper{
+		"type1": {
+			{Name: "first", Extra: source.Extra{"apiVersion": "2024-01-01"}},
+			{Name: "second", Extra: source.Extra{"apiVersion": "2025-01-01"}},
+		},
+	}
+	pipeline, err := New(t.Context(), src, mappers, fakedestination.NewFakeDestination(t))
+	require.NoError(t, err)
+
+	require.NoError(t, pipeline.Sync(t.Context()))
+	require.Equal(t, map[string]source.MappingExtras{
+		"type1": {
+			"first":  {"apiVersion": "2024-01-01"},
+			"second": {"apiVersion": "2025-01-01"},
+		},
+	}, src.received)
+}
+
+// withMappings returns a copy of data targeting mappings.
+func withMappings(data source.Data, mappings []string) source.Data {
+	data.Mappings = mappings
+	return data
+}
+
+func TestPipelineTargeting(t *testing.T) {
+	t.Parallel()
+
+	const (
+		unregisteredWarning = "data targets a mapping not registered for its type"
+		noTargetError       = "source emitted data targeting no mapping"
+	)
+
+	testCases := map[string]struct {
+		data             []source.Data
+		expectedData     []*destination.Data
+		expectedDeletion []*destination.Data
+		expectedWarnings int
+		expectedErrors   int
+	}{
+		"nil mappings target every mapping": {
+			data:         []source.Data{type1},
+			expectedData: []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-b"), fanOutUpsert("family-c")},
+		},
+		"a named mapping is the only one rendered": {
+			data:         []source.Data{withMappings(type1, []string{"second"})},
+			expectedData: []*destination.Data{fanOutUpsert("family-b")},
+		},
+		"targeted mappings render in registration order": {
+			data:         []source.Data{withMappings(type1, []string{"third", "first"})},
+			expectedData: []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-c")},
+		},
+		"a repeated name renders once": {
+			data:         []source.Data{withMappings(type1, []string{"second", "second"})},
+			expectedData: []*destination.Data{fanOutUpsert("family-b")},
+		},
+		"an unregistered name warns and the others still render": {
+			data:             []source.Data{withMappings(type1, []string{"unknown", "second", "unknown"})},
+			expectedData:     []*destination.Data{fanOutUpsert("family-b")},
+			expectedWarnings: 1,
+		},
+		"only unregistered names render nothing": {
+			data:             []source.Data{withMappings(type1, []string{"unknown"})},
+			expectedWarnings: 1,
+		},
+		"an empty non nil target is dropped with an error": {
+			data:           []source.Data{withMappings(type1, []string{})},
+			expectedErrors: 1,
+		},
+		"a targeted delete reaches only the named mapping": {
+			data:             []source.Data{withMappings(type1D, []string{"third"})},
+			expectedDeletion: []*destination.Data{fanOutDelete("family-c")},
+		},
+		"each emission is targeted independently": {
+			data: []source.Data{
+				withMappings(type1, []string{"first"}),
+				type1,
+				withMappings(type1D, []string{"second"}),
+			},
+			expectedData: []*destination.Data{
+				fanOutUpsert("family-a"),
+				fanOutUpsert("family-a"), fanOutUpsert("family-b"), fanOutUpsert("family-c"),
+			},
+			expectedDeletion: []*destination.Data{fanOutDelete("family-b")},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			logs := &bytes.Buffer{}
+			ctx, cancel := context.WithTimeout(logger.WithContext(t.Context(), logger.NewLogger(logs)), 1*time.Second)
+			defer cancel()
+
+			destination := fakedestination.NewFakeDestination(t)
+			mappers := map[string][]DataMapper{"type1": {
+				validTestDataMapper(t, "first", "family-a", nil),
+				validTestDataMapper(t, "second", "family-b", nil),
+				validTestDataMapper(t, "third", "family-c", nil),
+			}}
+			pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, test.data), mappers, destination)
+			require.NoError(t, err)
+
+			require.NoError(t, pipeline.Sync(ctx))
+			require.Equal(t, test.expectedData, destination.SentData)
+			require.Equal(t, test.expectedDeletion, destination.DeletedData)
+			require.Equal(t, test.expectedWarnings, strings.Count(logs.String(), unregisteredWarning))
+			require.Equal(t, test.expectedErrors, strings.Count(logs.String(), noTargetError))
+		})
+	}
+}
+
+// guardedTestDataMapper is validTestDataMapper guarded by the root createIf template.
+func guardedTestDataMapper(tb testing.TB, name, itemFamily, createIf string) DataMapper {
+	tb.Helper()
+
+	mapper, err := mapper.New("{{ .id }}", nil, map[string]string{"field1": "{{ .field1 }}"}, nil, mapper.WithCreateIf(createIf))
+	require.NoError(tb, err)
+	return DataMapper{
+		Name:       name,
+		APIVersion: "v1",
+		ItemFamily: itemFamily,
+		Mapper:     mapper,
+	}
+}
+
+func TestPipelineCreateIf(t *testing.T) {
+	t.Parallel()
+
+	const (
+		admitsValue1 = `{{ eq .field1 "value1" }}`
+		brokenGuard  = `{{ .missingField }}`
+		// the error text repeats the phrase, so match the log message field exactly
+		guardError = `"@message":"error evaluating createIf"`
+	)
+
+	otherUpsert := source.Data{
+		Type:      "type1",
+		Operation: source.DataOperationUpsert,
+		Values:    map[string]any{"id": "item1", "field1": "other"},
+		Time:      testTime,
+	}
+	idOnlyDelete := source.Data{
+		Type:      "type1",
+		Operation: source.DataOperationDelete,
+		Values:    map[string]any{"id": "item1"},
+		Time:      testTime,
+	}
+
+	testCases := map[string]struct {
+		createIf         string
+		data             []source.Data
+		expectedData     []*destination.Data
+		expectedDeletion []*destination.Data
+		expectedErrors   int
+	}{
+		"a guard rendering true lets its mapping render": {
+			createIf:     admitsValue1,
+			data:         []source.Data{type1},
+			expectedData: []*destination.Data{fanOutUpsert("family-a"), fanOutUpsert("family-b")},
+		},
+		"a guard rendering false declines only its own mapping": {
+			createIf: admitsValue1,
+			data:     []source.Data{otherUpsert},
+			expectedData: []*destination.Data{{
+				APIVersion:    "v1",
+				ItemFamily:    "family-b",
+				Name:          "item1",
+				Metadata:      map[string]any{},
+				Data:          map[string]any{"field1": "other"},
+				OperationTime: "2024-06-01T12:00:00Z",
+			}},
+		},
+		"a guard is never consulted on delete": {
+			// the id-only payload would make the guard fail with a missing key if it ran
+			createIf:         admitsValue1,
+			data:             []source.Data{idOnlyDelete},
+			expectedDeletion: []*destination.Data{fanOutDelete("family-a"), fanOutDelete("family-b")},
+		},
+		"a guard failing is isolated to its mapping": {
+			createIf:       brokenGuard,
+			data:           []source.Data{type1},
+			expectedData:   []*destination.Data{fanOutUpsert("family-b")},
+			expectedErrors: 1,
+		},
+		"the target selection runs before the guard": {
+			createIf:     brokenGuard,
+			data:         []source.Data{withMappings(type1, []string{"plain"})},
+			expectedData: []*destination.Data{fanOutUpsert("family-b")},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			logs := &bytes.Buffer{}
+			ctx, cancel := context.WithTimeout(logger.WithContext(t.Context(), logger.NewLogger(logs)), 1*time.Second)
+			defer cancel()
+
+			destination := fakedestination.NewFakeDestination(t)
+			mappers := map[string][]DataMapper{"type1": {
+				guardedTestDataMapper(t, "guarded", "family-a", test.createIf),
+				validTestDataMapper(t, "plain", "family-b", nil),
+			}}
+			pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, test.data), mappers, destination)
+			require.NoError(t, err)
+
+			require.NoError(t, pipeline.Sync(ctx))
+			require.Equal(t, test.expectedData, destination.SentData)
+			require.Equal(t, test.expectedDeletion, destination.DeletedData)
+			require.Equal(t, test.expectedErrors, strings.Count(logs.String(), guardError))
+		})
+	}
+}
+
+// templateTestDataMapper builds a DataMapper for type1 from explicit templates.
+func templateTestDataMapper(tb testing.TB, name, itemFamily, identifierTemplate string, specTemplates map[string]string, createIf string) DataMapper {
+	tb.Helper()
+
+	mapper, err := mapper.New(identifierTemplate, nil, specTemplates, nil, mapper.WithCreateIf(createIf))
+	require.NoError(tb, err)
+	return DataMapper{
+		Name:       name,
+		APIVersion: "v1",
+		ItemFamily: itemFamily,
+		Mapper:     mapper,
+	}
+}
+
+func TestPipelineMappingsRenderPrivateCopies(t *testing.T) {
+	t.Parallel()
+
+	// payload returns a fresh payload for each case, so the cases never share maps
+	payload := func() map[string]any {
+		return map[string]any{
+			"id":     "item1",
+			"object": map[string]any{"key": "v"},
+			"list":   []any{map[string]any{"key": "v"}},
+			"assets": []map[string]any{{"key": "v"}},
+		}
+	}
+	item := func(itemFamily string, data map[string]any) *destination.Data {
+		return &destination.Data{
+			APIVersion:    "v1",
+			ItemFamily:    itemFamily,
+			Name:          "item1",
+			Metadata:      map[string]any{},
+			Data:          data,
+			OperationTime: "2024-06-01T12:00:00Z",
+		}
+	}
+
+	testCases := map[string]struct {
+		operation        source.DataOperation
+		mappers          func(tb testing.TB) []DataMapper
+		expectedData     []*destination.Data
+		expectedDeletion []*destination.Data
+	}{
+		"set on a nested input map does not reach the next mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", "{{ .id }}", map[string]string{"written": `{{ set "leaked" "from-a" .object | toJSON }}`}, ""),
+					templateTestDataMapper(tb, "reader", "family-b", "{{ .id }}", map[string]string{"object": "{{ .object | toJSON }}"}, ""),
+				}
+			},
+			expectedData: []*destination.Data{
+				item("family-a", map[string]any{"written": map[string]any{"key": "v", "leaked": "from-a"}}),
+				item("family-b", map[string]any{"object": map[string]any{"key": "v"}}),
+			},
+		},
+		"set on the top level input does not reach the next mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", "{{ .id }}", map[string]string{"written": `{{ get "leaked" (set "leaked" "from-a" .) "" }}`}, ""),
+					templateTestDataMapper(tb, "reader", "family-b", "{{ .id }}", map[string]string{"leaked": `{{ get "leaked" . "absent" }}`}, ""),
+				}
+			},
+			expectedData: []*destination.Data{
+				item("family-a", map[string]any{"written": "from-a"}),
+				item("family-b", map[string]any{"leaked": "absent"}),
+			},
+		},
+		"set inside a list of maps does not reach the next mapping": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", "{{ .id }}", map[string]string{
+						"list":   `{{ set "leaked" "from-a" (index .list 0) | toJSON }}`,
+						"assets": `{{ set "leaked" "from-a" (index .assets 0) | toJSON }}`,
+					}, ""),
+					templateTestDataMapper(tb, "reader", "family-b", "{{ .id }}", map[string]string{
+						"list":   "{{ index .list 0 | toJSON }}",
+						"assets": "{{ index .assets 0 | toJSON }}",
+					}, ""),
+				}
+			},
+			expectedData: []*destination.Data{
+				item("family-a", map[string]any{
+					"list":   map[string]any{"key": "v", "leaked": "from-a"},
+					"assets": map[string]any{"key": "v", "leaked": "from-a"},
+				}),
+				item("family-b", map[string]any{
+					"list":   map[string]any{"key": "v"},
+					"assets": map[string]any{"key": "v"},
+				}),
+			},
+		},
+		"a later guard does not see an earlier write": {
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", "{{ .id }}", map[string]string{"written": `{{ get "admit" (set "admit" true .) false }}`}, ""),
+					templateTestDataMapper(tb, "guarded", "family-b", "{{ .id }}", map[string]string{"key": "value"}, `{{ get "admit" . false }}`),
+				}
+			},
+			expectedData: []*destination.Data{
+				item("family-a", map[string]any{"written": true}),
+			},
+		},
+		"a write in an identifier template on delete does not reach the next mapping": {
+			operation: source.DataOperationDelete,
+			mappers: func(tb testing.TB) []DataMapper {
+				tb.Helper()
+				return []DataMapper{
+					templateTestDataMapper(tb, "writer", "family-a", `{{ $_ := set "id" "leaked" . }}item1`, map[string]string{"key": "value"}, ""),
+					templateTestDataMapper(tb, "reader", "family-b", "{{ .id }}", map[string]string{"key": "value"}, ""),
+				}
+			},
+			expectedDeletion: []*destination.Data{
+				{APIVersion: "v1", ItemFamily: "family-a", Name: "item1", OperationTime: "2024-06-01T12:00:00Z"},
+				{APIVersion: "v1", ItemFamily: "family-b", Name: "item1", OperationTime: "2024-06-01T12:00:00Z"},
+			},
+		},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+			defer cancel()
+
+			emitted := payload()
+			data := source.Data{Type: "type1", Operation: test.operation, Values: emitted, Time: testTime}
+			destination := fakedestination.NewFakeDestination(t)
+			pipeline, err := New(ctx, fakesource.NewFakeSyncableSource(t, []source.Data{data}), map[string][]DataMapper{"type1": test.mappers(t)}, destination)
+			require.NoError(t, err)
+
+			require.NoError(t, pipeline.Sync(ctx))
+			require.Equal(t, test.expectedData, destination.SentData)
+			require.Equal(t, test.expectedDeletion, destination.DeletedData)
+			// the payload the source emitted is left exactly as it was
+			require.Equal(t, payload(), emitted)
+		})
+	}
+}
+
+func TestCopyValues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil payload returns nil", func(t *testing.T) {
+		t.Parallel()
+		require.Nil(t, copyValues(nil))
+	})
+
+	t.Run("scalars, typed values and nil containers are preserved", func(t *testing.T) {
+		t.Parallel()
+
+		original := map[string]any{
+			"string":    "value",
+			"number":    float64(42),
+			"bool":      true,
+			"null":      nil,
+			"time":      testTime,
+			"languages": map[string]float64{"Go": 100},
+			"nilMap":    map[string]any(nil),
+			"nilList":   []any(nil),
+			"nilAssets": []map[string]any(nil),
+		}
+		require.Equal(t, original, copyValues(original))
+	})
+
+	t.Run("nested containers are independent of the original", func(t *testing.T) {
+		t.Parallel()
+
+		original := map[string]any{
+			"object": map[string]any{"nested": map[string]any{"key": "v"}},
+			"list":   []any{map[string]any{"key": "v"}, []any{"a"}},
+			"assets": []map[string]any{{"key": "v"}},
+		}
+		copied := copyValues(original)
+		require.Equal(t, original, copied)
+
+		copied["added"] = true
+		copied["object"].(map[string]any)["nested"].(map[string]any)["key"] = "changed"
+		copied["list"].([]any)[0].(map[string]any)["key"] = "changed"
+		copied["list"].([]any)[1].([]any)[0] = "changed"
+		copied["assets"].([]map[string]any)[0]["key"] = "changed"
+
+		require.Equal(t, map[string]any{
+			"object": map[string]any{"nested": map[string]any{"key": "v"}},
+			"list":   []any{map[string]any{"key": "v"}, []any{"a"}},
+			"assets": []map[string]any{{"key": "v"}},
+		}, original)
+	})
 }

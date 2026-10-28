@@ -1,12 +1,12 @@
 {
     "asset": {
         "ancestors": [
-            "projects/20318464073",
-            "folders/918177713511",
-            "organizations/566099688680"
+            "projects/123456789012",
+            "folders/234567890123",
+            "organizations/345678901234"
         ],
         "assetType": "storage.googleapis.com/Bucket",
-        "name": "//storage.googleapis.com/bucket-test-ibdm",
+        "name": "//storage.googleapis.com/example-bucket",
         "resource": {
             "data": {
                 "acl": [],
@@ -35,7 +35,7 @@
                         "lockedTime": "2026-02-22T14:21:11.344Z"
                     }
                 },
-                "id": "bucket-test-ibdm",
+                "id": "example-bucket",
                 "ipFilter": {
                     "publicNetworkSource": {},
                     "vpcNetworkSources": []
@@ -51,12 +51,12 @@
                 "locationType": "region",
                 "logging": {},
                 "metageneration": 12,
-                "name": "bucket-test-ibdm",
+                "name": "example-bucket",
                 "objectRetention": {},
                 "owner": {},
-                "projectNumber": 20318464073,
+                "projectNumber": 123456789012,
                 "retentionPolicy": {},
-                "selfLink": "https://www.googleapis.com/storage/v1/b/bucket-test-ibdm",
+                "selfLink": "https://www.googleapis.com/storage/v1/b/example-bucket",
                 "softDeletePolicy": {
                     "effectiveTime": "2025-11-24T14:21:11.000Z",
                     "retentionDurationSeconds": 604800
@@ -70,19 +70,19 @@
             "discoveryDocumentUri": "https://www.googleapis.com/discovery/v1/apis/storage/v1/rest",
             "discoveryName": "Bucket",
             "location": "us-central1",
-            "parent": "//cloudresourcemanager.googleapis.com/projects/20318464073",
+            "parent": "//cloudresourcemanager.googleapis.com/projects/123456789012",
             "version": "v1"
         },
         "updateTime": "2025-11-24T15:14:11.027878Z"
     },
     "priorAsset": {
         "ancestors": [
-            "projects/20318464073",
-            "folders/918177713511",
-            "organizations/566099688680"
+            "projects/123456789012",
+            "folders/234567890123",
+            "organizations/345678901234"
         ],
         "assetType": "storage.googleapis.com/Bucket",
-        "name": "//storage.googleapis.com/bucket-test-ibdm",
+        "name": "//storage.googleapis.com/example-bucket",
         "resource": {
             "data": {
                 "acl": [],
@@ -111,7 +111,7 @@
                         "lockedTime": "2026-02-22T14:21:11.344Z"
                     }
                 },
-                "id": "bucket-test-ibdm",
+                "id": "example-bucket",
                 "ipFilter": {
                     "publicNetworkSource": {},
                     "vpcNetworkSources": []
@@ -127,12 +127,12 @@
                 "locationType": "region",
                 "logging": {},
                 "metageneration": 11,
-                "name": "bucket-test-ibdm",
+                "name": "example-bucket",
                 "objectRetention": {},
                 "owner": {},
-                "projectNumber": 20318464073,
+                "projectNumber": 123456789012,
                 "retentionPolicy": {},
-                "selfLink": "https://www.googleapis.com/storage/v1/b/bucket-test-ibdm",
+                "selfLink": "https://www.googleapis.com/storage/v1/b/example-bucket",
                 "softDeletePolicy": {
                     "effectiveTime": "2025-11-24T14:21:11.000Z",
                     "retentionDurationSeconds": 604800
@@ -146,7 +146,7 @@
             "discoveryDocumentUri": "https://www.googleapis.com/discovery/v1/apis/storage/v1/rest",
             "discoveryName": "Bucket",
             "location": "us-central1",
-            "parent": "//cloudresourcemanager.googleapis.com/projects/20318464073",
+            "parent": "//cloudresourcemanager.googleapis.com/projects/123456789012",
             "version": "v1"
         },
         "updateTime": "2025-11-24T15:13:26.050958Z"

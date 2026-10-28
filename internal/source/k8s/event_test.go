@@ -115,7 +115,7 @@ func startStreamWithCRDs(t *testing.T, types []string, configure func(*fakedisco
 	})
 
 	src := &Source{apiServer: testAPIServer, clusterName: testClusterName, clientset: harness.client, dynamic: harness.dynamic}
-	extras := make(map[string]source.Extra, len(types))
+	extras := make(map[string]source.MappingExtras, len(types))
 	for _, name := range types {
 		extras[name] = nil
 	}
@@ -358,7 +358,7 @@ func TestStartEventStreamUnsupportedTypesOnly(t *testing.T) {
 	s := newFakeSource(t, newNamespace("team-a", nil))
 	results := make(chan source.Data, 1)
 
-	err := s.StartEventStream(t.Context(), map[string]source.Extra{"unknown": nil, "node": nil}, results)
+	err := s.StartEventStream(t.Context(), map[string]source.MappingExtras{"unknown": nil, "node": nil}, results)
 	require.NoError(t, err)
 	assert.Empty(t, results)
 }
@@ -631,7 +631,7 @@ func TestStartEventStreamStopsWhileSending(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- s.StartEventStream(ctx, map[string]source.Extra{namespaceType: nil}, results) }()
+	go func() { done <- s.StartEventStream(ctx, map[string]source.MappingExtras{namespaceType: nil}, results) }()
 
 	cancel()
 	select {
@@ -658,7 +658,7 @@ func TestStartEventStreamInformerFailureDoesNotBlockOthers(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- s.StartEventStream(ctx, map[string]source.Extra{deploymentType: nil, namespaceType: nil}, results)
+		done <- s.StartEventStream(ctx, map[string]source.MappingExtras{deploymentType: nil, namespaceType: nil}, results)
 	}()
 
 	select {
@@ -1261,7 +1261,7 @@ func TestStartEventStreamCRDOnlyNotInstalledReturns(t *testing.T) {
 	s := newCRDSource(t, nil)
 	results := make(chan source.Data, 1)
 
-	require.NoError(t, s.StartEventStream(t.Context(), map[string]source.Extra{ingressRouteType: nil, certificateType: nil}, results))
+	require.NoError(t, s.StartEventStream(t.Context(), map[string]source.MappingExtras{ingressRouteType: nil, certificateType: nil}, results))
 	assert.Empty(t, results)
 }
 
@@ -1272,7 +1272,7 @@ func TestStartEventStreamCRDDiscoveryCancelled(t *testing.T) {
 	cancel()
 
 	results := make(chan source.Data, 1)
-	require.NoError(t, s.StartEventStream(ctx, map[string]source.Extra{ingressRouteType: nil}, results))
+	require.NoError(t, s.StartEventStream(ctx, map[string]source.MappingExtras{ingressRouteType: nil}, results))
 	assert.Empty(t, results)
 }
 

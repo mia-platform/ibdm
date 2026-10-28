@@ -343,9 +343,9 @@ func projectSlug(projectKey string) string {
 }
 
 // sanitiseName reduces raw to lowercase ASCII alphanumerics separated by
-// single dashes, at most limit characters long. It must stay byte-for-byte
-// identical to the naming of catalog-sonarqube-webhook, so that items written
-// by it are updated in place rather than duplicated.
+// single dashes, at most limit characters long. Its output feeds the
+// identifiers of items already written to the Catalog, so it must not change:
+// a different name would duplicate those items instead of updating them.
 func sanitiseName(raw string, limit int) string {
 	var builder strings.Builder
 	lastWasSeparator := true

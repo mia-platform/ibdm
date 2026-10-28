@@ -10,10 +10,14 @@ supports two modes:
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 ### Sync
 
 ```sh
-ibdm sync sysdig --mapping-file <path to mapping file or folder>
+ibdm sync sysdig --include-internal-mappings=all
 ```
 
 Performs a one-off synchronisation: queries the Sysdig SysQL API for all image vulnerabilities
@@ -22,12 +26,23 @@ and exits.
 ### Run (Webhook Listener)
 
 ```sh
-ibdm run sysdig --mapping-file <path to mapping file or folder>
+ibdm run sysdig --include-internal-mappings=all
 ```
 
 Starts a long-running HTTP server that listens for inbound Sysdig pipeline failure notifications.
 For each notification, IBDM calls the Sysdig Vulnerability API to retrieve the full scan result
 and forwards each vulnerability to the pipeline.
+
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list sysdig` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+`vulnerabilities` is the only internal mapping: the sync queries every image vulnerability, and the
+webhook handles the failed policy evaluations of Docker images. Its relationships point at the
+`dockerimages` of the Nexus integration, and they only resolve when that integration publishes them.
+The Catalog accepts such relationships without error.
 
 ## Configuration
 
@@ -68,7 +83,9 @@ Authenticates with the SysQL API using `SYSDIG_API_TOKEN`, sent as
 Authenticates with the Vulnerability API using `SYSDIG_BEARER_TOKEN`, sent as
 `Authorization: Bearer <token>` on every enrichment request.
 
-Incoming webhook requests from Sysdig carry no signature — no shared secret is required.
+Incoming webhook requests from Sysdig carry no signature — no shared secret is required. The webhook
+endpoint is therefore unauthenticated: publish it only where Sysdig can reach it and others cannot, or
+behind a gateway that authenticates the requests.
 
 ## Supported Data Types
 

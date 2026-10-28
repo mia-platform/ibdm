@@ -5,6 +5,8 @@ package gitlab
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"net/http"
@@ -73,7 +75,7 @@ func NewSource() (*Source, error) {
 // StartSyncProcess performs a full synchronisation of the requested resource types
 // by listing assets from the GitLab API and sending them to results. Supported
 // types are "project" and "pipeline". Concurrent calls are a no-op.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	if !s.syncLock.TryLock() {
@@ -98,7 +100,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 }
 
 // syncProjectAssets iterates all GitLab projects page by page and sends upsert events to results.
-func (s *Source) syncProjectAssets(ctx context.Context, typesToSync map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) syncProjectAssets(ctx context.Context, typesToSync map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	_, ok := typesToSync[projectResource]
@@ -280,11 +282,20 @@ func (s *Source) syncAccessTokenResources(ctx context.Context, results chan<- so
 	return nil
 }
 
+// validWebhookToken reports whether provided equals the configured token. GitLab sends the token
+// in plain text, so the two are compared in constant time, through their SHA-256 hashes: the time
+// taken reveals neither the content nor the length of the token.
+func validWebhookToken(provided, configured string) bool {
+	providedHash := sha256.Sum256([]byte(provided))
+	configuredHash := sha256.Sum256([]byte(configured))
+	return subtle.ConstantTimeCompare(providedHash[:], configuredHash[:]) == 1
+}
+
 // GetWebhook returns a [source.Webhook] that validates incoming GitLab pipeline
-// webhook requests using a plain-text token comparison and dispatches matching
+// webhook requests by comparing their token in constant time and dispatches matching
 // events to results asynchronously. It returns [ErrWebhookTokenMissing] when no
 // token is configured.
-func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
+func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.MappingExtras, results chan<- source.Data) (source.Webhook, error) {
 	if s.webhookConfig.WebhookToken == "" {
 		return source.Webhook{}, ErrWebhookTokenMissing
 	}
@@ -295,7 +306,7 @@ func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source
 		Method: http.MethodPost,
 		Path:   s.webhookConfig.WebhookPath,
 		Handler: func(ctx context.Context, headers http.Header, body []byte) error {
-			if headers.Get(gitlabTokenHeader) != s.webhookConfig.WebhookToken {
+			if !validWebhookToken(headers.Get(gitlabTokenHeader), s.webhookConfig.WebhookToken) {
 				log.Error("webhook token validation failed")
 				return ErrSignatureMismatch
 			}

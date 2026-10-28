@@ -1,0 +1,230 @@
+{
+  "kind": "PodList",
+  "apiVersion": "v1",
+  "metadata": {
+    "resourceVersion": "1000"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "catalog-api-7d9f8b6c4-x2k9p",
+        "uid": "uid-catalog-api-7d9f8b6c4-x2k9p",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront",
+        "labels": {
+          "app": "catalog-api",
+          "pod-template-hash": "7d9f8b6c4"
+        },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "name": "catalog-api-7d9f8b6c4",
+            "uid": "uid-catalog-api-7d9f8b6c4",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-a",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "api",
+            "image": "registry.example.com/acme-widgets/catalog-api:1.4.0",
+            "resources": {
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              }
+            }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "podIP": "10.244.1.7",
+        "startTime": "2026-09-30T14:01:00Z",
+        "containerStatuses": [
+          {
+            "name": "api",
+            "imageID": "registry.example.com/acme-widgets/catalog-api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "ready": true,
+            "restartCount": 0,
+            "image": "registry.example.com/acme-widgets/catalog-api:1.4.0"
+          }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "orders-db-0",
+        "uid": "uid-orders-db-0",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront",
+        "labels": {
+          "app": "orders-db"
+        },
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "orders-db",
+            "uid": "uid-orders-db",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-a",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "postgres",
+            "image": "registry.example.com/library/postgres:16.4",
+            "resources": {
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              }
+            }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "podIP": "10.244.1.7",
+        "startTime": "2026-09-30T14:01:00Z",
+        "containerStatuses": [
+          {
+            "name": "postgres",
+            "imageID": "registry.example.com/library/postgres@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "ready": true,
+            "restartCount": 0,
+            "image": "registry.example.com/library/postgres:16.4"
+          }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "nightly-report-29012345-q8w7e",
+        "uid": "uid-nightly-report-29012345-q8w7e",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "platform",
+        "labels": {
+          "job-name": "nightly-report-29012345"
+        },
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "name": "nightly-report-29012345",
+            "uid": "uid-nightly-report-29012345",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-a",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "report",
+            "image": "registry.example.com/platform/report:0.3.0",
+            "resources": {
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              }
+            }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "podIP": "10.244.1.7",
+        "startTime": "2026-09-30T14:01:00Z",
+        "containerStatuses": [
+          {
+            "name": "report",
+            "imageID": "registry.example.com/platform/report@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "ready": true,
+            "restartCount": 0,
+            "image": "registry.example.com/platform/report:0.3.0"
+          }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "db-migration-29012300-z1x2c",
+        "uid": "uid-db-migration-29012300-z1x2c",
+        "creationTimestamp": "2026-03-01T09:00:00Z",
+        "resourceVersion": "1",
+        "namespace": "storefront",
+        "labels": {
+          "job-name": "db-migration-29012300"
+        },
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "name": "db-migration-29012300",
+            "uid": "uid-db-migration-29012300",
+            "controller": true
+          }
+        ]
+      },
+      "spec": {
+        "nodeName": "worker-a",
+        "serviceAccountName": "default",
+        "containers": [
+          {
+            "name": "migrate",
+            "image": "registry.example.com/acme-widgets/catalog-api-migrate:1.4.0",
+            "resources": {
+              "requests": {
+                "cpu": "250m",
+                "memory": "256Mi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              }
+            }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Succeeded",
+        "podIP": "10.244.1.7",
+        "startTime": "2026-09-30T14:01:00Z",
+        "containerStatuses": [
+          {
+            "name": "migrate",
+            "imageID": "registry.example.com/acme-widgets/catalog-api-migrate@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "ready": true,
+            "restartCount": 0,
+            "image": "registry.example.com/acme-widgets/catalog-api-migrate:1.4.0"
+          }
+        ]
+      }
+    }
+  ]
+}

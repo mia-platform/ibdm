@@ -1,0 +1,36 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "bitbucket.mia-platform.eu/v1",
+      "data": {
+        "createdOn": "2025-01-10T09:00:00Z",
+        "defaultBranch": "main",
+        "description": "Gizmo service (as read by the enrichment call)",
+        "fullName": "acme-widgets/gizmo-service",
+        "htmlUrl": "https://bitbucket.example.com/acme-widgets/gizmo-service",
+        "isPrivate": true,
+        "language": "go",
+        "name": "Gizmo Service",
+        "projectName": "Widgets",
+        "scm": "git",
+        "slug": "gizmo-service",
+        "updatedOn": "2026-09-28T16:30:00Z",
+        "uuid": "6f1c2a3b-0000-4000-8000-000000000101",
+        "workspaceName": "Acme Widgets"
+      },
+      "itemFamily": "repositories",
+      "metadata": {
+        "title": "acme-widgets/gizmo-service"
+      },
+      "name": "75285f03beb7323862a9ff2f59580252489ab611ce371419e0e73a682bc651fd",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/2.0/repositories/acme-widgets/gizmo-service"
+    }
+  ]
+}

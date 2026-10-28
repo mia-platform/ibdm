@@ -218,7 +218,7 @@ type eventStream struct {
 // the differences. The CRD-backed types (ingressroute, certificate) use dynamic informers; a
 // CRD that is not installed is skipped. Unknown types are skipped with a debug log,
 // and an informer that fails to start or sync does not prevent the others from running.
-func (s *Source) StartEventStream(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) error {
+func (s *Source) StartEventStream(ctx context.Context, typesToStream map[string]source.MappingExtras, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
 	requested := make(map[string]struct{}, len(typesToStream))

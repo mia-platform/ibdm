@@ -540,7 +540,7 @@ func TestStartSyncProcessServiceDispatchOrder(t *testing.T) {
 	)
 	results := make(chan source.Data, 10)
 
-	types := map[string]source.Extra{serviceType: {}, deploymentType: {}, namespaceType: {}, "unknown": {}}
+	types := map[string]source.MappingExtras{serviceType: {}, deploymentType: {}, namespaceType: {}, "unknown": {}}
 	require.NoError(t, s.StartSyncProcess(t.Context(), types, results))
 	close(results)
 
@@ -565,7 +565,7 @@ func TestStartSyncProcessServiceErrorIsolation(t *testing.T) {
 	}))
 	results := make(chan source.Data, 10)
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{namespaceType: {}, serviceType: {}}, results)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{namespaceType: {}, serviceType: {}}, results)
 	require.ErrorIs(t, err, ErrK8sSource)
 	require.ErrorIs(t, err, ErrRetrievingAssets)
 	close(results)
@@ -916,7 +916,7 @@ func TestStartSyncProcessWorkloadsDispatch(t *testing.T) {
 	)
 	results := make(chan source.Data, 10)
 
-	types := map[string]source.Extra{deploymentType: {}, statefulSetType: {}, daemonSetType: {}, "unknown": {}}
+	types := map[string]source.MappingExtras{deploymentType: {}, statefulSetType: {}, daemonSetType: {}, "unknown": {}}
 	require.NoError(t, s.StartSyncProcess(t.Context(), types, results))
 	close(results)
 
@@ -945,7 +945,7 @@ func TestStartSyncProcessWorkloadsErrorIsolation(t *testing.T) {
 	}))
 	results := make(chan source.Data, 10)
 
-	types := map[string]source.Extra{deploymentType: {}, statefulSetType: {}, daemonSetType: {}}
+	types := map[string]source.MappingExtras{deploymentType: {}, statefulSetType: {}, daemonSetType: {}}
 	err := s.StartSyncProcess(t.Context(), types, results)
 	require.ErrorIs(t, err, ErrK8sSource)
 	require.ErrorIs(t, err, ErrRetrievingAssets)
@@ -1283,7 +1283,7 @@ func TestStartSyncProcessNetworkPolicyDispatchOrder(t *testing.T) {
 	)
 	results := make(chan source.Data, 10)
 
-	types := map[string]source.Extra{networkPolicyType: {}, serviceType: {}, namespaceType: {}, "unknown": {}}
+	types := map[string]source.MappingExtras{networkPolicyType: {}, serviceType: {}, namespaceType: {}, "unknown": {}}
 	require.NoError(t, s.StartSyncProcess(t.Context(), types, results))
 	close(results)
 
@@ -1308,7 +1308,7 @@ func TestStartSyncProcessNetworkPolicyErrorIsolation(t *testing.T) {
 	}))
 	results := make(chan source.Data, 10)
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{namespaceType: {}, networkPolicyType: {}}, results)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{namespaceType: {}, networkPolicyType: {}}, results)
 	require.ErrorIs(t, err, ErrK8sSource)
 	require.ErrorIs(t, err, ErrRetrievingAssets)
 	close(results)
@@ -1650,7 +1650,7 @@ func TestStartSyncProcessHelmReleaseDispatchOrder(t *testing.T) {
 	)
 	results := make(chan source.Data, 10)
 
-	types := map[string]source.Extra{helmReleaseType: {}, serviceType: {}, namespaceType: {}, "unknown": {}}
+	types := map[string]source.MappingExtras{helmReleaseType: {}, serviceType: {}, namespaceType: {}, "unknown": {}}
 	require.NoError(t, s.StartSyncProcess(t.Context(), types, results))
 	close(results)
 
@@ -1674,7 +1674,7 @@ func TestStartSyncProcessHelmReleaseErrorIsolation(t *testing.T) {
 	}))
 	results := make(chan source.Data, 10)
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{namespaceType: {}, helmReleaseType: {}}, results)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{namespaceType: {}, helmReleaseType: {}}, results)
 	require.ErrorIs(t, err, ErrRetrievingAssets)
 	close(results)
 
@@ -2161,7 +2161,7 @@ func TestStartSyncProcessPodDispatchOrder(t *testing.T) {
 	)
 	results := make(chan source.Data, 10)
 
-	types := map[string]source.Extra{podOwnerRelationshipType: {}, podType: {}, serviceType: {}, namespaceType: {}, "unknown": {}}
+	types := map[string]source.MappingExtras{podOwnerRelationshipType: {}, podType: {}, serviceType: {}, namespaceType: {}, "unknown": {}}
 	require.NoError(t, s.StartSyncProcess(t.Context(), types, results))
 	close(results)
 
@@ -2186,7 +2186,7 @@ func TestStartSyncProcessPodErrorIsolation(t *testing.T) {
 	}))
 	results := make(chan source.Data, 10)
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{namespaceType: {}, podType: {}}, results)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{namespaceType: {}, podType: {}}, results)
 	require.ErrorIs(t, err, ErrK8sSource)
 	require.ErrorIs(t, err, ErrRetrievingAssets)
 	close(results)

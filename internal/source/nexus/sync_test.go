@@ -81,13 +81,13 @@ func TestStartSyncProcess(t *testing.T) {
 	testCases := map[string]struct {
 		handler            http.Handler
 		specificRepository string
-		typesToSync        map[string]source.Extra
+		typesToSync        map[string]source.MappingExtras
 		expectedDataCount  int
 		validateData       func(t *testing.T, data []source.Data)
 	}{
 		"sync docker images from all repos": {
 			handler:     standardMux(),
-			typesToSync: map[string]source.Extra{dockerImageType: {}},
+			typesToSync: map[string]source.MappingExtras{dockerImageType: {}},
 			// docker-hosted: 1 dockerImageType (1 component with 2 assets); maven-central: 0 (non-docker skipped)
 			expectedDataCount: 1,
 			validateData: func(t *testing.T, data []source.Data) {
@@ -124,7 +124,7 @@ func TestStartSyncProcess(t *testing.T) {
 				return mux
 			}(),
 			specificRepository: "docker-hosted",
-			typesToSync:        map[string]source.Extra{dockerImageType: {}},
+			typesToSync:        map[string]source.MappingExtras{dockerImageType: {}},
 			// 1 dockerImageType (1 component with 2 assets)
 			expectedDataCount: 1,
 			validateData: func(t *testing.T, data []source.Data) {
@@ -139,7 +139,7 @@ func TestStartSyncProcess(t *testing.T) {
 		},
 		"unknown type is skipped": {
 			handler:           standardMux(),
-			typesToSync:       map[string]source.Extra{"unknown-type": {}},
+			typesToSync:       map[string]source.MappingExtras{"unknown-type": {}},
 			expectedDataCount: 0,
 		},
 		"empty typesToSync": {
@@ -148,7 +148,7 @@ func TestStartSyncProcess(t *testing.T) {
 					t.Fatal("no API calls should be made when typesToSync is empty")
 				})
 			}(),
-			typesToSync:       map[string]source.Extra{},
+			typesToSync:       map[string]source.MappingExtras{},
 			expectedDataCount: 0,
 		},
 	}
@@ -224,7 +224,7 @@ func TestFanOut(t *testing.T) {
 		data = collectData(t, ch)
 	}()
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{dockerImageType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{dockerImageType: {}}, ch)
 	close(ch)
 	<-done
 
@@ -295,7 +295,7 @@ func TestZeroAssetsSkipped(t *testing.T) {
 		data = collectData(t, ch)
 	}()
 
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{dockerImageType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{dockerImageType: {}}, ch)
 	close(ch)
 	<-done
 
@@ -317,7 +317,7 @@ func TestConcurrencyGuard(t *testing.T) {
 	s.syncLock.Lock()
 
 	ch := make(chan source.Data, 100)
-	err := s.StartSyncProcess(t.Context(), map[string]source.Extra{dockerImageType: {}}, ch)
+	err := s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{dockerImageType: {}}, ch)
 	close(ch)
 
 	assert.NoError(t, err)
@@ -358,7 +358,7 @@ func TestContextCancellationInSync(t *testing.T) {
 	ch := make(chan source.Data, 100)
 	done := make(chan error, 1)
 	go func() {
-		done <- s.StartSyncProcess(ctx, map[string]source.Extra{dockerImageType: {}}, ch)
+		done <- s.StartSyncProcess(ctx, map[string]source.MappingExtras{dockerImageType: {}}, ch)
 		close(ch)
 	}()
 

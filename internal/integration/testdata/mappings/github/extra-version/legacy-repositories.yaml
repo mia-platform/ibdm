@@ -1,0 +1,10 @@
+# Asks for the repositories with another API version than the internal mapping.
+type: repository
+apiVersion: integration.example.com/v1
+itemFamily: legacyrepositories
+extra:
+  apiVersion: "2022-11-28"
+mappings:
+  identifier: "legacy-{{ .repository.id }}"
+  spec:
+    description: "{{ .repository.description }}"

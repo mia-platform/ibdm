@@ -87,7 +87,7 @@ func NewSource() (*Source, error) {
 }
 
 // StartSyncProcess implement source.SyncableSource.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) error {
 	logger := logger.FromContext(ctx).WithName(logName)
 	if !s.syncLock.TryLock() {
 		logger.Debug("sync process already running")
@@ -131,7 +131,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 
 // syncResourceType pages through every resource of resType the Resource Graph returns and emits
 // the item of each one of them, together with the ones of the sub-types they additionally produce.
-func (s *Source) syncResourceType(ctx context.Context, client *armresourcegraph.Client, resType string, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+func (s *Source) syncResourceType(ctx context.Context, client *armresourcegraph.Client, resType string, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) error {
 	logger := logger.FromContext(ctx).WithName(logName)
 	queryRequest := armresourcegraph.QueryRequest{
 		Subscriptions: []*string{to.Ptr(s.SubscriptionID)},
@@ -195,12 +195,13 @@ func resourceGraphQuery(resType string) *string {
 }
 
 // StartEventStream implement source.EventSource.
-func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) error {
 	logger := logger.FromContext(ctx).WithName(logName)
 	if err := s.validateForEventStream(); err != nil {
 		return handleError(err)
 	}
 	warnOrphanSubTypes(logger, typesToFilter)
+	warnUnusableAPIVersions(logger, typesToFilter)
 
 	client, err := s.azureClient()
 	if err != nil {
@@ -227,7 +228,34 @@ func (s *Source) StartEventStream(ctx context.Context, typesToFilter map[string]
 	return handleError(err)
 }
 
-func partitionEventHandler(client *armresources.Client, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) eventHandler {
+// apiVersionOf reports the api-version a mapping extra fetches its resource with. Any string is
+// accepted, as the event stream always did; a mapping without a string apiVersion cannot fetch the
+// resource.
+func apiVersionOf(extra source.Extra) (string, bool) {
+	apiVersion, ok := extra[apiVersionKey].(string)
+	return apiVersion, ok
+}
+
+// warnUnusableAPIVersions logs a warning for every mapping whose apiVersion is declared but is not
+// a non-empty string, typically an unquoted date that YAML decodes as a timestamp. Such a mapping
+// never fetches its resource, and the per-event log reporting it is only visible at debug level.
+// Sub-type mappings are skipped, because their resources are fetched with the api-version of the
+// parent mappings.
+func warnUnusableAPIVersions(log logger.Logger, typesToFilter map[string]source.MappingExtras) {
+	for _, resourceType := range slices.Sorted(maps.Keys(typesToFilter)) {
+		if isSubTypeKey(resourceType) {
+			continue
+		}
+
+		extras := typesToFilter[resourceType]
+		for _, mapping := range extras.InvalidStringValues(apiVersionKey) {
+			log.Warn("mapping apiVersion is not a non-empty string, quote it in the mapping file",
+				"type", resourceType, "mapping", mapping, "valueType", fmt.Sprintf("%T", extras[mapping][apiVersionKey]))
+		}
+	}
+}
+
+func partitionEventHandler(client *armresources.Client, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) eventHandler {
 	// a sub-type type key is an internal dispatch key and can never be the type of an event
 	// subject, so it is left out of the set the subject type is resolved against.
 	typesSlice := slices.DeleteFunc(slices.Sorted(maps.Keys(typesToFilter)), isSubTypeKey)
@@ -255,50 +283,86 @@ func partitionEventHandler(client *armresources.Client, typesToFilter map[string
 				continue
 			}
 
-			apiVersion, ok := typesToFilter[resourceType][apiVersionKey].(string)
-			if !ok {
+			extras := typesToFilter[resourceType]
+			groups := extras.GroupBy(apiVersionOf)
+			if len(groups) == 0 {
 				logger.Debug("skipping event with missing apiVersion", "resourceType", resourceType)
 				continue
 			}
 
-			logger.Trace("handling resource", "resourceType", resourceType, "eventType", envelope.Type, "apiVersion", apiVersion)
+			logger.Trace("handling resource", "resourceType", resourceType, "eventType", envelope.Type, "apiVersionGroups", len(groups))
 			switch envelope.Type {
 			case azsystemevents.TypeResourceWriteSuccess:
-				logger.Trace("request resource data from azure", "resourceID", *envelope.Subject)
-				response, err := client.GetByID(ctx, resID.String(), apiVersion, nil)
-				switch {
-				case errors.Is(err, context.Canceled):
-					logger.Debug("stopping processing due to context cancellation")
-					continue
-				case err != nil:
-					logger.Error("failed to get resource from Azure", "error", err.Error(), "resourceID", *envelope.Subject)
-					continue
-				}
-
-				values, err := unmarshalAzureResponse(response.GenericResource)
-				if err != nil {
-					logger.Error("failed to unmarshal resource from Azure", "error", err.Error(), "resourceID", *envelope.Subject)
-					continue
-				}
-
-				normalizeResourceValues(logger, values, resourceType)
-				for _, resourceData := range resourceDataToEmit(resourceType, values, typesToFilter, source.DataOperationUpsert, *envelope.Time) {
-					dataChannel <- resourceData
-				}
+				emitUpsertedResource(ctx, client, resID, resourceType, typesToFilter, groups, *envelope.Time, dataChannel)
 			case azsystemevents.TypeResourceDeleteSuccess:
 				logger.Trace("deleting resource", "resourceType", resourceType)
 				// the event carries only the resource id, so no sub-type check can run here and a
 				// delete is emitted for every configured sub-type of the resource type.
 				values := map[string]any{idKey: resID.String()}
 				normalizeResourceValues(logger, values, resourceType)
-				for _, resourceData := range resourceDataToEmit(resourceType, values, typesToFilter, source.DataOperationDelete, *envelope.Time) {
-					dataChannel <- resourceData
+				resourceData := resourceDataToEmit(resourceType, values, typesToFilter, source.DataOperationDelete, *envelope.Time)
+				// nothing is fetched, so a single delete reaches every mapping able to fetch the resource
+				resourceData[0].Mappings = extras.Target(groupedMappings(groups))
+				for _, data := range resourceData {
+					dataChannel <- data
 				}
 			default:
-				logger.Trace("skipping resource", "resourceType", resourceType, "eventType", envelope.Type, "apiVersion", apiVersion)
+				logger.Trace("skipping resource", "resourceType", resourceType, "eventType", envelope.Type)
 			}
 		}
 	}
+}
+
+// emitUpsertedResource fetches the resource resID once per api-version group, in lexical order of
+// api-version, and emits the item of each fetch to the mappings of its group only. The sub-type
+// items are emitted once, together with the item of the first fetch that succeeds: emitting them
+// for every fetch would write the same sub-type item once per api-version, and whichever fetch
+// came last would decide its content. A failed fetch is logged and skips its group only.
+func emitUpsertedResource(ctx context.Context, client *armresources.Client, resID *arm.ResourceID, resourceType string, typesToFilter map[string]source.MappingExtras, groups []source.MappingGroup, timestamp time.Time, dataChannel chan<- source.Data) {
+	logger := logger.FromContext(ctx).WithName(logName)
+	extras := typesToFilter[resourceType]
+
+	subTypesEmitted := false
+	for _, group := range groups {
+		logger.Trace("request resource data from azure", "resourceID", resID.String(), "apiVersion", group.Key)
+		response, err := client.GetByID(ctx, resID.String(), group.Key, nil)
+		switch {
+		case errors.Is(err, context.Canceled):
+			logger.Debug("stopping processing due to context cancellation")
+			return
+		case err != nil:
+			logger.Error("failed to get resource from Azure", "error", err.Error(), "resourceID", resID.String(), "apiVersion", group.Key)
+			continue
+		}
+
+		values, err := unmarshalAzureResponse(response.GenericResource)
+		if err != nil {
+			logger.Error("failed to unmarshal resource from Azure", "error", err.Error(), "resourceID", resID.String(), "apiVersion", group.Key)
+			continue
+		}
+
+		normalizeResourceValues(logger, values, resourceType)
+		resourceData := resourceDataToEmit(resourceType, values, typesToFilter, source.DataOperationUpsert, timestamp)
+		if subTypesEmitted {
+			resourceData = resourceData[:1]
+		}
+		subTypesEmitted = true
+
+		resourceData[0].Mappings = extras.Target(group.Mappings)
+		for _, data := range resourceData {
+			dataChannel <- data
+		}
+	}
+}
+
+// groupedMappings returns the names of the mappings belonging to any of groups.
+func groupedMappings(groups []source.MappingGroup) []string {
+	mappings := make([]string, 0)
+	for _, group := range groups {
+		mappings = append(mappings, group.Mappings...)
+	}
+
+	return mappings
 }
 
 // unmarshalAzureResponse converts an armresources.ClientGetByIDResponse to a map[string]any.

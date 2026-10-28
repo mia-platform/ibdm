@@ -7,20 +7,34 @@ The Google Cloud Platform Integration of `ibdm` can work in two modes:
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 Once you have the `ibdm` binary available the run of the integration is straightforward.
 
 If you want to start a new integration with the PubSub subscription yuo can run the following
 command:
 
 ```sh
-ibdm run gcp --mapping-file <path to mapping file or folder>
+ibdm run gcp --include-internal-mappings=all
 ```
 
 if you want to start a Cloud Asset sync process run this instead:
 
 ```sh
-ibdm sync gcp --mapping-file <path to mapping file or folder>
+ibdm sync gcp --include-internal-mappings=all
 ```
+
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list gcp` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+Every internal mapping is independent. The sync asks the Cloud Asset API for exactly the asset types
+of the selected mappings, in one request, and the Pub/Sub stream keeps only the events of those asset
+types. No internal mapping creates relationships to another one.
 
 ## Configuration
 

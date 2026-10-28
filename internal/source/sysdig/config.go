@@ -12,8 +12,6 @@ import (
 )
 
 const (
-	//TODO: The value should be tuned after observing real SysQL response sizes during integration testing.
-
 	// sysdigMaxPageSize is the upper bound for SYSDIG_PAGE_SIZE.
 	sysdigMaxPageSize = 1000
 )

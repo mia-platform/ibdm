@@ -74,7 +74,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		}
 
 		results := make(chan source.Data, 1)
-		typesToStream := map[string]source.Extra{"nothing": {}}
+		typesToStream := map[string]source.MappingExtras{"nothing": {}}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.ErrorIs(t, err, ErrWebhookSecretMissing)
@@ -82,7 +82,7 @@ func TestSource_GetWebhook(t *testing.T) {
 	})
 
 	handlerTests := map[string]struct {
-		typesToStream    map[string]source.Extra
+		typesToStream    map[string]source.MappingExtras
 		rawBody          []byte
 		eventPayload     map[string]any
 		signaturePrefix  string
@@ -90,7 +90,7 @@ func TestSource_GetWebhook(t *testing.T) {
 		expectedData     *source.Data
 	}{
 		"successfully creates webhook and processes events": {
-			typesToStream: map[string]source.Extra{"project": {}},
+			typesToStream: map[string]source.MappingExtras{"project": {}},
 			eventPayload: map[string]any{
 				"eventName": "project_created",
 				"payload": map[string]any{
@@ -108,7 +108,7 @@ func TestSource_GetWebhook(t *testing.T) {
 			},
 		},
 		"ignores events not in typesToStream": {
-			typesToStream: map[string]source.Extra{"project": {}},
+			typesToStream: map[string]source.MappingExtras{"project": {}},
 			eventPayload: map[string]any{
 				"eventName": "order_created",
 				"payload": map[string]any{
@@ -119,7 +119,7 @@ func TestSource_GetWebhook(t *testing.T) {
 			signaturePrefix: "sha256=",
 		},
 		"returns error on invalid json": {
-			typesToStream:    map[string]source.Extra{"user": {}},
+			typesToStream:    map[string]source.MappingExtras{"user": {}},
 			rawBody:          []byte(`{invalid-json`),
 			signaturePrefix:  "sha256=",
 			expectHandlerErr: true,
@@ -447,7 +447,7 @@ func Test_DoChain(t *testing.T) {
 
 			ch := make(chan source.Data, len(test.expectedData)+1)
 
-			typesToStream := map[string]source.Extra{
+			typesToStream := map[string]source.MappingExtras{
 				serviceResource:  {},
 				revisionResource: {},
 				projectResource:  {},
@@ -583,7 +583,7 @@ func TestSource_listAssets(t *testing.T) {
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		typesToSync := map[string]source.Extra{
+		typesToSync := map[string]source.MappingExtras{
 			projectResource:  {},
 			revisionResource: {},
 			serviceResource:  {},
@@ -596,13 +596,13 @@ func TestSource_listAssets(t *testing.T) {
 
 	errorTests := map[string]struct {
 		handler     http.HandlerFunc
-		typesToSync map[string]source.Extra
+		typesToSync map[string]source.MappingExtras
 	}{
 		"returns error when GetProjects fails": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			},
-			typesToSync: map[string]source.Extra{projectResource: {}},
+			typesToSync: map[string]source.MappingExtras{projectResource: {}},
 		},
 		"returns error when GetRevisions fails during configuration sync": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
@@ -613,7 +613,7 @@ func TestSource_listAssets(t *testing.T) {
 				}
 				w.WriteHeader(http.StatusInternalServerError)
 			},
-			typesToSync: map[string]source.Extra{revisionResource: {}},
+			typesToSync: map[string]source.MappingExtras{revisionResource: {}},
 		},
 		"returns error when GetConfiguration fails during configuration sync": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
@@ -627,7 +627,7 @@ func TestSource_listAssets(t *testing.T) {
 					w.WriteHeader(http.StatusInternalServerError)
 				}
 			},
-			typesToSync: map[string]source.Extra{serviceResource: {}},
+			typesToSync: map[string]source.MappingExtras{serviceResource: {}},
 		},
 	}
 
@@ -653,9 +653,9 @@ func TestSource_listClusters(t *testing.T) {
 	tenant1 := map[string]any{"companyId": "t1", "name": "Tenant One"}
 	cluster1 := map[string]any{
 		"_id":       "c1",
-		"clusterId": "demo-azure",
+		"clusterId": "cluster-1",
 		"connection": map[string]any{
-			"url": "https://paas-demo.hcp.northeurope.azmk8s.io",
+			"url": "https://my-cluster.example.com",
 		},
 		"distribution": "AKS",
 		"runtimeInfo": map[string]any{
@@ -671,9 +671,9 @@ func TestSource_listClusters(t *testing.T) {
 	}
 	clusterWithoutLinkedProjects := map[string]any{
 		"_id":       "c1",
-		"clusterId": "demo-azure",
+		"clusterId": "cluster-1",
 		"connection": map[string]any{
-			"url": "https://paas-demo.hcp.northeurope.azmk8s.io",
+			"url": "https://my-cluster.example.com",
 		},
 		"distribution": "AKS",
 		"runtimeInfo": map[string]any{
@@ -717,7 +717,7 @@ func TestSource_listClusters(t *testing.T) {
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		typesToSync := map[string]source.Extra{
+		typesToSync := map[string]source.MappingExtras{
 			clusterResource:                    {},
 			clusterProjectRelationshipResource: {},
 		}
@@ -759,7 +759,7 @@ func TestSource_listClusters(t *testing.T) {
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		data, err := s.listAssets(ctx, map[string]source.Extra{clusterResource: {}})
+		data, err := s.listAssets(ctx, map[string]source.MappingExtras{clusterResource: {}})
 		require.NoError(t, err)
 		assert.Empty(t, data)
 	})
@@ -779,7 +779,7 @@ func TestSource_listClusters(t *testing.T) {
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		data, err := s.listAssets(ctx, map[string]source.Extra{clusterResource: {}})
+		data, err := s.listAssets(ctx, map[string]source.MappingExtras{clusterResource: {}})
 		require.NoError(t, err)
 		require.Len(t, data, 1)
 		assert.Equal(t, clusterResource, data[0].Type)
@@ -817,7 +817,7 @@ func TestSource_listClusters(t *testing.T) {
 			s, err := NewSource()
 			require.NoError(t, err)
 
-			_, err = s.listAssets(ctx, map[string]source.Extra{clusterResource: {}})
+			_, err = s.listAssets(ctx, map[string]source.MappingExtras{clusterResource: {}})
 			require.ErrorIs(t, err, ErrRetrievingAssets)
 		})
 	}
@@ -854,12 +854,12 @@ func Test_buildServiceData(t *testing.T) {
 			expected: map[string]any{"name": "svc"},
 		},
 		"image without tag gets :latest appended": {
-			input:    map[string]any{"dockerImage": "nexus.host/board/app"},
-			expected: map[string]any{"dockerImage": "nexus.host/board/app:latest"},
+			input:    map[string]any{"dockerImage": "registry.example.com/team/app"},
+			expected: map[string]any{"dockerImage": "registry.example.com/team/app:latest"},
 		},
 		"image with explicit version is unchanged": {
-			input:    map[string]any{"dockerImage": "nexus.host/board/app:8.1.2"},
-			expected: map[string]any{"dockerImage": "nexus.host/board/app:8.1.2"},
+			input:    map[string]any{"dockerImage": "registry.example.com/team/app:8.1.2"},
+			expected: map[string]any{"dockerImage": "registry.example.com/team/app:8.1.2"},
 		},
 		"registry with port and no tag gets :latest appended": {
 			input:    map[string]any{"dockerImage": "registry:5000/app"},
@@ -999,7 +999,7 @@ func TestSource_listAssets_customResources(t *testing.T) {
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		typesToSync := map[string]source.Extra{
+		typesToSync := map[string]source.MappingExtras{
 			customResourceResource: {},
 		}
 
@@ -1043,7 +1043,7 @@ func TestSource_listAssets_customResources(t *testing.T) {
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		data, err := s.listAssets(ctx, map[string]source.Extra{customResourceResource: {}})
+		data, err := s.listAssets(ctx, map[string]source.MappingExtras{customResourceResource: {}})
 		require.NoError(t, err)
 		assert.Empty(t, data)
 	})
@@ -1108,7 +1108,7 @@ func TestSource_configurationEventChain_customResource(t *testing.T) {
 		}
 
 		ch := make(chan source.Data, 5)
-		typesToStream := map[string]source.Extra{
+		typesToStream := map[string]source.MappingExtras{
 			customResourceResource: {},
 		}
 
@@ -1172,7 +1172,7 @@ func TestSource_configurationEventChain_customResource(t *testing.T) {
 		}
 
 		results := make(chan source.Data, 1)
-		typesToStream := map[string]source.Extra{customResourceResource: {}}
+		typesToStream := map[string]source.MappingExtras{customResourceResource: {}}
 
 		webhook, err := s.GetWebhook(ctx, typesToStream, results)
 		require.NoError(t, err)
@@ -1264,7 +1264,7 @@ func TestSource_listConfigurations_customResourceNilDefaultBranch(t *testing.T) 
 		s, err := NewSource()
 		require.NoError(t, err)
 
-		data, err := s.listAssets(ctx, map[string]source.Extra{customResourceResource: {}})
+		data, err := s.listAssets(ctx, map[string]source.MappingExtras{customResourceResource: {}})
 		require.NoError(t, err)
 		assert.Empty(t, data)
 	})

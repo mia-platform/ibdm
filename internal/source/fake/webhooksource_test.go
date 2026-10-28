@@ -23,7 +23,7 @@ func TestFakeUnclosableWebhookSource(t *testing.T) {
 	method := http.MethodPost
 	path := "/webhook"
 	results := make(chan source.Data, 1)
-	typesToStream := map[string]source.Extra{"project": {"mode": "full"}}
+	typesToStream := map[string]source.MappingExtras{"project": {"my-mapping": {"mode": "full"}}}
 
 	expectedData := source.Data{
 		Type:      "project",
@@ -32,7 +32,7 @@ func TestFakeUnclosableWebhookSource(t *testing.T) {
 	}
 
 	var handlerCalled bool
-	handler := func(ctx context.Context, receivedTypes map[string]source.Extra, sourceChan chan<- source.Data) error {
+	handler := func(ctx context.Context, receivedTypes map[string]source.MappingExtras, sourceChan chan<- source.Data) error {
 		assert.Equal(t, typesToStream, receivedTypes)
 		handlerCalled = true
 		sourceChan <- expectedData
@@ -65,12 +65,12 @@ func TestFakeUnclosableWebhookSourceHandlerError(t *testing.T) {
 	defer cancel()
 
 	results := make(chan source.Data, 1)
-	typesToStream := map[string]source.Extra{"project": {}}
+	typesToStream := map[string]source.MappingExtras{"project": {}}
 	method := http.MethodPost
 	path := "/webhook"
 	testErr := assert.AnError
 
-	handler := func(context.Context, map[string]source.Extra, chan<- source.Data) error {
+	handler := func(context.Context, map[string]source.MappingExtras, chan<- source.Data) error {
 		return testErr
 	}
 

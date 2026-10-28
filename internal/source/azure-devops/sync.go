@@ -23,7 +23,7 @@ const (
 
 var timeSource = time.Now
 
-func syncResources(ctx context.Context, client *client, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) (err error) {
+func syncResources(ctx context.Context, client *client, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) (err error) {
 	for typeString := range typesToFilter {
 		var path string
 		queryParam := url.Values{}

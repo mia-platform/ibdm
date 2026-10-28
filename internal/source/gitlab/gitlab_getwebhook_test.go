@@ -20,7 +20,7 @@ func TestGetWebhook_MissingToken(t *testing.T) {
 	s := &Source{
 		webhookConfig: webhookConfig{WebhookPath: "/gitlab/webhook", WebhookToken: ""},
 	}
-	_, err := s.GetWebhook(t.Context(), map[string]source.Extra{pipelineResource: nil}, make(chan source.Data))
+	_, err := s.GetWebhook(t.Context(), map[string]source.MappingExtras{pipelineResource: nil}, make(chan source.Data))
 	require.ErrorIs(t, err, ErrWebhookTokenMissing)
 }
 
@@ -29,11 +29,15 @@ func TestGetWebhook_ReturnsCorrectPathAndMethod(t *testing.T) {
 		webhookConfig: webhookConfig{WebhookPath: "/hooks/gitlab", WebhookToken: "secret"},
 	}
 
-	webhook, err := s.GetWebhook(t.Context(), map[string]source.Extra{pipelineResource: nil}, make(chan source.Data, 1))
+	webhook, err := s.GetWebhook(t.Context(), map[string]source.MappingExtras{pipelineResource: nil}, make(chan source.Data, 1))
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodPost, webhook.Method)
 	assert.Equal(t, "/hooks/gitlab", webhook.Path)
 }
+
+// noDataGracePeriod bounds the wait of the cases expecting no data: the handler dispatches
+// asynchronously, so absence can only be observed over a window.
+const noDataGracePeriod = 100 * time.Millisecond
 
 func TestWebhookHandler(t *testing.T) {
 	validToken := "super-secret"
@@ -69,7 +73,7 @@ func TestWebhookHandler(t *testing.T) {
 		token         string
 		body          []byte
 		headers       http.Header
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		expectErr     error
 		expectData    bool
 		checkData     func(t *testing.T, d source.Data)
@@ -78,7 +82,7 @@ func TestWebhookHandler(t *testing.T) {
 			token:         validToken,
 			body:          validBody(),
 			headers:       validHeaders(validToken, pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectData:    true,
 			checkData: func(t *testing.T, d source.Data) {
 				t.Helper()
@@ -91,21 +95,21 @@ func TestWebhookHandler(t *testing.T) {
 			token:         validToken,
 			body:          validBody(),
 			headers:       validHeaders("wrong-token", pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectErr:     ErrSignatureMismatch,
 		},
 		"unknown event type is silently ignored": {
 			token:         validToken,
 			body:          validBody(),
 			headers:       validHeaders(validToken, "Emoji Hook"),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectData:    false,
 		},
 		"processor error does not produce data": {
 			token:         validToken,
 			body:          []byte("not-json"),
 			headers:       validHeaders(validToken, pipelineHookHeaderValue),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectData:    false,
 		},
 	}
@@ -148,9 +152,11 @@ func TestWebhookHandler(t *testing.T) {
 			require.NoError(t, handlerErr)
 
 			if !tc.expectData {
-				// TODO: improve this removing sleep function and using a non-blocking read on the channel instead
-				time.Sleep(100 * time.Millisecond)
-				assert.Empty(t, results)
+				select {
+				case data := <-results:
+					t.Fatalf("no data expected, but the webhook dispatched %+v", data)
+				case <-time.After(noDataGracePeriod):
+				}
 				return
 			}
 
@@ -162,6 +168,30 @@ func TestWebhookHandler(t *testing.T) {
 			case <-t.Context().Done():
 				t.Fatal("timed out waiting for webhook event to be dispatched")
 			}
+		})
+	}
+}
+
+func TestValidWebhookToken(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		provided string
+		expected bool
+	}{
+		"the configured token":      {provided: "test-webhook-token", expected: true},
+		"another token":             {provided: "another-token", expected: false},
+		"a prefix of the token":     {provided: "test-webhook", expected: false},
+		"the token with a suffix":   {provided: "test-webhook-token-extra", expected: false},
+		"an empty token":            {provided: "", expected: false},
+		"the token in another case": {provided: "TEST-WEBHOOK-TOKEN", expected: false},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, test.expected, validWebhookToken(test.provided, "test-webhook-token"))
 		})
 	}
 }

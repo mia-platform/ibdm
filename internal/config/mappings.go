@@ -8,7 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -27,27 +30,58 @@ const (
 	DeletePolicyField = "deletePolicy"
 	IdentifierField   = "identifier"
 	ItemFamilyField   = "itemFamily"
+	NameField         = "name"
 	SourceRefField    = "sourceRef"
 	TargetRefField    = "targetRef"
 	TypeField         = "type"
 	TypeRefField      = "typeRef"
+
+	// maxMappingNameLength caps the length of a mapping name.
+	maxMappingNameLength = 63
 )
 
 var (
 	// ErrParsing reports failures that occur while decoding mapping files.
 	ErrParsing = errors.New("error parsing")
+	// ErrDuplicateMappingName reports two mappings sharing a name in one loaded set.
+	ErrDuplicateMappingName = errors.New("duplicate mapping name")
 
 	RequiredExtraFields = []string{APIVersionField, ItemFamilyField, DeletePolicyField, IdentifierField}
+
+	// mappingNameRegex accepts the shapes already used as mapping file base names.
+	mappingNameRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$`)
 )
 
 // MappingConfig holds the configuration for mapping rules.
 type MappingConfig struct {
+	// Name identifies the mapping within the loaded set. It defaults to the base
+	// name of the file the mapping was read from.
+	Name       string         `json:"name" yaml:"name"`
 	Type       string         `json:"type" yaml:"type"`
 	Extra      map[string]any `json:"extra,omitempty" yaml:"extra,omitempty"`
 	APIVersion string         `json:"apiVersion" yaml:"apiVersion"`
 	ItemFamily string         `json:"itemFamily" yaml:"itemFamily"`
-	Syncable   bool           `json:"syncable" yaml:"syncable"`
-	Mappings   Mappings       `json:"mappings" yaml:"mappings"`
+	// Syncable reports whether a full sync can produce the mapping's items. An absent value
+	// means true: use IsSyncable to read it.
+	Syncable *bool `json:"syncable" yaml:"syncable"`
+	// CreateIf is an optional template guarding upserts: when it renders false, the mapping
+	// declines the payload and produces no item. It is never evaluated on delete.
+	CreateIf string   `json:"createIf" yaml:"createIf"`
+	Mappings Mappings `json:"mappings" yaml:"mappings"`
+
+	// path is the file the mapping was read from, used to report name collisions.
+	path string
+}
+
+// Path returns the file the mapping was read from.
+func (c *MappingConfig) Path() string {
+	return c.path
+}
+
+// IsSyncable reports whether the sync command uses the mapping: true unless the mapping
+// declares syncable: false.
+func (c *MappingConfig) IsSyncable() bool {
+	return c.Syncable == nil || *c.Syncable
 }
 
 // Mappings holds the identifier and specification templates for mapping rules.
@@ -186,8 +220,28 @@ func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 	}
 	defer file.Close()
 
-	// Create a YAML decoder for the file.
-	decoder := yaml.NewDecoder(file)
+	return NewMappingConfigsFromReader(file, path)
+}
+
+// NewMappingConfigsFromFS parses the file name of fsys, such as an embedded file system, and
+// returns the mapping configurations it contains. It applies exactly the rules of
+// NewMappingConfigsFromPath, and name identifies the file in errors and name defaulting.
+func NewMappingConfigsFromFS(fsys fs.FS, name string) ([]*MappingConfig, error) {
+	file, err := fsys.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	return NewMappingConfigsFromReader(file, name)
+}
+
+// NewMappingConfigsFromReader parses the mapping configurations read from reader. path identifies
+// the source of the data: it is reported in errors, recorded for duplicate-name errors, and its
+// base name is the default name of a single-mapping document.
+func NewMappingConfigsFromReader(reader io.Reader, path string) ([]*MappingConfig, error) {
+	// Create a YAML decoder for the data.
+	decoder := yaml.NewDecoder(reader)
 	decoder.KnownFields(true)
 
 	configs := make([]*MappingConfig, 0)
@@ -226,8 +280,64 @@ func NewMappingConfigsFromPath(path string) ([]*MappingConfig, error) {
 			return nil, fmt.Errorf("%w %q: missing required fields: %v", ErrParsing, path, strings.Join(missingFields, ", "))
 		}
 
+		config.path = path
 		configs = append(configs, config)
 	}
 
+	if err := resolveMappingNames(path, configs); err != nil {
+		return nil, err
+	}
+
 	return configs, nil
+}
+
+// resolveMappingNames defaults the name of a single-mapping file to the file base
+// name, requires an explicit name on every mapping of a multi-mapping file, and
+// validates every resulting name.
+func resolveMappingNames(path string, configs []*MappingConfig) error {
+	if len(configs) == 1 && configs[0].Name == "" {
+		configs[0].Name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	}
+
+	for _, config := range configs {
+		if config.Name == "" {
+			return fmt.Errorf("%w %q: field %q is required when a file contains more than one mapping", ErrParsing, path, NameField)
+		}
+
+		if err := validateMappingName(config.Name); err != nil {
+			return fmt.Errorf("%w %q: %w", ErrParsing, path, err)
+		}
+	}
+
+	return nil
+}
+
+// validateMappingName checks a mapping name against the allowed charset and length.
+func validateMappingName(name string) error {
+	if len(name) > maxMappingNameLength {
+		return fmt.Errorf("invalid mapping name %q: longer than %d characters", name, maxMappingNameLength)
+	}
+
+	if !mappingNameRegex.MatchString(name) {
+		return fmt.Errorf("invalid mapping name %q: must consist of lowercase alphanumeric characters, '.', '_' or '-', "+
+			"and must start and end with an alphanumeric character; set the %q field explicitly if the file name does not comply",
+			name, NameField)
+	}
+
+	return nil
+}
+
+// ValidateMappingNames reports mappings that share a name. Source emissions can
+// target mappings by name, so duplicates would make an emission ambiguous.
+func ValidateMappingNames(mappings []*MappingConfig) error {
+	seen := make(map[string]*MappingConfig, len(mappings))
+	for _, mapping := range mappings {
+		if previous, found := seen[mapping.Name]; found {
+			return fmt.Errorf("%w %q: defined in %q and %q", ErrDuplicateMappingName, mapping.Name, previous.path, mapping.path)
+		}
+
+		seen[mapping.Name] = mapping
+	}
+
+	return nil
 }

@@ -155,18 +155,18 @@ func TestIsSubTypeKey(t *testing.T) {
 func TestSubTypesToEmit(t *testing.T) {
 	t.Parallel()
 
-	bothMappings := map[string]source.Extra{
-		websitesType:     {apiVersionKey: websitesAPIVersion},
-		functionAppsType: {apiVersionKey: websitesAPIVersion},
+	bothMappings := map[string]source.MappingExtras{
+		websitesType:     {testMappingName: {apiVersionKey: websitesAPIVersion}},
+		functionAppsType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 	}
-	parentMappingOnly := map[string]source.Extra{
-		websitesType: {apiVersionKey: websitesAPIVersion},
+	parentMappingOnly := map[string]source.MappingExtras{
+		websitesType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 	}
 
 	testCases := map[string]struct {
 		resourceType string
 		values       map[string]any
-		configured   map[string]source.Extra
+		configured   map[string]source.MappingExtras
 		isDelete     bool
 		expectedKeys []string
 	}{
@@ -230,9 +230,9 @@ func TestSubTypesToEmit(t *testing.T) {
 func TestResourceDataToEmit(t *testing.T) {
 	t.Parallel()
 
-	bothMappings := map[string]source.Extra{
-		websitesType:     {apiVersionKey: websitesAPIVersion},
-		functionAppsType: {apiVersionKey: websitesAPIVersion},
+	bothMappings := map[string]source.MappingExtras{
+		websitesType:     {testMappingName: {apiVersionKey: websitesAPIVersion}},
+		functionAppsType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 	}
 	functionAppValues := map[string]any{
 		idKey:   normalizedWebsiteID,
@@ -252,7 +252,7 @@ func TestResourceDataToEmit(t *testing.T) {
 	testCases := map[string]struct {
 		resourceType string
 		values       map[string]any
-		configured   map[string]source.Extra
+		configured   map[string]source.MappingExtras
 		operation    source.DataOperation
 		expectedData []source.Data
 	}{
@@ -288,7 +288,7 @@ func TestResourceDataToEmit(t *testing.T) {
 		"a type without sub-types emits its item alone": {
 			resourceType: managedClustersType,
 			values:       map[string]any{idKey: normalizedManagedClusterID, typeKey: managedClustersType},
-			configured:   map[string]source.Extra{managedClustersType: nil},
+			configured:   map[string]source.MappingExtras{managedClustersType: nil},
 			operation:    source.DataOperationUpsert,
 			expectedData: []source.Data{
 				{
@@ -326,9 +326,9 @@ func TestResourceDataToEmitIsolatesThePayloads(t *testing.T) {
 		kindKey: functionAppKindValue,
 	}
 
-	data := resourceDataToEmit(websitesType, values, map[string]source.Extra{
-		websitesType:     {apiVersionKey: websitesAPIVersion},
-		functionAppsType: {apiVersionKey: websitesAPIVersion},
+	data := resourceDataToEmit(websitesType, values, map[string]source.MappingExtras{
+		websitesType:     {testMappingName: {apiVersionKey: websitesAPIVersion}},
+		functionAppsType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 	}, source.DataOperationUpsert, testTime)
 	require.Len(t, data, 2)
 
@@ -345,28 +345,28 @@ func TestWarnOrphanSubTypes(t *testing.T) {
 	const orphanMessage = "without the mapping of its parent type"
 
 	testCases := map[string]struct {
-		typesToFilter    map[string]source.Extra
+		typesToFilter    map[string]source.MappingExtras
 		expectedMessages []string
 		absentMessages   []string
 	}{
 		"a sub-type mapping loaded alone is reported": {
-			typesToFilter:    map[string]source.Extra{functionAppsType: nil},
+			typesToFilter:    map[string]source.MappingExtras{functionAppsType: nil},
 			expectedMessages: []string{orphanMessage, functionAppsType, websitesType},
 		},
 		"a sub-type mapping loaded with its parent stays silent": {
-			typesToFilter:  map[string]source.Extra{websitesType: nil, functionAppsType: nil},
+			typesToFilter:  map[string]source.MappingExtras{websitesType: nil, functionAppsType: nil},
 			absentMessages: []string{orphanMessage},
 		},
 		"a sub-type mapping loaded with a differently cased parent stays silent": {
-			typesToFilter:  map[string]source.Extra{"microsoft.web/sites": nil, functionAppsType: nil},
+			typesToFilter:  map[string]source.MappingExtras{"microsoft.web/sites": nil, functionAppsType: nil},
 			absentMessages: []string{orphanMessage},
 		},
 		"a parent mapping loaded alone stays silent": {
-			typesToFilter:  map[string]source.Extra{websitesType: nil},
+			typesToFilter:  map[string]source.MappingExtras{websitesType: nil},
 			absentMessages: []string{orphanMessage},
 		},
 		"an unrelated mapping stays silent": {
-			typesToFilter:  map[string]source.Extra{managedClustersType: nil},
+			typesToFilter:  map[string]source.MappingExtras{managedClustersType: nil},
 			absentMessages: []string{orphanMessage},
 		},
 		"no mapping stays silent": {

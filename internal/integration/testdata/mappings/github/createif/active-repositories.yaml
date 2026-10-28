@@ -1,0 +1,9 @@
+# Declines archived repositories.
+type: repository
+apiVersion: integration.example.com/v1
+itemFamily: activerepositories
+createIf: "{{ not .repository.archived }}"
+mappings:
+  identifier: "active-{{ .repository.id }}"
+  spec:
+    name: "{{ .repository.name }}"

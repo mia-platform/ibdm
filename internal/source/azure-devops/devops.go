@@ -12,7 +12,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -71,7 +73,7 @@ func NewSource() (*Source, error) {
 }
 
 // StartSyncProcess implement source.SyncableSource interface.
-func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]source.Extra, dataChannel chan<- source.Data) error {
+func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]source.MappingExtras, dataChannel chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(logName)
 	if !s.syncLock.TryLock() {
 		log.Debug("sync process already running")
@@ -101,7 +103,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToFilter map[string]
 }
 
 // GetWebhook implement source.WebhookSource interface.
-func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.Extra, results chan<- source.Data) (source.Webhook, error) {
+func (s *Source) GetWebhook(ctx context.Context, typesToStream map[string]source.MappingExtras, results chan<- source.Data) (source.Webhook, error) {
 	if err := s.validateForWebhook(); err != nil {
 		return source.Webhook{}, handleErr(err)
 	}
@@ -140,7 +142,7 @@ func extractDataFromPayload(payload map[string]any) (string, map[string]any, tim
 	return eventTypeStr, resource, operationTime, nil
 }
 
-func (s *Source) webhookHandler(typesToStream map[string]source.Extra, dataChannel chan<- source.Data) source.WebhookHandler {
+func (s *Source) webhookHandler(typesToStream map[string]source.MappingExtras, dataChannel chan<- source.Data) source.WebhookHandler {
 	return func(ctx context.Context, headers http.Header, body []byte) error {
 		log := logger.FromContext(ctx).WithName(logName)
 		log.Trace("received webhook from Azure DevOps")
@@ -149,52 +151,99 @@ func (s *Source) webhookHandler(typesToStream map[string]source.Extra, dataChann
 			return handleErr(err)
 		}
 
-		go func(log logger.Logger, body []byte, typesToStream map[string]source.Extra, _ chan<- source.Data) {
-			var payload map[string]any
-			if err := json.Unmarshal(body, &payload); err != nil {
-				log.Error("failed to unmarshal webhook payload", "error", err)
-				return
-			}
-
-			eventType, resource, operationTime, err := extractDataFromPayload(payload)
-			if err != nil {
-				log.Error("failed to extract data from webhook payload", "error", err)
-				return
-			}
-
-			for typeString, extra := range typesToStream {
-				if eventTypes, ok := extra[extraEventNamesKey]; ok {
-					if eventTypesList, ok := eventTypes.([]any); ok {
-						for _, event := range eventTypesList {
-							if eventStr, ok := event.(string); ok && strings.EqualFold(eventType, eventStr) {
-								log.Debug("webhook handled", "webhookType", eventType, "resourceType", typeString)
-								if strings.EqualFold(typeString, "gitrepository") {
-									if repo, ok := resource["repository"].(map[string]any); ok {
-										resource = repo
-									}
-								}
-
-								operation := source.DataOperationUpsert
-								if strings.HasSuffix(eventType, ".deleted") {
-									operation = source.DataOperationDelete
-								}
-								dataChannel <- source.Data{
-									Type:      typeString,
-									Operation: operation,
-									Time:      operationTime,
-									Values:    resource,
-								}
-								return
-							}
-						}
-					}
-				}
-			}
-
-			log.Trace("webhook event type not configured to be streamed", "eventType", eventType)
-		}(log, body, typesToStream, dataChannel)
+		go dispatchWebhookEvent(log, body, typesToStream, dataChannel)
 		return nil
 	}
+}
+
+// dispatchWebhookEvent parses a webhook body and emits its resource to every type with a mapping
+// listing its event type.
+func dispatchWebhookEvent(log logger.Logger, body []byte, typesToStream map[string]source.MappingExtras, dataChannel chan<- source.Data) {
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		log.Error("failed to unmarshal webhook payload", "error", err)
+		return
+	}
+
+	eventType, resource, operationTime, err := extractDataFromPayload(payload)
+	if err != nil {
+		log.Error("failed to extract data from webhook payload", "error", err)
+		return
+	}
+
+	operation := source.DataOperationUpsert
+	if strings.HasSuffix(eventType, ".deleted") {
+		operation = source.DataOperationDelete
+	}
+
+	// every type with a mapping listing the event receives it, in lexical order of type, so
+	// that the outcome never depends on the map iteration order.
+	handled := false
+	for _, typeString := range slices.Sorted(maps.Keys(typesToStream)) {
+		extras := typesToStream[typeString]
+		matched := matchingMappings(extras, eventType)
+		if len(matched) == 0 {
+			continue
+		}
+
+		log.Debug("webhook handled", "webhookType", eventType, "resourceType", typeString)
+		handled = true
+		dataChannel <- source.Data{
+			Type:      typeString,
+			Operation: operation,
+			Time:      operationTime,
+			Values:    webhookValues(typeString, resource),
+			Mappings:  extras.Target(matched),
+		}
+	}
+
+	if !handled {
+		log.Trace("webhook event type not configured to be streamed", "eventType", eventType)
+	}
+}
+
+// matchingMappings returns, in lexical order, the names of the mappings in extras whose
+// eventNames list eventType.
+func matchingMappings(extras source.MappingExtras, eventType string) []string {
+	matched := make([]string, 0, len(extras))
+	for _, name := range extras.Names() {
+		if eventNamesContain(extras[name], eventType) {
+			matched = append(matched, name)
+		}
+	}
+
+	return matched
+}
+
+// webhookValues returns the payload a webhook resource produces for typeString: the repository
+// object for a git repository, the whole resource otherwise. The payload is a shallow copy, because
+// one resource can be emitted for several types and the mapping functions can write into the top
+// level of the map they are handed.
+func webhookValues(typeString string, resource map[string]any) map[string]any {
+	if strings.EqualFold(typeString, gitRepositoryType) {
+		if repo, ok := resource["repository"].(map[string]any); ok {
+			return maps.Clone(repo)
+		}
+	}
+
+	return maps.Clone(resource)
+}
+
+// eventNamesContain reports whether the eventNames list of a mapping extra contains eventType,
+// ignoring case. Entries that are not strings are skipped.
+func eventNamesContain(extra source.Extra, eventType string) bool {
+	eventNames, ok := extra[extraEventNamesKey].([]any)
+	if !ok {
+		return false
+	}
+
+	for _, eventName := range eventNames {
+		if eventNameString, ok := eventName.(string); ok && strings.EqualFold(eventType, eventNameString) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *Source) webhookValidation(headers http.Header) error {

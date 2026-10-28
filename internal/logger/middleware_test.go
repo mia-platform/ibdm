@@ -23,6 +23,7 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 		expectedLogLines int
 		loggerLevel      Level
 		path             string
+		query            string
 		method           string
 		userAgent        string
 		host             string
@@ -68,6 +69,17 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 			host:             "example.com",
 			statusCode:       http.StatusOK,
 		},
+		"the query string is never logged": {
+			excludedPrefixes: []string{},
+			expectedLogLines: 2,
+			loggerLevel:      TRACE,
+			path:             "/webhook",
+			query:            "token=fictional-secret-value&page=2",
+			method:           http.MethodGet,
+			userAgent:        "test-agent",
+			host:             "example.com",
+			statusCode:       http.StatusOK,
+		},
 		"method POST logs incoming and completed requests": {
 			excludedPrefixes: []string{},
 			expectedLogLines: 2,
@@ -95,7 +107,11 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 				return c.SendString("foo")
 			})
 
-			req := httptest.NewRequest(test.method, test.path, nil)
+			target := test.path
+			if test.query != "" {
+				target += "?" + test.query
+			}
+			req := httptest.NewRequest(test.method, target, nil)
 			req.Header.Set("User-Agent", test.userAgent)
 			req.Host = test.host
 			resp, err := app.Test(req)
@@ -113,6 +129,9 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 
 			if test.expectedLogLines == 0 {
 				return
+			}
+			if test.query != "" {
+				require.NotContains(t, logs, test.query, "no log line may carry the query string")
 			}
 
 			var firstLog map[string]any

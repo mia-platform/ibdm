@@ -13,8 +13,8 @@ import (
 	"github.com/mia-platform/ibdm/internal/mapper"
 )
 
-// examplePath is the mapping shipped in the documentation.
-const examplePath = "../../../docs/mappings/sonarqube/issues.yaml"
+// examplePath is the internal mapping shipped in the binary.
+const examplePath = "../../mappings/data/sonarqube/issues.yaml"
 
 // TestExampleMapping renders the documented mapping over the values this
 // source emits, so the two cannot drift apart silently.
@@ -37,8 +37,8 @@ func TestExampleMapping(t *testing.T) {
 		output, _, err := m.ApplyTemplates(issueValues(testIssue("AZaBcDeFgHiJkLmNoPqR"), rules, testAnalysis(t)), mapper.ParentItemInfo{})
 		require.NoError(t, err)
 
-		// The name catalog-sonarqube-webhook gave the same issue, so that a
-		// switch-over updates the existing items instead of duplicating them.
+		// The identifier is pinned: items already written to the Catalog carry it,
+		// so a change would duplicate them instead of updating them.
 		assert.Equal(t, "my-project-2024-f60dda5049896158", output.Identifier)
 
 		assert.Equal(t, "Define a constant instead of duplicating this literal 3 times.", output.Metadata["title"])
@@ -116,7 +116,7 @@ func loadExampleMapper(t *testing.T, path, dataType string) mapper.Mapper {
 	return m
 }
 
-const runsExamplePath = "../../../docs/mappings/sonarqube/runs.yaml"
+const runsExamplePath = "../../mappings/data/sonarqube/runs.yaml"
 
 func TestExampleRunMapping(t *testing.T) {
 	t.Parallel()

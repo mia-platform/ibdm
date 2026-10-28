@@ -3,6 +3,10 @@
 
 package azure
 
+// testMappingName names the single mapping a test registers for a type, reproducing the
+// one-extra-per-type configuration sources received before extras were grouped by mapping.
+const testMappingName = "my-mapping"
+
 // Fixtures of the two App Service sites the sub-type tests import, shared by the sync, the stream
 // and the dictionary tests because the sub-type emission runs on the retrieved payload whichever
 // path retrieved it: my-function carries the functionapp kind token and my-site does not.

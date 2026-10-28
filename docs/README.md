@@ -3,6 +3,7 @@
 ## How To Guides
 
 - [How to Install `ibdm`](./how-to/010_installation.md)
+- [How to Use Internal and External Mappings](./how-to/015_internal-and-external-mappings.md)
 - [How to Configure a Destination](./how-to/020_destinations.md)
 - [How to Configure the Microsoft Azure Integration](./how-to/030_azure-source.md)
 - [How to Configure the Google Cloud Platform Integration](./how-to/040_gcp-source.md)
@@ -16,11 +17,12 @@
 - [How to Configure the SonarQube Integration](./how-to/120_sonarqube-source.md)
 - [How to Configure the Kubernetes Integration](./how-to/130_k8s-source.md)
 
-## Explainations
+## Explanations
 
 - [Mappings](./explanation/10_mappings.md)
 - [Extra Mappings](./explanation/20_extra_mappings.md)
 
 ## Reference
 
-- [Mappings Functions](./reference/10_mappings.md)
+- [Mapping Fields and Functions](./reference/10_mappings.md)
+- [Internal Mappings](./reference/20_internal-mappings.md)

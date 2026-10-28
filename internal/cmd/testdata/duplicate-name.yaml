@@ -1,0 +1,8 @@
+name: valid
+type: other-type
+apiVersion: v1
+itemFamily: family
+mappings:
+  identifier: "{{ .id }}"
+  spec:
+    field1: "{{ .field1 }}"

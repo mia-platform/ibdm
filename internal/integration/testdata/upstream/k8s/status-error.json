@@ -1,0 +1,9 @@
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {},
+  "status": "Failure",
+  "message": "the fake API server failed",
+  "reason": "InternalError",
+  "code": 500
+}

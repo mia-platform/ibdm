@@ -21,13 +21,17 @@ func TestExecuteEventStream(t *testing.T) {
 	}{
 		"run without errors": {
 			options: &options{
-				integrationName: "fake",
-				sourceGetter:    testSourceGetter(t),
+				integrationName:  "fake",
+				selection:        internalSelection{include: []string{"all"}, includeSet: true},
+				internalMappings: testInternalMappings(t),
+				sourceGetter:     testSourceGetter(t),
 			},
 		},
 		"return error if sourcegetter fails": {
 			options: &options{
-				integrationName: "fake",
+				integrationName:  "fake",
+				selection:        internalSelection{include: []string{"all"}, includeSet: true},
+				internalMappings: testInternalMappings(t),
 				sourceGetter: func(string) (any, error) {
 					return nil, assert.AnError
 				},
@@ -36,7 +40,9 @@ func TestExecuteEventStream(t *testing.T) {
 		},
 		"reading mappers fails": {
 			options: &options{
-				integrationName: "fake",
+				integrationName:  "fake",
+				selection:        internalSelection{include: []string{"all"}, includeSet: true},
+				internalMappings: testInternalMappings(t),
 				mappingPaths: []string{
 					"non-existing-file.yaml",
 				},
@@ -65,13 +71,17 @@ func TestExecuteSync(t *testing.T) {
 	}{
 		"run without errors": {
 			options: &options{
-				integrationName: "fake",
-				sourceGetter:    testSourceGetter(t),
+				integrationName:  "fake",
+				selection:        internalSelection{include: []string{"all"}, includeSet: true},
+				internalMappings: testInternalMappings(t),
+				sourceGetter:     testSourceGetter(t),
 			},
 		},
 		"return error if sourcegetter fails": {
 			options: &options{
-				integrationName: "fake",
+				integrationName:  "fake",
+				selection:        internalSelection{include: []string{"all"}, includeSet: true},
+				internalMappings: testInternalMappings(t),
 				sourceGetter: func(string) (any, error) {
 					return nil, assert.AnError
 				},
@@ -80,7 +90,9 @@ func TestExecuteSync(t *testing.T) {
 		},
 		"reading mappers fails": {
 			options: &options{
-				integrationName: "fake",
+				integrationName:  "fake",
+				selection:        internalSelection{include: []string{"all"}, includeSet: true},
+				internalMappings: testInternalMappings(t),
 				mappingPaths: []string{
 					"non-existing-file.yaml",
 				},

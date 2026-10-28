@@ -1,0 +1,220 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "github.mia-platform.eu/v1",
+      "data": {
+        "archived": false,
+        "created": "2025-01-10T09:00:00Z",
+        "defaultBranch": "main",
+        "description": "Gizmo service",
+        "fork": false,
+        "forksCount": 2,
+        "fullName": "acme-widgets/gizmo-service",
+        "htmlUrl": "https://github.example.com/acme-widgets/gizmo-service",
+        "id": 101,
+        "language": "Go",
+        "languages": {
+          "Go": 70,
+          "Shell": 30
+        },
+        "lastPush": "2026-09-28T16:30:00Z",
+        "lastUpdate": "2026-09-01T12:00:00Z",
+        "license": "MIT",
+        "name": "gizmo-service",
+        "openIssuesCount": 1,
+        "stargazersCount": 42,
+        "topics": [
+          "catalog",
+          "service"
+        ],
+        "visibility": "public"
+      },
+      "itemFamily": "repositories",
+      "metadata": {
+        "title": "acme-widgets/gizmo-service"
+      },
+      "name": "102e2e0aa5dcc7b23714445b3e719503f038fa93d07d8cecfcdc336d20445ca3",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "github.mia-platform.eu/v1",
+      "data": {
+        "archived": false,
+        "created": "2025-06-01T07:00:00Z",
+        "defaultBranch": "main",
+        "description": "Cog documentation",
+        "fork": false,
+        "forksCount": 2,
+        "fullName": "acme-widgets/cog-docs",
+        "htmlUrl": "https://github.example.com/acme-widgets/cog-docs",
+        "id": 103,
+        "language": "Markdown",
+        "languages": {},
+        "lastPush": "2026-08-15T08:45:00Z",
+        "lastUpdate": "2026-08-15T09:00:00Z",
+        "license": "MIT",
+        "name": "cog-docs",
+        "openIssuesCount": 1,
+        "stargazersCount": 3,
+        "topics": [
+          "docs"
+        ],
+        "visibility": "public"
+      },
+      "itemFamily": "repositories",
+      "metadata": {
+        "title": "acme-widgets/cog-docs"
+      },
+      "name": "60782bca0549ae72093f0e19b2444f38bbac1ec0e459c200b603e183cf180d23",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "github.mia-platform.eu/v1",
+      "data": {
+        "archived": true,
+        "created": "2024-03-05T08:00:00Z",
+        "defaultBranch": "main",
+        "description": "Sprocket user interface",
+        "fork": false,
+        "forksCount": 2,
+        "fullName": "acme-widgets/sprocket-ui",
+        "htmlUrl": "https://github.example.com/acme-widgets/sprocket-ui",
+        "id": 102,
+        "language": "",
+        "languages": {
+          "CSS": 10,
+          "TypeScript": 90
+        },
+        "lastPush": "2025-11-19T18:00:00Z",
+        "lastUpdate": "2025-11-20T10:00:00Z",
+        "license": "",
+        "name": "sprocket-ui",
+        "openIssuesCount": 1,
+        "stargazersCount": 7,
+        "topics": [],
+        "visibility": "private"
+      },
+      "itemFamily": "repositories",
+      "metadata": {
+        "title": "acme-widgets/sprocket-ui"
+      },
+      "name": "b70d650a960126985cdcd5768afafe24002c49f7f4996bee6eb8ea1c07befeea",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "description": "Gizmo service (as listed by API version 2022-11-28)"
+      },
+      "itemFamily": "legacyrepositories",
+      "name": "legacy-101",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "description": "Sprocket user interface (as listed by API version 2022-11-28)"
+      },
+      "itemFamily": "legacyrepositories",
+      "name": "legacy-102",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "integration.example.com/v1",
+      "data": {
+        "description": "Cog documentation (as listed by API version 2022-11-28)"
+      },
+      "itemFamily": "legacyrepositories",
+      "name": "legacy-103",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/orgs/acme-widgets/repos",
+      "query": "page=1&per_page=100&type=all",
+      "header": {
+        "X-Github-Api-Version": "2022-11-28"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/orgs/acme-widgets/repos",
+      "query": "page=1&per_page=100&type=all",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/orgs/acme-widgets/repos",
+      "query": "page=2&per_page=100&type=all",
+      "header": {
+        "X-Github-Api-Version": "2022-11-28"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/orgs/acme-widgets/repos",
+      "query": "page=2&per_page=100&type=all",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/cog-docs/languages",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2022-11-28"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/cog-docs/languages",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/gizmo-service/languages",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2022-11-28"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/gizmo-service/languages",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/sprocket-ui/languages",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2022-11-28"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/repos/acme-widgets/sprocket-ui/languages",
+      "query": "page=1&per_page=100",
+      "header": {
+        "X-Github-Api-Version": "2026-03-10"
+      }
+    }
+  ]
+}

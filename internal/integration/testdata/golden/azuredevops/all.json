@@ -1,0 +1,117 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "azuredevops.mia-platform.eu/v1",
+      "data": {
+        "defaultBranch": "",
+        "httpGitUrl": "https://acme-widgets@dev.azure.example.com/acme-widgets/Storefront/_git/storefront-archive",
+        "isAFork": false,
+        "isArchived": false,
+        "isDisabled": true,
+        "name": "storefront-archive",
+        "sshGitUrl": "git@ssh.dev.azure.example.com:v3/acme-widgets/Storefront/storefront-archive"
+      },
+      "itemFamily": "gitrepositories",
+      "metadata": {
+        "title": "storefront-archive"
+      },
+      "name": "8431e3e2cf76550af2341d60a404aa22d15d90e00e639b9c1784a4e400468977",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "azuredevops.mia-platform.eu/v1",
+      "data": {
+        "defaultBranch": "refs/heads/main",
+        "httpGitUrl": "https://acme-widgets@dev.azure.example.com/acme-widgets/Storefront/_git/storefront-api",
+        "isAFork": false,
+        "isArchived": false,
+        "isDisabled": false,
+        "name": "storefront-api",
+        "sshGitUrl": "git@ssh.dev.azure.example.com:v3/acme-widgets/Storefront/storefront-api"
+      },
+      "itemFamily": "gitrepositories",
+      "metadata": {
+        "title": "storefront-api"
+      },
+      "name": "dc214c0e854f23e51087f67053cdd46b27e14ca2737cc6e8e10b19240f68470b",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "azuredevops.mia-platform.eu/v1",
+      "data": {
+        "defaultBranch": "refs/heads/develop",
+        "httpGitUrl": "https://acme-widgets@dev.azure.example.com/acme-widgets/Storefront/_git/storefront-web",
+        "isAFork": false,
+        "isArchived": true,
+        "isDisabled": false,
+        "name": "storefront-web",
+        "sshGitUrl": "git@ssh.dev.azure.example.com:v3/acme-widgets/Storefront/storefront-web"
+      },
+      "itemFamily": "gitrepositories",
+      "metadata": {
+        "title": "storefront-web"
+      },
+      "name": "e184209793e97ee35dca72acdc1cb1ba39ad45ad5f03b4ea5b09c9a2ebc279be",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "azuredevops.mia-platform.eu/v1",
+      "data": {
+        "description": "",
+        "name": "Checkout Squad",
+        "projectName": "Storefront"
+      },
+      "itemFamily": "teams",
+      "metadata": {
+        "title": "Checkout Squad"
+      },
+      "name": "4dcbdf70bed2b13503bc1f301ba89a6e0bc2d2d65753964452ab6a10279968a2",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "azuredevops.mia-platform.eu/v1",
+      "data": {
+        "description": "The default project team.",
+        "name": "Storefront Team",
+        "projectName": "Storefront"
+      },
+      "itemFamily": "teams",
+      "metadata": {
+        "title": "Storefront Team"
+      },
+      "name": "9f02f529efe38f44b836a7e50b36b67a71b5e0464ecd92f71f0476b60b94568b",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/acme-widgets/_apis/git/repositories",
+      "query": "continuationToken=page-2-token&includeAllUrls=true&includeHidden=true&includeLinks=true",
+      "header": {
+        "Accept": "application/json;api-version=7.1;charset=utf-8"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/acme-widgets/_apis/git/repositories",
+      "query": "includeAllUrls=true&includeHidden=true&includeLinks=true",
+      "header": {
+        "Accept": "application/json;api-version=7.1;charset=utf-8"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/acme-widgets/_apis/teams",
+      "query": "%24expandIdentity=true",
+      "header": {
+        "Accept": "application/json;api-version=7.1;charset=utf-8"
+      }
+    }
+  ]
+}

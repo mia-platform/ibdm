@@ -93,12 +93,12 @@ func TestStartSyncProcess(t *testing.T) {
 	t.Parallel()
 
 	testCases := map[string]struct {
-		typesToFilter map[string]source.Extra
+		typesToFilter map[string]source.MappingExtras
 		expectedData  []source.Data
 		expectedErr   error
 	}{
 		"resources groups": {
-			typesToFilter: map[string]source.Extra{
+			typesToFilter: map[string]source.MappingExtras{
 				"Microsoft.Resources/resourceGroups": nil,
 			},
 			expectedData: []source.Data{
@@ -126,12 +126,12 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"subscriptions": {
-			typesToFilter: map[string]source.Extra{
+			typesToFilter: map[string]source.MappingExtras{
 				"Microsoft.Resources/subscriptions": nil,
 			},
 		},
 		"multiple types": {
-			typesToFilter: map[string]source.Extra{
+			typesToFilter: map[string]source.MappingExtras{
 				"Microsoft.Resources/resourceGroups": nil,
 				"Microsoft.Compute/virtualMachines":  nil,
 			},
@@ -220,7 +220,7 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"managed clusters with divergent casing": {
-			typesToFilter: map[string]source.Extra{
+			typesToFilter: map[string]source.MappingExtras{
 				managedClustersType: nil,
 			},
 			expectedData: []source.Data{
@@ -247,9 +247,9 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"websites with the sub-type mapping loaded": {
-			typesToFilter: map[string]source.Extra{
-				websitesType:     {apiVersionKey: websitesAPIVersion},
-				functionAppsType: {apiVersionKey: websitesAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				websitesType:     {testMappingName: {apiVersionKey: websitesAPIVersion}},
+				functionAppsType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 			},
 			expectedData: []source.Data{
 				{
@@ -275,8 +275,8 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"websites without the sub-type mapping loaded keep the previous behaviour": {
-			typesToFilter: map[string]source.Extra{
-				websitesType: {apiVersionKey: websitesAPIVersion},
+			typesToFilter: map[string]source.MappingExtras{
+				websitesType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 			},
 			expectedData: []source.Data{
 				{
@@ -294,7 +294,7 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"unusable ids are emitted unchanged": {
-			typesToFilter: map[string]source.Extra{
+			typesToFilter: map[string]source.MappingExtras{
 				"Microsoft.Resources/malformedResources": nil,
 			},
 			expectedData: []source.Data{
@@ -330,7 +330,7 @@ func TestStartSyncProcess(t *testing.T) {
 			},
 		},
 		"error during request": {
-			typesToFilter: map[string]source.Extra{
+			typesToFilter: map[string]source.MappingExtras{
 				"Microsoft.Resources/errorResources": nil,
 			},
 			expectedErr: assert.AnError,
@@ -427,9 +427,9 @@ func TestStartSyncProcessEmitsSubTypesAfterTheirParent(t *testing.T) {
 	}
 
 	dataChannel := make(chan source.Data, 10)
-	require.NoError(t, azureSource.StartSyncProcess(ctx, map[string]source.Extra{
-		websitesType:     {apiVersionKey: websitesAPIVersion},
-		functionAppsType: {apiVersionKey: websitesAPIVersion},
+	require.NoError(t, azureSource.StartSyncProcess(ctx, map[string]source.MappingExtras{
+		websitesType:     {testMappingName: {apiVersionKey: websitesAPIVersion}},
+		functionAppsType: {testMappingName: {apiVersionKey: websitesAPIVersion}},
 	}, dataChannel))
 	close(dataChannel)
 
@@ -460,7 +460,7 @@ func TestCancelledSyncProcess(t *testing.T) {
 	}
 
 	dataChannel := make(chan source.Data)
-	err := azureSource.StartSyncProcess(ctx, map[string]source.Extra{
+	err := azureSource.StartSyncProcess(ctx, map[string]source.MappingExtras{
 		"Microsoft.Resources/resourceGroups": nil,
 	}, dataChannel)
 	close(dataChannel)
@@ -506,13 +506,13 @@ func TestDoubleStartSyncProcess(t *testing.T) {
 	dataChannel := make(chan source.Data)
 
 	go func() {
-		err := azureSource.StartSyncProcess(t.Context(), map[string]source.Extra{"test": nil}, dataChannel)
+		err := azureSource.StartSyncProcess(t.Context(), map[string]source.MappingExtras{"test": nil}, dataChannel)
 		assert.NoError(t, err)
 		close(dataChannel)
 	}()
 
 	<-syncChannel
-	err := azureSource.StartSyncProcess(t.Context(), map[string]source.Extra{}, dataChannel)
+	err := azureSource.StartSyncProcess(t.Context(), map[string]source.MappingExtras{}, dataChannel)
 	assert.NoError(t, err)
 
 	azureSource.Close(t.Context(), 1*time.Second)

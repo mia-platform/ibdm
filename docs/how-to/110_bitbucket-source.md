@@ -5,10 +5,14 @@ pipeline data into the Mia-Platform Catalog. It supports both pull-based sync (R
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 ### Sync
 
 ```bash
-ibdm sync bitbucket --mapping-file <path to mapping file or folder>
+ibdm sync bitbucket --include-internal-mappings=all
 ```
 
 Performs a one-off synchronisation: fetches all configured data from the Bitbucket REST API and exits.
@@ -16,10 +20,26 @@ Performs a one-off synchronisation: fetches all configured data from the Bitbuck
 ### Run (Webhook Listener)
 
 ```bash
-ibdm run bitbucket --mapping-file <path to mapping file or folder>
+ibdm run bitbucket --include-internal-mappings=all
 ```
 
 Starts a long-running HTTP server that listens for inbound Bitbucket webhook events.
+
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list bitbucket` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+| Internal mapping | Sync | Webhook (`run`) | Its relationships point at |
+| --- | --- | --- | --- |
+| `repositories` | yes | yes, on `repo:push`, `repo:updated` and `pullrequest:fulfilled` | — |
+| `pipelines` | yes, for every repository | no | `repositories` |
+
+The sync walks the repositories of the workspaces as soon as either mapping is selected, and fetches
+the pipelines of each repository while walking them. Selecting `pipelines` alone works: the
+repositories are listed without being written. Their pipelines then relate to repository items that
+nothing creates, unless `repositories` is selected too.
 
 ## Configuration
 

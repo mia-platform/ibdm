@@ -1,0 +1,61 @@
+# Fake GitLab REST API (/api/v4, served at the root) for the group acme-widgets:
+# - projects storefront-api (101) on page 1 and legacy-portal (102, archived, no description,
+#   readme, license or allow_merge_on_skipped_pipeline) on page 2, paginated by x-total-pages;
+# - two pipelines of storefront-api: 5001 with every field, 5002 without finished_at, user and url;
+# - one project access token of storefront-api;
+# - groups Acme Widgets (301), with one group access token, and Restricted (302), whose access
+#   tokens answer 403, which the source skips.
+routes:
+  - method: GET
+    path: /api/v4/projects
+    query: {page: "1"}
+    headers: {x-total-pages: "2"}
+    body: projects-page-1.json
+  - method: GET
+    path: /api/v4/projects
+    query: {page: "2"}
+    headers: {x-total-pages: "2"}
+    body: projects-page-2.json
+  - method: GET
+    path: /api/v4/projects/101
+    body: project-101.json
+  - method: GET
+    path: /api/v4/projects/101/languages
+    body: languages-101.json
+  - method: GET
+    path: /api/v4/projects/102/languages
+    body: languages-102.json
+  - method: GET
+    path: /api/v4/projects/101/pipelines
+    headers: {x-total-pages: "1"}
+    body: pipelines-101.json
+  - method: GET
+    path: /api/v4/projects/102/pipelines
+    headers: {x-total-pages: "1"}
+    body: empty-list.json
+  - method: GET
+    path: /api/v4/projects/101/pipelines/5001
+    body: pipeline-5001.json
+  - method: GET
+    path: /api/v4/projects/101/pipelines/5002
+    body: pipeline-5002.json
+  - method: GET
+    path: /api/v4/projects/101/access_tokens
+    headers: {x-total-pages: "1"}
+    body: project-access-tokens-101.json
+  - method: GET
+    path: /api/v4/projects/102/access_tokens
+    headers: {x-total-pages: "1"}
+    body: empty-list.json
+  - method: GET
+    path: /api/v4/groups
+    headers: {x-total-pages: "1"}
+    body: groups.json
+  - method: GET
+    path: /api/v4/groups/301/access_tokens
+    headers: {x-total-pages: "1"}
+    body: group-access-tokens-301.json
+  - method: GET
+    path: /api/v4/groups/302/access_tokens
+    status: 403
+    body: forbidden.json

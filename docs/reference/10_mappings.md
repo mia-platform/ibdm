@@ -6,6 +6,67 @@ Refer to the official documentation for language rules and control structures.
 
 The only enforced limitation is that any template used as an `identifier` is always cast to a string.
 
+## Mapping File Fields
+
+A mapping file holds one mapping, or several mappings as YAML documents separated by `---`.
+Unknown fields stop the loading of the file, except inside `mappings.metadata`, where they are ignored.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `name` | no | Identifies the mapping within the loaded set, see [`name`](#name). |
+| `type` | yes | The data type the mapping renders, as the source emits it, for example `repository`. Several mappings can share a `type`, see [Fan-out](../explanation/10_mappings.md#fan-out). |
+| `apiVersion` | yes | API version of the item type definition of the items the mapping produces. An external mapping cannot use a reserved domain (`mia-platform.eu`, `mia-care.io`, `mia-fintech.io` and their subdomains), see [Reserved Domains](../how-to/015_internal-and-external-mappings.md#reserved-domains). |
+| `itemFamily` | yes | Family of the items the mapping produces. |
+| `extra` | no | Configuration read by the source, such as `apiVersion` for the Azure and GitHub sources or `eventNames` for the Azure DevOps source: see the how-to guide of each source. Quote date-like values, as in `apiVersion: "2025-03-01"`: unquoted, YAML reads them as timestamps, the source cannot use them and logs a warning when it starts. Reuse the `extra` of the internal mapping of the same `type` unless you need the data fetched differently: a different value makes the source fetch the data a second time, see [External Mappings on an Internal Type](../how-to/015_internal-and-external-mappings.md#external-mappings-on-an-internal-type). |
+| `syncable` | no | Set `syncable: false` when a full sync cannot produce the mapping's items: `sync` then skips it, while `run` still uses it. An absent key means `true`. |
+| `createIf` | no | Template letting the mapping decline a payload on upsert, see [`createIf`](#createif). |
+| `mappings.identifier` | yes | Identifier template, see the [identifier rules](../explanation/10_mappings.md#identifier-template). |
+| `mappings.metadata` | no | Metadata templates, see [Metadata Templates](../explanation/10_mappings.md#metadata-templates). |
+| `mappings.spec` | no | Spec templates, see [Spec Templates](../explanation/10_mappings.md#spec-templates). |
+| `mappings.extra` | no | Extra items created along with the item, see [Extra Mappings](../explanation/20_extra_mappings.md). |
+
+### `name`
+
+`name` identifies a mapping within the mappings of a run, internal and external together.
+A source can address a payload to a single mapping by its name, so names must be unique across
+every mapping of the run: a duplicate stops the start, and the error names both files.
+
+- In a file holding a single mapping, `name` is optional and defaults to the file name without its extension: the mapping in `repositories.yaml` is named `repositories`.
+- In a file holding several mappings, every mapping must declare its `name`.
+- A name is 1 to 63 characters long, contains only lowercase alphanumeric characters, `.`, `_` or `-`, and starts and ends with an alphanumeric character.
+- A single-mapping file whose file name does not follow these rules, such as `My Repositories.yaml`, must declare a compliant `name`.
+- `all` is reserved: it is the value of `--include-internal-mappings` that selects every internal mapping.
+- The name of an internal mapping is the name of its file. An external mapping named like a selected internal one stops the start, see [Names](../how-to/015_internal-and-external-mappings.md#names).
+
+### `createIf`
+
+`createIf` is an optional template that lets a mapping decline a payload.
+It is evaluated on upserts only, before any other template of the mapping, and must render a boolean:
+
+- `true`: the mapping renders the payload as usual.
+- `false`, or an empty rendering: the mapping produces no item for the payload. The other mappings sharing its `type` are not affected.
+
+It is never evaluated on deletes: delete payloads often carry only an identifier, so the delete is
+always sent, and deleting an item that was never created has no effect.
+
+The template has the same functions as the rest of the mapping and, as everywhere else in a mapping,
+a missing key is an error: the error is logged and the mapping skips the payload.
+Use [`get`](#get) with a default value when a key may be absent:
+
+```yaml
+type: repository
+createIf: '{{ eq (get "visibility" .repository "") "public" }}'
+```
+
+A rendering that is neither `true`, `false` nor empty is an error as well.
+A `createIf` that is not a valid template stops the loading, like any other template of the mapping.
+
+When a source addresses a payload to specific mappings, the `createIf` of the other mappings is not
+evaluated for it.
+
+The root `createIf` gates the whole mapping, while the `createIf` of an entry of `mappings.extra`
+gates that extra item only, see [Extra Mappings](../explanation/20_extra_mappings.md).
+
 ## Additional Functions
 
 Alongside the [default functions] available in Go templates, the mapper runtime exposes these
@@ -170,6 +231,8 @@ produces `value1`.
 ### `set`
 
 `set` stores the provided value at the given key and returns the updated object.
+When the object is part of the payload, the write only changes the current mapping's copy of the
+payload: the other mappings rendering the same payload are not affected.
 
 Example: `{{ set "otherKey" .aKey .object | toJSON }}` with `.object` equal to `{"key":"value1"}`
 and `.aKey` equal to `new value` produces `{"key":"value1","otherKey":"new value"}`.

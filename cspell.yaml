@@ -7,13 +7,18 @@ ignoreRegExpList:
   - "import\\s*.*\".*?\""
   - "//\\s*go:generate.*"
   - "//\\s*nolint:.*"
+  - "\\bk8s[a-z]+\\b"
 words:
   - anchore
+  - apim
+  - apimservices
   - buildx
   - contoso
+  - createif
   - diber
   - epss
   - fabrikam
+  - fsys
   - golangci
   - healthz
   - HMAC
@@ -35,6 +40,7 @@ words:
   - upserted
   - upserts
   - uuidv
+  - xmia
 ignoreWords:
   - Dsonar
   - acks
@@ -74,6 +80,7 @@ ignoreWords:
   - structpb
   - sysdiglabs
   - sysql
+  - traefikingressroutes
   - Vjcm
   - vtpm
   - vulndb
@@ -86,5 +93,5 @@ files:
   - ".devcontainer/devcontainer.json"
   - ".github/*.yml"
   - ".github/**/*.yaml"
-  - "docs/mappings/**/*.yaml"
+  - "internal/mappings/data/**/*.yaml"
   - Makefile

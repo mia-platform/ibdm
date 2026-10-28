@@ -51,7 +51,7 @@ func (e *pipelineEvent) EventTime() time.Time {
 // pipelineEventProcessor handles "Pipeline Hook" webhook events.
 type pipelineEventProcessor struct{}
 
-func (p *pipelineEventProcessor) process(ctx context.Context, c *gitLabClient, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
+func (p *pipelineEventProcessor) process(ctx context.Context, c *gitLabClient, typesToStream map[string]source.MappingExtras, body []byte) ([]source.Data, error) {
 	var eventsToMap []source.Data
 
 	// Decode only the object_kind before doing any API calls.

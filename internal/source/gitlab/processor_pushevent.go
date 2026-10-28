@@ -39,7 +39,7 @@ func (e *pushEvent) EventTime() time.Time {
 // pushEventProcessor handles "Push Hook" webhook events.
 type pushEventProcessor struct{}
 
-func (p *pushEventProcessor) process(ctx context.Context, c *gitLabClient, typesToStream map[string]source.Extra, body []byte) ([]source.Data, error) {
+func (p *pushEventProcessor) process(ctx context.Context, c *gitLabClient, typesToStream map[string]source.MappingExtras, body []byte) ([]source.Data, error) {
 	// Decode only the object_kind before doing any API calls.
 	var raw struct {
 		ObjectKind string `json:"object_kind"` //nolint:tagliatelle // GitLab API uses snake_case

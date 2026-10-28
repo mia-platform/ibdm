@@ -1,0 +1,41 @@
+{
+  "repository": {
+    "type": "repository",
+    "uuid": "{6f1c2a3b-0000-4000-8000-000000000104}",
+    "name": "Legacy Tool",
+    "slug": "legacy-tool",
+    "full_name": "acme-widgets/legacy-tool",
+    "is_private": true,
+    "scm": "git",
+    "links": {
+      "html": {
+        "href": "https://bitbucket.example.com/acme-widgets/legacy-tool"
+      }
+    },
+    "created_on": "2023-02-01T09:00:00+00:00",
+    "updated_on": "2026-09-30T12:00:00+00:00",
+    "workspace": {
+      "slug": "acme-widgets",
+      "name": "Acme Widgets"
+    },
+    "description": "Legacy tool (as sent in the webhook payload)",
+    "language": "java",
+    "mainbranch": {
+      "name": "main",
+      "type": "branch"
+    },
+    "project": {
+      "key": "WID",
+      "name": "Widgets"
+    }
+  },
+  "actor": {
+    "display_name": "Jane Doe"
+  },
+  "changes": {
+    "description": {
+      "old": "Legacy tool",
+      "new": "Legacy tool (as sent in the webhook payload)"
+    }
+  }
+}

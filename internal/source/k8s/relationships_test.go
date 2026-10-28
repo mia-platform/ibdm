@@ -325,7 +325,7 @@ func TestStartSyncProcessRelationships(t *testing.T) {
 	require.NoError(t, fakeClient.Tracker().Add(dep))
 	results := make(chan source.Data, 10)
 
-	types := map[string]source.Extra{workloadHelmReleaseRelationshipType: {}, ingressRouteServiceRelationshipType: {}, namespaceType: {}}
+	types := map[string]source.MappingExtras{workloadHelmReleaseRelationshipType: {}, ingressRouteServiceRelationshipType: {}, namespaceType: {}}
 	require.NoError(t, s.StartSyncProcess(t.Context(), types, results))
 	close(results)
 
@@ -461,7 +461,7 @@ func TestStartEventStreamIngressRouteRelationships(t *testing.T) {
 	t.Run("CRD not installed", func(t *testing.T) {
 		s := newCRDSource(t, nil)
 		results := make(chan source.Data, 1)
-		require.NoError(t, s.StartEventStream(t.Context(), map[string]source.Extra{relType: nil}, results))
+		require.NoError(t, s.StartEventStream(t.Context(), map[string]source.MappingExtras{relType: nil}, results))
 		assert.Empty(t, results)
 	})
 }
@@ -824,7 +824,7 @@ func TestStartSyncProcessServiceWorkloadRelationship(t *testing.T) {
 	web := lbl("app", "web")
 	s := newFakeSource(t, selecting("team-a", "web", web), labelledDeployment("team-a", "web", web))
 	results := make(chan source.Data, 10)
-	require.NoError(t, s.StartSyncProcess(t.Context(), map[string]source.Extra{swType: {}}, results))
+	require.NoError(t, s.StartSyncProcess(t.Context(), map[string]source.MappingExtras{swType: {}}, results))
 	close(results)
 	assert.Equal(t, []source.Data{swData(source.DataOperationUpsert, "team-a", "web", "Deployment", "web")}, collectData(results))
 }

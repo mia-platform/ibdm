@@ -1,0 +1,12 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "nexus.mia-platform.eu/v1",
+      "itemFamily": "dockerimages",
+      "name": "<nexus-id acme-widgets/checkout-api:2.0.1>",
+      "operation": "delete",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": []
+}

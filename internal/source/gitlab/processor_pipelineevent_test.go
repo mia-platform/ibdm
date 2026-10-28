@@ -212,14 +212,14 @@ func TestPipelineEventProcessor(t *testing.T) {
 
 	testCases := map[string]struct {
 		body          []byte
-		typesToStream map[string]source.Extra
+		typesToStream map[string]source.MappingExtras
 		expectData    int
 		checkData     func(t *testing.T, data []source.Data)
 		expectErr     bool
 	}{
 		"both project and pipeline in typesToStream": {
 			body:          pipelineBody(""),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectData:    2,
 			checkData: func(t *testing.T, data []source.Data) {
 				t.Helper()
@@ -233,7 +233,7 @@ func TestPipelineEventProcessor(t *testing.T) {
 		},
 		"valid pipeline event with updated_at time": {
 			body:          pipelineBody(validUpdatedAt),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectData:    2,
 			checkData: func(t *testing.T, data []source.Data) {
 				t.Helper()
@@ -247,22 +247,22 @@ func TestPipelineEventProcessor(t *testing.T) {
 				"object_attributes": map[string]any{},
 				"project":           map[string]any{"id": validProjectID},
 			}),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectData:    0,
 		},
 		"project not in typesToStream returns no data": {
 			body:          pipelineBody(""),
-			typesToStream: map[string]source.Extra{pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{pipelineResource: nil},
 			expectData:    0,
 		},
 		"pipeline not in typesToStream returns no data": {
 			body:          pipelineBody(""),
-			typesToStream: map[string]source.Extra{projectResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil},
 			expectData:    0,
 		},
 		"malformed body": {
 			body:          []byte("not-json"),
-			typesToStream: map[string]source.Extra{projectResource: nil, pipelineResource: nil},
+			typesToStream: map[string]source.MappingExtras{projectResource: nil, pipelineResource: nil},
 			expectErr:     true,
 		},
 	}

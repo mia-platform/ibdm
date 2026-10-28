@@ -7,19 +7,55 @@ The Mia-Platform Console Integration of `ibdm` can work in two modes:
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 Once you have the `ibdm` binary available, running the integration is straightforward.
 
 If you want to start listening for webhooks:
 
 ```sh
-ibdm run console --mapping-file <path to mapping file or folder>
+ibdm run console --include-internal-mappings=all
 ```
 
 If you want to start a sync process to fetch data from the Console APIs:
 
 ```sh
-ibdm sync console --mapping-file <path to mapping file or folder>
+ibdm sync console --include-internal-mappings=all
 ```
+
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list console` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+| Internal mapping | Sync | Webhook (`run`) | Its relationships point at |
+| --- | --- | --- | --- |
+| `projects` | yes | yes, on project and configuration events | — |
+| `revisions` | yes, every revision of every project | yes, on configuration events | `projects` |
+| `services` | yes, from the default branch revision only | yes, on configuration events of the default branch | `projects`, `revisions`, and the `dockerimages` of the Nexus integration |
+| `custom-resources` | yes, from the default branch revision only | yes, on configuration events of the default branch | `projects`, `revisions` |
+| `clusters` | yes | no | — |
+| `cluster-project-relationships` | yes | no | `clusters`, `projects` |
+
+The sync runs two independent walks:
+
+- the **project walk** reads every project, its revisions and their configurations. It runs as soon as
+  one of `projects`, `revisions`, `services` or `custom-resources` is selected, and each of them works
+  on its own: selecting `services` alone still walks the projects and revisions, without writing them.
+- the **cluster walk** reads the clusters of every tenant. It runs when `clusters` or
+  `cluster-project-relationships` is selected, and `cluster-project-relationships` alone still works.
+
+The webhook only receives project and configuration events, so `clusters` and
+`cluster-project-relationships` are only produced by `ibdm sync console`. Configuration events are
+only handled when `revisions`, `services` or `custom-resources` is selected.
+
+A relationship can point at an item that nothing creates: selecting `services` without `projects` and
+`revisions` creates relationships towards project and revision items that do not exist, and the
+relationships towards Docker images only resolve when the Nexus integration publishes them. The
+Catalog accepts such relationships without error.
 
 ## Configuration
 

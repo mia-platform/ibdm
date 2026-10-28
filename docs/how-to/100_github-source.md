@@ -7,19 +7,44 @@ The GitHub Integration of `ibdm` supports two modes:
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 Once you have the `ibdm` binary available the run of the integration is straightforward.
 
 To start a one-off sync that queries the GitHub API:
 
 ```sh
-ibdm sync github --mapping-file <path to mapping file or folder>
+ibdm sync github --include-internal-mappings=all
 ```
 
 To start a long-running webhook listener that receives GitHub events:
 
 ```sh
-ibdm run github --mapping-file <path to mapping file or folder>
+ibdm run github --include-internal-mappings=all
 ```
+
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list github` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+| Internal mapping | Sync | Webhook (`run`) | Its relationships point at |
+| --- | --- | --- | --- |
+| `repositories` | yes | yes, on `repository` and `push` events | — |
+| `workflowruns` | yes, for every repository | yes, on `workflow_run` events | `repositories` |
+
+The sync lists the repositories of the organization as soon as either mapping is selected, and fetches
+the workflow runs of each repository while listing them. Selecting `workflowruns` alone works: the
+repositories are listed, with the `extra.apiVersion` of the workflow run mapping, without being
+written. Their workflow runs then relate to repository items that nothing creates, unless
+`repositories` is selected too.
+
+The webhook also accepts `personal_access_token_request` and `workflow_dispatch` events, which have no
+internal mapping. An external mapping for either type can only be produced by `ibdm run github`:
+declare it `syncable: false`.
 
 ## Configuration
 
@@ -118,9 +143,9 @@ export GITHUB_URL=https://github.example.com/api/v3
 ## Example
 
 ```sh
-export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+export GITHUB_TOKEN="<your-token>"
 export GITHUB_ORG="mia-platform"
 export GITHUB_WEBHOOK_SECRET="my-webhook-secret"
 
-ibdm sync github --mapping-file ./mappings/github/
+ibdm sync github --include-internal-mappings=all
 ```

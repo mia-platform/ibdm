@@ -7,20 +7,39 @@ The Microsoft Azure Devops Integration of `ibdm` can work in two modes:
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 Once you have the `ibdm` binary available the run of the integration is straightforward.
 
 If you want to start a new integration with the webhook listener you can run the following
 command:
 
 ```sh
-ibdm run azure-devops --mapping-file <path to mapping file or folder>
+ibdm run azure-devops --include-internal-mappings=all
 ```
 
 if you want to start a REST API sync process run this instead:
 
 ```sh
-ibdm sync azure-devops --mapping-file <path to mapping file or folder>
+ibdm sync azure-devops --include-internal-mappings=all
 ```
+
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list azure-devops` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+| Internal mapping | Sync | Webhook (`run`) |
+| --- | --- | --- |
+| `gitrepositories` | yes | yes, on the events listed in its `extra.eventNames`: `git.repo.created`, `git.repo.renamed`, `git.repo.deleted` |
+| `teams` | yes | no, it lists no `eventNames` |
+
+The two mappings are independent: the sync reads each selected type on its own, and a webhook event
+reaches every selected mapping whose `eventNames` list it. No internal mapping creates relationships
+to another one.
 
 ## Configurations
 
@@ -35,6 +54,10 @@ In addition to other environment variables the Microsoft Azure Devops source req
 The first two variables are used if you start the integration in sync mode using the REST APIs.
 The other three are needed if you start the source for exposing a webhook for receiving events from
 Microsoft Azure DevOps.
+
+When neither `AZURE_DEVOPS_WEBHOOK_USER` nor `AZURE_DEVOPS_WEBHOOK_PASSWORD` is set, the webhook accepts
+requests without authentication. Set both, and configure the same basic authentication credentials in
+the Azure DevOps service hook.
 
 If you set `AZURE_DEVOPS_WEBHOOK_USER` you need to also set `AZURE_DEVOPS_WEBHOOK_PASSWORD` and their
 values must be the same set in the Azure DevOps dashboard during the webhook registration.

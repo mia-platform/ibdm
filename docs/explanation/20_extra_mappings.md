@@ -18,6 +18,23 @@ that allows to validate if the creation of the extra is needed or not.
 
 Additional fields can be needed depending on the `itemFamily` of extra that is going to be used in the mapping.
 
+The `createIf` of an extra gates that extra item only.
+To let a whole mapping decline a payload, use the root [`createIf`](../reference/10_mappings.md#createif)
+of the mapping instead: when it declines, none of the extra items of the mapping are created either.
+
+## Extra Items and Fan-out
+
+The extra items of a mapping are created by that mapping only, from the payloads that mapping
+renders: when several mappings share a `type`, as described in [Fan-out](./10_mappings.md#fan-out),
+each of them creates its own extra items.
+
+The target of `mappings.extra` is deliberately many-to-one: many mappings write extra items to the same
+item type definition. The bundled mappings, for example, create `mia-platform.eu/v1` `relationships`
+items from 12 different mapping files.
+Fan-out does not change this, and no uniqueness is enforced on the extra items either: two extra
+items with the same `apiVersion`, `itemFamily` and identifier are the same Catalog item, and the last
+one written wins.
+
 We restrict template keys to a flat structure and rely on the template engine to build any nested
 data inside the values, but we suggest to do it only if necessary and try to keep the structure
 as flat as possible.  

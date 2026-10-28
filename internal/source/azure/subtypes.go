@@ -134,7 +134,7 @@ func isFunctionApp(values map[string]any) bool {
 //
 // A sub-type whose mapping file is not loaded is never returned, so a deployment configuring no
 // sub-type mapping behaves exactly as one running against an empty dictionary.
-func subTypesToEmit(resourceType string, values map[string]any, configured map[string]source.Extra, isDelete bool) []string {
+func subTypesToEmit(resourceType string, values map[string]any, configured map[string]source.MappingExtras, isDelete bool) []string {
 	candidates := subTypesFor(resourceType)
 	if len(candidates) == 0 {
 		return nil
@@ -168,7 +168,7 @@ func subTypesToEmit(resourceType string, values map[string]any, configured map[s
 // functions can write into the top level of the map they are handed and two items must never share
 // it. The nested values stay shared, which is why the mapping templates must treat their input
 // payload as read only.
-func resourceDataToEmit(resourceType string, values map[string]any, configured map[string]source.Extra, operation source.DataOperation, timestamp time.Time) []source.Data {
+func resourceDataToEmit(resourceType string, values map[string]any, configured map[string]source.MappingExtras, operation source.DataOperation, timestamp time.Time) []source.Data {
 	emitted := subTypesToEmit(resourceType, values, configured, operation == source.DataOperationDelete)
 
 	data := make([]source.Data, 0, 1+len(emitted))
@@ -195,7 +195,7 @@ func resourceDataToEmit(resourceType string, values map[string]any, configured m
 // is not configured. A sub-type is emitted only while its parent resource is handled, so such a
 // mapping can never produce any item. It is a warning, and not an error, because the source always
 // skips the configuration it cannot use.
-func warnOrphanSubTypes(log logger.Logger, typesToFilter map[string]source.Extra) {
+func warnOrphanSubTypes(log logger.Logger, typesToFilter map[string]source.MappingExtras) {
 	configuredTypes := slices.Sorted(maps.Keys(typesToFilter))
 	for _, parentType := range slices.Sorted(maps.Keys(subTypes)) {
 		if _, configured := configuredResourceType(configuredTypes, parentType); configured {

@@ -6,10 +6,14 @@ It supports both pull-based sync and real-time webhook events.
 
 ## Commands
 
+The commands below use every internal mapping shipped for the integration. To choose which of
+them run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 ### Sync
 
 ```sh
-ibdm sync nexus --mapping-file <path to mapping file or folder>
+ibdm sync nexus --include-internal-mappings=all
 ```
 
 Performs a one-off synchronisation: fetches all configured data from the Nexus REST API and exits.
@@ -17,7 +21,7 @@ Performs a one-off synchronisation: fetches all configured data from the Nexus R
 ### Run (Webhook Listener)
 
 ```sh
-ibdm run nexus --mapping-file <path to mapping file or folder>
+ibdm run nexus --include-internal-mappings=all
 ```
 
 Starts a long-running HTTP server that listens for inbound Nexus webhook events and streams
@@ -37,7 +41,7 @@ All configuration is read from environment variables.
 | `NEXUS_TOKEN_PASSCODE` | Yes | _(empty)_ | Nexus user token passcode — second part of the token pair. Sent as the HTTP Basic Auth password. |
 | `NEXUS_HTTP_TIMEOUT` | No | `30s` | Timeout for HTTP requests, parsed as a Go `time.Duration`. |
 | `NEXUS_SPECIFIC_REPOSITORY` | No | _(empty)_ | Restrict sync to this single repository name. When not set, all repositories are iterated. |
-| `NEXUS_WEBHOOK_SECRET` | No | _(empty)_ | HMAC-SHA1 secret for webhook signature validation. When set, every inbound request must carry a valid `X-Nexus-Webhook-Signature` header. When empty, signature validation is skipped. |
+| `NEXUS_WEBHOOK_SECRET` | No | _(empty)_ | HMAC-SHA1 secret for webhook signature validation. When set, every inbound request must carry a valid `X-Nexus-Webhook-Signature` header. When empty, unsigned requests are accepted and signed requests are rejected. |
 | `NEXUS_WEBHOOK_PATH` | No | `/nexus/webhook` | HTTP path on which the webhook listener accepts inbound events. |
 
 ## Supported Data Types
@@ -88,27 +92,34 @@ When `NEXUS_WEBHOOK_SECRET` is set, each inbound request is validated against th
 `X-Nexus-Webhook-Signature` header using HMAC-SHA1. Requests with a missing or invalid signature
 are rejected with an HTTP error.
 
-When `NEXUS_WEBHOOK_SECRET` is not set, signature validation is disabled and all requests are
-accepted. This is useful for internal deployments where network-level controls are sufficient.
+When `NEXUS_WEBHOOK_SECRET` is not set, requests without a signature are accepted, and requests
+that carry one are rejected, because `ibdm` has no secret to verify them with. Without a secret the
+webhook endpoint is unauthenticated: set one whenever the webhook path is reachable from outside a
+trusted network.
 
 To enable Nexus to send a signature, configure the **Secret Key** field when creating the webhook
 in the Nexus administration UI.
 
-## Example Mapping Files
+## Internal Mappings
 
-Example mapping files are provided in the `docs/mappings/nexus/` directory:
+`ibdm` ships one internal mapping for Nexus (`ibdm mappings list nexus`):
 
-- `dockerimages.yaml` — maps Docker image assets to Catalog items.
+- `dockerimages` — maps Docker image assets to Catalog items.
 
-This file can be used as a starting point for your own mapping configuration. Pass the file
-or the folder to the `--mapping-file` flag:
+Select it with `--include-internal-mappings`:
 
 ```sh
-ibdm sync nexus --mapping-file docs/mappings/nexus/
+ibdm sync nexus --include-internal-mappings=dockerimages
 ```
 
 For local development and debugging, add the `--local-output` flag to send results to stdout:
 
 ```sh
-ibdm sync nexus --mapping-file docs/mappings/nexus/ --local-output
+ibdm sync nexus --include-internal-mappings=all --local-output
 ```
+
+The sync and the webhook both produce `dockerimages`, and only from Docker format components: the
+webhook upserts the images of a created or updated component, and deletes them when the component
+is deleted. `dockerimages` creates no relationship itself, but its items are the targets of the
+relationships of the Console `services` and of the Sysdig `vulnerabilities`, which only resolve when
+this integration publishes them.

@@ -1,0 +1,13 @@
+{
+  "object_kind": "pipeline",
+  "object_attributes": {
+    "id": 5001,
+    "status": "success",
+    "updated_at": "2026-09-25T10:09:00Z"
+  },
+  "project": {
+    "id": 101,
+    "name": "storefront-api",
+    "path_with_namespace": "acme-widgets/storefront-api"
+  }
+}

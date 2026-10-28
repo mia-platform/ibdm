@@ -9,7 +9,7 @@
 		"version": "v1",
 		"discovery_document_uri": "https://www.googleapis.com/discovery/v1/apis/storage/v1/rest",
 		"discovery_name": "Bucket",
-		"parent": "//cloudresourcemanager.googleapis.com/projects/20318464073",
+		"parent": "//cloudresourcemanager.googleapis.com/projects/123456789012",
 		"data": {
 			"acl": [],
 			"autoclass": {},
@@ -64,7 +64,7 @@
 			"name": "my-custom-bucket",
 			"objectRetention": {},
 			"owner": {},
-			"projectNumber": 20318464073,
+			"projectNumber": 123456789012,
 			"retentionPolicy": {},
 			"satisfiesPZS": true,
 			"selfLink": "https://www.googleapis.com/storage/v1/b/my-custom-bucket",
@@ -84,8 +84,8 @@
 	},
 	"AccessContextPolicy": null,
 	"ancestors": [
-		"projects/20318464073",
-		"folders/918177713511",
-		"organizations/566099688680"
+		"projects/123456789012",
+		"folders/234567890123",
+		"organizations/345678901234"
 	]
 }

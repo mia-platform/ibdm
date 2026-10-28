@@ -93,7 +93,7 @@ func TestStartEventStream_UpsertEventStreamed(t *testing.T) {
 
 	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
 	bucketModifyPayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-modify.json"
-	typeToStream := map[string]source.Extra{"storage.googleapis.com/Bucket": nil}
+	typeToStream := map[string]source.MappingExtras{"storage.googleapis.com/Bucket": nil}
 	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
@@ -149,7 +149,7 @@ func TestStartEventStream_DeleteEventStreamed(t *testing.T) {
 
 	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
 	bucketDeletePayloadJSONPath := "testdata/event/expected/payload-gcp-bucket-delete.json"
-	typeToStream := map[string]source.Extra{"storage.googleapis.com/Bucket": nil}
+	typeToStream := map[string]source.MappingExtras{"storage.googleapis.com/Bucket": nil}
 	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
@@ -204,7 +204,7 @@ func TestStartEventStream_NoEvents_UpsertCase(t *testing.T) {
 	defer cancel()
 
 	bucketModifyEventJSONPath := "testdata/event/original/message-gcp-bucket-modify.json"
-	typeToStream := map[string]source.Extra{"compute.googleapis.com/Network": nil}
+	typeToStream := map[string]source.MappingExtras{"compute.googleapis.com/Network": nil}
 	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
@@ -252,7 +252,7 @@ func TestStartEventStream_NoEvents_DeleteCase(t *testing.T) {
 	defer cancel()
 
 	bucketDeleteEventJSONPath := "testdata/event/original/message-gcp-bucket-delete.json"
-	typeToStream := map[string]source.Extra{"compute.googleapis.com/Network": nil}
+	typeToStream := map[string]source.MappingExtras{"compute.googleapis.com/Network": nil}
 	config := pubSubConfig{
 		ProjectID:      "test-project",
 		SubscriptionID: "subscription-id",
