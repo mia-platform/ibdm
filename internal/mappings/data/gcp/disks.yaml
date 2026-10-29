@@ -1,0 +1,110 @@
+apiVersion: gcp.mia-platform.eu/v1
+itemFamily: disks
+type: compute.googleapis.com/Disk
+syncable: true
+mappings:
+  identifier: |-
+    {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+    {{- printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) }}
+  metadata:
+    title: "{{ .resource.data.name }}"
+  spec:
+    name: "{{ .resource.data.name }}"
+    description: "{{ get \"description\" .resource.data \"\" | quote }}"
+    status: "{{ .resource.data.status | lower }}"
+    diskType: "{{ get \"type\" .resource.data \"\" | split \"/\" | last | quote }}"
+    sizeGb: "{{ get \"sizeGb\" .resource.data \"0\" }}"
+    architecture: "{{ get \"architecture\" .resource.data \"\" | quote }}"
+    sourceImage: "{{ get \"sourceImage\" .resource.data \"\" | split \"/\" | last | quote }}"
+    sourceSnapshot: "{{ get \"sourceSnapshot\" .resource.data \"\" | split \"/\" | last | quote }}"
+    provisionedIops: "{{ get \"provisionedIops\" .resource.data \"0\" }}"
+    provisionedThroughput: "{{ get \"provisionedThroughput\" .resource.data \"0\" }}"
+    replicaZones: |-
+      {{ $list := list -}}
+      {{- range get "replicaZones" .resource.data (list) -}}
+        {{- $list = append $list (split "/" . | last) -}}
+      {{- end -}}
+      {{- $list | toJSON }}
+    users: |-
+      {{ $list := list -}}
+      {{- range get "users" .resource.data (list) -}}
+        {{- $list = append $list (trimPrefix "https://www.googleapis.com/compute/v1/" .) -}}
+      {{- end -}}
+      {{- $list | toJSON }}
+    creationTimestamp: "{{ .resource.data.creationTimestamp | quote }}"
+    lastAttachTimestamp: "{{ get \"lastAttachTimestamp\" .resource.data \"\" | quote }}"
+    lastDetachTimestamp: "{{ get \"lastDetachTimestamp\" .resource.data \"\" | quote }}"
+    location: "{{ .resource.location }}"
+    labels: "{{ get \"labels\" .resource.data (object) | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+        {{- $self := printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) -}}
+        {{- $vmID := "" -}}
+        {{- range get "users" .resource.data (list) -}}
+          {{- $parts := split "/" (trimPrefix "https://www.googleapis.com/compute/v1/" .) -}}
+          {{- if eq (len $parts) 6 -}}
+            {{- if eq (index $parts 4) "instances" -}}
+              {{- if eq $vmID "" -}}
+                {{- $vmID = printf "%s-%s" (index $parts 1) (index $parts 5) -}}
+              {{- end -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+        {{- if ne $vmID "" -}}
+          true
+        {{- else -}}
+          false
+        {{- end }}
+      identifier: |-
+        {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+        {{- $self := printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) -}}
+        {{- $vmID := "" -}}
+        {{- range get "users" .resource.data (list) -}}
+          {{- $parts := split "/" (trimPrefix "https://www.googleapis.com/compute/v1/" .) -}}
+          {{- if eq (len $parts) 6 -}}
+            {{- if eq (index $parts 4) "instances" -}}
+              {{- if eq $vmID "" -}}
+                {{- $vmID = printf "%s-%s" (index $parts 1) (index $parts 5) -}}
+              {{- end -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+        {{- $src := printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Disk:%s" $self -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:ComputeInstance:%s" $vmID -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+        {{- $self := printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) -}}
+        {{- $vmID := "" -}}
+        {{- range get "users" .resource.data (list) -}}
+          {{- $parts := split "/" (trimPrefix "https://www.googleapis.com/compute/v1/" .) -}}
+          {{- if eq (len $parts) 6 -}}
+            {{- if eq (index $parts 4) "instances" -}}
+              {{- if eq $vmID "" -}}
+                {{- $vmID = printf "%s-%s" (index $parts 1) (index $parts 5) -}}
+              {{- end -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+        {{- printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Disk:%s" $self }}
+      targetRef: |-
+        {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+        {{- $self := printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) -}}
+        {{- $vmID := "" -}}
+        {{- range get "users" .resource.data (list) -}}
+          {{- $parts := split "/" (trimPrefix "https://www.googleapis.com/compute/v1/" .) -}}
+          {{- if eq (len $parts) 6 -}}
+            {{- if eq (index $parts 4) "instances" -}}
+              {{- if eq $vmID "" -}}
+                {{- $vmID = printf "%s-%s" (index $parts 1) (index $parts 5) -}}
+              {{- end -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+        {{- printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:ComputeInstance:%s" $vmID }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"
