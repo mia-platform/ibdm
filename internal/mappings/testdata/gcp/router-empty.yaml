@@ -1,0 +1,11 @@
+assetType: compute.googleapis.com/Router
+name: //compute.googleapis.com/projects/example-project/regions/europe-west1/routers/my-empty-router
+resource:
+  data:
+    creationTimestamp: '2024-03-01T04:00:00.000-07:00'
+    name: my-empty-router
+  discoveryName: Router
+  location: europe-west1
+  parent: //cloudresourcemanager.googleapis.com/projects/123456789012
+  version: v1
+updateTime: '2026-07-03T19:00:00Z'

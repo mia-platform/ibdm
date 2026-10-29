@@ -1,0 +1,16 @@
+assetType: compute.googleapis.com/Snapshot
+name: //compute.googleapis.com/projects/example-project/regions/europe-west1/snapshots/my-manual-snapshot
+resource:
+  data:
+    creationTimestamp: '2026-10-01T10:00:00.000-07:00'
+    description: Taken before the upgrade
+    labels:
+      owner: platform
+    name: my-manual-snapshot
+    snapshotType: ARCHIVE
+    status: UPLOADING
+  discoveryName: Snapshot
+  location: europe-west1
+  parent: //cloudresourcemanager.googleapis.com/projects/123456789012
+  version: v1
+updateTime: '2026-10-01T17:00:00.000000Z'
