@@ -1,0 +1,30 @@
+assetType: compute.googleapis.com/Router
+name: //compute.googleapis.com/projects/example-project/regions/europe-west1/routers/my-router
+resource:
+  data:
+    creationTimestamp: '2023-03-20T04:35:15.379-07:00'
+    encryptedInterconnectRouter: false
+    id: '2562707697601739292'
+    name: my-router
+    nats:
+    - autoNetworkTier: PREMIUM
+      effectiveTcpTimeWaitTimeoutSec: 120
+      enableEndpointIndependentMapping: false
+      endpointTypes:
+      - ENDPOINT_TYPE_VM
+      icmpIdleTimeoutSec: 30
+      logConfig:
+        enable: false
+        filter: ALL
+      minPortsPerVm: 128
+      name: my-nat
+      natIpAllocateOption: AUTO_ONLY
+      sourceSubnetworkIpRangesToNat: ALL_SUBNETWORKS_ALL_IP_RANGES
+      type: PUBLIC
+    network: https://www.googleapis.com/compute/v1/projects/example-project/global/networks/my-network
+    region: https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west1
+  discoveryName: Router
+  location: europe-west1
+  parent: //cloudresourcemanager.googleapis.com/projects/123456789012
+  version: v1
+updateTime: '2026-07-03T19:00:00Z'
