@@ -1,0 +1,15 @@
+assetType: dns.googleapis.com/ResourceRecordSet
+name: //dns.googleapis.com/projects/123456789012/locations/global/managedZones/1111222233334444555/rrsets/*.example.com./TXT
+resource:
+  data:
+    name: '*.example.com.'
+    rrdatas:
+    - '"v=spf1 include:_spf.example.com ~all"'
+    - '"second: value"'
+    ttl: 300
+    type: TXT
+  discoveryName: ResourceRecordSet
+  location: global
+  parent: //dns.googleapis.com/projects/123456789012/locations/global/managedZones/1111222233334444555
+  version: v2
+updateTime: '2026-06-30T20:51:59.710374Z'

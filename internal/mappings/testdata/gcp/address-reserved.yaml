@@ -1,0 +1,13 @@
+assetType: compute.googleapis.com/Address
+name: //compute.googleapis.com/projects/example-project/regions/europe-west1/addresses/my-reserved-ip
+resource:
+  data:
+    address: 203.0.113.20
+    creationTimestamp: '2024-06-01T08:00:00.000-07:00'
+    name: my-reserved-ip
+    status: RESERVED
+  discoveryName: Address
+  location: europe-west1
+  parent: //cloudresourcemanager.googleapis.com/projects/123456789012
+  version: v1
+updateTime: '2025-02-03T20:00:00Z'
