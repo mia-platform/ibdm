@@ -1,0 +1,38 @@
+{
+	"update_time": {
+		"seconds": 1788744529,
+		"nanos": 163038000
+	},
+	"name": "//dns.googleapis.com/projects/example-network-host/managedZones/1111222233334444555",
+	"asset_type": "dns.googleapis.com/ManagedZone",
+	"resource": {
+		"version": "v1",
+		"discovery_document_uri": "https://www.googleapis.com/discovery/v1/apis/dns/v1/rest",
+		"discovery_name": "ManagedZone",
+		"parent": "//cloudresourcemanager.googleapis.com/projects/123456789012",
+		"data": {
+			"creationTime": "2024-11-20T13:55:03.069Z",
+			"description": "The public example DNS",
+			"dnsName": "example.com.",
+			"dnssecConfig": {
+				"state": "ON"
+			},
+			"id": "1111222233334444555",
+			"labels": {
+				"environment": "public"
+			},
+			"name": "example-zone",
+			"nameServers": [
+				"ns-cloud-a1.googledomains.com.",
+				"ns-cloud-a2.googledomains.com."
+			],
+			"visibility": "PUBLIC"
+		},
+		"location": "global"
+	},
+	"ancestors": [
+		"projects/123456789012",
+		"folders/234567890123",
+		"organizations/345678901234"
+	]
+}

@@ -1,0 +1,27 @@
+assetType: compute.googleapis.com/Disk
+name: //compute.googleapis.com/projects/example-project/zones/europe-west1-d/disks/my-vm
+resource:
+  data:
+    architecture: X86_64
+    creationTimestamp: '2026-10-26T21:12:01.081-07:00'
+    id: '475706431791536767'
+    labels:
+      owner: platform
+    lastAttachTimestamp: '2026-10-26T21:12:02.090-07:00'
+    licenses:
+    - https://www.googleapis.com/compute/v1/projects/debian-cloud/global/licenses/debian-12-bookworm
+    name: my-vm
+    physicalBlockSizeBytes: '4096'
+    selfLink: https://www.googleapis.com/compute/v1/projects/example-project/zones/europe-west1-d/disks/my-vm
+    sizeGb: '50'
+    sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-12-bookworm-v20261010
+    status: READY
+    type: https://www.googleapis.com/compute/v1/projects/example-project/zones/europe-west1-d/diskTypes/pd-standard
+    users:
+    - https://www.googleapis.com/compute/v1/projects/example-project/zones/europe-west1-d/instances/my-vm
+    zone: https://www.googleapis.com/compute/v1/projects/example-project/zones/europe-west1-d
+  discoveryName: Disk
+  location: europe-west1-d
+  parent: //cloudresourcemanager.googleapis.com/projects/123456789012
+  version: v1
+updateTime: '2026-10-27T04:12:08.401686Z'

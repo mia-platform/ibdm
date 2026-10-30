@@ -1,0 +1,35 @@
+{
+	"update_time": {
+		"seconds": 1738612800,
+		"nanos": 0
+	},
+	"name": "//compute.googleapis.com/projects/example-project/regions/europe-west1/addresses/nat-auto-ip-16480479-2-1679314465674173",
+	"asset_type": "compute.googleapis.com/Address",
+	"resource": {
+		"version": "v1",
+		"discovery_document_uri": "https://www.googleapis.com/discovery/v1/apis/compute/v1/rest",
+		"discovery_name": "Address",
+		"parent": "//cloudresourcemanager.googleapis.com/projects/123456789012",
+		"data": {
+			"address": "203.0.113.10",
+			"addressType": "EXTERNAL",
+			"creationTimestamp": "2023-03-20T05:14:25.762-07:00",
+			"description": "",
+			"id": "4131133576898277582",
+			"name": "nat-auto-ip-16480479-2-1679314465674173",
+			"networkTier": "PREMIUM",
+			"purpose": "NAT_AUTO",
+			"region": "https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west1",
+			"status": "IN_USE",
+			"users": [
+				"https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west1/routers/my-router"
+			]
+		},
+		"location": "europe-west1"
+	},
+	"ancestors": [
+		"projects/123456789012",
+		"folders/234567890123",
+		"organizations/345678901234"
+	]
+}
