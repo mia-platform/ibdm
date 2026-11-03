@@ -96,18 +96,11 @@ func TestStartSyncProcess(t *testing.T) {
 func TestMultipleSyncStart(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
-
-	syncChan := make(chan struct{})
-	hangedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Body != nil {
-			defer r.Body.Close()
-		}
-
-		syncChan <- struct{}{}
-		<-ctx.Done()
-		http.NotFound(w, r)
-		close(syncChan)
+	requestReceived := make(chan struct{})
+	hangedServer := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		close(requestReceived)
+		// hold the request until the client drops it, so the sync can only end by cancellation
+		<-r.Context().Done()
 	}))
 	defer hangedServer.Close()
 
@@ -121,19 +114,24 @@ func TestMultipleSyncStart(t *testing.T) {
 	typesToFilter := map[string]source.MappingExtras{
 		gitRepositoryType: {},
 	}
+	syncErr := make(chan error, 1)
 	go func() {
-		err := src.StartSyncProcess(t.Context(), typesToFilter, nil)
-		assert.NoError(t, err)
+		syncErr <- src.StartSyncProcess(t.Context(), typesToFilter, nil)
 	}()
 
-	<-syncChan
-	err := src.StartSyncProcess(t.Context(), nil, nil)
-	assert.NoError(t, err)
-	src.Close(ctx, 1*time.Second)
+	<-requestReceived
+	// the first sync holds the lock, so the second one returns at once without doing anything
+	require.NoError(t, src.StartSyncProcess(t.Context(), nil, nil))
+	require.NoError(t, src.Close(t.Context(), 1*time.Second))
 
-	cancel()
-	<-syncChan
-	assert.ErrorIs(t, ctx.Err(), context.Canceled)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	select {
+	case err := <-syncErr:
+		require.NoError(t, err)
+	case <-ctx.Done():
+		require.FailNow(t, "sync did not stop after Close")
+	}
 }
 
 func TestEventNamesContain(t *testing.T) {
