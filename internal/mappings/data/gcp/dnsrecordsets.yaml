@@ -1,0 +1,47 @@
+apiVersion: gcp.mia-platform.eu/v1
+itemFamily: dnsrecordsets
+type: dns.googleapis.com/ResourceRecordSet
+syncable: true
+mappings:
+  identifier: "{{ sha256sum .name }}"
+  metadata:
+    title: "{{ trimSuffix \".\" .resource.data.name | quote }}"
+  spec:
+    name: "{{ .resource.data.name | quote }}"
+    type: "{{ .resource.data.type }}"
+    ttl: "{{ get \"ttl\" .resource.data 0 }}"
+    rrdatas: "{{ get \"rrdatas\" .resource.data (list) | toJSON }}"
+    routingPolicy: "{{ get \"routingPolicy\" .resource.data (object) | toJSON }}"
+    zoneId: "{{ index (trimPrefix \"//dns.googleapis.com/\" .name | split \"/\") 5 | quote }}"
+    location: "{{ .resource.location }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ $components := trimPrefix "//dns.googleapis.com/" .name | split "/" -}}
+        {{- if gt (len $components) 5 -}}
+          true
+        {{- else -}}
+          false
+        {{- end }}
+      identifier: |-
+        {{ $components := trimPrefix "//dns.googleapis.com/" .name | split "/" -}}
+        {{- $zone := "" -}}
+        {{- if gt (len $components) 5 -}}
+          {{- $zone = printf "%s-%s" (index $components 1) (index $components 5) -}}
+        {{- end -}}
+        {{- $src := printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:DnsRecordSet:%s" (sha256sum .name) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:DnsZone:%s" $zone -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:gcp.mia-platform.eu:v1:DnsRecordSet:{{ sha256sum .name }}
+      targetRef: |-
+        {{ $components := trimPrefix "//dns.googleapis.com/" .name | split "/" -}}
+        {{- $zone := "" -}}
+        {{- if gt (len $components) 5 -}}
+          {{- $zone = printf "%s-%s" (index $components 1) (index $components 5) -}}
+        {{- end -}}
+        {{- printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:DnsZone:%s" $zone }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

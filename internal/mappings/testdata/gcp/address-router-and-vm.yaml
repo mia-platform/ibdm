@@ -1,0 +1,18 @@
+assetType: compute.googleapis.com/Address
+name: //compute.googleapis.com/projects/example-project/regions/europe-west1/addresses/my-shared-ip
+resource:
+  data:
+    address: 203.0.113.40
+    addressType: EXTERNAL
+    creationTimestamp: '2024-07-01T08:00:00.000-07:00'
+    name: my-shared-ip
+    status: IN_USE
+    users:
+    - https://www.googleapis.com/compute/v1/projects/example-project/zones/europe-west1-b/instances/my-vm
+    - https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west1/routers/my-router
+    - https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west1/forwardingRules/my-rule
+  discoveryName: Address
+  location: europe-west1
+  parent: //cloudresourcemanager.googleapis.com/projects/123456789012
+  version: v1
+updateTime: '2025-02-03T20:00:00Z'

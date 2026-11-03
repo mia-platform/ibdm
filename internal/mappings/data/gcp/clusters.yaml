@@ -21,3 +21,55 @@ mappings:
     status: "{{ .resource.data.status | lower }}"
     location: "{{ .resource.location }}"
     labels: "{{ get \"resourceLabels\" .resource.data (object) | toJSON }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ $components := trimPrefix "//container.googleapis.com/" .name | split "/" -}}
+        {{- $cluster := printf "%s-%s-%s" (index $components 1) (index $components 3) (index $components 5) -}}
+        {{- $config := get "networkConfig" .resource.data (object) -}}
+        {{- $network := get "network" $config "" | trimPrefix "https://www.googleapis.com/compute/v1/" | split "/" -}}
+        {{- $networkID := "" -}}
+        {{- if eq (len $network) 5 -}}
+          {{- $networkID = printf "%s-%s" (index $network 1) (index $network 4) -}}
+        {{- end -}}
+        {{- if ne $networkID "" -}}
+          true
+        {{- else -}}
+          false
+        {{- end }}
+      identifier: |-
+        {{ $components := trimPrefix "//container.googleapis.com/" .name | split "/" -}}
+        {{- $cluster := printf "%s-%s-%s" (index $components 1) (index $components 3) (index $components 5) -}}
+        {{- $config := get "networkConfig" .resource.data (object) -}}
+        {{- $network := get "network" $config "" | trimPrefix "https://www.googleapis.com/compute/v1/" | split "/" -}}
+        {{- $networkID := "" -}}
+        {{- if eq (len $network) 5 -}}
+          {{- $networkID = printf "%s-%s" (index $network 1) (index $network 4) -}}
+        {{- end -}}
+        {{- $src := printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Cluster:%s" $cluster -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Network:%s" $networkID -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        {{ $components := trimPrefix "//container.googleapis.com/" .name | split "/" -}}
+        {{- $cluster := printf "%s-%s-%s" (index $components 1) (index $components 3) (index $components 5) -}}
+        {{- $config := get "networkConfig" .resource.data (object) -}}
+        {{- $network := get "network" $config "" | trimPrefix "https://www.googleapis.com/compute/v1/" | split "/" -}}
+        {{- $networkID := "" -}}
+        {{- if eq (len $network) 5 -}}
+          {{- $networkID = printf "%s-%s" (index $network 1) (index $network 4) -}}
+        {{- end -}}
+        {{- printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Cluster:%s" $cluster }}
+      targetRef: |-
+        {{ $components := trimPrefix "//container.googleapis.com/" .name | split "/" -}}
+        {{- $cluster := printf "%s-%s-%s" (index $components 1) (index $components 3) (index $components 5) -}}
+        {{- $config := get "networkConfig" .resource.data (object) -}}
+        {{- $network := get "network" $config "" | trimPrefix "https://www.googleapis.com/compute/v1/" | split "/" -}}
+        {{- $networkID := "" -}}
+        {{- if eq (len $network) 5 -}}
+          {{- $networkID = printf "%s-%s" (index $network 1) (index $network 4) -}}
+        {{- end -}}
+        {{- printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Network:%s" $networkID }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:dependency.mia-platform.eu"

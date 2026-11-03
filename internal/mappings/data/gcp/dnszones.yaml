@@ -1,0 +1,30 @@
+apiVersion: gcp.mia-platform.eu/v1
+itemFamily: dnszones
+type: dns.googleapis.com/ManagedZone
+syncable: true
+mappings:
+  identifier: |-
+    {{ $projectNumber := last (split "/" .resource.parent) -}}
+    {{- printf "%s-%s" $projectNumber .resource.data.id }}
+  metadata:
+    title: "{{ .resource.data.name }}"
+  spec:
+    name: "{{ .resource.data.name }}"
+    id: "{{ .resource.data.id | quote }}"
+    dnsName: "{{ .resource.data.dnsName }}"
+    description: "{{ get \"description\" .resource.data \"\" | quote }}"
+    visibility: "{{ get \"visibility\" .resource.data \"public\" | lower }}"
+    nameServers: "{{ get \"nameServers\" .resource.data (list) | toJSON }}"
+    dnssecState: "{{ get \"state\" (get \"dnssecConfig\" .resource.data (object)) \"off\" | lower }}"
+    privateNetworks: |-
+      {{ $list := list -}}
+      {{- $config := get "privateVisibilityConfig" .resource.data (object) -}}
+      {{- range get "networks" $config (list) -}}
+        {{- $list = append $list (trimPrefix "https://www.googleapis.com/compute/v1/" .networkUrl) -}}
+      {{- end -}}
+      {{- $list | toJSON }}
+    forwardingEnabled: "{{ ne (get \"forwardingConfig\" .resource.data nil | toJSON) \"null\" }}"
+    peeringEnabled: "{{ ne (get \"peeringConfig\" .resource.data nil | toJSON) \"null\" }}"
+    creationTime: "{{ .resource.data.creationTime | quote }}"
+    location: "{{ .resource.location }}"
+    labels: "{{ get \"labels\" .resource.data (object) | toJSON }}"

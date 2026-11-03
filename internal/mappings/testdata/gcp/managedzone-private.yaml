@@ -1,0 +1,21 @@
+assetType: dns.googleapis.com/ManagedZone
+name: //dns.googleapis.com/projects/example-network-host/managedZones/6666777788889999000
+resource:
+  data:
+    creationTime: '2025-01-10T09:00:00.000Z'
+    dnsName: internal.example.com.
+    forwardingConfig:
+      targetNameServers:
+      - ipv4Address: 10.0.0.53
+    id: '6666777788889999000'
+    name: internal-zone
+    privateVisibilityConfig:
+      networks:
+      - networkUrl: https://www.googleapis.com/compute/v1/projects/example-network-host/global/networks/my-network
+    visibility: PRIVATE
+  discoveryDocumentUri: https://www.googleapis.com/discovery/v1/apis/dns/v1/rest
+  discoveryName: ManagedZone
+  location: global
+  parent: //cloudresourcemanager.googleapis.com/projects/123456789012
+  version: v1
+updateTime: '2026-09-07T01:28:49.163038Z'

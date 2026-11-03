@@ -62,15 +62,21 @@ starting point for your own external mappings.
 
 | Name | Type | Item type (`apiVersion` `itemFamily`) | Root `extra` |
 | --- | --- | --- | --- |
+| `addresses` | `compute.googleapis.com/Address` | `gcp.mia-platform.eu/v1` `addresses` | — |
 | `buckets` | `storage.googleapis.com/Bucket` | `gcp.mia-platform.eu/v1` `buckets` | — |
 | `clusters` | `container.googleapis.com/Cluster` | `gcp.mia-platform.eu/v1` `clusters` | — |
 | `computeinstances` | `compute.googleapis.com/Instance` | `gcp.mia-platform.eu/v1` `virtualmachines` | — |
+| `disks` | `compute.googleapis.com/Disk` | `gcp.mia-platform.eu/v1` `disks` | — |
+| `dnsrecordsets` | `dns.googleapis.com/ResourceRecordSet` | `gcp.mia-platform.eu/v1` `dnsrecordsets` | — |
+| `dnszones` | `dns.googleapis.com/ManagedZone` | `gcp.mia-platform.eu/v1` `dnszones` | — |
 | `firewallrules` | `compute.googleapis.com/Firewall` | `gcp.mia-platform.eu/v1` `firewallrules` | — |
 | `folders` | `cloudresourcemanager.googleapis.com/Folder` | `gcp.mia-platform.eu/v1` `folders` | — |
 | `jobs` | `run.googleapis.com/Job` | `gcp.mia-platform.eu/v1` `jobs` | — |
 | `networks` | `compute.googleapis.com/Network` | `gcp.mia-platform.eu/v1` `networks` | — |
 | `projects` | `cloudresourcemanager.googleapis.com/Project` | `gcp.mia-platform.eu/v1` `projects` | — |
+| `routers` | `compute.googleapis.com/Router` | `gcp.mia-platform.eu/v1` `routers` | — |
 | `services` | `run.googleapis.com/Service` | `gcp.mia-platform.eu/v1` `services` | — |
+| `snapshots` | `compute.googleapis.com/Snapshot` | `gcp.mia-platform.eu/v1` `snapshots` | — |
 | `sqlinstances` | `sqladmin.googleapis.com/Instance` | `gcp.mia-platform.eu/v1` `sqlinstances` | — |
 
 ## `github`
