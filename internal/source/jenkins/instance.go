@@ -12,18 +12,19 @@ import (
 const (
 	// versionHeader is the response header carrying the version of the controller.
 	versionHeader = "X-Jenkins"
-	instanceTree  = "mode,nodeDescription,useSecurity,quietingDown"
+	instanceTree  = "description,mode"
 )
 
 // instanceInfo holds the general settings of the controller.
 type instanceInfo struct {
-	Mode            string `json:"mode"`
-	NodeDescription string `json:"nodeDescription"`
-	UseSecurity     bool   `json:"useSecurity"`
-	QuietingDown    bool   `json:"quietingDown"`
+	// Description is the system message of the controller, null when it is not set.
+	Description string `json:"description"`
+	// Mode is the usage mode of the built-in node: NORMAL or EXCLUSIVE.
+	Mode string `json:"mode"`
 }
 
-// syncInstance emits the controller with its version and general settings.
+// syncInstance emits the controller with its version, its system message and the usage mode of
+// its built-in node.
 func (s *Source) syncInstance(ctx context.Context, results chan<- source.Data) error {
 	var info instanceInfo
 	headers, err := s.client.getJSON(ctx, apiJSONPath, instanceTree, &info)
@@ -33,12 +34,10 @@ func (s *Source) syncInstance(ctx context.Context, results chan<- source.Data) e
 
 	values := map[string]any{
 		"instance": map[string]any{
-			keyURL:            s.client.baseURL + "/",
-			"version":         headers.Get(versionHeader),
-			"mode":            info.Mode,
-			"nodeDescription": info.NodeDescription,
-			"useSecurity":     info.UseSecurity,
-			"quietingDown":    info.QuietingDown,
+			keyURL:         s.client.baseURL + "/",
+			"version":      headers.Get(versionHeader),
+			keyDescription: info.Description,
+			"mode":         info.Mode,
 		},
 	}
 

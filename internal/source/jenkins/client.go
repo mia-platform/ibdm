@@ -23,6 +23,12 @@ const (
 
 	// apiJSONPath is the suffix of every Jenkins JSON API endpoint.
 	apiJSONPath = "/api/json"
+
+	// acceptLanguageHeader and responseLanguage ask Jenkins for English responses, so that the
+	// texts it localizes, such as the credential type names, do not depend on the locale of the
+	// controller.
+	acceptLanguageHeader = "Accept-Language"
+	responseLanguage     = "en"
 )
 
 // statusError reports a non-2xx response returned by the Jenkins API.
@@ -85,8 +91,8 @@ func (c *client) getText(ctx context.Context, path string, query url.Values, max
 	return string(body), nil
 }
 
-// get executes an authenticated GET request for path, relative to the controller URL, and
-// returns the response when its status is 2xx. The caller must close the response body.
+// get executes an authenticated GET request for path, relative to the controller URL, asking for
+// an English response, and returns the response when its status is 2xx. The caller must close the response body.
 func (c *client) get(ctx context.Context, path string, query url.Values, accept string) (*http.Response, error) {
 	rawURL := c.baseURL + path
 	if len(query) > 0 {
@@ -99,6 +105,7 @@ func (c *client) get(ctx context.Context, path string, query url.Values, accept 
 	}
 	req.SetBasicAuth(c.username, c.apiToken)
 	req.Header.Set("Accept", accept)
+	req.Header.Set(acceptLanguageHeader, responseLanguage)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

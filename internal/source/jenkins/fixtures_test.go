@@ -34,10 +34,8 @@ const (
 
 const instanceFixture = `{
   "_class": "hudson.model.Hudson",
-  "mode": "NORMAL",
-  "nodeDescription": "the Jenkins controller's built-in node",
-  "useSecurity": true,
-  "quietingDown": false
+  "description": "Welcome to the my-org build controller.",
+  "mode": "NORMAL"
 }`
 
 const rootListingFixture = `{

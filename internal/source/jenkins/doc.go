@@ -21,5 +21,6 @@
 //
 // Every item that has a parent carries a parent key shaped as {kind, fullName, url}, where kind
 // is either instance or folder. The primary branch workflow of a multibranch project carries a
-// multibranch key instead.
+// multibranch key instead. The other references to a container, the parent of the credential
+// usages and the folder of the credential stores, share the same shape.
 package jenkins

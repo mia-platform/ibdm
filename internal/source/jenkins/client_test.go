@@ -6,6 +6,7 @@ package jenkins
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -19,7 +20,7 @@ func TestGetJSON(t *testing.T) {
 	t.Run("sends credentials and tree, returns headers", func(t *testing.T) {
 		t.Parallel()
 
-		var gotTree, gotAccept string
+		var gotTree, gotAccept, gotLanguage string
 		src := newTestSource(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, password, ok := r.BasicAuth()
 			assert.True(t, ok)
@@ -28,6 +29,7 @@ func TestGetJSON(t *testing.T) {
 			assert.Equal(t, http.MethodGet, r.Method)
 			gotTree = r.URL.Query().Get(treeQueryParam)
 			gotAccept = r.Header.Get("Accept")
+			gotLanguage = r.Header.Get(acceptLanguageHeader)
 			w.Header().Set(versionHeader, "2.555.1")
 			_, _ = w.Write([]byte(`{"mode":"NORMAL"}`))
 		}))
@@ -39,6 +41,7 @@ func TestGetJSON(t *testing.T) {
 		assert.Equal(t, "2.555.1", headers.Get(versionHeader))
 		assert.Equal(t, instanceTree, gotTree)
 		assert.Equal(t, "application/json", gotAccept)
+		assert.Equal(t, responseLanguage, gotLanguage)
 	})
 
 	t.Run("omits empty tree", func(t *testing.T) {
@@ -107,6 +110,46 @@ func TestGetJSON(t *testing.T) {
 		var out map[string]any
 		_, err := c.getJSON(t.Context(), apiJSONPath, "", &out)
 		assert.ErrorContains(t, err, "failed to create request")
+	})
+}
+
+func TestGetText(t *testing.T) {
+	t.Parallel()
+
+	t.Run("sends credentials, query and language, bounds the body", func(t *testing.T) {
+		t.Parallel()
+
+		var gotNodeID, gotAccept, gotLanguage string
+		src := newTestSource(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, password, ok := r.BasicAuth()
+			assert.True(t, ok)
+			assert.Equal(t, testUsername, user)
+			assert.Equal(t, testAPIToken, password)
+			gotNodeID = r.URL.Query().Get(graphViewNodeIDParam)
+			gotAccept = r.Header.Get("Accept")
+			gotLanguage = r.Header.Get(acceptLanguageHeader)
+			_, _ = w.Write([]byte("java.lang.IllegalStateException: my-error"))
+		}))
+
+		query := url.Values{}
+		query.Set(graphViewNodeIDParam, "12")
+		text, err := src.client.getText(t.Context(), "/job/my-job/1"+graphViewExceptionTextPath, query, 14)
+		require.NoError(t, err)
+		assert.Equal(t, "java.lang.Ille", text)
+		assert.Equal(t, "12", gotNodeID)
+		assert.Equal(t, "text/plain", gotAccept)
+		assert.Equal(t, responseLanguage, gotLanguage)
+	})
+
+	t.Run("non 2xx returns a status error", func(t *testing.T) {
+		t.Parallel()
+
+		src := newTestSource(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+
+		_, err := src.client.getText(t.Context(), "/job/my-job/1"+graphViewExceptionTextPath, nil, maxExceptionTextSize)
+		assert.True(t, isNotFound(err))
 	})
 }
 
