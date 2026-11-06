@@ -31,11 +31,15 @@ const (
 	usageKindWorkflow    = "workflow"
 	usageKindMultibranch = "multibranch"
 
+	containerKindFolder      = "folder"
+	containerKindMultibranch = "multibranch"
+
 	// Keys shared by the values of several data types.
-	keyName     = "name"
-	keyFullName = "fullName"
-	keyURL      = "url"
-	keyKind     = "kind"
+	keyName        = "name"
+	keyFullName    = "fullName"
+	keyURL         = "url"
+	keyKind        = "kind"
+	keyDescription = "description"
 
 	// maxFolderDepth bounds the folder recursion as a safety net against unexpectedly deep trees.
 	maxFolderDepth = 20
@@ -122,18 +126,28 @@ func (p parentRef) values() map[string]any {
 
 // container is a folder or a multibranch project, which may own a folder credentials store.
 type container struct {
+	kind     string
 	segments []string
 	fullName string
 	url      string
 }
 
-// indexEntry describes a workflow or a multibranch project known to the sync, used to resolve
-// the usages of the credentials.
+// values returns the reference to the container as exposed to the mappings.
+func (c *container) values() map[string]any {
+	return map[string]any{
+		keyKind:     c.kind,
+		keyFullName: c.fullName,
+		keyURL:      c.url,
+	}
+}
+
+// indexEntry describes a workflow or a multibranch project known to the sync, with its parent,
+// used to resolve the usages of the credentials.
 type indexEntry struct {
 	kind     string
 	fullName string
 	url      string
-	folder   string
+	parent   parentRef
 }
 
 // inventory holds what the walk of the folder tree collected for the later steps of the sync.
@@ -220,7 +234,7 @@ func (w *walker) handleItem(ctx context.Context, item jobItem, segments []string
 	case item.Class == multibranchClass:
 		return w.handleMultibranch(ctx, item, segments, parent)
 	case item.Class == workflowJobClass:
-		w.inv.index[item.FullName] = indexEntry{kind: usageKindWorkflow, fullName: item.FullName, url: item.URL, folder: parent.fullName}
+		w.inv.index[item.FullName] = indexEntry{kind: usageKindWorkflow, fullName: item.FullName, url: item.URL, parent: parent}
 		return w.handleWorkflow(ctx, item, segments, workflowKindStandalone, &parent, nil)
 	case item.Jobs != nil:
 		w.log.Debug("entering container of unknown kind", "fullName", item.FullName, "class", item.Class)
@@ -233,7 +247,7 @@ func (w *walker) handleItem(ctx context.Context, item jobItem, segments []string
 
 // handleFolder emits a folder or an organization folder and walks its children.
 func (w *walker) handleFolder(ctx context.Context, item jobItem, segments []string, parent parentRef, depth int) error {
-	w.inv.containers = append(w.inv.containers, container{segments: segments, fullName: item.FullName, url: item.URL})
+	w.inv.containers = append(w.inv.containers, container{kind: containerKindFolder, segments: segments, fullName: item.FullName, url: item.URL})
 
 	if w.opts.emitFolders {
 		if err := send(ctx, w.results, folderType, folderValues(item, parent)); err != nil {
@@ -277,13 +291,13 @@ func (w *walker) handleWorkflow(ctx context.Context, item jobItem, segments []st
 
 	values := map[string]any{
 		"workflow": map[string]any{
-			keyName:       item.Name,
-			keyFullName:   item.FullName,
-			"displayName": item.DisplayName,
-			"description": item.Description,
-			keyURL:        item.URL,
-			"buildable":   item.Buildable,
-			keyKind:       kind,
+			keyName:        item.Name,
+			keyFullName:    item.FullName,
+			"displayName":  item.DisplayName,
+			keyDescription: item.Description,
+			keyURL:         item.URL,
+			"buildable":    item.Buildable,
+			keyKind:        kind,
 		},
 		"libraries": workflowLibraries(build),
 	}
@@ -327,13 +341,13 @@ func folderValues(item jobItem, parent parentRef) map[string]any {
 
 	return map[string]any{
 		"folder": map[string]any{
-			keyName:       item.Name,
-			keyFullName:   item.FullName,
-			"displayName": item.DisplayName,
-			"description": item.Description,
-			keyURL:        item.URL,
-			keyKind:       kind,
-			"objectUrl":   objectURL(item.Actions),
+			keyName:        item.Name,
+			keyFullName:    item.FullName,
+			"displayName":  item.DisplayName,
+			keyDescription: item.Description,
+			keyURL:         item.URL,
+			keyKind:        kind,
+			"objectUrl":    objectURL(item.Actions),
 		},
 		"parent": parent.values(),
 	}
@@ -364,7 +378,7 @@ func hasAction(actions []jobAction, class string) bool {
 func healthValues(reports []healthReport) []map[string]any {
 	out := make([]map[string]any, 0, len(reports))
 	for _, report := range reports {
-		out = append(out, map[string]any{"score": report.Score, "description": report.Description})
+		out = append(out, map[string]any{"score": report.Score, keyDescription: report.Description})
 	}
 	return out
 }

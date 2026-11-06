@@ -67,9 +67,11 @@ func TestInvalidCredentialDomainsSkipTheStore(t *testing.T) {
 func TestResolveUsages(t *testing.T) {
 	t.Parallel()
 
+	rootParent := parentRef{kind: parentKindInstance, url: "https://ci.example.com/"}
+	teamParent := parentRef{kind: parentKindFolder, fullName: "my-team", url: "https://ci.example.com/job/my-team/"}
 	inv := &inventory{index: map[string]indexEntry{
-		"my-team/my-service": {kind: usageKindWorkflow, fullName: "my-team/my-service", url: "https://ci.example.com/job/my-team/job/my-service/", folder: "my-team"},
-		"my-app":             {kind: usageKindMultibranch, fullName: "my-app", url: "https://ci.example.com/job/my-app/"},
+		"my-team/my-service": {kind: usageKindWorkflow, fullName: "my-team/my-service", url: "https://ci.example.com/job/my-team/job/my-service/", parent: teamParent},
+		"my-app":             {kind: usageKindMultibranch, fullName: "my-app", url: "https://ci.example.com/job/my-app/", parent: rootParent},
 	}}
 
 	usages := resolveUsages(t.Context(), inv, "my-key", []fingerprintUsage{
@@ -81,9 +83,58 @@ func TestResolveUsages(t *testing.T) {
 	})
 
 	assert.Equal(t, []map[string]any{
-		{keyKind: usageKindMultibranch, keyFullName: "my-app", keyURL: "https://ci.example.com/job/my-app/", "folder": "", "branches": []string{"main", "feature%2Flogin"}},
-		{keyKind: usageKindWorkflow, keyFullName: "my-team/my-service", keyURL: "https://ci.example.com/job/my-team/job/my-service/", "folder": "my-team"},
+		{
+			keyKind: usageKindMultibranch, keyFullName: "my-app", keyURL: "https://ci.example.com/job/my-app/",
+			"parent":   map[string]any{keyKind: parentKindInstance, keyFullName: "", keyURL: "https://ci.example.com/"},
+			"branches": []string{"main", "feature%2Flogin"},
+		},
+		{
+			keyKind: usageKindWorkflow, keyFullName: "my-team/my-service", keyURL: "https://ci.example.com/job/my-team/job/my-service/",
+			"parent": map[string]any{keyKind: parentKindFolder, keyFullName: "my-team", keyURL: "https://ci.example.com/job/my-team/"},
+		},
 	}, usages)
+}
+
+func TestCredentialValuesStore(t *testing.T) {
+	t.Parallel()
+
+	credential := credentialEntry{ID: "my-key", DisplayName: "My key", TypeName: "Secret text", Description: "A key"}
+	testCases := map[string]struct {
+		store    storeRef
+		expected map[string]any
+	}{
+		"system store": {
+			store:    storeRef{kind: storeKindSystem, path: systemStorePath},
+			expected: map[string]any{keyKind: storeKindSystem, "domain": "_"},
+		},
+		"folder store": {
+			store: storeRef{kind: storeKindFolder, folder: &container{
+				kind: containerKindFolder, segments: []string{"my-team"}, fullName: "my-team", url: "https://ci.example.com/job/my-team/",
+			}},
+			expected: map[string]any{
+				keyKind: storeKindFolder, "domain": "_",
+				"folder": map[string]any{keyKind: containerKindFolder, keyFullName: "my-team", keyURL: "https://ci.example.com/job/my-team/"},
+			},
+		},
+		"multibranch store": {
+			store: storeRef{kind: storeKindFolder, folder: &container{
+				kind: containerKindMultibranch, segments: []string{"my-app"}, fullName: "my-app", url: "https://ci.example.com/job/my-app/",
+			}},
+			expected: map[string]any{
+				keyKind: storeKindFolder, "domain": "_",
+				"folder": map[string]any{keyKind: containerKindMultibranch, keyFullName: "my-app", keyURL: "https://ci.example.com/job/my-app/"},
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			values := credentialValues(t.Context(), &inventory{index: map[string]indexEntry{}}, tc.store, "_", credential)
+			assert.Equal(t, tc.expected, values["store"])
+		})
+	}
 }
 
 func TestCutLast(t *testing.T) {

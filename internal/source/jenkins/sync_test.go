@@ -51,12 +51,10 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 		t.Parallel()
 		assert.Equal(t, map[string]any{
 			"instance": map[string]any{
-				keyURL:            rootURL,
-				"version":         "2.555.1",
-				"mode":            "NORMAL",
-				"nodeDescription": "the Jenkins controller's built-in node",
-				"useSecurity":     true,
-				"quietingDown":    false,
+				keyURL:        rootURL,
+				"version":     "2.555.1",
+				"description": "Welcome to the my-org build controller.",
+				"mode":        "NORMAL",
 			},
 		}, grouped[instanceType][0].Values)
 	})
@@ -210,9 +208,13 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 			},
 			"store": map[string]any{keyKind: storeKindSystem, "domain": "_"},
 			"usages": []map[string]any{
-				{keyKind: usageKindWorkflow, keyFullName: "my-team/my-service", keyURL: "https://ci.example.com/job/my-team/job/my-service/", "folder": "my-team"},
 				{
-					keyKind: usageKindMultibranch, keyFullName: "my-team/my-app", keyURL: "https://ci.example.com/job/my-team/job/my-app/", "folder": "my-team",
+					keyKind: usageKindWorkflow, keyFullName: "my-team/my-service", keyURL: "https://ci.example.com/job/my-team/job/my-service/",
+					"parent": map[string]any{keyKind: parentKindFolder, keyFullName: "my-team", keyURL: "https://ci.example.com/job/my-team/"},
+				},
+				{
+					keyKind: usageKindMultibranch, keyFullName: "my-team/my-app", keyURL: "https://ci.example.com/job/my-team/job/my-app/",
+					"parent":   map[string]any{keyKind: parentKindFolder, keyFullName: "my-team", keyURL: "https://ci.example.com/job/my-team/"},
 					"branches": []string{"main", "PR-7"},
 				},
 			},
@@ -221,7 +223,7 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 			"credential": map[string]any{"id": "team-token", "displayName": "Team token", "typeName": "Secret text", "description": ""},
 			"store": map[string]any{
 				keyKind: storeKindFolder, "domain": "_",
-				"folder": map[string]any{keyFullName: "my-team", keyURL: "https://ci.example.com/job/my-team/"},
+				"folder": map[string]any{keyKind: containerKindFolder, keyFullName: "my-team", keyURL: "https://ci.example.com/job/my-team/"},
 			},
 			"usages": []map[string]any{},
 		}, grouped[credentialType][1].Values)

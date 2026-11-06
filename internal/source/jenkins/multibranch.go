@@ -53,8 +53,8 @@ type viewItem struct {
 // handleMultibranch emits a multibranch project and its primary branch workflow. Branches,
 // pull requests and tags other than the primary branch are never emitted.
 func (w *walker) handleMultibranch(ctx context.Context, item jobItem, segments []string, parent parentRef) error {
-	w.inv.containers = append(w.inv.containers, container{segments: segments, fullName: item.FullName, url: item.URL})
-	w.inv.index[item.FullName] = indexEntry{kind: usageKindMultibranch, fullName: item.FullName, url: item.URL, folder: parent.fullName}
+	w.inv.containers = append(w.inv.containers, container{kind: containerKindMultibranch, segments: segments, fullName: item.FullName, url: item.URL})
+	w.inv.index[item.FullName] = indexEntry{kind: usageKindMultibranch, fullName: item.FullName, url: item.URL, parent: parent}
 
 	if !w.opts.emitMultibranch && !w.opts.needsPrimaryBranch() {
 		return nil
@@ -132,7 +132,7 @@ func multibranchValues(item jobItem, parent parentRef, listing *multibranchListi
 		keyName:         item.Name,
 		keyFullName:     item.FullName,
 		"displayName":   item.DisplayName,
-		"description":   item.Description,
+		keyDescription:  item.Description,
 		keyURL:          item.URL,
 		"health":        healthValues(item.HealthReport),
 		"repositoryUrl": objectURL(item.Actions),

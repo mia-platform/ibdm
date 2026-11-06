@@ -64,6 +64,11 @@ When the plugins cannot be listed, the sync reports the error and still emits th
 Every request is built from `JENKINS_URL`: the URLs returned by Jenkins are only reported in the
 data and never called, so the credentials are only sent to the configured controller.
 
+Every request asks for English responses with the `Accept-Language: en` header, so the texts that
+Jenkins localizes, such as the credential type names and the health reports, do not depend on the
+locale of the controller. A controller where the [Locale](https://plugins.jenkins.io/locale/) plugin
+is set to ignore the language of the request answers in its own language instead.
+
 ## Supported Data Types
 
 | Type | Sync |
@@ -84,12 +89,22 @@ Items with a parent carry a `parent` key shaped as `{kind, fullName, url}`, wher
 folder or an organization folder. Containers of unknown kind are walked through, and their children
 report the closest known parent.
 
+Every reference to a container has the same `{kind, fullName, url}` shape: the `parent` of the items,
+the `parent` of the credential usages and the `folder` of the credential stores.
+
+The branches of a multibranch project are jobs whose name is the branch name with `/`, `%`, `#`, `?`,
+`[`, `]` and `\` percent-encoded, so the branch `feature/login` is the job `feature%2Flogin`. The
+data report the job names as Jenkins does: `name` of a primary branch workflow, `primaryBranch.name`
+of a multibranch project and `branches` of a credential usage are encoded, like the `fullName` and,
+encoded once more as a URL path segment, the `url`.
+
 ### `instance`
 
 One entry for the controller.
 
-- `instance`: `url`, `version` (read from the `X-Jenkins` response header), `mode`, `nodeDescription`,
-  `useSecurity`, `quietingDown`.
+- `instance`: `url`, `version` (read from the `X-Jenkins` response header), `description` (the system
+  message of the controller, empty when it is not set), `mode` (the usage mode of the built-in node,
+  `NORMAL` or `EXCLUSIVE`).
 
 ### `folder`
 
@@ -109,9 +124,9 @@ One entry per multibranch project.
   `tagCount`.
 - `parent`.
 
-`primaryBranch` holds `name`, `fullName` and `url` of the branch the SCM marks as primary, and is
-absent when no branch is marked. `branchCount`, `pullRequestCount` and `tagCount` are read from the
-views of the project. All four are absent when the branches of the project cannot be listed, and the
+`primaryBranch` holds `name`, `fullName` and `url` of the branch the SCM marks as primary,
+and is absent when no branch is marked. `branchCount`, `pullRequestCount` and `tagCount` are read
+from the views of the project. All four are absent when the branches of the project cannot be listed, and the
 counters are absent when the project has no such views.
 
 The branches, pull requests and tags of a multibranch project are never emitted, except the primary
@@ -186,11 +201,13 @@ requested.
 
 - `credential`: `id`, `displayName`, `typeName`, `description`.
 - `store`: `kind` (`system` or `folder`), `domain` and, for folder stores, `folder` as
-  `{fullName, url}`.
-- `usages`: the jobs that used the credential, as `{kind, fullName, url, folder}`.
+  `{kind, fullName, url}`, where `kind` is `folder` for a folder or an organization folder, or
+  `multibranch` for a multibranch project.
+- `usages`: the jobs that used the credential, as `{kind, fullName, url, parent}`, where `parent` is
+  the container of the job, shaped as the `parent` of the items.
 
 A usage by a standalone workflow has `kind: workflow`. Usages by the branches of a multibranch
-project are reported once per project, with `kind: multibranch` and the names of the branches in
+project are reported once per project, with `kind: multibranch` and the job names of the branches in
 `branches`.
 
 Usages by other jobs, such as freestyle jobs or deleted jobs, are discarded. Jenkins records a usage

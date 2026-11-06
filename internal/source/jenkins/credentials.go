@@ -158,10 +158,7 @@ func credentialValues(ctx context.Context, inv *inventory, store storeRef, domai
 		"domain": domain,
 	}
 	if store.folder != nil {
-		storeValues["folder"] = map[string]any{
-			keyFullName: store.folder.fullName,
-			keyURL:      store.folder.url,
-		}
+		storeValues["folder"] = store.folder.values()
 	}
 
 	var usages []fingerprintUsage
@@ -171,10 +168,10 @@ func credentialValues(ctx context.Context, inv *inventory, store storeRef, domai
 
 	return map[string]any{
 		"credential": map[string]any{
-			"id":          credential.ID,
-			"displayName": credential.DisplayName,
-			"typeName":    credential.TypeName,
-			"description": credential.Description,
+			"id":           credential.ID,
+			"displayName":  credential.DisplayName,
+			"typeName":     credential.TypeName,
+			keyDescription: credential.Description,
 		},
 		"store":  storeValues,
 		"usages": resolveUsages(ctx, inv, credential.ID, usages),
@@ -218,13 +215,13 @@ func resolveUsages(ctx context.Context, inv *inventory, credentialID string, usa
 	return out
 }
 
-// usageValues returns a credential usage by a workflow or a multibranch project.
+// usageValues returns a credential usage by a workflow or a multibranch project, with its parent.
 func usageValues(entry indexEntry) map[string]any {
 	return map[string]any{
 		keyKind:     entry.kind,
 		keyFullName: entry.fullName,
 		keyURL:      entry.url,
-		"folder":    entry.folder,
+		"parent":    entry.parent.values(),
 	}
 }
 
