@@ -1,0 +1,19 @@
+{
+  "plugins": [
+    {
+      "shortName": "credentials",
+      "active": true,
+      "enabled": true
+    },
+    {
+      "shortName": "pipeline-graph-view",
+      "active": true,
+      "enabled": true
+    },
+    {
+      "shortName": "pipeline-stage-view",
+      "active": true,
+      "enabled": true
+    }
+  ]
+}

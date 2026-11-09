@@ -76,12 +76,20 @@ func (c *libraryCollector) values() []map[string]any {
 		out = append(out, map[string]any{
 			"library": map[string]any{
 				keyName:     name,
-				"versions":  slices.Sorted(maps.Keys(aggregate.versions)),
-				"variables": slices.Sorted(maps.Keys(aggregate.variables)),
+				"versions":  sortedSet(aggregate.versions),
+				"variables": sortedSet(aggregate.variables),
 			},
 			"usages": aggregate.usages,
 		})
 	}
+	return out
+}
+
+// sortedSet returns the elements of set in ascending order. The result is never nil, so an empty
+// set is reported as an empty list rather than null.
+func sortedSet(set map[string]struct{}) []string {
+	out := slices.AppendSeq(make([]string, 0, len(set)), maps.Keys(set))
+	slices.Sort(out)
 	return out
 }
 

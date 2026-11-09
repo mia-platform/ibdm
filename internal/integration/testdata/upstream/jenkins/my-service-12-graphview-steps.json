@@ -1,0 +1,14 @@
+{
+  "status": "ok",
+  "data": {
+    "runIsComplete": true,
+    "steps": [
+      {"id": "7", "name": "make build", "state": "success", "type": "STEP", "title": "",
+       "pauseDurationMillis": 0, "startTimeMillis": 1767261602000, "totalDurationMillis": 28000, "stageId": "6", "flags": {}},
+      {"id": "20", "name": "make unit", "state": "success", "type": "STEP", "title": "",
+       "pauseDurationMillis": 0, "startTimeMillis": 1767261633000, "totalDurationMillis": 19000, "stageId": "18", "flags": {}},
+      {"id": "24", "name": "make integration", "state": "failure", "type": "STEP", "title": "",
+       "pauseDurationMillis": 0, "startTimeMillis": 1767261635000, "totalDurationMillis": 55000, "stageId": "23", "flags": {}}
+    ]
+  }
+}

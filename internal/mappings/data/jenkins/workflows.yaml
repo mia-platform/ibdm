@@ -1,0 +1,61 @@
+apiVersion: jenkins.mia-platform.eu/v1
+itemFamily: workflows
+type: workflow
+syncable: true
+mappings:
+  identifier: |-
+    {{ if eq .workflow.kind "primaryBranch" -}}
+      {{ printf "jenkins-workflow-%s" .multibranch.fullName | sha256sum }}
+    {{- else -}}
+      {{ printf "jenkins-workflow-%s" .workflow.fullName | sha256sum }}
+    {{- end }}
+  metadata:
+    title: |-
+      {{ if eq .workflow.kind "primaryBranch" -}}
+        {{ printf "%s (%s)" .multibranch.name .workflow.displayName | toJSON }}
+      {{- else -}}
+        {{ .workflow.displayName | toJSON }}
+      {{- end }}
+    description: '{{ .workflow.description | toJSON }}'
+  spec:
+    name: '{{ .workflow.name | toJSON }}'
+    fullName: '{{ .workflow.fullName | toJSON }}'
+    url: '{{ .workflow.url | toJSON }}'
+    buildable: '{{ .workflow.buildable | toJSON }}'
+    kind: '{{ .workflow.kind | toJSON }}'
+    libraries: '{{ .libraries | toJSON }}'
+    build: '{{ get "build" . nil | toJSON }}'
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $src := "" -}}
+        {{- $tgt := "" -}}
+        {{- if eq .workflow.kind "primaryBranch" -}}
+          {{- $src = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:%s" (printf "jenkins-workflow-%s" .multibranch.fullName | sha256sum) -}}
+          {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:%s" (printf "jenkins-multibranch-%s" .multibranch.fullName | sha256sum) -}}
+        {{- else -}}
+          {{- $src = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:%s" (printf "jenkins-workflow-%s" .workflow.fullName | sha256sum) -}}
+          {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:%s" ("jenkins-instance" | sha256sum) -}}
+          {{- if eq .parent.kind "folder" -}}
+            {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:%s" (printf "jenkins-folder-%s" .parent.fullName | sha256sum) -}}
+          {{- end -}}
+        {{- end -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        {{ if eq .workflow.kind "primaryBranch" -}}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:{{ printf "jenkins-workflow-%s" .multibranch.fullName | sha256sum }}
+        {{- else -}}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:{{ printf "jenkins-workflow-%s" .workflow.fullName | sha256sum }}
+        {{- end }}
+      targetRef: |-
+        {{ if eq .workflow.kind "primaryBranch" -}}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:{{ printf "jenkins-multibranch-%s" .multibranch.fullName | sha256sum }}
+        {{- else if eq .parent.kind "folder" -}}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:{{ printf "jenkins-folder-%s" .parent.fullName | sha256sum }}
+        {{- else -}}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:{{ "jenkins-instance" | sha256sum }}
+        {{- end }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
