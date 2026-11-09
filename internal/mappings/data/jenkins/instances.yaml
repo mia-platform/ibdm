@@ -1,0 +1,14 @@
+apiVersion: jenkins.mia-platform.eu/v1
+itemFamily: instances
+type: instance
+syncable: true
+mappings:
+  identifier: |-
+    {{ "jenkins-instance" | sha256sum }}
+  metadata:
+    title: '{{ .instance.url | toJSON }}'
+    description: '{{ .instance.description | toJSON }}'
+  spec:
+    url: '{{ .instance.url | toJSON }}'
+    version: '{{ .instance.version | toJSON }}'
+    mode: '{{ .instance.mode | toJSON }}'

@@ -6,6 +6,10 @@ It supports pull-based sync only.
 
 ## Commands
 
+The command below uses every internal mapping shipped for the integration. To choose which of them
+run, or to add your own mappings, see
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
 ### Sync
 
 ```sh
@@ -14,6 +18,35 @@ ibdm sync jenkins --include-internal-mappings=all
 
 Performs a one-off synchronisation: walks the folder tree of the controller, reads the requested data
 and exits.
+
+The integration has no event stream: `ibdm run jenkins` is refused as an invalid integration name.
+
+## Internal Mappings and Their Dependencies
+
+`ibdm mappings list jenkins` prints the internal mappings of this integration. Select them with
+`--include-internal-mappings`, as described in
+[Internal and External Mappings](./015_internal-and-external-mappings.md).
+
+| Internal mapping | Sync | Its relationships point at |
+| --- | --- | --- |
+| `credentials` | one item per credential of the system store and of the folder stores | — |
+| `folders` | one item per folder and organization folder | `instances`, `folders` |
+| `instances` | one item for the controller | — |
+| `multibranches` | one item per multibranch project | `instances`, `folders` |
+| `plugins` | one item per installed plugin | `instances` |
+| `sharedlibraries` | one item per shared library loaded by a last completed build | — |
+| `workflows` | one item per standalone workflow and per primary branch of a multibranch project | `instances`, `folders`, `multibranches` |
+
+Select them all. Each mapping works alone, with these limits:
+
+- **Relationships are written anyway.** A mapping writes its relationships even when the mapping of
+  their target is not selected: with `workflows` alone, the relationships point at folders,
+  multibranch projects and an instance that the sync does not write.
+- **Only the requested data are read.** `instances` reads the root of the controller and `plugins`
+  the plugin list. The other mappings walk the folder tree: `workflows` and `sharedlibraries` also
+  read the job of the primary branch of every multibranch project, and only `workflows` reads the
+  stages of the builds and detects the stage plugins. `credentials` reads the credentials stores, which no
+  other mapping does.
 
 ## Requirements
 
@@ -291,6 +324,60 @@ whether `children`, `parallel` and `synthetic` are meaningful.
   command, because Graph View gives no descriptive name to that step.
 - For a build with a failed stage, it needs one more request than Stage View, to list the steps of
   the build.
+
+## Internal Mappings
+
+`ibdm` ships these internal mappings for Jenkins (`ibdm mappings list jenkins`), each writing the
+Item Type Definition of the same name in the `jenkins.mia-platform.eu` group:
+
+- `instances` — maps the controller to an item of `instances.jenkins.mia-platform.eu`.
+- `folders` — maps each folder and organization folder to an item of
+  `folders.jenkins.mia-platform.eu`.
+- `multibranches` — maps each multibranch project to an item of
+  `multibranches.jenkins.mia-platform.eu`.
+- `workflows` — maps each standalone workflow and each primary branch to an item of
+  `workflows.jenkins.mia-platform.eu`, with the stages of its last completed build in
+  `build.stages`.
+- `sharedlibraries` — maps each shared library to an item of
+  `sharedlibraries.jenkins.mia-platform.eu`.
+- `credentials` — maps each credential to an item of `credentials.jenkins.mia-platform.eu`.
+- `plugins` — maps each plugin to an item of `plugins.jenkins.mia-platform.eu`.
+
+Every item with a container is related to it with a `part-of.mia-platform.eu` relationship: a
+folder, a multibranch project and a standalone workflow _are part of_ their parent folder, or of
+the instance at the top level of the controller; the primary branch workflow _is part of_ its
+multibranch project; a plugin _is part of_ the instance. Credentials and shared libraries have no
+relationship: the jobs and folders they refer to are listed in `usages` and `store`.
+
+Item names are the SHA-256 of a key that is stable across syncs:
+
+| Item | Key |
+| --- | --- |
+| instance | a constant: one controller per Catalog |
+| folder, multibranch project | `fullName` |
+| standalone workflow | `fullName` |
+| primary branch workflow | `fullName` of the multibranch project, so a new primary branch, such as `master` becoming `main`, updates the same item |
+| credential | store kind, `fullName` of the store folder, domain and credential id: the same id can live in several stores |
+| shared library | name |
+| plugin | `shortName` |
+
+The metadata title is the display name of folders, multibranch projects and standalone workflows,
+`<multibranch project> (<branch>)` for a primary branch workflow, the URL of the instance, the long
+name of a plugin, the name of a shared library and the id of a credential. The display name of a
+credential is not reported, because for a username and password credential it holds the username.
+The metadata description is the Jenkins description of the item, or the system message of the
+controller for the instance; plugins and shared libraries have none.
+
+The fields that the source omits at the top level of the data, such as `build` of a workflow without
+completed builds, or `primaryBranch` and the counters of a multibranch project without them, are
+null in the item. The optional fields nested in an object, such as `failure` of a stage, are
+absent.
+
+For local development and debugging, add the `--local-output` flag to send results to stdout:
+
+```sh
+ibdm sync jenkins --include-internal-mappings=all --local-output
+```
 
 ## Error Handling
 

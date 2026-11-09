@@ -1,0 +1,41 @@
+apiVersion: jenkins.mia-platform.eu/v1
+itemFamily: multibranches
+type: multibranch
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "jenkins-multibranch-%s" .multibranch.fullName | sha256sum }}
+  metadata:
+    title: '{{ .multibranch.displayName | toJSON }}'
+    description: '{{ .multibranch.description | toJSON }}'
+  spec:
+    name: '{{ .multibranch.name | toJSON }}'
+    fullName: '{{ .multibranch.fullName | toJSON }}'
+    url: '{{ .multibranch.url | toJSON }}'
+    repositoryUrl: '{{ .multibranch.repositoryUrl | toJSON }}'
+    health: '{{ .multibranch.health | toJSON }}'
+    primaryBranch: '{{ get "primaryBranch" .multibranch nil | toJSON }}'
+    branchCount: '{{ get "branchCount" .multibranch nil | toJSON }}'
+    pullRequestCount: '{{ get "pullRequestCount" .multibranch nil | toJSON }}'
+    tagCount: '{{ get "tagCount" .multibranch nil | toJSON }}'
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:%s" (printf "jenkins-multibranch-%s" .multibranch.fullName | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:%s" ("jenkins-instance" | sha256sum) -}}
+        {{- if eq .parent.kind "folder" -}}
+          {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:%s" (printf "jenkins-folder-%s" .parent.fullName | sha256sum) -}}
+        {{- end -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:{{ printf "jenkins-multibranch-%s" .multibranch.fullName | sha256sum }}
+      targetRef: |-
+        {{ if eq .parent.kind "folder" -}}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:{{ printf "jenkins-folder-%s" .parent.fullName | sha256sum }}
+        {{- else -}}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:{{ "jenkins-instance" | sha256sum }}
+        {{- end }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

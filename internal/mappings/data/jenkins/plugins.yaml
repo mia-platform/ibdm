@@ -1,0 +1,32 @@
+apiVersion: jenkins.mia-platform.eu/v1
+itemFamily: plugins
+type: plugin
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "jenkins-plugin-%s" .plugin.shortName | sha256sum }}
+  metadata:
+    title: '{{ .plugin.longName | toJSON }}'
+  spec:
+    shortName: '{{ .plugin.shortName | toJSON }}'
+    version: '{{ .plugin.version | toJSON }}'
+    active: '{{ .plugin.active | toJSON }}'
+    enabled: '{{ .plugin.enabled | toJSON }}'
+    hasUpdate: '{{ .plugin.hasUpdate | toJSON }}'
+    url: '{{ .plugin.url | toJSON }}'
+    requiredCoreVersion: '{{ .plugin.requiredCoreVersion | toJSON }}'
+    dependencies: '{{ .plugin.dependencies | toJSON }}'
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Plugin:%s" (printf "jenkins-plugin-%s" .plugin.shortName | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:%s" ("jenkins-instance" | sha256sum) -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Plugin:{{ printf "jenkins-plugin-%s" .plugin.shortName | sha256sum }}
+      targetRef: |-
+        urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:{{ "jenkins-instance" | sha256sum }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

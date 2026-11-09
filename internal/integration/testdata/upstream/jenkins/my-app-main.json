@@ -1,0 +1,23 @@
+{
+  "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+  "name": "main",
+  "fullName": "my-team/my-app/main",
+  "displayName": "main",
+  "description": null,
+  "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
+  "buildable": true,
+  "actions": [{"_class": "jenkins.scm.api.metadata.PrimaryInstanceMetadataAction"}],
+  "lastCompletedBuild": {
+    "number": 40,
+    "result": "SUCCESS",
+    "timestamp": 1767265200000,
+    "duration": 42000,
+    "url": "https://ci.example.com/job/my-team/job/my-app/job/main/40/",
+    "actions": [
+      {"_class": "org.jenkinsci.plugins.workflow.libs.LibrariesAction", "libraries": [
+        {"name": "my-lib", "version": "v2", "trusted": true, "changelog": true, "variables": ["deployApp"]},
+        {"name": "other-lib", "version": "1.0", "trusted": false, "changelog": false, "variables": []}
+      ]}
+    ]
+  }
+}

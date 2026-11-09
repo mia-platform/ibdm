@@ -88,6 +88,18 @@ starting point for your own external mappings.
 | `pipelines` | `pipeline` | `gitlab.mia-platform.eu/v1` `pipelines` | — |
 | `projects` | `project` | `gitlab.mia-platform.eu/v1` `projects` | — |
 
+## `jenkins`
+
+| Name | Type | Item type (`apiVersion` `itemFamily`) | Root `extra` |
+| --- | --- | --- | --- |
+| `credentials` | `credential` | `jenkins.mia-platform.eu/v1` `credentials` | — |
+| `folders` | `folder` | `jenkins.mia-platform.eu/v1` `folders` | — |
+| `instances` | `instance` | `jenkins.mia-platform.eu/v1` `instances` | — |
+| `multibranches` | `multibranch` | `jenkins.mia-platform.eu/v1` `multibranches` | — |
+| `plugins` | `plugin` | `jenkins.mia-platform.eu/v1` `plugins` | — |
+| `sharedlibraries` | `sharedlibrary` | `jenkins.mia-platform.eu/v1` `sharedlibraries` | — |
+| `workflows` | `workflow` | `jenkins.mia-platform.eu/v1` `workflows` | — |
+
 ## `k8s`
 
 | Name | Type | Item type (`apiVersion` `itemFamily`) | Root `extra` |

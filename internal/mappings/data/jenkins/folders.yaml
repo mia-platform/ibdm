@@ -1,0 +1,37 @@
+apiVersion: jenkins.mia-platform.eu/v1
+itemFamily: folders
+type: folder
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "jenkins-folder-%s" .folder.fullName | sha256sum }}
+  metadata:
+    title: '{{ .folder.displayName | toJSON }}'
+    description: '{{ .folder.description | toJSON }}'
+  spec:
+    name: '{{ .folder.name | toJSON }}'
+    fullName: '{{ .folder.fullName | toJSON }}'
+    url: '{{ .folder.url | toJSON }}'
+    kind: '{{ .folder.kind | toJSON }}'
+    objectUrl: '{{ .folder.objectUrl | toJSON }}'
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      identifier: |-
+        {{ $src := printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:%s" (printf "jenkins-folder-%s" .folder.fullName | sha256sum) -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:%s" ("jenkins-instance" | sha256sum) -}}
+        {{- if eq .parent.kind "folder" -}}
+          {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:%s" (printf "jenkins-folder-%s" .parent.fullName | sha256sum) -}}
+        {{- end -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:{{ printf "jenkins-folder-%s" .folder.fullName | sha256sum }}
+      targetRef: |-
+        {{ if eq .parent.kind "folder" -}}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:{{ printf "jenkins-folder-%s" .parent.fullName | sha256sum }}
+        {{- else -}}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:{{ "jenkins-instance" | sha256sum }}
+        {{- end }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
