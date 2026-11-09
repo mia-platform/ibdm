@@ -73,7 +73,7 @@ func myServiceGraphStages(failure map[string]any) []map[string]any {
 		stage("22", "Setup", "success", 1767261633000, 1000, "agent-3", false, false),
 		run,
 		stage("25", "Deploy", "skipped", 1767261691000, 0, "", false, false),
-		stage("30", "Declarative: Post Actions", "success", 1767261692000, 2000, "", false, true),
+		stage("30", "Post Actions", "success", 1767261692000, 2000, "", false, true),
 	}
 }
 
