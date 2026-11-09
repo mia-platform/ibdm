@@ -190,7 +190,8 @@ stage carries:
   not reached after a failure both as `skipped`;
 - `agent`: the agent the stage ran on, empty when unknown;
 - `parallel`: whether the stage is a branch of a `parallel` block;
-- `synthetic`: whether Jenkins generated the stage, such as `Declarative: Post Actions`;
+- `synthetic`: whether Jenkins generated the stage, such as `Post Actions`, which runs the `post`
+  section of a Declarative Pipeline;
 - `children`: the ids of the child stages, so the tree can be rebuilt.
 
 `parallel`, `synthetic` and `children` are only known with Pipeline Graph View: with Stage View they

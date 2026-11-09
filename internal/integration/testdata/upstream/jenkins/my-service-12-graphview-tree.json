@@ -42,7 +42,7 @@
        "pauseDurationMillis": 0, "startTimeMillis": 1767261691000,
        "children": [], "isSequential": false, "synthetic": false, "placeholder": false,
        "url": "/job/my-team/job/my-service/12/stages/?selected-node=25"},
-      {"id": "30", "name": "Declarative: Post Actions", "state": "success", "type": "STAGE", "title": "",
+      {"id": "30", "name": "Post Actions", "state": "success", "type": "STAGE", "title": "",
        "pauseDurationMillis": 0, "startTimeMillis": 1767261692000, "totalDurationMillis": 2000,
        "children": [], "isSequential": false, "synthetic": true, "placeholder": false,
        "url": "/job/my-team/job/my-service/12/stages/?selected-node=30"}

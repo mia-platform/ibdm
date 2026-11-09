@@ -403,7 +403,7 @@
               "children": [],
               "durationMillis": 2000,
               "id": "30",
-              "name": "Declarative: Post Actions",
+              "name": "Post Actions",
               "parallel": false,
               "startTimeMillis": 1767261692000,
               "status": "success",
