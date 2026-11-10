@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -348,6 +349,11 @@ func TestStartSyncProcessIsolatesFailures(t *testing.T) {
 			overrides:     map[string]fakeResponse{pluginManagerAPIPath: {status: http.StatusForbidden}},
 			types:         []string{instanceType, folderType, pluginType},
 			expectedTypes: map[string]int{instanceType: 1, folderType: 2},
+		},
+		"plugins fail": {
+			overrides:     map[string]fakeResponse{pluginManagerAPIPath: failingResponse},
+			types:         []string{instanceType, folderType, pluginType},
+			expectedTypes: map[string]int{instanceType: 1, folderType: 2},
 			expectedError: "plugins",
 		},
 		"instance fails": {
@@ -359,8 +365,8 @@ func TestStartSyncProcessIsolatesFailures(t *testing.T) {
 		"system credentials store fails": {
 			overrides:     map[string]fakeResponse{systemStoreAPIPath: failingResponse},
 			types:         []string{credentialType, sharedLibraryType},
-			expectedTypes: map[string]int{sharedLibraryType: 2},
-			expectedError: "credentials",
+			expectedTypes: map[string]int{credentialType: 1, sharedLibraryType: 2},
+			expectedError: "system credentials store",
 		},
 		"folder credentials store fails": {
 			overrides:     map[string]fakeResponse{myTeamStoreAPIPath: failingResponse},
@@ -393,6 +399,41 @@ func TestStartSyncProcessIsolatesFailures(t *testing.T) {
 			assert.Equal(t, tc.expectedTypes, counts)
 		})
 	}
+}
+
+func TestStartSyncProcessReturnsClientTimeouts(t *testing.T) {
+	t.Parallel()
+
+	const clientTimeout = 50 * time.Millisecond
+
+	fake := newFakeJenkins(withRoutes(fixtureRoutes(), map[string]fakeResponse{pluginManagerAPIPath: failingResponse}))
+	slowInstance := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == rootListingPath && r.URL.Query().Get(treeQueryParam) == instanceTree {
+			select {
+			case <-r.Context().Done():
+				return
+			case <-time.After(10 * clientTimeout):
+			}
+		}
+		fake.ServeHTTP(w, r)
+	})
+	src := newTestSource(t, slowInstance)
+	src.client.httpClient.Timeout = clientTimeout
+
+	results := make(chan source.Data, 100)
+	err := src.StartSyncProcess(t.Context(), map[string]source.MappingExtras{instanceType: {}, folderType: {}, pluginType: {}}, results)
+	close(results)
+
+	require.ErrorIs(t, err, ErrJenkinsSource)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.ErrorContains(t, err, "instance")
+	assert.ErrorContains(t, err, "plugins")
+
+	counts := make(map[string]int)
+	for _, d := range collectData(t, results) {
+		counts[d.Type]++
+	}
+	assert.Equal(t, map[string]int{folderType: 2}, counts)
 }
 
 func TestStartSyncProcessSkipsWhenAlreadyRunning(t *testing.T) {

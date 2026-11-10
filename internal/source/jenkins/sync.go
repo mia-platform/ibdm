@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/mia-platform/ibdm/internal/logger"
 	"github.com/mia-platform/ibdm/internal/source"
@@ -69,7 +70,12 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 	}
 
 	if wants(pluginType) && ctx.Err() == nil {
-		if err := s.syncPlugins(ctx, results); err != nil {
+		var statusErr *statusError
+		switch err := s.syncPlugins(ctx, results); {
+		case err == nil:
+		case errors.As(err, &statusErr) && statusErr.StatusCode == http.StatusForbidden:
+			log.Error("listing the plugins requires the Overall/Administer or Overall/SystemRead permission, skipping plugins", "error", err.Error())
+		default:
 			errs = append(errs, fmt.Errorf("plugins: %w", err))
 		}
 	}

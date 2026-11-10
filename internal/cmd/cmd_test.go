@@ -181,14 +181,18 @@ func TestMappingsListCmd(t *testing.T) {
 
 // TestIntegrationsMatchInternalMappings keeps the CLI integrations and the internal mapping
 // registry in step: an integration is a system source iff ibdm ships mappings for it. Every
-// integration supports sync, while only some of them also run an event stream, such as jenkins,
-// which is sync only.
+// integration supports sync, and every integration runs an event stream too, except those
+// declared in syncOnlySources.
 func TestIntegrationsMatchInternalMappings(t *testing.T) {
 	t.Parallel()
 
+	syncOnlySources := []string{jenkinsSource}
+	eventSources := slices.DeleteFunc(mappings.Sources(), func(name string) bool {
+		return slices.Contains(syncOnlySources, name)
+	})
+
 	require.Equal(t, mappings.Sources(), slices.Sorted(maps.Keys(availableSyncSources)))
-	require.Subset(t, mappings.Sources(), slices.Sorted(maps.Keys(availableEventSources)))
-	require.NotContains(t, availableEventSources, jenkinsSource, "jenkins is a sync only integration")
+	require.Equal(t, eventSources, slices.Sorted(maps.Keys(availableEventSources)))
 }
 
 func TestInternalMappingsCompletion(t *testing.T) {

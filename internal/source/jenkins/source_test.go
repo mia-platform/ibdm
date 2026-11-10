@@ -22,11 +22,13 @@ func TestHandleErr(t *testing.T) {
 		err      error
 		expected error
 	}{
-		"nil":               {err: nil},
-		"canceled":          {err: fmt.Errorf("walking: %w", context.Canceled)},
-		"deadline exceeded": {err: context.DeadlineExceeded},
-		"joined canceled":   {err: errors.Join(errBoom, context.Canceled)},
-		"other":             {err: errBoom, expected: errBoom},
+		"nil":                       {err: nil},
+		"canceled":                  {err: fmt.Errorf("walking: %w", context.Canceled)},
+		"joined cancellations":      {err: errors.Join(context.Canceled, fmt.Errorf("sending: %w", context.Canceled))},
+		"deadline exceeded":         {err: context.DeadlineExceeded, expected: context.DeadlineExceeded},
+		"joined failure and cancel": {err: errors.Join(errBoom, context.Canceled), expected: errBoom},
+		"wrapped joined failure":    {err: fmt.Errorf("instance: %w", errors.Join(errBoom, context.Canceled)), expected: errBoom},
+		"other":                     {err: errBoom, expected: errBoom},
 	}
 
 	for name, tc := range testCases {

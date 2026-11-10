@@ -92,7 +92,9 @@ The user only sees what its permissions allow. The minimum permissions are:
 | Credentials/View | credentials metadata, at system level and on every folder to read |
 | Overall/Administer or Overall/SystemRead | the `plugin` data type; optional for detecting the stage plugins |
 
-When the plugins cannot be listed, the sync reports the error and still emits the other data types.
+When the user lacks the permission to list the plugins, the sync logs the missing permission at
+Error level, emits no `plugin` item and still succeeds with the other data types. Any other failure
+listing the plugins is reported as an error.
 
 Every request is built from `JENKINS_URL`: the URLs returned by Jenkins are only reported in the
 data and never called, so the credentials are only sent to the configured controller.
@@ -385,9 +387,11 @@ ibdm sync jenkins --include-internal-mappings=all --local-output
 A failure on one folder, workflow, stage or folder credentials store is logged and the sync moves on.
 When Pipeline Graph View fails to describe a build, the stages of that build are read from Pipeline:
 Stage View, when available.
-A failure listing the root of the controller, the system credentials store, the plugins or the
-controller itself stops that step only: the other steps still run, and the sync returns every
-failure once they have.
+A failure listing the root of the controller, reading the system credentials store, listing the
+plugins or reading the controller itself stops that step only: the other steps still run, and the
+sync returns every failure once they have. When the system credentials store fails, the folder
+credentials stores are still read and their credentials emitted. A plugin list refused for lack of
+permission is not a failure: it is logged at Error level and the sync goes on.
 
 ## Limitations
 

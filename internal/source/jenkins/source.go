@@ -55,16 +55,31 @@ func NewSource() (*Source, error) {
 	}, nil
 }
 
-// handleErr wraps non-nil errors with ErrJenkinsSource.
-// Context cancellation and deadline errors are treated as a normal shutdown and return nil.
+// handleErr wraps non-nil errors with ErrJenkinsSource. A context cancellation is a normal
+// shutdown and returns nil. A deadline error is returned: the HTTP client reports its own timeout
+// as one, and a slow controller is a failure. A joined error is returned when any of its members
+// is a real failure, so a cancellation never masks the other failures.
 func handleErr(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if err == nil || isCanceled(err) {
 		return nil
 	}
 
 	return fmt.Errorf("%w: %w", ErrJenkinsSource, err)
+}
+
+// isCanceled reports whether err is a context cancellation and nothing else: an error wrapping
+// several errors is a cancellation only when every wrapped error is one.
+func isCanceled(err error) bool {
+	var joined interface{ Unwrap() []error }
+	if errors.As(err, &joined) {
+		members := joined.Unwrap()
+		for _, member := range members {
+			if !isCanceled(member) {
+				return false
+			}
+		}
+		return len(members) > 0
+	}
+
+	return errors.Is(err, context.Canceled)
 }
