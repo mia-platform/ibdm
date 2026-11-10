@@ -40,7 +40,8 @@ type pluginDependency struct {
 }
 
 // syncPlugins emits every installed plugin. Listing the plugins requires the Overall/Administer
-// or Overall/SystemRead permission.
+// or Overall/SystemRead permission: without it, Jenkins answers 403 and StartSyncProcess logs the
+// missing permission instead of failing the sync.
 func (s *Source) syncPlugins(ctx context.Context, results chan<- source.Data) error {
 	var list pluginList
 	if _, err := s.client.getJSON(ctx, pluginManagerPath+apiJSONPath, pluginTree, &list); err != nil {

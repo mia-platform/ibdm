@@ -68,13 +68,18 @@ type storeRef struct {
 }
 
 // syncCredentials emits the credentials of the system store and of the store of every folder and
-// multibranch project. A failure reading the system store is returned; failures on folder stores
-// are logged and the sync continues.
+// multibranch project. A failure reading the system store does not stop the folder stores from
+// being read: it is returned once they have been emitted. Failures on folder stores are logged
+// and the sync continues.
 func (s *Source) syncCredentials(ctx context.Context, inv *inventory, results chan<- source.Data) error {
 	log := logger.FromContext(ctx).WithName(loggerName)
 
+	var systemErr error
 	if err := s.syncStore(ctx, inv, storeRef{kind: storeKindSystem, path: systemStorePath}, results); err != nil {
-		return fmt.Errorf("system credentials store: %w", err)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		systemErr = fmt.Errorf("system credentials store: %w", err)
 	}
 
 	for idx := range inv.containers {
@@ -93,7 +98,7 @@ func (s *Source) syncCredentials(ctx context.Context, inv *inventory, results ch
 		}
 	}
 
-	return nil
+	return systemErr
 }
 
 // syncStore emits every credential of a store.
