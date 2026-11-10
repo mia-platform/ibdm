@@ -1,0 +1,14 @@
+apiVersion: jenkins.mia-platform.eu/v1
+itemFamily: sharedlibraries
+type: sharedlibrary
+syncable: true
+mappings:
+  identifier: |-
+    {{ printf "jenkins-sharedlibrary-%s" .library.name | sha256sum }}
+  metadata:
+    title: '{{ .library.name | toJSON }}'
+  spec:
+    name: '{{ .library.name | toJSON }}'
+    versions: '{{ .library.versions | toJSON }}'
+    variables: '{{ .library.variables | toJSON }}'
+    usages: '{{ .usages | toJSON }}'

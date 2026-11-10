@@ -1,0 +1,74 @@
+# Fake Jenkins controller, with Pipeline Graph View and Pipeline: Stage View installed. Graph View
+# provides the stages, and Stage View describes the failed step of my-service:
+#
+#   my-team/          folder, with a folder credentials store holding team-token
+#     my-service      workflow, last completed build #12 failed in the Run stage of the Integration
+#                     parallel branch of the Test stage
+#     my-app/         multibranch, primary branch main (#40), branches feature%2Flogin and PR-7
+#     legacy-job      freestyle job, skipped
+#   my-org/           organization folder
+#     my-repo/        multibranch without primary branch
+#   root-pipeline     workflow without completed builds
+#
+# The system credentials store holds deploy-key, used by my-service and by two branches of my-app;
+# only my-team has a folder credentials store.
+# The bodies carry the fictional ci.example.com URLs: the source only calls JENKINS_URL.
+routes:
+  - method: GET
+    path: /api/json
+    query: {tree: "description,mode"}
+    headers: {X-Jenkins: 2.555.1}
+    body: instance.json
+  - method: GET
+    path: /api/json
+    body: root.json
+  - method: GET
+    path: /job/my-team/api/json
+    body: my-team.json
+  - method: GET
+    path: /job/my-team/job/my-app/api/json
+    body: my-app-branches.json
+  - method: GET
+    path: /job/my-team/job/my-app/job/main/api/json
+    body: my-app-main.json
+  - method: GET
+    path: /job/my-org/api/json
+    body: my-org.json
+  - method: GET
+    path: /job/my-org/job/my-repo/api/json
+    body: my-repo-branches.json
+  - method: GET
+    path: /job/my-team/job/my-service/12/stages/tree
+    body: my-service-12-graphview-tree.json
+  - method: GET
+    path: /job/my-team/job/my-service/12/stages/allSteps
+    body: my-service-12-graphview-steps.json
+  - method: GET
+    path: /job/my-team/job/my-service/12/execution/node/24/wfapi/describe
+    body: my-service-12-step-24-stageview.json
+  - method: GET
+    path: /job/my-team/job/my-app/job/main/40/stages/tree
+    body: my-app-main-40-graphview-tree.json
+  - method: GET
+    path: /credentials/store/system/api/json
+    body: credentials-system.json
+  - method: GET
+    path: /job/my-team/credentials/store/folder/api/json
+    body: credentials-my-team.json
+  # The other containers have no folder credentials store: Jenkins answers 404.
+  - method: GET
+    path: /job/my-team/job/my-app/credentials/store/folder/api/json
+    status: 404
+  - method: GET
+    path: /job/my-org/credentials/store/folder/api/json
+    status: 404
+  - method: GET
+    path: /job/my-org/job/my-repo/credentials/store/folder/api/json
+    status: 404
+  - method: GET
+    path: /pluginManager/api/json
+    query: {tree: "plugins[shortName,active,enabled]"}
+    body: plugin-states.json
+  - method: GET
+    path: /pluginManager/api/json
+    body: plugins.json

@@ -1,0 +1,48 @@
+{
+  "_class": "com.cloudbees.hudson.plugins.folder.Folder",
+  "jobs": [
+    {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+      "name": "my-service",
+      "fullName": "my-team/my-service",
+      "displayName": "my-service",
+      "description": "Service pipeline",
+      "url": "https://ci.example.com/job/my-team/job/my-service/",
+      "buildable": true,
+      "actions": [{}],
+      "lastCompletedBuild": {
+        "_class": "org.jenkinsci.plugins.workflow.job.WorkflowRun",
+        "number": 12,
+        "result": "FAILURE",
+        "timestamp": 1767261600000,
+        "duration": 95000,
+        "url": "https://ci.example.com/job/my-team/job/my-service/12/",
+        "actions": [
+          {"_class": "hudson.model.CauseAction"},
+          {"_class": "org.jenkinsci.plugins.workflow.libs.LibrariesAction", "libraries": [
+            {"name": "my-lib", "version": "main", "trusted": true, "changelog": true, "variables": ["deployApp", "buildApp"]}
+          ]}
+        ]
+      }
+    },
+    {
+      "_class": "org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject",
+      "name": "my-app",
+      "fullName": "my-team/my-app",
+      "displayName": "my-app",
+      "description": "Application repository",
+      "url": "https://ci.example.com/job/my-team/job/my-app/",
+      "healthReport": [{"score": 80, "description": "Build stability: 1 out of the last 5 builds failed."}],
+      "actions": [{"_class": "jenkins.scm.api.metadata.ObjectMetadataAction", "objectUrl": "https://git.example.com/my-org/my-app"}],
+      "jobs": [{"name": "main"}, {"name": "feature%2Flogin"}, {"name": "PR-7"}]
+    },
+    {
+      "_class": "hudson.model.FreeStyleProject",
+      "name": "legacy-job",
+      "fullName": "my-team/legacy-job",
+      "displayName": "legacy-job",
+      "url": "https://ci.example.com/job/my-team/job/legacy-job/",
+      "buildable": true
+    }
+  ]
+}

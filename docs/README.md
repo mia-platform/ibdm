@@ -16,6 +16,7 @@
 - [How to Configure the Bitbucket Integration](./how-to/110_bitbucket-source.md)
 - [How to Configure the SonarQube Integration](./how-to/120_sonarqube-source.md)
 - [How to Configure the Kubernetes Integration](./how-to/130_k8s-source.md)
+- [How to Configure the Jenkins Integration](./how-to/140_jenkins-source.md)
 
 ## Explanations
 

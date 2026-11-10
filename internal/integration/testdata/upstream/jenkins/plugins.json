@@ -1,0 +1,27 @@
+{
+  "_class": "hudson.LocalPluginManager",
+  "plugins": [
+    {
+      "shortName": "credentials",
+      "longName": "Credentials Plugin",
+      "version": "1415.v831096eb_5534",
+      "active": true,
+      "enabled": true,
+      "hasUpdate": false,
+      "url": "https://plugins.jenkins.io/credentials",
+      "requiredCoreVersion": "2.555.1",
+      "dependencies": [{"shortName": "structs", "version": "350.v3b_30f09f2363", "optional": false}]
+    },
+    {
+      "shortName": "pipeline-stage-view",
+      "longName": "Pipeline: Stage View Plugin",
+      "version": "2.38",
+      "active": true,
+      "enabled": true,
+      "hasUpdate": true,
+      "url": "https://plugins.jenkins.io/pipeline-stage-view",
+      "requiredCoreVersion": "2.479.3",
+      "dependencies": []
+    }
+  ]
+}

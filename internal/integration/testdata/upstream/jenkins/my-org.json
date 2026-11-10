@@ -1,0 +1,16 @@
+{
+  "_class": "jenkins.branch.OrganizationFolder",
+  "jobs": [
+    {
+      "_class": "org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject",
+      "name": "my-repo",
+      "fullName": "my-org/my-repo",
+      "displayName": "my-repo",
+      "description": "",
+      "url": "https://ci.example.com/job/my-org/job/my-repo/",
+      "healthReport": [],
+      "actions": [],
+      "jobs": [{"name": "develop"}]
+    }
+  ]
+}

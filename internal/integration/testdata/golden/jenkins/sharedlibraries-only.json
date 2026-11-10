@@ -1,0 +1,115 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "name": "other-lib",
+        "usages": [
+          {
+            "buildNumber": 40,
+            "changelog": false,
+            "fullName": "my-team/my-app/main",
+            "kind": "primaryBranch",
+            "multibranch": {
+              "fullName": "my-team/my-app",
+              "name": "my-app",
+              "url": "https://ci.example.com/job/my-team/job/my-app/"
+            },
+            "trusted": false,
+            "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
+            "version": "1.0"
+          }
+        ],
+        "variables": [],
+        "versions": [
+          "1.0"
+        ]
+      },
+      "itemFamily": "sharedlibraries",
+      "metadata": {
+        "title": "other-lib"
+      },
+      "name": "6a3a2a1d20443f478eff174a87f44b2423273e46e6c4e41e660eec6652c6de26",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "name": "my-lib",
+        "usages": [
+          {
+            "buildNumber": 12,
+            "changelog": true,
+            "fullName": "my-team/my-service",
+            "kind": "standalone",
+            "trusted": true,
+            "url": "https://ci.example.com/job/my-team/job/my-service/",
+            "version": "main"
+          },
+          {
+            "buildNumber": 40,
+            "changelog": true,
+            "fullName": "my-team/my-app/main",
+            "kind": "primaryBranch",
+            "multibranch": {
+              "fullName": "my-team/my-app",
+              "name": "my-app",
+              "url": "https://ci.example.com/job/my-team/job/my-app/"
+            },
+            "trusted": true,
+            "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
+            "version": "v2"
+          }
+        ],
+        "variables": [
+          "buildApp",
+          "deployApp"
+        ],
+        "versions": [
+          "main",
+          "v2"
+        ]
+      },
+      "itemFamily": "sharedlibraries",
+      "metadata": {
+        "title": "my-lib"
+      },
+      "name": "b835ba574955ebc256b518431f5686351286a4fe496493b476b393fbe8e748d7",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2CdisplayName%2Cdescription%2Curl%2Cbuildable%2ChealthReport%5Bscore%2Cdescription%5D%2Cactions%5B_class%2CobjectUrl%5D%2ClastCompletedBuild%5Bnumber%2Cresult%2Ctimestamp%2Cduration%2Curl%2Cactions%5B_class%2Clibraries%5Bname%2Cversion%2Ctrusted%2Cchangelog%2Cvariables%5D%5D%5D%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-org/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2CdisplayName%2Cdescription%2Curl%2Cbuildable%2ChealthReport%5Bscore%2Cdescription%5D%2Cactions%5B_class%2CobjectUrl%5D%2ClastCompletedBuild%5Bnumber%2Cresult%2Ctimestamp%2Cduration%2Curl%2Cactions%5B_class%2Clibraries%5Bname%2Cversion%2Ctrusted%2Cchangelog%2Cvariables%5D%5D%5D%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-org/job/my-repo/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2Curl%2Cactions%5B_class%5D%5D%2Cviews%5Bname%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2CdisplayName%2Cdescription%2Curl%2Cbuildable%2ChealthReport%5Bscore%2Cdescription%5D%2Cactions%5B_class%2CobjectUrl%5D%2ClastCompletedBuild%5Bnumber%2Cresult%2Ctimestamp%2Cduration%2Curl%2Cactions%5B_class%2Clibraries%5Bname%2Cversion%2Ctrusted%2Cchangelog%2Cvariables%5D%5D%5D%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/job/my-app/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2Curl%2Cactions%5B_class%5D%5D%2Cviews%5Bname%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/job/my-app/job/main/api/json",
+      "query": "tree=_class%2Cname%2CfullName%2CdisplayName%2Cdescription%2Curl%2Cbuildable%2ChealthReport%5Bscore%2Cdescription%5D%2Cactions%5B_class%2CobjectUrl%5D%2ClastCompletedBuild%5Bnumber%2Cresult%2Ctimestamp%2Cduration%2Curl%2Cactions%5B_class%2Clibraries%5Bname%2Cversion%2Ctrusted%2Cchangelog%2Cvariables%5D%5D%5D%2Cjobs%5Bname%5D"
+    }
+  ]
+}

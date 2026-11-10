@@ -24,6 +24,7 @@ words:
   - HMAC
   - ibdm
   - itds
+  - jenkinsci
   - kubeconfig
   - kubelet
   - milli
@@ -40,6 +41,7 @@ words:
   - upserted
   - upserts
   - uuidv
+  - wfapi
   - xmia
 ignoreWords:
   - Dsonar

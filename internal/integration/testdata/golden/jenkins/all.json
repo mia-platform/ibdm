@@ -1,0 +1,707 @@
+{
+  "catalogItems": [
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "id": "team-token",
+        "store": {
+          "domain": "_",
+          "folder": {
+            "fullName": "my-team",
+            "kind": "folder",
+            "url": "https://ci.example.com/job/my-team/"
+          },
+          "kind": "folder"
+        },
+        "typeName": "Secret text",
+        "usages": []
+      },
+      "itemFamily": "credentials",
+      "metadata": {
+        "description": "",
+        "title": "team-token"
+      },
+      "name": "af19700a038279952e0451bfd7e72da9f2f39bab35c1cb9a7505b3bd37a334db",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "id": "deploy-key",
+        "store": {
+          "domain": "_",
+          "kind": "system"
+        },
+        "typeName": "SSH Username with private key",
+        "usages": [
+          {
+            "fullName": "my-team/my-service",
+            "kind": "workflow",
+            "parent": {
+              "fullName": "my-team",
+              "kind": "folder",
+              "url": "https://ci.example.com/job/my-team/"
+            },
+            "url": "https://ci.example.com/job/my-team/job/my-service/"
+          },
+          {
+            "branches": [
+              "main",
+              "PR-7"
+            ],
+            "fullName": "my-team/my-app",
+            "kind": "multibranch",
+            "parent": {
+              "fullName": "my-team",
+              "kind": "folder",
+              "url": "https://ci.example.com/job/my-team/"
+            },
+            "url": "https://ci.example.com/job/my-team/job/my-app/"
+          }
+        ]
+      },
+      "itemFamily": "credentials",
+      "metadata": {
+        "description": "Deploy key",
+        "title": "deploy-key"
+      },
+      "name": "e64d119707f118444025d87666706a55bc347d77bbb8a11c4975c73c421c413a",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "fullName": "my-org",
+        "kind": "organization",
+        "name": "my-org",
+        "objectUrl": "https://git.example.com/my-org",
+        "url": "https://ci.example.com/job/my-org/"
+      },
+      "itemFamily": "folders",
+      "metadata": {
+        "description": "",
+        "title": "my-org"
+      },
+      "name": "1f93dc7e5bd8b998d6ab90b6046b4bc93604b68015a91d8832caca0ffefd576c",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "fullName": "my-team",
+        "kind": "folder",
+        "name": "my-team",
+        "objectUrl": "",
+        "url": "https://ci.example.com/job/my-team/"
+      },
+      "itemFamily": "folders",
+      "metadata": {
+        "description": "Pipelines of my team",
+        "title": "My Team"
+      },
+      "name": "a19f1569905c57bd107832f1b68840c31f38bf6649ad35d87bb0e091018fe71f",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "mode": "NORMAL",
+        "url": "http://<upstream>/",
+        "version": "2.555.1"
+      },
+      "itemFamily": "instances",
+      "metadata": {
+        "description": "Welcome to the my-org build controller.",
+        "title": "http://<upstream>/"
+      },
+      "name": "724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "branchCount": 2,
+        "fullName": "my-team/my-app",
+        "health": [
+          {
+            "description": "Build stability: 1 out of the last 5 builds failed.",
+            "score": 80
+          }
+        ],
+        "name": "my-app",
+        "primaryBranch": {
+          "fullName": "my-team/my-app/main",
+          "name": "main",
+          "url": "https://ci.example.com/job/my-team/job/my-app/job/main/"
+        },
+        "pullRequestCount": 1,
+        "repositoryUrl": "https://git.example.com/my-org/my-app",
+        "tagCount": 0,
+        "url": "https://ci.example.com/job/my-team/job/my-app/"
+      },
+      "itemFamily": "multibranches",
+      "metadata": {
+        "description": "Application repository",
+        "title": "my-app"
+      },
+      "name": "254147e3ae7f16cc695f6fb7c062ec3a1742a0935066f3e56aa12968657c8fb6",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "branchCount": null,
+        "fullName": "my-org/my-repo",
+        "health": [],
+        "name": "my-repo",
+        "primaryBranch": null,
+        "pullRequestCount": null,
+        "repositoryUrl": "",
+        "tagCount": null,
+        "url": "https://ci.example.com/job/my-org/job/my-repo/"
+      },
+      "itemFamily": "multibranches",
+      "metadata": {
+        "description": "",
+        "title": "my-repo"
+      },
+      "name": "7a19039ad736bc809f7f76f6704af833f51a5d6b1f1229b5dd148d38eeb5192d",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "active": true,
+        "dependencies": [
+          {
+            "optional": false,
+            "shortName": "structs",
+            "version": "350.v3b_30f09f2363"
+          }
+        ],
+        "enabled": true,
+        "hasUpdate": false,
+        "requiredCoreVersion": "2.555.1",
+        "shortName": "credentials",
+        "url": "https://plugins.jenkins.io/credentials",
+        "version": "1415.v831096eb_5534"
+      },
+      "itemFamily": "plugins",
+      "metadata": {
+        "title": "Credentials Plugin"
+      },
+      "name": "6cb0e5e8c07601d283f645f7aea8605d7979943c2007eefffde62e0a97c9c27c",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "active": true,
+        "dependencies": [],
+        "enabled": true,
+        "hasUpdate": true,
+        "requiredCoreVersion": "2.479.3",
+        "shortName": "pipeline-stage-view",
+        "url": "https://plugins.jenkins.io/pipeline-stage-view",
+        "version": "2.38"
+      },
+      "itemFamily": "plugins",
+      "metadata": {
+        "title": "Pipeline: Stage View Plugin"
+      },
+      "name": "ac6c8ab39118f548a57420cd199633d3b02bd85cccd335ccaa0d82ec73fad557",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "name": "other-lib",
+        "usages": [
+          {
+            "buildNumber": 40,
+            "changelog": false,
+            "fullName": "my-team/my-app/main",
+            "kind": "primaryBranch",
+            "multibranch": {
+              "fullName": "my-team/my-app",
+              "name": "my-app",
+              "url": "https://ci.example.com/job/my-team/job/my-app/"
+            },
+            "trusted": false,
+            "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
+            "version": "1.0"
+          }
+        ],
+        "variables": [],
+        "versions": [
+          "1.0"
+        ]
+      },
+      "itemFamily": "sharedlibraries",
+      "metadata": {
+        "title": "other-lib"
+      },
+      "name": "6a3a2a1d20443f478eff174a87f44b2423273e46e6c4e41e660eec6652c6de26",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "name": "my-lib",
+        "usages": [
+          {
+            "buildNumber": 12,
+            "changelog": true,
+            "fullName": "my-team/my-service",
+            "kind": "standalone",
+            "trusted": true,
+            "url": "https://ci.example.com/job/my-team/job/my-service/",
+            "version": "main"
+          },
+          {
+            "buildNumber": 40,
+            "changelog": true,
+            "fullName": "my-team/my-app/main",
+            "kind": "primaryBranch",
+            "multibranch": {
+              "fullName": "my-team/my-app",
+              "name": "my-app",
+              "url": "https://ci.example.com/job/my-team/job/my-app/"
+            },
+            "trusted": true,
+            "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
+            "version": "v2"
+          }
+        ],
+        "variables": [
+          "buildApp",
+          "deployApp"
+        ],
+        "versions": [
+          "main",
+          "v2"
+        ]
+      },
+      "itemFamily": "sharedlibraries",
+      "metadata": {
+        "title": "my-lib"
+      },
+      "name": "b835ba574955ebc256b518431f5686351286a4fe496493b476b393fbe8e748d7",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "build": {
+          "duration": 95000,
+          "number": 12,
+          "result": "FAILURE",
+          "stages": [
+            {
+              "agent": "agent-1",
+              "children": [],
+              "durationMillis": 30000,
+              "id": "6",
+              "name": "Build",
+              "parallel": false,
+              "startTimeMillis": 1767261601000,
+              "status": "success",
+              "synthetic": false
+            },
+            {
+              "agent": "",
+              "children": [
+                "18",
+                "19"
+              ],
+              "durationMillis": 60000,
+              "id": "15",
+              "name": "Test",
+              "parallel": false,
+              "startTimeMillis": 1767261631000,
+              "status": "failure",
+              "synthetic": false
+            },
+            {
+              "agent": "agent-2",
+              "children": [],
+              "durationMillis": 20000,
+              "id": "18",
+              "name": "Unit",
+              "parallel": true,
+              "startTimeMillis": 1767261632000,
+              "status": "success",
+              "synthetic": false
+            },
+            {
+              "agent": "agent-3",
+              "children": [
+                "22",
+                "23"
+              ],
+              "durationMillis": 58000,
+              "id": "19",
+              "name": "Integration",
+              "parallel": true,
+              "startTimeMillis": 1767261632000,
+              "status": "failure",
+              "synthetic": false
+            },
+            {
+              "agent": "agent-3",
+              "children": [],
+              "durationMillis": 1000,
+              "id": "22",
+              "name": "Setup",
+              "parallel": false,
+              "startTimeMillis": 1767261633000,
+              "status": "success",
+              "synthetic": false
+            },
+            {
+              "agent": "agent-3",
+              "children": [],
+              "durationMillis": 56000,
+              "failure": {
+                "consoleUrl": "https://ci.example.com/job/my-team/job/my-service/12/console",
+                "logUrl": "https://ci.example.com/job/my-team/job/my-service/12/execution/node/24/log/",
+                "message": "script returned exit code 2",
+                "nodeName": "make integration",
+                "type": "hudson.AbortException"
+              },
+              "id": "23",
+              "name": "Run",
+              "parallel": false,
+              "startTimeMillis": 1767261634000,
+              "status": "failure",
+              "synthetic": false
+            },
+            {
+              "agent": "",
+              "children": [],
+              "durationMillis": 0,
+              "id": "25",
+              "name": "Deploy",
+              "parallel": false,
+              "startTimeMillis": 1767261691000,
+              "status": "skipped",
+              "synthetic": false
+            },
+            {
+              "agent": "",
+              "children": [],
+              "durationMillis": 2000,
+              "id": "30",
+              "name": "Post Actions",
+              "parallel": false,
+              "startTimeMillis": 1767261692000,
+              "status": "success",
+              "synthetic": true
+            }
+          ],
+          "stagesSource": "pipeline-graph-view",
+          "timestamp": 1767261600000,
+          "url": "https://ci.example.com/job/my-team/job/my-service/12/"
+        },
+        "buildable": true,
+        "fullName": "my-team/my-service",
+        "kind": "standalone",
+        "libraries": [
+          {
+            "name": "my-lib",
+            "trusted": true,
+            "version": "main"
+          }
+        ],
+        "name": "my-service",
+        "url": "https://ci.example.com/job/my-team/job/my-service/"
+      },
+      "itemFamily": "workflows",
+      "metadata": {
+        "description": "Service pipeline",
+        "title": "my-service"
+      },
+      "name": "6227882135f2c586e59434e334025296a033baa2159aa4a4115111592c1e677d",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "build": null,
+        "buildable": true,
+        "fullName": "root-pipeline",
+        "kind": "standalone",
+        "libraries": [],
+        "name": "root-pipeline",
+        "url": "https://ci.example.com/job/root-pipeline/"
+      },
+      "itemFamily": "workflows",
+      "metadata": {
+        "description": "",
+        "title": "root-pipeline"
+      },
+      "name": "db21706da1e3342452789235fa5334c455530acfdc7178e48c6cb97f94fe14c5",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "build": {
+          "duration": 42000,
+          "number": 40,
+          "result": "SUCCESS",
+          "stages": [
+            {
+              "agent": "agent-1",
+              "children": [],
+              "durationMillis": 41000,
+              "id": "5",
+              "name": "Build",
+              "parallel": false,
+              "startTimeMillis": 1767265201000,
+              "status": "success",
+              "synthetic": false
+            }
+          ],
+          "stagesSource": "pipeline-graph-view",
+          "timestamp": 1767265200000,
+          "url": "https://ci.example.com/job/my-team/job/my-app/job/main/40/"
+        },
+        "buildable": true,
+        "fullName": "my-team/my-app/main",
+        "kind": "primaryBranch",
+        "libraries": [
+          {
+            "name": "my-lib",
+            "trusted": true,
+            "version": "v2"
+          },
+          {
+            "name": "other-lib",
+            "trusted": false,
+            "version": "1.0"
+          }
+        ],
+        "name": "main",
+        "url": "https://ci.example.com/job/my-team/job/my-app/job/main/"
+      },
+      "itemFamily": "workflows",
+      "metadata": {
+        "description": "",
+        "title": "my-app (main)"
+      },
+      "name": "efc0fc5cc457a7ce5a27d8e32fbedac4cb45af56bfa2278f4683784ff4b6bf3c",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:1f93dc7e5bd8b998d6ab90b6046b4bc93604b68015a91d8832caca0ffefd576c",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "04bf0a1291928a8dc4ec7cb5546cd5c516c482a94a54e8de81b9c7f84e597f0e",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:a19f1569905c57bd107832f1b68840c31f38bf6649ad35d87bb0e091018fe71f",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "0d5727be11b96bbe81f8240ed95c561e555e31b60ff9b9668c4aebe69e86671c",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:7a19039ad736bc809f7f76f6704af833f51a5d6b1f1229b5dd148d38eeb5192d",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:1f93dc7e5bd8b998d6ab90b6046b4bc93604b68015a91d8832caca0ffefd576c",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "1964c013404a1ef397e069a4ffb716090f03349fe301dd0036ec079212e29dc8",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:254147e3ae7f16cc695f6fb7c062ec3a1742a0935066f3e56aa12968657c8fb6",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:a19f1569905c57bd107832f1b68840c31f38bf6649ad35d87bb0e091018fe71f",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "252518411bd4af3b250bb3ca1f76072b11e3788c45afda69883626ae0d977693",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:6227882135f2c586e59434e334025296a033baa2159aa4a4115111592c1e677d",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:a19f1569905c57bd107832f1b68840c31f38bf6649ad35d87bb0e091018fe71f",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "3ad4a658c291fa8ac42b3f67b4e6d568ebaf73d37372eb1f53e8608a6b8bc6e1",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Plugin:ac6c8ab39118f548a57420cd199633d3b02bd85cccd335ccaa0d82ec73fad557",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "6dd2327c524b696433e0c5fb5646656d6453da7a656381019aea5b10dcf6669f",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:db21706da1e3342452789235fa5334c455530acfdc7178e48c6cb97f94fe14c5",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "90ec24d42707ca175ca4691d396fc88d5ac8507f36b9b9a84ef262bc30acda11",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Plugin:6cb0e5e8c07601d283f645f7aea8605d7979943c2007eefffde62e0a97c9c27c",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "9fe0c7fee051656fd6047e09fcbb85e10049df6fe9ab87721e827af6441834a0",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "mia-platform.eu/v1",
+      "data": {
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:efc0fc5cc457a7ce5a27d8e32fbedac4cb45af56bfa2278f4683784ff4b6bf3c",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:254147e3ae7f16cc695f6fb7c062ec3a1742a0935066f3e56aa12968657c8fb6",
+        "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
+      },
+      "itemFamily": "relationships",
+      "name": "e397c4b61933f0b3711a46471956a5fc61a3eda5f105ae33ec05ceeef39cf07e",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "method": "GET",
+      "path": "/api/json",
+      "query": "tree=description%2Cmode"
+    },
+    {
+      "method": "GET",
+      "path": "/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2CdisplayName%2Cdescription%2Curl%2Cbuildable%2ChealthReport%5Bscore%2Cdescription%5D%2Cactions%5B_class%2CobjectUrl%5D%2ClastCompletedBuild%5Bnumber%2Cresult%2Ctimestamp%2Cduration%2Curl%2Cactions%5B_class%2Clibraries%5Bname%2Cversion%2Ctrusted%2Cchangelog%2Cvariables%5D%5D%5D%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/credentials/store/system/api/json",
+      "query": "tree=domains%5BurlName%2Ccredentials%5Bid%2CdisplayName%2CtypeName%2Cdescription%2Cfingerprint%5Busage%5Bname%5D%5D%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-org/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2CdisplayName%2Cdescription%2Curl%2Cbuildable%2ChealthReport%5Bscore%2Cdescription%5D%2Cactions%5B_class%2CobjectUrl%5D%2ClastCompletedBuild%5Bnumber%2Cresult%2Ctimestamp%2Cduration%2Curl%2Cactions%5B_class%2Clibraries%5Bname%2Cversion%2Ctrusted%2Cchangelog%2Cvariables%5D%5D%5D%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-org/credentials/store/folder/api/json",
+      "query": "tree=domains%5BurlName%2Ccredentials%5Bid%2CdisplayName%2CtypeName%2Cdescription%2Cfingerprint%5Busage%5Bname%5D%5D%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-org/job/my-repo/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2Curl%2Cactions%5B_class%5D%5D%2Cviews%5Bname%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-org/job/my-repo/credentials/store/folder/api/json",
+      "query": "tree=domains%5BurlName%2Ccredentials%5Bid%2CdisplayName%2CtypeName%2Cdescription%2Cfingerprint%5Busage%5Bname%5D%5D%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2CdisplayName%2Cdescription%2Curl%2Cbuildable%2ChealthReport%5Bscore%2Cdescription%5D%2Cactions%5B_class%2CobjectUrl%5D%2ClastCompletedBuild%5Bnumber%2Cresult%2Ctimestamp%2Cduration%2Curl%2Cactions%5B_class%2Clibraries%5Bname%2Cversion%2Ctrusted%2Cchangelog%2Cvariables%5D%5D%5D%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/credentials/store/folder/api/json",
+      "query": "tree=domains%5BurlName%2Ccredentials%5Bid%2CdisplayName%2CtypeName%2Cdescription%2Cfingerprint%5Busage%5Bname%5D%5D%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/job/my-app/api/json",
+      "query": "tree=jobs%5B_class%2Cname%2CfullName%2Curl%2Cactions%5B_class%5D%5D%2Cviews%5Bname%2Cjobs%5Bname%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/job/my-app/credentials/store/folder/api/json",
+      "query": "tree=domains%5BurlName%2Ccredentials%5Bid%2CdisplayName%2CtypeName%2Cdescription%2Cfingerprint%5Busage%5Bname%5D%5D%5D%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/job/my-app/job/main/40/stages/tree"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/job/my-app/job/main/api/json",
+      "query": "tree=_class%2Cname%2CfullName%2CdisplayName%2Cdescription%2Curl%2Cbuildable%2ChealthReport%5Bscore%2Cdescription%5D%2Cactions%5B_class%2CobjectUrl%5D%2ClastCompletedBuild%5Bnumber%2Cresult%2Ctimestamp%2Cduration%2Curl%2Cactions%5B_class%2Clibraries%5Bname%2Cversion%2Ctrusted%2Cchangelog%2Cvariables%5D%5D%5D%2Cjobs%5Bname%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/job/my-service/12/execution/node/24/wfapi/describe"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/job/my-service/12/stages/allSteps"
+    },
+    {
+      "method": "GET",
+      "path": "/job/my-team/job/my-service/12/stages/tree"
+    },
+    {
+      "method": "GET",
+      "path": "/pluginManager/api/json",
+      "query": "tree=plugins%5BshortName%2Cactive%2Cenabled%5D"
+    },
+    {
+      "method": "GET",
+      "path": "/pluginManager/api/json",
+      "query": "tree=plugins%5BshortName%2ClongName%2Cversion%2Cactive%2Cenabled%2ChasUpdate%2Curl%2CrequiredCoreVersion%2Cdependencies%5BshortName%2Cversion%2Coptional%5D%5D"
+    }
+  ]
+}
