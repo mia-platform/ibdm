@@ -63,8 +63,12 @@ Catalog accepts such relationships without error.
 
 When running in webhook mode (`ibdm run console`), a server is spawned and these configs are supported:
 
-- `HTTP_HOST`: The host of the underlying server
-- `HTTP_PORT`: The port of the underlying server
+- `HTTP_HOST`: The host of the underlying server (default: `0.0.0.0`)
+- `HTTP_PORT`: The port of the underlying server (default: `3000`)
+- `HTTP_MAX_BODY_SIZE`: The largest request body accepted, in bytes (default: `4194304`, 4 MiB).
+  Larger requests are answered with `413 Request Entity Too Large`
+- `DISABLE_STARTUP_MESSAGE`: When `false`, the server logs the address it listens on at startup
+  (default: `true`)
 
 ### Webhook Mode
 

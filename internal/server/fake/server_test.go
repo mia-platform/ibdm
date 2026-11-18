@@ -26,7 +26,7 @@ func TestAddRouteRegistersHandler(t *testing.T) {
 		return nil
 	}
 
-	server.AddRoute(http.MethodPost, "/webhook", handler)
+	require.NoError(t, server.AddRoute(http.MethodPost, "/webhook", handler))
 	require.True(t, server.alreadyRegistered)
 
 	reqHeaders := http.Header{}
@@ -58,10 +58,10 @@ func TestCallRegisterWebhook(t *testing.T) {
 	server := NewFakeServer(t, http.MethodPost, "/webhook")
 
 	handled := make(chan struct{}, 1)
-	server.AddRoute(http.MethodPost, "/webhook", func(ctx context.Context, headers http.Header, body []byte) error {
+	require.NoError(t, server.AddRoute(http.MethodPost, "/webhook", func(ctx context.Context, headers http.Header, body []byte) error {
 		handled <- struct{}{}
 		return nil
-	})
+	}))
 
 	require.NoError(t, server.CallRegisterWebhook(ctx))
 
@@ -101,4 +101,14 @@ loop:
 	<-server.StoppedServer()
 	err := <-errChan
 	assert.NoError(t, err)
+}
+
+func TestFailAddRoute(t *testing.T) {
+	t.Parallel()
+
+	server := NewFakeServer(t, http.MethodPost, "/webhook").FailAddRoute(assert.AnError)
+
+	err := server.AddRoute(http.MethodPost, "/webhook", func(context.Context, http.Header, []byte) error { return nil })
+	require.ErrorIs(t, err, assert.AnError)
+	require.False(t, server.alreadyRegistered)
 }
