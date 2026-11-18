@@ -318,25 +318,52 @@ func TestRequestMiddlewareLoggerRequestFields(t *testing.T) {
 func TestRequestMiddlewareLoggerContext(t *testing.T) {
 	t.Parallel()
 
-	for testName, excluded := range map[string][]string{
-		"logged request":   nil,
-		"excluded request": {"/-/"},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			t.Parallel()
+	t.Run("logged request carries the logger of the request", func(t *testing.T) {
+		t.Parallel()
 
-			logger := NewLogger(new(bytes.Buffer))
-			var found Logger
-			handler := RequestMiddlewareLogger(logger, excluded)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-				found = FromContext(r.Context())
-			}))
+		buffer := new(bytes.Buffer)
+		handler := RequestMiddlewareLogger(NewLogger(buffer), nil)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			FromContext(r.Context()).Info("logged by the handler")
+			FromContext(r.Context()).WithName("ibdm:source:fake").Info("logged by a source")
+		}))
 
-			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/-/healthz", nil)
-			handler.ServeHTTP(httptest.NewRecorder(), req)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/webhook", nil)
+		req.Header.Set("X-Request-Id", "019f1cb8-0000-7000-8000-000000000002")
+		handler.ServeHTTP(httptest.NewRecorder(), req)
 
-			require.Same(t, logger, found)
-		})
-	}
+		lines := strings.Split(strings.TrimSpace(buffer.String()), "\n")
+		require.Len(t, lines, 3)
+
+		var handlerLine, sourceLine, completedLine map[string]any
+		require.NoError(t, json.Unmarshal([]byte(lines[0]), &handlerLine))
+		require.NoError(t, json.Unmarshal([]byte(lines[1]), &sourceLine))
+		require.NoError(t, json.Unmarshal([]byte(lines[2]), &completedLine))
+
+		require.Equal(t, "logged by the handler", handlerLine["@message"])
+		require.Equal(t, "server:request:019f1cb8-0000-7000-8000-000000000002", handlerLine["@module"])
+		require.Equal(t, "019f1cb8-0000-7000-8000-000000000002", handlerLine["requestId"])
+
+		require.Equal(t, "logged by a source", sourceLine["@message"])
+		require.Equal(t, "ibdm:source:fake", sourceLine["@module"])
+		require.Equal(t, "019f1cb8-0000-7000-8000-000000000002", sourceLine["requestId"], "renaming the logger keeps the request id")
+
+		require.Equal(t, RequestCompletedMessage, completedLine["@message"])
+		require.Equal(t, "019f1cb8-0000-7000-8000-000000000002", completedLine["requestId"])
+	})
+
+	t.Run("excluded request carries the logger of the middleware", func(t *testing.T) {
+		t.Parallel()
+
+		logger := NewLogger(new(bytes.Buffer))
+		var found Logger
+		handler := RequestMiddlewareLogger(logger, []string{"/-/"})(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			found = FromContext(r.Context())
+		}))
+
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/-/healthz", nil))
+
+		require.Same(t, logger, found)
+	})
 }
 
 func TestResponseRecorderUnwrap(t *testing.T) {

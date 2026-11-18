@@ -6,6 +6,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -354,6 +355,7 @@ func TestWebhookHandlerContextOutlivesRequest(t *testing.T) {
 
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://"+addr+"/webhook", strings.NewReader("payload"))
 	require.NoError(t, err)
+	req.Header.Set("X-Request-Id", "019f1cb8-0000-7000-8000-000000000003")
 	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
 	response, err := client.Do(req)
 	require.NoError(t, err)
@@ -365,8 +367,15 @@ func TestWebhookHandlerContextOutlivesRequest(t *testing.T) {
 	result := receiveWithin(t, checked, "the handler goroutine")
 	require.NoError(t, result.err)
 
-	result.logger.Info("logged from the handler")
-	require.Contains(t, buffer.String(), "logged from the handler")
+	result.logger.WithName("ibdm:source:fake").Info("logged from the handler")
+	var handlerLine map[string]any
+	for line := range strings.SplitSeq(strings.TrimSpace(buffer.String()), "\n") {
+		if strings.Contains(line, "logged from the handler") {
+			require.NoError(t, json.Unmarshal([]byte(line), &handlerLine))
+		}
+	}
+	require.Equal(t, "ibdm:source:fake", handlerLine["@module"])
+	require.Equal(t, "019f1cb8-0000-7000-8000-000000000003", handlerLine["requestId"])
 }
 
 func TestServerLifecycle(t *testing.T) {

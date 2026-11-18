@@ -16,6 +16,9 @@ const (
 	IncomingRequestMessage  = "incoming request"
 	RequestCompletedMessage = "request completed"
 
+	// requestIDKey is the log field carrying the request id.
+	requestIDKey = "requestId"
+
 	// headerRequestID carries the request id chosen by the caller or by a proxy in front of IBDM.
 	headerRequestID = "X-Request-Id"
 	// headerForwardedHost carries the host requested by the client when IBDM is behind a proxy.
@@ -181,15 +184,15 @@ func logRequestCompleted(r *http.Request, recorder *responseRecorder, logger Log
 // RequestMiddlewareLogger returns an HTTP middleware that logs every request: the incoming request
 // at Trace level and its completion, with status code, response size and latency, at Info level.
 // Requests whose path starts with one of excludedPrefix are served without being logged.
-// The logger is stored in the request context, where handlers find it with FromContext.
+// The logger of the request is stored in the request context, where handlers find it with
+// FromContext; excluded requests carry logger itself. It is named after the request id and adds it
+// to every entry as the requestId field, which is kept when handlers rename the logger.
 func RequestMiddlewareLogger(logger Logger, excludedPrefix []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r = r.WithContext(WithContext(r.Context(), logger))
-
 			for _, prefix := range excludedPrefix {
 				if strings.HasPrefix(r.URL.Path, prefix) {
-					next.ServeHTTP(w, r)
+					next.ServeHTTP(w, r.WithContext(WithContext(r.Context(), logger)))
 					return
 				}
 			}
@@ -197,7 +200,8 @@ func RequestMiddlewareLogger(logger Logger, excludedPrefix []string) func(http.H
 			start := time.Now()
 
 			requestID := getReqID(r)
-			loggerWithReqID := logger.WithName("server:request:" + requestID)
+			loggerWithReqID := logger.With(requestIDKey, requestID).WithName("server:request:" + requestID)
+			r = r.WithContext(WithContext(r.Context(), loggerWithReqID))
 			logIncomingRequest(r, loggerWithReqID)
 
 			recorder := &responseRecorder{ResponseWriter: w}

@@ -70,6 +70,10 @@ type Logger interface {
 	// WithName returns a logger namespaced with the provided component name.
 	WithName(name string) Logger
 
+	// With returns a logger that adds the given key/value pairs to every entry. The pairs are kept
+	// by the loggers derived from it, WithName included.
+	With(args ...any) Logger
+
 	// SetLevel updates the logger level.
 	SetLevel(level Level)
 
@@ -112,6 +116,12 @@ func NewLogger(writer io.Writer) Logger {
 func (i instance) WithName(name string) Logger {
 	return &instance{
 		log: i.log.ResetNamed(name),
+	}
+}
+
+func (i instance) With(args ...any) Logger {
+	return &instance{
+		log: i.log.With(args...),
 	}
 }
 
