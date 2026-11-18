@@ -29,6 +29,7 @@ type Server struct {
 	expectedPath      string
 	handler           func(context.Context, http.Header, []byte) error
 	alreadyRegistered bool
+	addRouteErr       error
 
 	startedChan chan struct{}
 	closedChan  chan struct{}
@@ -48,8 +49,18 @@ func NewFakeServer(tb testing.TB, expectedMethod, expectedPath string) *Server {
 	}
 }
 
-func (s *Server) AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) {
+// FailAddRoute makes every following AddRoute call return err without registering the route.
+func (s *Server) FailAddRoute(err error) *Server {
+	s.addRouteErr = err
+	return s
+}
+
+func (s *Server) AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) error {
 	s.tb.Helper()
+	if s.addRouteErr != nil {
+		return s.addRouteErr
+	}
+
 	require.False(s.tb, s.alreadyRegistered)
 	assert.Equal(s.tb, s.expectedMethod, method)
 	assert.Equal(s.tb, s.expectedPath, path)
@@ -58,6 +69,7 @@ func (s *Server) AddRoute(method string, path string, handler func(ctx context.C
 	s.once.Do(func() {
 		s.alreadyRegistered = true
 	})
+	return nil
 }
 
 func (s *Server) Start() error {
