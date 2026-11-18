@@ -551,6 +551,9 @@ func TestStartEventStreamWorkloadRelationships(t *testing.T) {
 	})
 
 	t.Run("item and relationship types share one informer", func(t *testing.T) {
+		// The relationship type also covers statefulsets and daemonsets, so every
+		// informer must be watching before the deployments actions are counted.
+		const informers = 3 // deployments, statefulsets, daemonsets
 		harness := startStream(t, []string{deploymentType, relType}, dep)
 
 		types := map[string]int{}
@@ -558,7 +561,7 @@ func TestStartEventStreamWorkloadRelationships(t *testing.T) {
 			types[data.Type]++
 		}
 		assert.Equal(t, map[string]int{deploymentType: 1, relType: 1}, types)
-		harness.waitWatches(1)
+		harness.waitWatches(informers)
 
 		var lists, watches int
 		for _, action := range harness.client.Actions() {
