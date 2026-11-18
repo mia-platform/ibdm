@@ -7,9 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
+	"strconv"
 
-	"github.com/gofiber/fiber/v2"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/mia-platform/ibdm/internal/info"
 	"github.com/mia-platform/ibdm/internal/logger"
@@ -17,19 +20,38 @@ import (
 
 const (
 	serviceName = "ibdm"
+
+	// webhookListenerName names the public listener that serves webhooks and status routes.
+	webhookListenerName = "webhook"
+
+	// defaultMaxBodySize is the largest request body accepted, in bytes.
+	defaultMaxBodySize = 4 * 1024 * 1024
+
+	msgWebhookError   = "error processing webhook message"
+	msgBodyTooLarge   = "request body too large"
+	msgBodyUnreadable = "error reading request body"
 )
 
+// Server serves the webhooks of the sources together with the status routes.
 type Server interface {
+	// AddRoute registers handler for the requests with the given method and path.
 	AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error)
+	// Start listens and serves until the server is stopped or fails.
 	Start() error
+	// Stop shuts the server down gracefully, waiting for active requests until ctx is done.
 	Stop(context.Context) error
+	// StartAsync runs Start in a goroutine; the returned channel receives its result and is closed.
 	StartAsync() <-chan error
 }
+
+var _ Server = &impServer{}
 
 type impServer struct {
 	config
 
-	app *fiber.App
+	appCtx    context.Context
+	webhook   *listener
+	listeners []*listener
 }
 
 var (
@@ -37,49 +59,118 @@ var (
 	ErrServerShutdown = errors.New("server shutdown error")
 )
 
+// NewServer returns a Server configured from the environment. ctx is the application context:
+// webhook handlers receive a context derived from it, never one tied to the HTTP request.
 func NewServer(ctx context.Context) (Server, error) {
 	cfg, err := LoadServerConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	app := fiber.New(fiber.Config{
-		DisableStartupMessage: cfg.DisableStartupMessage,
-		Immutable:             true, // ensure that accessing request body returns a copy that is valid after the request lifecycle (accessing body and headers in goroutines in the request handlers)
-	})
-	log := logger.FromContext(ctx)
-	app.Use(logger.RequestMiddlewareLogger(ctx, log, []string{"/-/"}))
+	return newServer(ctx, *cfg), nil
+}
 
-	statusRoutes(app, serviceName, info.Version)
+// newServer builds the server with its webhook listener and the status routes.
+func newServer(ctx context.Context, cfg config) *impServer {
+	log := logger.FromContext(ctx)
+
+	webhook := newListener(
+		webhookListenerName,
+		net.JoinHostPort(cfg.HTTPHost, strconv.Itoa(cfg.HTTPPort)),
+		logger.RequestMiddlewareLogger(log, []string{statusRoutesPrefix}),
+		normalizePath,
+		limitBody(defaultMaxBodySize),
+	)
+	statusRoutes(webhook.mux, serviceName, info.Version)
 
 	return &impServer{
-		app:    app,
-		config: *cfg,
-	}, nil
+		config:    cfg,
+		appCtx:    ctx,
+		webhook:   webhook,
+		listeners: []*listener{webhook},
+	}
 }
 
+// AddRoute registers handler on the webhook listener. Paths match regardless of case and of a
+// trailing slash. The handler is answered with 204 when it returns nil, and with 500 otherwise.
 func (s *impServer) AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) {
-	s.app.Add(method, path, func(ctx *fiber.Ctx) error {
-		if err := handler(ctx.UserContext(), ctx.GetReqHeaders(), ctx.Body()); err != nil {
-			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"statusCode": http.StatusInternalServerError,
-				"error":      http.StatusText(http.StatusInternalServerError),
-				"message":    "error processing webhook message",
-			})
+	s.webhook.mux.Handle(method+" "+routingPath(path), s.webhookHandler(handler))
+}
+
+// webhookHandler adapts handler to net/http. The handler receives a copy of the headers and the
+// whole body, so it may keep using them after the response is sent, and a context derived from
+// the application context carrying the request logger: work started by the handler is not
+// cancelled when the response is sent.
+func (s *impServer) webhookHandler(handler func(ctx context.Context, headers http.Header, body []byte) error) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
+				writeError(w, log, http.StatusRequestEntityTooLarge, msgBodyTooLarge)
+				return
+			}
+			writeError(w, log, http.StatusBadRequest, msgBodyUnreadable)
+			return
 		}
-		return ctx.SendStatus(http.StatusNoContent)
+
+		// Sources start work from the handler that must go on after the response is sent, so the
+		// context comes from the application, not from the request.
+		ctx := logger.WithContext(s.appCtx, log)
+		if err := handler(ctx, r.Header.Clone(), body); err != nil { //nolint:contextcheck // see above
+			writeError(w, log, http.StatusInternalServerError, msgWebhookError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	})
 }
 
+// Start opens every listener and serves them until they are stopped. When one listener fails, the
+// others are closed and the error is returned. A stop is a normal end and returns nil.
 func (s *impServer) Start() error {
-	if err := s.app.Listen(fmt.Sprintf("%s:%d", s.HTTPHost, s.HTTPPort)); err != nil {
+	for i, l := range s.listeners {
+		if err := l.listen(s.appCtx); err != nil {
+			for _, opened := range s.listeners[:i] {
+				err = errors.Join(err, opened.close())
+			}
+			return fmt.Errorf("%w: %w", ErrServerListen, err)
+		}
+	}
+
+	var group errgroup.Group
+	for _, l := range s.listeners {
+		group.Go(func() error {
+			err := l.serve()
+			if err != nil {
+				for _, other := range s.listeners {
+					if other != l {
+						err = errors.Join(err, other.close())
+					}
+				}
+			}
+			return err
+		})
+	}
+
+	if err := group.Wait(); err != nil {
 		return fmt.Errorf("%w: %w", ErrServerListen, err)
 	}
 	return nil
 }
 
+// Stop shuts every listener down gracefully. Stopping a server that has not started yet makes a
+// later Start return immediately.
 func (s *impServer) Stop(ctx context.Context) error {
-	if err := s.app.ShutdownWithContext(ctx); err != nil {
+	var errs []error
+	for _, l := range s.listeners {
+		if err := l.shutdown(ctx); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if err := errors.Join(errs...); err != nil {
 		return fmt.Errorf("%w: %w", ErrServerShutdown, err)
 	}
 	return nil

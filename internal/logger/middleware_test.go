@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,23 +99,18 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 			logger := NewLogger(buffer)
 			logger.SetLevel(test.loggerLevel)
 
-			app := fiber.New()
-			app.Use(RequestMiddlewareLogger(t.Context(), logger, test.excludedPrefixes))
-
-			app.Get(test.path, func(c *fiber.Ctx) error {
-				return c.SendString("foo")
-			})
+			handler := RequestMiddlewareLogger(logger, test.excludedPrefixes)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("foo"))
+			}))
 
 			target := test.path
 			if test.query != "" {
 				target += "?" + test.query
 			}
-			req := httptest.NewRequest(test.method, target, nil)
+			req := httptest.NewRequestWithContext(t.Context(), test.method, target, nil)
 			req.Header.Set("User-Agent", test.userAgent)
 			req.Host = test.host
-			resp, err := app.Test(req)
-			require.NoError(t, err)
-			defer resp.Body.Close()
+			handler.ServeHTTP(httptest.NewRecorder(), req)
 
 			logs := strings.TrimSpace(buffer.String())
 			lines := strings.Split(logs, "\n")
@@ -135,7 +129,7 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 			}
 
 			var firstLog map[string]any
-			err = json.Unmarshal([]byte(lines[0]), &firstLog)
+			err := json.Unmarshal([]byte(lines[0]), &firstLog)
 			require.NoError(t, err)
 
 			httpReq := map[string]any{
@@ -177,4 +171,186 @@ func TestRequestMiddlewareLogger(t *testing.T) {
 			require.NotNil(t, secondLog["responseTime"])
 		})
 	}
+}
+
+// completedLog serves one request through the middleware and returns the decoded
+// "request completed" log line.
+func completedLog(t *testing.T, req *http.Request, handler http.HandlerFunc) map[string]any {
+	t.Helper()
+
+	buffer := new(bytes.Buffer)
+	logger := NewLogger(buffer)
+	RequestMiddlewareLogger(logger, nil)(handler).ServeHTTP(httptest.NewRecorder(), req)
+
+	lines := strings.Split(strings.TrimSpace(buffer.String()), "\n")
+	require.Len(t, lines, 1)
+
+	var line map[string]any
+	require.NoError(t, json.Unmarshal([]byte(lines[0]), &line))
+	require.Equal(t, RequestCompletedMessage, line["@message"])
+	return line
+}
+
+func TestRequestMiddlewareLoggerResponse(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		handler       http.HandlerFunc
+		expectedCode  float64
+		expectedBytes float64
+	}{
+		"body without explicit status is a 200": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("foo"))
+			},
+			expectedCode:  http.StatusOK,
+			expectedBytes: 3,
+		},
+		"nothing written is a 200 without body": {
+			handler:      func(http.ResponseWriter, *http.Request) {},
+			expectedCode: http.StatusOK,
+		},
+		"no content": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			},
+			expectedCode: http.StatusNoContent,
+		},
+		"server error with body": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"error":"boom"}`))
+			},
+			expectedCode:  http.StatusInternalServerError,
+			expectedBytes: 16,
+		},
+		"not found": {
+			handler:       http.NotFound,
+			expectedCode:  http.StatusNotFound,
+			expectedBytes: float64(len("404 page not found\n")),
+		},
+		"informational response is not the final status": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusEarlyHints)
+				w.WriteHeader(http.StatusAccepted)
+			},
+			expectedCode: http.StatusAccepted,
+		},
+		"only the first final status counts": {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusCreated)
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+			expectedCode: http.StatusCreated,
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/webhook", nil)
+			line := completedLog(t, req, test.handler)
+
+			response := line["http"].(map[string]any)["response"].(map[string]any)
+			require.InEpsilon(t, test.expectedCode, response["statusCode"], 0.001)
+			body := response["body"].(map[string]any)
+			if test.expectedBytes == 0 {
+				require.NotContains(t, body, "bytes")
+				return
+			}
+			require.InEpsilon(t, test.expectedBytes, body["bytes"], 0.001)
+		})
+	}
+}
+
+func TestRequestMiddlewareLoggerRequestFields(t *testing.T) {
+	t.Parallel()
+
+	t.Run("request id from the caller names the logger", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/foo", nil)
+		req.Header.Set("X-Request-Id", "019f1cb8-0000-7000-8000-000000000001")
+		line := completedLog(t, req, func(http.ResponseWriter, *http.Request) {})
+
+		require.Equal(t, "server:request:019f1cb8-0000-7000-8000-000000000001", line["@module"])
+	})
+
+	t.Run("generated request id when the caller sends none", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/foo", nil)
+		line := completedLog(t, req, func(http.ResponseWriter, *http.Request) {})
+
+		module, ok := line["@module"].(string)
+		require.True(t, ok)
+		require.True(t, strings.HasPrefix(module, "server:request:"))
+		require.Len(t, strings.TrimPrefix(module, "server:request:"), len("019f1cb8-0000-7000-8000-000000000001"))
+	})
+
+	t.Run("host without port and forwarded headers", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/foo", nil)
+		req.Host = "ibdm.example.com:3000"
+		req.Header.Set("X-Forwarded-Host", "public.example.com")
+		req.Header.Set("X-Forwarded-For", "192.0.2.10")
+		line := completedLog(t, req, func(http.ResponseWriter, *http.Request) {})
+
+		require.Equal(t, map[string]any{
+			"hostname":      "ibdm.example.com",
+			"forwardedHost": "public.example.com",
+			"ip":            "192.0.2.10",
+		}, line["host"])
+	})
+
+	t.Run("escaped path is logged as received", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/my%20org/webhook", nil)
+		line := completedLog(t, req, func(http.ResponseWriter, *http.Request) {})
+
+		require.Equal(t, map[string]any{"path": "/my%20org/webhook"}, line["url"])
+	})
+}
+
+func TestRequestMiddlewareLoggerContext(t *testing.T) {
+	t.Parallel()
+
+	for testName, excluded := range map[string][]string{
+		"logged request":   nil,
+		"excluded request": {"/-/"},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+
+			logger := NewLogger(new(bytes.Buffer))
+			var found Logger
+			handler := RequestMiddlewareLogger(logger, excluded)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				found = FromContext(r.Context())
+			}))
+
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/-/healthz", nil)
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+
+			require.Same(t, logger, found)
+		})
+	}
+}
+
+func TestResponseRecorderUnwrap(t *testing.T) {
+	t.Parallel()
+
+	logger := NewLogger(new(bytes.Buffer))
+	handler := RequestMiddlewareLogger(logger, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("chunk"))
+		require.NoError(t, http.NewResponseController(w).Flush())
+	}))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/stream", nil))
+
+	require.True(t, recorder.Flushed)
+	require.Equal(t, "chunk", recorder.Body.String())
 }

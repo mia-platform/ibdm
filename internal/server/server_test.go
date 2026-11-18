@@ -4,118 +4,96 @@
 package server
 
 import (
+	"bytes"
 	"context"
-	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mia-platform/ibdm/internal/logger"
 )
 
 const (
 	// serverLifecycleTimeout bounds how long a test waits for the server to
 	// start serving and to shut down, so a stuck server fails the test quickly.
 	serverLifecycleTimeout = 5 * time.Second
-	// servingProbeInterval is the delay between two readiness probes.
-	servingProbeInterval = 10 * time.Millisecond
-	// servingProbeTimeout bounds a single readiness probe request.
-	servingProbeTimeout = 200 * time.Millisecond
+
+	webhookErrorBody = `{"error":"Internal Server Error","message":"error processing webhook message","statusCode":500}`
 )
 
-// newListeningTestServer returns a server bound to a random free port on the
-// loopback interface, and a channel that receives the listening address once
-// the server has opened its socket.
-func newListeningTestServer(t *testing.T) (*impServer, <-chan string) {
+// syncBuffer is a bytes.Buffer safe for concurrent use: the server writes logs from its own
+// goroutines while the test reads them.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// newTestServer returns a server bound to a random free port on the loopback interface, whose
+// logs are written to the returned buffer.
+func newTestServer(t *testing.T) (*impServer, *syncBuffer) {
 	t.Helper()
 
-	srv := &impServer{
-		app: fiber.New(fiber.Config{DisableStartupMessage: true, Immutable: true}),
-		config: config{
-			HTTPHost: "127.0.0.1",
-			HTTPPort: 0,
-		},
-	}
+	buffer := new(syncBuffer)
+	ctx := logger.WithContext(t.Context(), logger.NewLogger(buffer))
+	return newServer(ctx, config{HTTPHost: "127.0.0.1", HTTPPort: 0}), buffer
+}
 
-	addrChan := make(chan string, 1)
-	srv.app.Hooks().OnListen(func(ln fiber.ListenData) error {
-		t.Logf("Server is listening on %s:%s", ln.Host, ln.Port)
-		addrChan <- net.JoinHostPort(ln.Host, ln.Port)
-		return nil
-	})
+// startTestServer starts srv and returns the address of its webhook listener once it accepts
+// connections, together with the channel receiving the result of Start.
+func startTestServer(t *testing.T, srv *impServer) (string, <-chan error) {
+	t.Helper()
 
-	// Release the socket even when the test fails before stopping the server.
+	errChan := srv.StartAsync()
 	t.Cleanup(func() {
-		assert.NoError(t, srv.app.ShutdownWithTimeout(serverLifecycleTimeout))
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), serverLifecycleTimeout)
+		defer cancel()
+		assert.NoError(t, srv.Stop(ctx))
 	})
 
-	return srv, addrChan
+	waitListening(t, srv.webhook)
+	return srv.webhook.boundAddr(), errChan
 }
 
-// stopWhenServing stops the server once it is ready to accept requests.
-//
-// The OnListen hook runs before the listener is handed to the underlying
-// fasthttp server, and a shutdown issued in that window finds no listener
-// and silently does nothing, leaving the server running. Waiting for an
-// HTTP response guarantees the listener is registered, so Stop takes effect.
-func stopWhenServing(ctx context.Context, srv *impServer, addrChan <-chan string) error {
-	var addr string
+// waitListening waits until l has opened its socket.
+func waitListening(t *testing.T, l *listener) {
+	t.Helper()
+
 	select {
-	case addr = <-addrChan:
-	case <-ctx.Done():
-		return fmt.Errorf("waiting for the server to listen: %w", ctx.Err())
-	}
-
-	if err := waitUntilServing(ctx, "http://"+addr+"/"); err != nil {
-		return err
-	}
-
-	return srv.Stop(ctx)
-}
-
-// waitUntilServing polls url until the server sends back any HTTP response.
-func waitUntilServing(ctx context.Context, url string) error {
-	client := &http.Client{
-		Timeout:   servingProbeTimeout,
-		Transport: &http.Transport{DisableKeepAlives: true},
-	}
-
-	ticker := time.NewTicker(servingProbeInterval)
-	defer ticker.Stop()
-
-	for {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			return fmt.Errorf("building readiness probe: %w", err)
-		}
-
-		resp, err := client.Do(req)
-		if err == nil {
-			return resp.Body.Close()
-		}
-
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("waiting for the server to serve: %w (last probe error: %w)", ctx.Err(), err)
-		case <-ticker.C:
-		}
+	case <-l.ready:
+	case <-time.After(serverLifecycleTimeout):
+		t.Fatalf("timed out waiting for listener %s to listen", l.name)
 	}
 }
 
 // receiveWithin returns the next value sent on ch, failing the test if
-// nothing arrives before ctx is done.
-func receiveWithin[T any](ctx context.Context, t *testing.T, ch <-chan T, what string) T {
+// nothing arrives before the lifecycle timeout.
+func receiveWithin[T any](t *testing.T, ch <-chan T, what string) T {
 	t.Helper()
 
 	select {
 	case v := <-ch:
 		return v
-	case <-ctx.Done():
+	case <-time.After(serverLifecycleTimeout):
 		t.Fatalf("timed out waiting for %s", what)
 	}
 
@@ -123,83 +101,384 @@ func receiveWithin[T any](ctx context.Context, t *testing.T, ch <-chan T, what s
 	return zero
 }
 
+// getStatusCode sends a GET to url and returns the status code of the response.
+func getStatusCode(t *testing.T, url string) int {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+	require.NoError(t, err)
+	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	response, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+	return response.StatusCode
+}
+
+// serve sends req to the handler chain of the webhook listener of srv.
+func serve(srv *impServer, req *http.Request) *httptest.ResponseRecorder {
+	recorder := httptest.NewRecorder()
+	srv.webhook.srv.Handler.ServeHTTP(recorder, req)
+	return recorder
+}
+
 func TestNewServer(t *testing.T) {
-	ctx := t.Context()
+	t.Run("defaults", func(t *testing.T) {
+		srvInterface, err := NewServer(t.Context())
+		require.NoError(t, err)
 
-	srvInterface, err := NewServer(ctx)
-	srv, ok := srvInterface.(*impServer)
-	require.True(t, ok)
+		srv, ok := srvInterface.(*impServer)
+		require.True(t, ok)
+		require.Equal(t, "0.0.0.0:3000", srv.webhook.addr)
+		require.Equal(t, []*listener{srv.webhook}, srv.listeners)
 
-	require.NoError(t, err)
-	require.NotNil(t, srv)
+		response := serve(srv, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/-/healthz", nil))
+		require.Equal(t, http.StatusOK, response.Code)
+	})
 
-	require.NotNil(t, srv.app)
-	require.True(t, srv.app.Config().Immutable)
+	t.Run("host and port from the environment", func(t *testing.T) {
+		t.Setenv("HTTP_HOST", "127.0.0.1")
+		t.Setenv("HTTP_PORT", "8080")
 
-	request := httptest.NewRequest(http.MethodGet, "/-/healthz", nil)
-	response, err := srv.app.Test(request)
-	require.NoError(t, err)
+		srvInterface, err := NewServer(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, "127.0.0.1:8080", srvInterface.(*impServer).webhook.addr)
+	})
 
-	defer response.Body.Close()
-	require.Equal(t, http.StatusOK, response.StatusCode)
+	t.Run("invalid environment", func(t *testing.T) {
+		t.Setenv("HTTP_PORT", "655350")
+
+		_, err := NewServer(t.Context())
+		require.ErrorIs(t, err, ErrEnvVariablesNotValid)
+	})
 }
 
-func TestStartServer(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), serverLifecycleTimeout)
-	defer cancel()
+func TestAddRoute(t *testing.T) {
+	t.Parallel()
 
-	srv, addrChan := newListeningTestServer(t)
-
-	stopErrChan := make(chan error, 1)
-	go func() {
-		stopErrChan <- stopWhenServing(ctx, srv, addrChan)
-	}()
-
-	startErrChan := make(chan error, 1)
-	go func() {
-		startErrChan <- srv.Start()
-	}()
-
-	require.NoError(t, receiveWithin(ctx, t, startErrChan, "Start to return"))
-	require.NoError(t, receiveWithin(ctx, t, stopErrChan, "Stop to return"))
-}
-
-func TestStartAsyncServer(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), serverLifecycleTimeout)
-	defer cancel()
-
-	srv, addrChan := newListeningTestServer(t)
-
-	stopErrChan := make(chan error, 1)
-	go func() {
-		stopErrChan <- stopWhenServing(ctx, srv, addrChan)
-	}()
-
-	errChan := srv.StartAsync()
-
-	require.NoError(t, receiveWithin(ctx, t, errChan, "StartAsync to report the server exit"))
-	require.NoError(t, receiveWithin(ctx, t, stopErrChan, "Stop to return"))
-}
-
-func TestFiberHandlerWrapper(t *testing.T) {
-	srv := &impServer{
-		app: fiber.New(fiber.Config{DisableStartupMessage: true, Immutable: true}),
+	tests := map[string]struct {
+		method         string
+		target         string
+		body           string
+		handlerErr     error
+		expectedCode   int
+		expectedBody   string
+		expectedCalled bool
+	}{
+		"handler success": {
+			method:         http.MethodPost,
+			target:         "/github/webhook",
+			body:           "payload",
+			expectedCode:   http.StatusNoContent,
+			expectedCalled: true,
+		},
+		"handler error": {
+			method:         http.MethodPost,
+			target:         "/github/webhook",
+			body:           "payload",
+			handlerErr:     assert.AnError,
+			expectedCode:   http.StatusInternalServerError,
+			expectedBody:   webhookErrorBody,
+			expectedCalled: true,
+		},
+		"path matches regardless of case": {
+			method:         http.MethodPost,
+			target:         "/GitHub/WebHook",
+			body:           "payload",
+			expectedCode:   http.StatusNoContent,
+			expectedCalled: true,
+		},
+		"path matches with a trailing slash": {
+			method:         http.MethodPost,
+			target:         "/github/webhook/",
+			body:           "payload",
+			expectedCode:   http.StatusNoContent,
+			expectedCalled: true,
+		},
+		"query string is ignored": {
+			method:         http.MethodPost,
+			target:         "/github/webhook?token=fictional-secret-value",
+			body:           "payload",
+			expectedCode:   http.StatusNoContent,
+			expectedCalled: true,
+		},
+		"unknown path": {
+			method:       http.MethodPost,
+			target:       "/gitlab/webhook",
+			expectedCode: http.StatusNotFound,
+		},
+		"wrong method": {
+			method:       http.MethodGet,
+			target:       "/github/webhook",
+			expectedCode: http.StatusMethodNotAllowed,
+		},
+		"body at the limit": {
+			method:         http.MethodPost,
+			target:         "/github/webhook",
+			body:           strings.Repeat("a", defaultMaxBodySize),
+			expectedCode:   http.StatusNoContent,
+			expectedCalled: true,
+		},
+		"body over the limit": {
+			method:       http.MethodPost,
+			target:       "/github/webhook",
+			body:         strings.Repeat("a", defaultMaxBodySize+1),
+			expectedCode: http.StatusRequestEntityTooLarge,
+			expectedBody: `{"error":"Request Entity Too Large","message":"request body too large","statusCode":413}`,
+		},
 	}
 
-	processed := false
-	handler := func(_ context.Context, headers http.Header, body []byte) error {
-		processed = true
-		require.Equal(t, "test body", string(body))
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+
+			srv, _ := newTestServer(t)
+			called := false
+			srv.AddRoute(http.MethodPost, "/github/webhook", func(_ context.Context, _ http.Header, body []byte) error {
+				called = true
+				assert.Equal(t, test.body, string(body))
+				return test.handlerErr
+			})
+
+			req := httptest.NewRequestWithContext(t.Context(), test.method, test.target, strings.NewReader(test.body))
+			response := serve(srv, req)
+
+			require.Equal(t, test.expectedCode, response.Code)
+			require.Equal(t, test.expectedCalled, called)
+			if test.expectedBody != "" {
+				require.Equal(t, test.expectedBody, response.Body.String())
+				require.Equal(t, "application/json", response.Header().Get("Content-Type"))
+			}
+			if test.expectedCode == http.StatusMethodNotAllowed {
+				require.Equal(t, http.MethodPost, response.Header().Get("Allow"))
+			}
+		})
+	}
+}
+
+func TestAddRouteRegisteredWithMixedCase(t *testing.T) {
+	t.Parallel()
+
+	srv, _ := newTestServer(t)
+	called := false
+	srv.AddRoute(http.MethodPost, "/My-Org/Webhook/", func(context.Context, http.Header, []byte) error {
+		called = true
 		return nil
+	})
+
+	response := serve(srv, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/my-org/webhook", nil))
+	require.Equal(t, http.StatusNoContent, response.Code)
+	require.True(t, called)
+}
+
+func TestWebhookHandlerReceivesHeaderCopy(t *testing.T) {
+	t.Parallel()
+
+	srv, _ := newTestServer(t)
+	var received http.Header
+	srv.AddRoute(http.MethodPost, "/webhook", func(_ context.Context, headers http.Header, _ []byte) error {
+		received = headers
+		return nil
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/webhook", nil)
+	req.Header.Set("X-Event", "push")
+	require.Equal(t, http.StatusNoContent, serve(srv, req).Code)
+
+	req.Header.Set("X-Event", "changed after the response")
+	require.Equal(t, "push", received.Get("X-Event"))
+}
+
+func TestWebhookHandlerReadError(t *testing.T) {
+	t.Parallel()
+
+	srv, _ := newTestServer(t)
+	called := false
+	srv.AddRoute(http.MethodPost, "/webhook", func(context.Context, http.Header, []byte) error {
+		called = true
+		return nil
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/webhook", io.NopCloser(failingReader{}))
+	response := serve(srv, req)
+
+	require.Equal(t, http.StatusBadRequest, response.Code)
+	require.JSONEq(t, `{"error":"Bad Request","message":"error reading request body","statusCode":400}`, response.Body.String())
+	require.False(t, called)
+}
+
+// failingReader is a reader that always fails.
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) { return 0, assert.AnError }
+
+func TestWebhookHandlerContextOutlivesRequest(t *testing.T) {
+	t.Parallel()
+
+	srv, buffer := newTestServer(t)
+	type ctxCheck struct {
+		err    error
+		logger logger.Logger
+	}
+	release := make(chan struct{})
+	checked := make(chan ctxCheck, 1)
+	srv.AddRoute(http.MethodPost, "/webhook", func(ctx context.Context, _ http.Header, _ []byte) error {
+		go func() {
+			<-release
+			checked <- ctxCheck{err: ctx.Err(), logger: logger.FromContext(ctx)}
+		}()
+		return nil
+	})
+
+	addr, _ := startTestServer(t, srv)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://"+addr+"/webhook", strings.NewReader("payload"))
+	require.NoError(t, err)
+	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	response, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+	require.Equal(t, http.StatusNoContent, response.StatusCode)
+
+	// The request is over on both sides: work started by the handler must still run.
+	close(release)
+	result := receiveWithin(t, checked, "the handler goroutine")
+	require.NoError(t, result.err)
+
+	result.logger.Info("logged from the handler")
+	require.Contains(t, buffer.String(), "logged from the handler")
+}
+
+func TestServerLifecycle(t *testing.T) {
+	t.Parallel()
+
+	t.Run("start and stop", func(t *testing.T) {
+		t.Parallel()
+
+		srv, _ := newTestServer(t)
+		addr, errChan := startTestServer(t, srv)
+
+		require.Equal(t, http.StatusOK, getStatusCode(t, "http://"+addr+"/-/ready"))
+
+		require.NoError(t, srv.Stop(t.Context()))
+		require.NoError(t, receiveWithin(t, errChan, "Start to return"))
+
+		_, err := net.Dial("tcp", addr)
+		require.Error(t, err)
+	})
+
+	t.Run("stop before start", func(t *testing.T) {
+		t.Parallel()
+
+		srv, _ := newTestServer(t)
+		require.NoError(t, srv.Stop(t.Context()))
+		require.NoError(t, receiveWithin(t, srv.StartAsync(), "Start to return"))
+	})
+
+	t.Run("address in use", func(t *testing.T) {
+		t.Parallel()
+
+		var lc net.ListenConfig
+		busy, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		defer busy.Close()
+
+		srv, _ := newTestServer(t)
+		srv.webhook.addr = busy.Addr().String()
+		require.ErrorIs(t, srv.Start(), ErrServerListen)
+	})
+}
+
+func TestServerWithTwoListeners(t *testing.T) {
+	t.Parallel()
+
+	newTwoListenersServer := func(t *testing.T) (*impServer, *listener) {
+		t.Helper()
+
+		srv, _ := newTestServer(t)
+		second := newListener("control", "127.0.0.1:0")
+		second.mux.HandleFunc("GET /status", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		srv.listeners = append(srv.listeners, second)
+		return srv, second
 	}
 
-	request := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader("test body"))
+	t.Run("both serve and stop together", func(t *testing.T) {
+		t.Parallel()
 
-	srv.AddRoute(http.MethodPost, "/test", handler)
-	response, err := srv.app.Test(request)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, response.StatusCode)
-	require.True(t, processed)
+		srv, second := newTwoListenersServer(t)
+		_, errChan := startTestServer(t, srv)
+		waitListening(t, second)
 
-	defer response.Body.Close()
+		require.Equal(t, http.StatusOK, getStatusCode(t, "http://"+second.boundAddr()+"/status"))
+
+		require.NoError(t, srv.Stop(t.Context()))
+		require.NoError(t, receiveWithin(t, errChan, "Start to return"))
+	})
+
+	t.Run("a failing listener closes the other", func(t *testing.T) {
+		t.Parallel()
+
+		srv, second := newTwoListenersServer(t)
+		addr, errChan := startTestServer(t, srv)
+		waitListening(t, second)
+
+		// Closing the socket under the second listener makes its serve loop fail.
+		second.mu.Lock()
+		require.NoError(t, second.ln.Close())
+		second.mu.Unlock()
+
+		require.ErrorIs(t, receiveWithin(t, errChan, "Start to return"), ErrServerListen)
+		_, err := net.Dial("tcp", addr)
+		require.Error(t, err)
+	})
+
+	t.Run("a listener failing to listen releases the ones already open", func(t *testing.T) {
+		t.Parallel()
+
+		srv, second := newTwoListenersServer(t)
+		second.addr = "127.0.0.1:-1"
+
+		require.ErrorIs(t, srv.Start(), ErrServerListen)
+
+		first := srv.webhook.boundAddr()
+		require.NotEmpty(t, first)
+		_, err := net.Dial("tcp", first)
+		require.Error(t, err)
+	})
+}
+
+func TestRoutingPath(t *testing.T) {
+	t.Parallel()
+
+	for path, expected := range map[string]string{
+		"/":                "/",
+		"//":               "/",
+		"/github/webhook":  "/github/webhook",
+		"/GitHub/Webhook/": "/github/webhook",
+		"/a//":             "/a",
+	} {
+		require.Equal(t, expected, routingPath(path), path)
+	}
+}
+
+func TestChainOrder(t *testing.T) {
+	t.Parallel()
+
+	var order []string
+	mark := func(name string) middleware {
+		return func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				order = append(order, name)
+				next.ServeHTTP(w, r)
+			})
+		}
+	}
+
+	handler := chain(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		order = append(order, "handler")
+	}), mark("outer"), mark("inner"))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
+
+	require.Equal(t, []string{"outer", "inner", "handler"}, order)
 }
