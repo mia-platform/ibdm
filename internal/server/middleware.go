@@ -4,8 +4,13 @@
 package server
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strings"
+
+	"github.com/mia-platform/ibdm/internal/logger"
 )
 
 // middleware wraps an http.Handler with additional behaviour.
@@ -61,4 +66,30 @@ func limitBody(maxBytes int64) middleware {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// recoverPanic answers 500 to a request whose handler panics, and logs the panic with its stack,
+// so that one faulty request does not stop the server. http.ErrAbortHandler is propagated, since
+// net/http uses it to abort a response on purpose.
+func recoverPanic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer answerPanic(w, r)
+		next.ServeHTTP(w, r)
+	})
+}
+
+// answerPanic recovers a panic of the handler serving r, if any, and answers it. It must be
+// deferred directly, for recover to stop the panic.
+func answerPanic(w http.ResponseWriter, r *http.Request) {
+	recovered := recover()
+	if recovered == nil {
+		return
+	}
+	if err, ok := recovered.(error); ok && errors.Is(err, http.ErrAbortHandler) {
+		panic(recovered)
+	}
+
+	log := logger.FromContext(r.Context())
+	log.Error("panic serving request", "panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+	writeError(w, log, http.StatusInternalServerError, msgInternalError)
 }

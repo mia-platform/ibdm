@@ -7,16 +7,39 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/mia-platform/ibdm/internal/logger"
 )
 
 const (
 	// readHeaderTimeout bounds the time a client has to send the request headers.
 	readHeaderTimeout = 10 * time.Second
+	// readTimeout bounds the time a client has to send the whole request, body included.
+	readTimeout = 60 * time.Second
+	// idleTimeout bounds how long a keep-alive connection waits for the next request.
+	// There is no write timeout: some webhook handlers answer only after their data has been
+	// mapped and sent to the destination, which can take longer than any fixed bound.
+	idleTimeout = 120 * time.Second
+
+	serverLoggerName = "ibdm:server"
 )
+
+// errorLogWriter forwards the errors net/http reports about connections (TLS handshakes,
+// malformed requests, recovered panics) to the IBDM logger.
+type errorLogWriter struct {
+	log logger.Logger
+}
+
+func (w errorLogWriter) Write(p []byte) (int, error) {
+	w.log.Error("http server error", "error", strings.TrimSpace(string(p)))
+	return len(p), nil
+}
 
 // listener is one address the server listens on, with its own routes and middleware chain.
 type listener struct {
@@ -31,8 +54,8 @@ type listener struct {
 }
 
 // newListener returns a listener for addr whose routes, registered on its mux, are served through
-// mws: mws[0] is the outermost middleware.
-func newListener(name, addr string, mws ...middleware) *listener {
+// mws: mws[0] is the outermost middleware. Errors of the underlying server are logged on appLog.
+func newListener(name, addr string, appLog logger.Logger, mws ...middleware) *listener {
 	mux := http.NewServeMux()
 	return &listener{
 		name: name,
@@ -41,6 +64,9 @@ func newListener(name, addr string, mws ...middleware) *listener {
 		srv: &http.Server{
 			Handler:           chain(mux, mws...),
 			ReadHeaderTimeout: readHeaderTimeout,
+			ReadTimeout:       readTimeout,
+			IdleTimeout:       idleTimeout,
+			ErrorLog:          log.New(errorLogWriter{log: appLog.WithName(serverLoggerName)}, "", 0),
 		},
 		ready: make(chan struct{}),
 	}

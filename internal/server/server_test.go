@@ -27,6 +27,9 @@ const (
 	serverLifecycleTimeout = 5 * time.Second
 
 	webhookErrorBody = `{"error":"Internal Server Error","message":"error processing webhook message","statusCode":500}`
+
+	// testMaxBodySize is the default of HTTP_MAX_BODY_SIZE.
+	testMaxBodySize = 4 * 1024 * 1024
 )
 
 // syncBuffer is a bytes.Buffer safe for concurrent use: the server writes logs from its own
@@ -48,14 +51,32 @@ func (b *syncBuffer) String() string {
 	return b.buf.String()
 }
 
-// newTestServer returns a server bound to a random free port on the loopback interface, whose
-// logs are written to the returned buffer.
+// testConfig returns the default configuration of the server, bound to a random free port on
+// the loopback interface.
+func testConfig() config {
+	return config{
+		DisableStartupMessage: true,
+		HTTPHost:              "127.0.0.1",
+		HTTPPort:              0,
+		MaxBodySize:           testMaxBodySize,
+	}
+}
+
+// newTestServer returns a server built from testConfig, whose logs are written to the returned
+// buffer.
 func newTestServer(t *testing.T) (*impServer, *syncBuffer) {
+	t.Helper()
+	return newTestServerWithConfig(t, testConfig())
+}
+
+// newTestServerWithConfig returns a server built from cfg, whose logs are written to the
+// returned buffer.
+func newTestServerWithConfig(t *testing.T, cfg config) (*impServer, *syncBuffer) {
 	t.Helper()
 
 	buffer := new(syncBuffer)
 	ctx := logger.WithContext(t.Context(), logger.NewLogger(buffer))
-	return newServer(ctx, config{HTTPHost: "127.0.0.1", HTTPPort: 0}), buffer
+	return newServer(ctx, cfg), buffer
 }
 
 // startTestServer starts srv and returns the address of its webhook listener once it accepts
@@ -214,14 +235,14 @@ func TestAddRoute(t *testing.T) {
 		"body at the limit": {
 			method:         http.MethodPost,
 			target:         "/github/webhook",
-			body:           strings.Repeat("a", defaultMaxBodySize),
+			body:           strings.Repeat("a", testMaxBodySize),
 			expectedCode:   http.StatusNoContent,
 			expectedCalled: true,
 		},
 		"body over the limit": {
 			method:       http.MethodPost,
 			target:       "/github/webhook",
-			body:         strings.Repeat("a", defaultMaxBodySize+1),
+			body:         strings.Repeat("a", testMaxBodySize+1),
 			expectedCode: http.StatusRequestEntityTooLarge,
 			expectedBody: `{"error":"Request Entity Too Large","message":"request body too large","statusCode":413}`,
 		},
@@ -395,7 +416,7 @@ func TestServerWithTwoListeners(t *testing.T) {
 		t.Helper()
 
 		srv, _ := newTestServer(t)
-		second := newListener("control", "127.0.0.1:0")
+		second := newListener("control", "127.0.0.1:0", logger.NewLogger(io.Discard))
 		second.mux.HandleFunc("GET /status", func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
@@ -481,4 +502,100 @@ func TestChainOrder(t *testing.T) {
 	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
 
 	require.Equal(t, []string{"outer", "inner", "handler"}, order)
+}
+
+func TestServerHardening(t *testing.T) {
+	t.Parallel()
+
+	t.Run("timeouts", func(t *testing.T) {
+		t.Parallel()
+
+		srv, _ := newTestServer(t)
+		require.Equal(t, readHeaderTimeout, srv.webhook.srv.ReadHeaderTimeout)
+		require.Equal(t, readTimeout, srv.webhook.srv.ReadTimeout)
+		require.Equal(t, idleTimeout, srv.webhook.srv.IdleTimeout)
+		require.Zero(t, srv.webhook.srv.WriteTimeout, "handlers may wait on the destination")
+	})
+
+	t.Run("body limit from the configuration", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := testConfig()
+		cfg.MaxBodySize = 10
+		srv, _ := newTestServerWithConfig(t, cfg)
+		srv.AddRoute(http.MethodPost, "/webhook", func(context.Context, http.Header, []byte) error { return nil })
+
+		ok := serve(srv, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/webhook", strings.NewReader(strings.Repeat("a", 10))))
+		require.Equal(t, http.StatusNoContent, ok.Code)
+		tooLarge := serve(srv, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/webhook", strings.NewReader(strings.Repeat("a", 11))))
+		require.Equal(t, http.StatusRequestEntityTooLarge, tooLarge.Code)
+	})
+
+	t.Run("a panicking handler is answered 500 and the server keeps serving", func(t *testing.T) {
+		t.Parallel()
+
+		srv, logs := newTestServer(t)
+		srv.AddRoute(http.MethodPost, "/panic", func(context.Context, http.Header, []byte) error {
+			panic("fictional failure")
+		})
+
+		response := serve(srv, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/panic", nil))
+		require.Equal(t, http.StatusInternalServerError, response.Code)
+		require.JSONEq(t, `{"error":"Internal Server Error","message":"internal server error","statusCode":500}`, response.Body.String())
+		require.Contains(t, logs.String(), "panic serving request")
+		require.Contains(t, logs.String(), "fictional failure")
+
+		healthy := serve(srv, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/-/healthz", nil))
+		require.Equal(t, http.StatusOK, healthy.Code)
+	})
+
+	t.Run("an aborted handler is not recovered", func(t *testing.T) {
+		t.Parallel()
+
+		handler := recoverPanic(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			panic(http.ErrAbortHandler)
+		}))
+
+		require.PanicsWithValue(t, http.ErrAbortHandler, func() {
+			handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
+		})
+	})
+
+	t.Run("errors of the http server are logged", func(t *testing.T) {
+		t.Parallel()
+
+		srv, logs := newTestServer(t)
+		srv.webhook.srv.ErrorLog.Print("http: TLS handshake error from 192.0.2.10:443: EOF\n")
+
+		require.Contains(t, logs.String(), "http server error")
+		require.Contains(t, logs.String(), "TLS handshake error from 192.0.2.10:443: EOF")
+		require.Contains(t, logs.String(), serverLoggerName)
+	})
+}
+
+func TestStartupMessage(t *testing.T) {
+	t.Parallel()
+
+	for testName, disabled := range map[string]bool{
+		"enabled":  false,
+		"disabled": true,
+	} {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := testConfig()
+			cfg.DisableStartupMessage = disabled
+			srv, logs := newTestServerWithConfig(t, cfg)
+			addr, _ := startTestServer(t, srv)
+
+			// The message is logged right after every listener opens its socket.
+			require.Equal(t, http.StatusOK, getStatusCode(t, "http://"+addr+"/-/healthz"))
+			if disabled {
+				require.NotContains(t, logs.String(), "server listening")
+				return
+			}
+			require.Contains(t, logs.String(), "server listening")
+			require.Contains(t, logs.String(), addr)
+		})
+	}
 }
