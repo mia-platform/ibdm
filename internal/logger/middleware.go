@@ -4,20 +4,26 @@
 package logger
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"strconv"
+	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
 const (
 	IncomingRequestMessage  = "incoming request"
 	RequestCompletedMessage = "request completed"
+
+	// headerRequestID carries the request id chosen by the caller or by a proxy in front of IBDM.
+	headerRequestID = "X-Request-Id"
+	// headerForwardedHost carries the host requested by the client when IBDM is behind a proxy.
+	headerForwardedHost = "X-Forwarded-Host"
+	// headerForwardedFor carries the address of the client when IBDM is behind a proxy.
+	headerForwardedFor = "X-Forwarded-For"
+	// headerUserAgent carries the user agent of the client.
+	headerUserAgent = "User-Agent"
 )
 
 // httpCall is the struct of the log formatter.
@@ -58,12 +64,57 @@ type url struct {
 	Path string `json:"path,omitempty"`
 }
 
+// responseRecorder wraps an http.ResponseWriter to record the status code and the number of
+// body bytes sent to the client.
+type responseRecorder struct {
+	http.ResponseWriter
+
+	status      int
+	bytes       int
+	wroteHeader bool
+}
+
+// WriteHeader records the final status code and forwards it. Informational (1xx) responses are
+// forwarded without being recorded, because the final status is still to come.
+func (r *responseRecorder) WriteHeader(code int) {
+	if !r.wroteHeader && code >= http.StatusOK {
+		r.status = code
+		r.wroteHeader = true
+	}
+	r.ResponseWriter.WriteHeader(code)
+}
+
+// Write forwards b and counts the bytes actually written. A body written without an explicit
+// status code is sent with 200, as net/http does.
+func (r *responseRecorder) Write(b []byte) (int, error) {
+	if !r.wroteHeader {
+		r.WriteHeader(http.StatusOK)
+	}
+	n, err := r.ResponseWriter.Write(b)
+	r.bytes += n
+	return n, err
+}
+
+// Unwrap returns the wrapped writer, so that http.ResponseController reaches its optional
+// features (flush, deadlines) through the recorder.
+func (r *responseRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
+// statusCode returns the status code sent to the client: 200 when the handler wrote nothing.
+func (r *responseRecorder) statusCode() int {
+	if !r.wroteHeader {
+		return http.StatusOK
+	}
+	return r.status
+}
+
 func removePort(host string) string {
 	return strings.Split(host, ":")[0]
 }
 
-func getReqID(ctx *fiber.Ctx) string {
-	if requestID := ctx.Get(fiber.HeaderXRequestID, ""); requestID != "" {
+func getReqID(r *http.Request) string {
+	if requestID := r.Header.Get(headerRequestID); requestID != "" {
 		return requestID
 	}
 
@@ -74,109 +125,85 @@ func getReqID(ctx *fiber.Ctx) string {
 	return requestID.String()
 }
 
-func getFiberError(err error) *fiber.Error {
-	var fiberErr *fiber.Error
-	if ok := errors.As(err, &fiberErr); err != nil && ok {
-		return fiberErr
-	}
-	return nil
-}
-
-func BodySize(ctx *fiber.Ctx, err error) int {
-	if fiberErr := getFiberError(err); fiberErr != nil {
-		return len(fiberErr.Error())
-	}
-
-	if content := ctx.GetRespHeader("Content-Length"); content != "" {
-		if length, err := strconv.Atoi(content); err == nil {
-			return length
-		}
-	}
-	return len(ctx.Response().Body())
-}
-
-func StatusCode(ctx *fiber.Ctx, err error) int {
-	if fiberErr := getFiberError(err); fiberErr != nil {
-		return fiberErr.Code
-	}
-
-	return ctx.Response().StatusCode()
-}
-
 // requestPath returns the path of the request as received, without its query string: a query can
 // carry credentials, such as a token passed as a parameter, and must never reach the logs.
-func requestPath(ctx *fiber.Ctx) string {
-	return string(ctx.Request().URI().PathOriginal())
+func requestPath(r *http.Request) string {
+	return r.URL.EscapedPath()
 }
 
-func logIncomingRequest(ctx *fiber.Ctx, logger Logger) {
+func requestHost(r *http.Request) host {
+	return host{
+		ForwardedHost: r.Header.Get(headerForwardedHost),
+		Hostname:      removePort(r.Host),
+		IP:            r.Header.Get(headerForwardedFor),
+	}
+}
+
+func logIncomingRequest(r *http.Request, logger Logger) {
 	logger.
 		Trace(IncomingRequestMessage,
 			"http", httpCall{
 				Request: &request{
-					Method: ctx.Method(),
+					Method: r.Method,
 					UserAgent: userAgent{
-						Original: ctx.Get("user-agent", ""),
+						Original: r.Header.Get(headerUserAgent),
 					},
 				},
 			},
-			"url", url{Path: requestPath(ctx)},
-			"host", host{
-				ForwardedHost: ctx.Get(fiber.HeaderXForwardedHost, ""),
-				Hostname:      removePort(string(ctx.Request().Host())),
-				IP:            ctx.Get(fiber.HeaderXForwardedFor, ""),
-			},
+			"url", url{Path: requestPath(r)},
+			"host", requestHost(r),
 		)
 }
 
-func logRequestCompleted(ctx *fiber.Ctx, logger Logger, startTime time.Time, err error) {
+func logRequestCompleted(r *http.Request, recorder *responseRecorder, logger Logger, startTime time.Time) {
 	logger.
 		Info(RequestCompletedMessage,
 			"http", httpCall{
 				Request: &request{
-					Method: ctx.Method(),
+					Method: r.Method,
 					UserAgent: userAgent{
-						Original: ctx.Get("user-agent", ""),
+						Original: r.Header.Get(headerUserAgent),
 					},
 				},
 				Response: &response{
-					StatusCode: StatusCode(ctx, err),
+					StatusCode: recorder.statusCode(),
 					Body: responseBody{
-						Bytes: BodySize(ctx, err),
+						Bytes: recorder.bytes,
 					},
 				},
 			},
-			"url", url{Path: requestPath(ctx)},
-			"host", host{
-				ForwardedHost: ctx.Get(fiber.HeaderXForwardedHost, ""),
-				Hostname:      removePort(string(ctx.Request().Host())),
-				IP:            ctx.Get(fiber.HeaderXForwardedFor, ""),
-			},
+			"url", url{Path: requestPath(r)},
+			"host", requestHost(r),
 			"responseTime", float64(time.Since(startTime).Milliseconds()),
 		)
 }
 
-// RequestMiddlewareLogger is a fiber middleware to log all requests
-// It logs the incoming request and when request is completed, adding latency of the request
-func RequestMiddlewareLogger(appCtx context.Context, logger Logger, excludedPrefix []string) func(*fiber.Ctx) error {
-	return func(fiberCtx *fiber.Ctx) error {
-		for _, prefix := range excludedPrefix {
-			if strings.HasPrefix(string(fiberCtx.Request().URI().RequestURI()), prefix) {
-				return fiberCtx.Next()
+// RequestMiddlewareLogger returns an HTTP middleware that logs every request: the incoming request
+// at Trace level and its completion, with status code, response size and latency, at Info level.
+// Requests whose path starts with one of excludedPrefix are served without being logged.
+// The logger is stored in the request context, where handlers find it with FromContext.
+func RequestMiddlewareLogger(logger Logger, excludedPrefix []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(WithContext(r.Context(), logger))
+
+			for _, prefix := range excludedPrefix {
+				if strings.HasPrefix(r.URL.Path, prefix) {
+					next.ServeHTTP(w, r)
+					return
+				}
 			}
-		}
 
-		start := time.Now()
+			start := time.Now()
 
-		requestID := getReqID(fiberCtx)
-		loggerWithReqID := logger.WithName("server:request:" + requestID)
-		logIncomingRequest(fiberCtx, loggerWithReqID)
+			requestID := getReqID(r)
+			loggerWithReqID := logger.WithName("server:request:" + requestID)
+			logIncomingRequest(r, loggerWithReqID)
 
-		ctx := WithContext(appCtx, logger)
-		fiberCtx.SetUserContext(ctx)
-		err := fiberCtx.Next()
+			recorder := &responseRecorder{ResponseWriter: w}
+			next.ServeHTTP(recorder, r)
 
-		logRequestCompleted(fiberCtx, loggerWithReqID, start, err)
-		return err
+			logRequestCompleted(r, recorder, loggerWithReqID, start)
+		})
 	}
 }
