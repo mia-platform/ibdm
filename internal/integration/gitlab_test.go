@@ -76,7 +76,7 @@ func TestGitLabSync(t *testing.T) {
 			check: func(t *testing.T, result result, items []map[string]any, upstream *fakeUpstream) {
 				t.Helper()
 				assert.Equal(t, map[string]int{
-					gitlabAPIVersion + " projects":             2,
+					gitlabAPIVersion + " projects":             3,
 					gitlabAPIVersion + " pipelines":            2,
 					gitlabAPIVersion + " accesstokens":         2,
 					relationshipsAPIVersion + " relationships": 2 + 1,
@@ -93,8 +93,8 @@ func TestGitLabSync(t *testing.T) {
 			golden: "gitlab/projects-only",
 			check: func(t *testing.T, result result, items []map[string]any, upstream *fakeUpstream) {
 				t.Helper()
-				assert.Equal(t, map[string]int{gitlabAPIVersion + " projects": 2}, countItems(items))
-				assert.Len(t, upstream.received(), 2+2, "two listing pages and two languages requests")
+				assert.Equal(t, map[string]int{gitlabAPIVersion + " projects": 3}, countItems(items))
+				assert.Len(t, upstream.received(), 2+3, "two listing pages and three languages requests")
 				assert.Zero(t, gitlabCallsUnder(upstream, gitlabGroupsPath), "no group walk without access tokens")
 				assert.Zero(t, countLogsAtLevel(result.logs, levelError))
 			},
@@ -117,7 +117,7 @@ func TestGitLabSync(t *testing.T) {
 			check: func(t *testing.T, result result, items []map[string]any, upstream *fakeUpstream) {
 				t.Helper()
 				assert.Equal(t, map[string]int{
-					gitlabAPIVersion + " projects":             2,
+					gitlabAPIVersion + " projects":             3,
 					gitlabAPIVersion + " pipelines":            2,
 					relationshipsAPIVersion + " relationships": 2,
 				}, countItems(items))
@@ -149,7 +149,7 @@ func TestGitLabSync(t *testing.T) {
 			check: func(t *testing.T, result result, items []map[string]any, _ *fakeUpstream) {
 				t.Helper()
 				assert.Equal(t, map[string]int{gitlabAPIVersion + " projects": 1}, countItems(items),
-					"the project of page 1 was sent before the failure; the one of page 2 is lost")
+					"the project of page 1 was sent before the failure; the ones of page 2 are lost")
 				assert.Equal(t, 1, countLogs(result.logs, levelError, "error fetching project languages, proceeding with empty languages"),
 					"the message says the sync proceeds, but it stops")
 			},
