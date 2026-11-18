@@ -24,10 +24,8 @@ const (
 	// webhookListenerName names the public listener that serves webhooks and status routes.
 	webhookListenerName = "webhook"
 
-	// defaultMaxBodySize is the largest request body accepted, in bytes.
-	defaultMaxBodySize = 4 * 1024 * 1024
-
 	msgWebhookError   = "error processing webhook message"
+	msgInternalError  = "internal server error"
 	msgBodyTooLarge   = "request body too large"
 	msgBodyUnreadable = "error reading request body"
 )
@@ -77,9 +75,11 @@ func newServer(ctx context.Context, cfg config) *impServer {
 	webhook := newListener(
 		webhookListenerName,
 		net.JoinHostPort(cfg.HTTPHost, strconv.Itoa(cfg.HTTPPort)),
+		log,
 		logger.RequestMiddlewareLogger(log, []string{statusRoutesPrefix}),
+		recoverPanic,
 		normalizePath,
-		limitBody(defaultMaxBodySize),
+		limitBody(cfg.MaxBodySize),
 	)
 	statusRoutes(webhook.mux, serviceName, info.Version)
 
@@ -137,6 +137,15 @@ func (s *impServer) Start() error {
 			}
 			return fmt.Errorf("%w: %w", ErrServerListen, err)
 		}
+	}
+
+	log := logger.FromContext(s.appCtx).WithName(serverLoggerName)
+	for _, l := range s.listeners {
+		if s.DisableStartupMessage {
+			log.Debug("server listening", "listener", l.name, "address", l.boundAddr())
+			continue
+		}
+		log.Info("server listening", "listener", l.name, "address", l.boundAddr())
 	}
 
 	var group errgroup.Group
