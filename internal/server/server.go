@@ -11,6 +11,8 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
+	"unicode"
 
 	"golang.org/x/sync/errgroup"
 
@@ -32,8 +34,9 @@ const (
 
 // Server serves the webhooks of the sources together with the status routes.
 type Server interface {
-	// AddRoute registers handler for the requests with the given method and path.
-	AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error)
+	// AddRoute registers handler for the requests with the given method and path. It fails when
+	// the route is invalid or conflicts with a route already registered.
+	AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) error
 	// Start listens and serves until the server is stopped or fails.
 	Start() error
 	// Stop shuts the server down gracefully, waiting for active requests until ctx is done.
@@ -55,6 +58,7 @@ type impServer struct {
 var (
 	ErrServerListen   = errors.New("server listen error")
 	ErrServerShutdown = errors.New("server shutdown error")
+	ErrInvalidRoute   = errors.New("invalid route")
 )
 
 // NewServer returns a Server configured from the environment. ctx is the application context:
@@ -93,8 +97,42 @@ func newServer(ctx context.Context, cfg config) *impServer {
 
 // AddRoute registers handler on the webhook listener. Paths match regardless of case and of a
 // trailing slash. The handler is answered with 204 when it returns nil, and with 500 otherwise.
-func (s *impServer) AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) {
-	s.webhook.mux.Handle(method+" "+routingPath(path), s.webhookHandler(handler))
+func (s *impServer) AddRoute(method string, path string, handler func(ctx context.Context, headers http.Header, body []byte) error) error {
+	if err := validateRoute(method, path); err != nil {
+		return fmt.Errorf("%w: %s %q: %w", ErrInvalidRoute, method, path, err)
+	}
+
+	if err := handle(s.webhook.mux, method+" "+routingPath(path), s.webhookHandler(handler)); err != nil {
+		return fmt.Errorf("%w: %s %q: %w", ErrInvalidRoute, method, path, err)
+	}
+	return nil
+}
+
+// validateRoute rejects the routes that cannot be registered as a literal method and path.
+// Braces are rejected because the router reads them as wildcards.
+func validateRoute(method, path string) error {
+	switch {
+	case method == "" || strings.ContainsFunc(method, unicode.IsSpace):
+		return errors.New("method must be a single word")
+	case !strings.HasPrefix(path, "/"):
+		return errors.New("path must start with '/'")
+	case strings.ContainsAny(path, "{} \t\n\r"):
+		return errors.New("path must not contain braces or whitespace")
+	}
+	return nil
+}
+
+// handle registers handler on mux for pattern, turning the panic raised by the router for an
+// invalid or conflicting pattern into an error.
+func handle(mux *http.ServeMux, pattern string, handler http.Handler) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("%v", recovered)
+		}
+	}()
+
+	mux.Handle(pattern, handler)
+	return nil
 }
 
 // webhookHandler adapts handler to net/http. The handler receives a copy of the headers and the

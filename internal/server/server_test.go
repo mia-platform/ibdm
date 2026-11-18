@@ -136,6 +136,12 @@ func getStatusCode(t *testing.T, url string) int {
 	return response.StatusCode
 }
 
+// mustAddRoute registers handler on srv, failing the test when the route is rejected.
+func mustAddRoute(t *testing.T, srv *impServer, method, path string, handler func(context.Context, http.Header, []byte) error) {
+	t.Helper()
+	require.NoError(t, srv.AddRoute(method, path, handler))
+}
+
 // serve sends req to the handler chain of the webhook listener of srv.
 func serve(srv *impServer, req *http.Request) *httptest.ResponseRecorder {
 	recorder := httptest.NewRecorder()
@@ -255,7 +261,7 @@ func TestAddRoute(t *testing.T) {
 
 			srv, _ := newTestServer(t)
 			called := false
-			srv.AddRoute(http.MethodPost, "/github/webhook", func(_ context.Context, _ http.Header, body []byte) error {
+			mustAddRoute(t, srv, http.MethodPost, "/github/webhook", func(_ context.Context, _ http.Header, body []byte) error {
 				called = true
 				assert.Equal(t, test.body, string(body))
 				return test.handlerErr
@@ -282,7 +288,7 @@ func TestAddRouteRegisteredWithMixedCase(t *testing.T) {
 
 	srv, _ := newTestServer(t)
 	called := false
-	srv.AddRoute(http.MethodPost, "/My-Org/Webhook/", func(context.Context, http.Header, []byte) error {
+	mustAddRoute(t, srv, http.MethodPost, "/My-Org/Webhook/", func(context.Context, http.Header, []byte) error {
 		called = true
 		return nil
 	})
@@ -297,7 +303,7 @@ func TestWebhookHandlerReceivesHeaderCopy(t *testing.T) {
 
 	srv, _ := newTestServer(t)
 	var received http.Header
-	srv.AddRoute(http.MethodPost, "/webhook", func(_ context.Context, headers http.Header, _ []byte) error {
+	mustAddRoute(t, srv, http.MethodPost, "/webhook", func(_ context.Context, headers http.Header, _ []byte) error {
 		received = headers
 		return nil
 	})
@@ -315,7 +321,7 @@ func TestWebhookHandlerReadError(t *testing.T) {
 
 	srv, _ := newTestServer(t)
 	called := false
-	srv.AddRoute(http.MethodPost, "/webhook", func(context.Context, http.Header, []byte) error {
+	mustAddRoute(t, srv, http.MethodPost, "/webhook", func(context.Context, http.Header, []byte) error {
 		called = true
 		return nil
 	})
@@ -343,7 +349,7 @@ func TestWebhookHandlerContextOutlivesRequest(t *testing.T) {
 	}
 	release := make(chan struct{})
 	checked := make(chan ctxCheck, 1)
-	srv.AddRoute(http.MethodPost, "/webhook", func(ctx context.Context, _ http.Header, _ []byte) error {
+	mustAddRoute(t, srv, http.MethodPost, "/webhook", func(ctx context.Context, _ http.Header, _ []byte) error {
 		go func() {
 			<-release
 			checked <- ctxCheck{err: ctx.Err(), logger: logger.FromContext(ctx)}
@@ -532,7 +538,7 @@ func TestServerHardening(t *testing.T) {
 		cfg := testConfig()
 		cfg.MaxBodySize = 10
 		srv, _ := newTestServerWithConfig(t, cfg)
-		srv.AddRoute(http.MethodPost, "/webhook", func(context.Context, http.Header, []byte) error { return nil })
+		mustAddRoute(t, srv, http.MethodPost, "/webhook", func(context.Context, http.Header, []byte) error { return nil })
 
 		ok := serve(srv, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/webhook", strings.NewReader(strings.Repeat("a", 10))))
 		require.Equal(t, http.StatusNoContent, ok.Code)
@@ -544,7 +550,7 @@ func TestServerHardening(t *testing.T) {
 		t.Parallel()
 
 		srv, logs := newTestServer(t)
-		srv.AddRoute(http.MethodPost, "/panic", func(context.Context, http.Header, []byte) error {
+		mustAddRoute(t, srv, http.MethodPost, "/panic", func(context.Context, http.Header, []byte) error {
 			panic("fictional failure")
 		})
 
@@ -607,4 +613,50 @@ func TestStartupMessage(t *testing.T) {
 			require.Contains(t, logs.String(), addr)
 		})
 	}
+}
+
+func TestAddRouteRejectsInvalidRoutes(t *testing.T) {
+	t.Parallel()
+
+	noop := func(context.Context, http.Header, []byte) error { return nil }
+
+	tests := map[string]struct {
+		method string
+		path   string
+	}{
+		"empty method":                  {method: "", path: "/webhook"},
+		"method with spaces":            {method: "POST GET", path: "/webhook"},
+		"path without leading slash":    {method: http.MethodPost, path: "webhook"},
+		"empty path":                    {method: http.MethodPost, path: ""},
+		"path with braces":              {method: http.MethodPost, path: "/{org}/webhook"},
+		"path with spaces":              {method: http.MethodPost, path: "/my org/webhook"},
+		"conflicts with a status route": {method: http.MethodGet, path: "/-/healthz"},
+		"invalid method token":          {method: "PO\"ST", path: "/webhook"},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+
+			srv, _ := newTestServer(t)
+			err := srv.AddRoute(test.method, test.path, noop)
+			require.ErrorIs(t, err, ErrInvalidRoute)
+		})
+	}
+
+	t.Run("same route twice, regardless of case and trailing slash", func(t *testing.T) {
+		t.Parallel()
+
+		srv, _ := newTestServer(t)
+		mustAddRoute(t, srv, http.MethodPost, "/github/webhook", noop)
+		require.ErrorIs(t, srv.AddRoute(http.MethodPost, "/GitHub/Webhook/", noop), ErrInvalidRoute)
+	})
+
+	t.Run("same path with another method", func(t *testing.T) {
+		t.Parallel()
+
+		srv, _ := newTestServer(t)
+		mustAddRoute(t, srv, http.MethodPost, "/github/webhook", noop)
+		mustAddRoute(t, srv, http.MethodPut, "/github/webhook", noop)
+	})
 }
