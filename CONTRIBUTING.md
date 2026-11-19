@@ -38,6 +38,21 @@ guidance:
 	please attribute them with `Co-authored-by: name <name@example.com>`.
 	See [GitHub’s multiple author guidance] for further details.
 
+## Testing Built-in Mappings
+
+A test that renders a built-in mapping lives in the package of the source that produces its input,
+in `internal/source/<source>/mapping_test.go`:
+
+- Build the input with the code the source uses to emit its values, so that a change to the source
+	or to the mapping that breaks the other one fails the test.
+- Load the mapping with `mappings.ForSource` and compile it with `mapper.New` and
+	`mapper.WithCreateIf`, as the CLI does, instead of reading the mapping file by path.
+- Keep the fixtures that do not fit in the test file under
+	`internal/source/<source>/testdata/mappings/`.
+
+The checks that apply to every built-in mapping, whatever its source, stay in `internal/mappings`.
+The tests in `internal/integration` run the real binary against fake upstreams and a fake Catalog.
+
 ## Commit Message Styling
 
 Every commit in this repository must follow the guidelines provided by [Conventional commits].
