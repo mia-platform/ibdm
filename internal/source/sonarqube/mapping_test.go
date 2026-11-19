@@ -9,26 +9,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mappingconfig "github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/mappings"
 )
 
-// examplePath is the internal mapping shipped in the binary.
-const examplePath = "../../mappings/data/sonarqube/issues.yaml"
+const (
+	// internalMappingsSource is the source the internal SonarQube mappings are bundled for.
+	internalMappingsSource = "sonarqube"
+	// issuesMappingName is the name of the internal issues mapping.
+	issuesMappingName = "issues"
+	// runsMappingName is the name of the internal runs mapping.
+	runsMappingName = "runs"
+)
 
 // TestExampleMapping renders the documented mapping over the values this
 // source emits, so the two cannot drift apart silently.
 func TestExampleMapping(t *testing.T) {
 	t.Parallel()
 
-	mappings, err := mappingconfig.NewMappingConfigsFromPath(examplePath)
-	require.NoError(t, err)
-	require.Len(t, mappings, 1)
-	mapping := mappings[0]
-	assert.Equal(t, issueType, mapping.Type)
-
-	m, err := mapper.New(mapping.Mappings.Identifier, mapping.Mappings.Metadata, mapping.Mappings.Spec, mapping.Mappings.Extra)
-	require.NoError(t, err)
+	m := loadExampleMapper(t, issuesMappingName, issueType)
 
 	t.Run("a complete issue", func(t *testing.T) {
 		t.Parallel()
@@ -101,27 +100,34 @@ func TestExampleMapping(t *testing.T) {
 	})
 }
 
-// loadExampleMapper builds the mapper of a mapping shipped in the documentation.
-func loadExampleMapper(t *testing.T, path, dataType string) mapper.Mapper {
+// loadExampleMapper builds the mapper of the internal SonarQube mapping called name the way the CLI
+// does, from the mappings bundled in the binary, and checks that it maps dataType.
+func loadExampleMapper(t *testing.T, name, dataType string) mapper.Mapper {
 	t.Helper()
 
-	mappings, err := mappingconfig.NewMappingConfigsFromPath(path)
+	configs, err := mappings.ForSource(internalMappingsSource)
 	require.NoError(t, err)
-	require.Len(t, mappings, 1)
-	mapping := mappings[0]
-	require.Equal(t, dataType, mapping.Type)
 
-	m, err := mapper.New(mapping.Mappings.Identifier, mapping.Mappings.Metadata, mapping.Mappings.Spec, mapping.Mappings.Extra)
-	require.NoError(t, err)
-	return m
+	for _, mapping := range configs {
+		if mapping.Name != name {
+			continue
+		}
+
+		require.Equal(t, dataType, mapping.Type)
+		templates := mapping.Mappings
+		m, err := mapper.New(templates.Identifier, templates.Metadata, templates.Spec, templates.Extra, mapper.WithCreateIf(mapping.CreateIf))
+		require.NoError(t, err)
+		return m
+	}
+
+	require.FailNow(t, "internal sonarqube mapping not found", name)
+	return nil
 }
-
-const runsExamplePath = "../../mappings/data/sonarqube/runs.yaml"
 
 func TestExampleRunMapping(t *testing.T) {
 	t.Parallel()
 
-	m := loadExampleMapper(t, runsExamplePath, runType)
+	m := loadExampleMapper(t, runsMappingName, runType)
 
 	analysis := testAnalysis(t)
 	analysis.runKey = runKey(analysis)
@@ -151,8 +157,8 @@ func TestExampleRunMapping(t *testing.T) {
 func TestExampleIssueToRunRelationship(t *testing.T) {
 	t.Parallel()
 
-	issues := loadExampleMapper(t, examplePath, issueType)
-	runs := loadExampleMapper(t, runsExamplePath, runType)
+	issues := loadExampleMapper(t, issuesMappingName, issueType)
+	runs := loadExampleMapper(t, runsMappingName, runType)
 
 	analysis := testAnalysis(t)
 	analysis.runKey = runKey(analysis)
