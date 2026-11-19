@@ -1,0 +1,25 @@
+assetType: compute.googleapis.com/Snapshot
+name: //compute.googleapis.com/projects/example-project/global/snapshots/my-disk-europe-west1-c-20261014013223-abcd1234
+resource:
+  data:
+    architecture: X86_64
+    autoCreated: true
+    creationSizeBytes: '572360896'
+    creationTimestamp: '2026-10-13T18:32:23.856-07:00'
+    diskSizeGb: '50'
+    id: '253263886485251400'
+    licenses:
+    - https://www.googleapis.com/compute/v1/projects/debian-cloud/global/licenses/debian-12-bookworm
+    name: my-disk-europe-west1-c-20261014013223-abcd1234
+    selfLink: https://www.googleapis.com/compute/v1/projects/example-project/global/snapshots/my-disk-europe-west1-c-20261014013223-abcd1234
+    sourceDisk: https://www.googleapis.com/compute/v1/projects/example-project/zones/europe-west1-c/disks/my-disk
+    sourceSnapshotSchedulePolicy: https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west1/resourcePolicies/four-times-a-day
+    status: READY
+    storageBytes: '572360896'
+    storageLocations:
+    - eu
+  discoveryName: Snapshot
+  location: eu
+  parent: //cloudresourcemanager.googleapis.com/projects/123456789012
+  version: v1
+updateTime: '2026-10-14T01:33:10.948026Z'
