@@ -9,12 +9,16 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	mappingconfig "github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/mappings"
 )
 
-// projectsMappingPath is the internal projects mapping shipped in the binary.
-const projectsMappingPath = "../../mappings/data/gitlab/projects.yaml"
+const (
+	// internalMappingsSource is the source the internal GitLab mappings are bundled for.
+	internalMappingsSource = "gitlab"
+	// projectsMappingName is the name of the internal projects mapping.
+	projectsMappingName = "projects"
+)
 
 // testProjectJSON is a project as the GitLab REST API returns it.
 const testProjectJSON = `{
@@ -78,19 +82,36 @@ func testProject(t *testing.T) map[string]any {
 	return project
 }
 
+// loadInternalMapper builds the mapper of the internal GitLab mapping called name the way the CLI
+// does, from the mappings bundled in the binary, and checks that it maps resourceType.
+func loadInternalMapper(t *testing.T, name, resourceType string) mapper.Mapper {
+	t.Helper()
+
+	configs, err := mappings.ForSource(internalMappingsSource)
+	require.NoError(t, err)
+
+	for _, mapping := range configs {
+		if mapping.Name != name {
+			continue
+		}
+
+		require.Equal(t, resourceType, mapping.Type)
+		templates := mapping.Mappings
+		m, err := mapper.New(templates.Identifier, templates.Metadata, templates.Spec, templates.Extra, mapper.WithCreateIf(mapping.CreateIf))
+		require.NoError(t, err)
+		return m
+	}
+
+	require.FailNow(t, "internal gitlab mapping not found", name)
+	return nil
+}
+
 // TestProjectsMappingNullableFields renders the internal projects mapping over the values the
 // sync and the webhooks emit, for the project fields GitLab can return as null or omit.
 func TestProjectsMappingNullableFields(t *testing.T) {
 	t.Parallel()
 
-	mappings, err := mappingconfig.NewMappingConfigsFromPath(projectsMappingPath)
-	require.NoError(t, err)
-	require.Len(t, mappings, 1)
-	mapping := mappings[0]
-	require.Equal(t, projectResource, mapping.Type)
-
-	m, err := mapper.New(mapping.Mappings.Identifier, mapping.Mappings.Metadata, mapping.Mappings.Spec, mapping.Mappings.Extra)
-	require.NoError(t, err)
+	m := loadInternalMapper(t, projectsMappingName, projectResource)
 
 	testCases := map[string]struct {
 		changes  map[string]any
