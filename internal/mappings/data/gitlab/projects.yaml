@@ -20,7 +20,13 @@ mappings:
       {{- end }}
     descriptionHtml: '{{ get "description_html" .project "" | quote }}'
     createdAt: "{{ .project.created_at }}"
-    defaultBranch: "{{ .project.default_branch }}"
+    defaultBranch: |-
+      {{ $defaultBranch := (get "default_branch" .project nil) -}}
+      {{- if $defaultBranch -}}
+        {{- $defaultBranch | quote -}}
+      {{- else -}}
+        {{- "" | quote -}}
+      {{- end }}
     tagList: "{{ .project.tag_list | toJSON }}"
     topics: "{{ .project.topics | toJSON }}"
     sshUrlToRepo: "{{ .project.ssh_url_to_repo }}"
@@ -36,7 +42,16 @@ mappings:
     forksCount: "{{ .project.forks_count }}"
     starCount: "{{ .project.star_count }}"
     lastActivityAt: "{{ .project.last_activity_at }}"
-    packagesEnabled: "{{ .project.packages_enabled }}"
+    packagesEnabled: |-
+      {{ $packagesEnabled := (get "packages_enabled" .project nil) -}}
+      {{- $packageRegistryAccessLevel := (get "package_registry_access_level" .project nil) -}}
+      {{- if ne $packagesEnabled nil -}}
+        {{- $packagesEnabled -}}
+      {{- else if $packageRegistryAccessLevel -}}
+        {{- ne $packageRegistryAccessLevel "disabled" -}}
+      {{- else -}}
+        {{- false -}}
+      {{- end }}
     emptyRepo: "{{ .project.empty_repo }}"
     archived: "{{ .project.archived }}"
     visibility: "{{ .project.visibility }}"
@@ -61,7 +76,13 @@ mappings:
     environmentsAccessLevel: "{{ .project.environments_access_level }}"
     featureFlagsAccessLevel: "{{ .project.feature_flags_access_level }}"
     infrastructureAccessLevel: "{{ .project.infrastructure_access_level }}"
-    creatorId: "{{ .project.creator_id }}"
+    creatorId: |-
+      {{ $creatorId := (get "creator_id" .project nil) -}}
+      {{- if ne $creatorId nil -}}
+        {{- $creatorId -}}
+      {{- else -}}
+        {{- 0 -}}
+      {{- end }}
     publicJobs: "{{ .project.public_jobs }}"
     onlyAllowMergeIfPipelineSucceeds: "{{ .project.only_allow_merge_if_pipeline_succeeds }}"
     allowMergeOnSkippedPipeline: |-

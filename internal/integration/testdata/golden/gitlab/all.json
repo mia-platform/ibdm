@@ -248,6 +248,71 @@
       "operationTime": "<time>"
     },
     {
+      "apiVersion": "gitlab.mia-platform.eu/v1",
+      "data": {
+        "allowMergeOnSkippedPipeline": false,
+        "archived": false,
+        "buildsAccessLevel": "enabled",
+        "canCreateMergeRequestIn": true,
+        "containerRegistryEnabled": true,
+        "createdAt": "2025-03-01T09:00:00Z",
+        "creatorId": 0,
+        "defaultBranch": "",
+        "description": "",
+        "descriptionHtml": "",
+        "emptyRepo": true,
+        "environmentsAccessLevel": "enabled",
+        "featureFlagsAccessLevel": "enabled",
+        "forkingAccessLevel": "enabled",
+        "forksCount": 0,
+        "httpUrlToRepo": "https://git.example.com/acme-widgets/empty-sandbox.git",
+        "id": 103,
+        "infrastructureAccessLevel": "enabled",
+        "issuesAccessLevel": "enabled",
+        "issuesEnabled": true,
+        "jobsEnabled": true,
+        "languages": {},
+        "lastActivityAt": "2025-03-01T09:00:00Z",
+        "license": {},
+        "mergeMethod": "merge",
+        "mergeRequestsAccessLevel": "enabled",
+        "mergeRequestsEnabled": true,
+        "name": "empty-sandbox",
+        "nameWithNamespace": "Acme Widgets / empty-sandbox",
+        "onlyAllowMergeIfPipelineSucceeds": true,
+        "owner": null,
+        "packagesEnabled": true,
+        "pagesAccessLevel": "private",
+        "path": "empty-sandbox",
+        "pathWithNamespace": "acme-widgets/empty-sandbox",
+        "publicJobs": true,
+        "readmeUrl": "",
+        "releasesAccessLevel": "enabled",
+        "repositoryAccessLevel": "enabled",
+        "requestAccessEnabled": false,
+        "securityAndComplianceAccessLevel": "private",
+        "serviceDesksEnabled": false,
+        "snippetsAccessLevel": "disabled",
+        "snippetsEnabled": false,
+        "sshUrlToRepo": "git@git.example.com:acme-widgets/empty-sandbox.git",
+        "starCount": 0,
+        "tagList": [],
+        "topics": [],
+        "updatedAt": "2025-03-01T09:00:00Z",
+        "visibility": "private",
+        "webUrl": "https://git.example.com/acme-widgets/empty-sandbox",
+        "wikiAccessLevel": "disabled",
+        "wikiEnabled": false
+      },
+      "itemFamily": "projects",
+      "metadata": {
+        "title": "Acme Widgets / empty-sandbox"
+      },
+      "name": "f968dd142bbfff52d1afb5d620d7ce200c11ffabe95dca305fe0e60656d5aa09",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
         "sourceRef": "urn:mia-platform-catalog:gitlab.mia-platform.eu:v1:Pipeline:aa09aaf12d13524aa0aad85cde7e8ac82a2308d51e464982ecbc87d8410a5f92",
@@ -344,6 +409,20 @@
     {
       "method": "GET",
       "path": "/api/v4/projects/102/pipelines",
+      "query": "page=1&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/projects/103/access_tokens",
+      "query": "page=1&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/projects/103/languages"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v4/projects/103/pipelines",
       "query": "page=1&per_page=100"
     }
   ]
