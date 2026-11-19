@@ -78,6 +78,8 @@ ignoreWords:
   - noprefixhex
   - octocat
   - pubsubpb
+  - rrdatas
+  - rrsets
   - sclusters
   - structpb
   - sysdiglabs

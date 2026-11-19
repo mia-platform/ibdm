@@ -1,32 +1,37 @@
 // Copyright Mia srl
 // SPDX-License-Identifier: AGPL-3.0-only or Commercial
 
-package mappings
+package gcp
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
+	assetpb "cloud.google.com/go/asset/apiv1/assetpb"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
 	"github.com/mia-platform/ibdm/internal/config"
 	"github.com/mia-platform/ibdm/internal/mapper"
+	"github.com/mia-platform/ibdm/internal/mappings"
 )
 
 const (
 	gcpSource      = "gcp"
-	gcpFixturesDir = "testdata/gcp"
+	gcpFixturesDir = "testdata/mappings"
 )
 
-// loadGCPMapper builds the mapper of the bundled GCP mapping called name, like the CLI does.
+// loadGCPMapper builds the mapper of the internal GCP mapping called name the way the CLI does, from
+// the mappings bundled in the binary.
 func loadGCPMapper(t *testing.T, name string) (mapper.Mapper, *config.MappingConfig) {
 	t.Helper()
 
-	configs, err := ForSource(gcpSource)
+	configs, err := mappings.ForSource(gcpSource)
 	require.NoError(t, err)
 
 	for _, mapping := range configs {
@@ -40,20 +45,38 @@ func loadGCPMapper(t *testing.T, name string) (mapper.Mapper, *config.MappingCon
 		return m, mapping
 	}
 
-	require.FailNow(t, "bundled gcp mapping not found", name)
+	require.FailNow(t, "internal gcp mapping not found", name)
 	return nil, nil
 }
 
-// loadGCPFixture reads a Cloud Asset payload fixture the way the source emits it: a generic map.
+// loadGCPFixture reads a Cloud Asset fixture, written in YAML for readability, and returns the values
+// the sync emits for it.
 func loadGCPFixture(t *testing.T, name string) map[string]any {
 	t.Helper()
 
 	content, err := os.ReadFile(filepath.Join(gcpFixturesDir, name))
 	require.NoError(t, err)
 
-	var asset map[string]any
-	require.NoError(t, yaml.Unmarshal(content, &asset))
-	return asset
+	var fixture map[string]any
+	require.NoError(t, yaml.Unmarshal(content, &fixture))
+	return assetValues(t, fixture)
+}
+
+// assetValues decodes a Cloud Asset written as a generic map into an assetpb.Asset, rejecting fields
+// the message does not have, and converts it with assetToMap, as the sync does: numbers come out as
+// float64, as they reach the mappings at runtime.
+func assetValues(t *testing.T, fixture map[string]any) map[string]any {
+	t.Helper()
+
+	raw, err := json.Marshal(fixture)
+	require.NoError(t, err)
+
+	asset := &assetpb.Asset{}
+	require.NoError(t, protojson.Unmarshal(raw, asset))
+
+	values := assetToMap(asset)
+	require.NotNil(t, values)
+	return values
 }
 
 const (
@@ -76,8 +99,8 @@ func gcpHash(value string) string {
 // gcpRelationship returns the relationship extra a mapping must render between source and target URNs.
 func gcpRelationship(source, relationshipType, target string) mapper.ExtraMappedData {
 	return mapper.ExtraMappedData{
-		APIVersion: RelationshipsAPIVersion,
-		ItemFamily: RelationshipsItemFamily,
+		APIVersion: mappings.RelationshipsAPIVersion,
+		ItemFamily: mappings.RelationshipsItemFamily,
 		Identifier: gcpHash(source + "-" + relationshipType + "-" + target),
 		Spec:       map[string]any{"sourceRef": source, "targetRef": target, "typeRef": relationshipType},
 	}
@@ -424,8 +447,7 @@ func TestGCPClusterMapping(t *testing.T) {
 			fixture:            "cluster-regional.yaml",
 			expectedIdentifier: "example-project-europe-west1-my-cluster",
 			expectedTitle:      "my-cluster",
-			// the item of the cluster is unchanged by the relationship: this is the output of the mapping
-			// as it was before the relationship was added
+			// the cluster relationship is an extra item: the spec of the cluster is the same with or without it
 			expectedSpec: map[string]any{
 				"name":             "my-cluster",
 				"description":      "The cluster that hosts example resources",
@@ -474,18 +496,18 @@ func TestGCPRelationshipIdentifiersOnSparsePayloads(t *testing.T) {
 			t.Parallel()
 
 			m, mapping := loadGCPMapper(t, testCase.mapping)
-			sparse := map[string]any{
+			sparse := assetValues(t, map[string]any{
 				"name":     testCase.name,
 				"resource": map[string]any{"data": map[string]any{}},
-			}
+			})
 
 			identifier, extras, err := m.ApplyIdentifierTemplate(sparse)
 			require.NoError(t, err)
 			require.NotEmpty(t, identifier)
 			require.Len(t, extras, len(mapping.Mappings.Extra))
 			for _, extra := range extras {
-				require.Equal(t, RelationshipsAPIVersion, extra.APIVersion)
-				require.Equal(t, RelationshipsItemFamily, extra.ItemFamily)
+				require.Equal(t, mappings.RelationshipsAPIVersion, extra.APIVersion)
+				require.Equal(t, mappings.RelationshipsItemFamily, extra.ItemFamily)
 				require.Regexp(t, "^[0-9a-f]{64}$", extra.Identifier)
 			}
 		})
