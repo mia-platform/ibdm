@@ -1,0 +1,13 @@
+{
+  "_class": "org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject",
+  "jobs": [
+    {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+      "name": "develop",
+      "fullName": "my-org/my-repo/develop",
+      "url": "https://ci.example.com/job/my-org/job/my-repo/job/develop/",
+      "actions": []
+    }
+  ],
+  "views": []
+}

@@ -1,0 +1,5 @@
+{
+  "_class": "hudson.model.Hudson",
+  "description": "Welcome to the my-org build controller.",
+  "mode": "NORMAL"
+}

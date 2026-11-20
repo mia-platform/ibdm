@@ -22,6 +22,7 @@ import (
 	"github.com/mia-platform/ibdm/internal/source/gcp"
 	"github.com/mia-platform/ibdm/internal/source/github"
 	"github.com/mia-platform/ibdm/internal/source/gitlab"
+	"github.com/mia-platform/ibdm/internal/source/jenkins"
 	"github.com/mia-platform/ibdm/internal/source/k8s"
 	"github.com/mia-platform/ibdm/internal/source/nexus"
 	"github.com/mia-platform/ibdm/internal/source/sonarqube"
@@ -43,6 +44,8 @@ const (
 	githubDescription      = "GitHub integration"
 	gitlabSource           = "gitlab"
 	gitlabDescription      = "GitLab integration"
+	jenkinsSource          = "jenkins"
+	jenkinsDescription     = "Jenkins integration"
 	k8sSource              = "k8s"
 	k8sDescription         = "Kubernetes integration"
 	nexusSource            = "nexus"
@@ -80,6 +83,7 @@ var (
 		gcpSource:         gcpDescription,
 		githubSource:      githubDescription,
 		gitlabSource:      gitlabDescription,
+		jenkinsSource:     jenkinsDescription,
 		k8sSource:         k8sDescription,
 		nexusSource:       nexusDescription,
 		sonarqubeSource:   sonarqubeDescription,
@@ -138,6 +142,8 @@ func sourceFromIntegrationName(integrationName string) (any, error) {
 		return console.NewSource()
 	case gitlabSource:
 		return gitlab.NewSource()
+	case jenkinsSource:
+		return jenkins.NewSource()
 	case k8sSource:
 		return k8s.NewSource()
 	case nexusSource:

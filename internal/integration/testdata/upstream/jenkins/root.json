@@ -1,0 +1,37 @@
+{
+  "_class": "hudson.model.Hudson",
+  "jobs": [
+    {
+      "_class": "com.cloudbees.hudson.plugins.folder.Folder",
+      "name": "my-team",
+      "fullName": "my-team",
+      "displayName": "My Team",
+      "description": "Pipelines of my team",
+      "url": "https://ci.example.com/job/my-team/",
+      "healthReport": [],
+      "actions": [{}, {"_class": "com.cloudbees.plugins.credentials.ViewCredentialsAction"}],
+      "jobs": [{"name": "my-service"}, {"name": "my-app"}, {"name": "legacy-job"}]
+    },
+    {
+      "_class": "jenkins.branch.OrganizationFolder",
+      "name": "my-org",
+      "fullName": "my-org",
+      "displayName": "my-org",
+      "description": null,
+      "url": "https://ci.example.com/job/my-org/",
+      "actions": [{"_class": "jenkins.scm.api.metadata.ObjectMetadataAction", "objectUrl": "https://git.example.com/my-org"}],
+      "jobs": [{"name": "my-repo"}]
+    },
+    {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+      "name": "root-pipeline",
+      "fullName": "root-pipeline",
+      "displayName": "root-pipeline",
+      "description": "",
+      "url": "https://ci.example.com/job/root-pipeline/",
+      "buildable": true,
+      "actions": [{}],
+      "lastCompletedBuild": null
+    }
+  ]
+}
