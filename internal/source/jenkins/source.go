@@ -30,6 +30,8 @@ var _ source.SyncableSource = &Source{}
 // Source implements source.SyncableSource for a self-hosted Jenkins controller.
 type Source struct {
 	client *client
+	// controller identifies the controller in the values of every emitted data type.
+	controller controllerRef
 
 	syncLock sync.Mutex
 }
@@ -43,7 +45,13 @@ func NewSource() (*Source, error) {
 		return nil, handleErr(err)
 	}
 
+	controller, err := newControllerRef(cfg.URL)
+	if err != nil {
+		return nil, handleErr(err)
+	}
+
 	return &Source{
+		controller: controller,
 		client: &client{
 			baseURL:  cfg.URL,
 			username: cfg.Username,

@@ -74,7 +74,7 @@ func (s *Source) StartSyncProcess(ctx context.Context, typesToSync map[string]so
 		switch err := s.syncPlugins(ctx, results); {
 		case err == nil:
 		case errors.As(err, &statusErr) && statusErr.StatusCode == http.StatusForbidden:
-			log.Error("listing the plugins requires the Overall/Administer or Overall/SystemRead permission, skipping plugins", "error", err.Error())
+			log.Warn("listing the plugins requires the Overall/Administer or Overall/SystemRead permission, skipping plugins", "error", err.Error())
 		default:
 			errs = append(errs, fmt.Errorf("plugins: %w", err))
 		}
@@ -109,7 +109,7 @@ func (s *Source) syncFolderTree(ctx context.Context, wants func(string) bool, re
 	var errs []error
 	if opts.collectLibraries {
 		for _, values := range inv.libraries.values() {
-			if err := send(ctx, results, sharedLibraryType, values); err != nil {
+			if err := send(ctx, results, s.controller, sharedLibraryType, values); err != nil {
 				return append(errs, err)
 			}
 		}

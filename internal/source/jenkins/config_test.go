@@ -123,7 +123,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 func TestNewSource(t *testing.T) {
 	// No t.Parallel(): the test uses t.Setenv.
 	t.Run("valid configuration", func(t *testing.T) {
-		t.Setenv(urlEnvName, "https://ci.example.com/")
+		t.Setenv(urlEnvName, "https://CI.example.com:443/")
 		t.Setenv(usernameEnvName, "my-user")
 		t.Setenv(apiTokenEnvName, "my-api-token")
 		t.Setenv(timeoutEnvName, "")
@@ -131,7 +131,8 @@ func TestNewSource(t *testing.T) {
 		src, err := NewSource()
 		require.NoError(t, err)
 		require.NotNil(t, src)
-		assert.Equal(t, "https://ci.example.com", src.client.baseURL)
+		assert.Equal(t, "https://CI.example.com:443", src.client.baseURL)
+		assert.Equal(t, controllerRef{key: "ci.example.com", url: "https://CI.example.com:443"}, src.controller)
 		assert.Equal(t, "my-user", src.client.username)
 		assert.Equal(t, "my-api-token", src.client.apiToken)
 		assert.Equal(t, 30*time.Second, src.client.httpClient.Timeout)

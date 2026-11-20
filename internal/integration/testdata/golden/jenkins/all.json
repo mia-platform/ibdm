@@ -3,31 +3,6 @@
     {
       "apiVersion": "jenkins.mia-platform.eu/v1",
       "data": {
-        "id": "team-token",
-        "store": {
-          "domain": "_",
-          "folder": {
-            "fullName": "my-team",
-            "kind": "folder",
-            "url": "https://ci.example.com/job/my-team/"
-          },
-          "kind": "folder"
-        },
-        "typeName": "Secret text",
-        "usages": []
-      },
-      "itemFamily": "credentials",
-      "metadata": {
-        "description": "",
-        "title": "team-token"
-      },
-      "name": "af19700a038279952e0451bfd7e72da9f2f39bab35c1cb9a7505b3bd37a334db",
-      "operation": "upsert",
-      "operationTime": "<time>"
-    },
-    {
-      "apiVersion": "jenkins.mia-platform.eu/v1",
-      "data": {
         "id": "deploy-key",
         "store": {
           "domain": "_",
@@ -66,7 +41,32 @@
         "description": "Deploy key",
         "title": "deploy-key"
       },
-      "name": "e64d119707f118444025d87666706a55bc347d77bbb8a11c4975c73c421c413a",
+      "name": "<jenkins-id credential deploy-key>",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "id": "team-token",
+        "store": {
+          "domain": "_",
+          "folder": {
+            "fullName": "my-team",
+            "kind": "folder",
+            "url": "https://ci.example.com/job/my-team/"
+          },
+          "kind": "folder"
+        },
+        "typeName": "Secret text",
+        "usages": []
+      },
+      "itemFamily": "credentials",
+      "metadata": {
+        "description": "",
+        "title": "team-token"
+      },
+      "name": "<jenkins-id credential team-token>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
@@ -84,7 +84,7 @@
         "description": "",
         "title": "my-org"
       },
-      "name": "1f93dc7e5bd8b998d6ab90b6046b4bc93604b68015a91d8832caca0ffefd576c",
+      "name": "<jenkins-id folder my-org>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
@@ -102,7 +102,7 @@
         "description": "Pipelines of my team",
         "title": "My Team"
       },
-      "name": "a19f1569905c57bd107832f1b68840c31f38bf6649ad35d87bb0e091018fe71f",
+      "name": "<jenkins-id folder my-team>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
@@ -118,7 +118,29 @@
         "description": "Welcome to the my-org build controller.",
         "title": "http://<upstream>/"
       },
-      "name": "724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+      "name": "<jenkins-id instance>",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "branchCount": null,
+        "fullName": "my-org/my-repo",
+        "health": [],
+        "name": "my-repo",
+        "primaryBranch": null,
+        "pullRequestCount": null,
+        "repositoryUrl": "",
+        "tagCount": null,
+        "url": "https://ci.example.com/job/my-org/job/my-repo/"
+      },
+      "itemFamily": "multibranches",
+      "metadata": {
+        "description": "",
+        "title": "my-repo"
+      },
+      "name": "<jenkins-id multibranch my-org/my-repo>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
@@ -149,29 +171,7 @@
         "description": "Application repository",
         "title": "my-app"
       },
-      "name": "254147e3ae7f16cc695f6fb7c062ec3a1742a0935066f3e56aa12968657c8fb6",
-      "operation": "upsert",
-      "operationTime": "<time>"
-    },
-    {
-      "apiVersion": "jenkins.mia-platform.eu/v1",
-      "data": {
-        "branchCount": null,
-        "fullName": "my-org/my-repo",
-        "health": [],
-        "name": "my-repo",
-        "primaryBranch": null,
-        "pullRequestCount": null,
-        "repositoryUrl": "",
-        "tagCount": null,
-        "url": "https://ci.example.com/job/my-org/job/my-repo/"
-      },
-      "itemFamily": "multibranches",
-      "metadata": {
-        "description": "",
-        "title": "my-repo"
-      },
-      "name": "7a19039ad736bc809f7f76f6704af833f51a5d6b1f1229b5dd148d38eeb5192d",
+      "name": "<jenkins-id multibranch my-team/my-app>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
@@ -197,7 +197,7 @@
       "metadata": {
         "title": "Credentials Plugin"
       },
-      "name": "6cb0e5e8c07601d283f645f7aea8605d7979943c2007eefffde62e0a97c9c27c",
+      "name": "<jenkins-id plugin credentials>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
@@ -217,40 +217,7 @@
       "metadata": {
         "title": "Pipeline: Stage View Plugin"
       },
-      "name": "ac6c8ab39118f548a57420cd199633d3b02bd85cccd335ccaa0d82ec73fad557",
-      "operation": "upsert",
-      "operationTime": "<time>"
-    },
-    {
-      "apiVersion": "jenkins.mia-platform.eu/v1",
-      "data": {
-        "name": "other-lib",
-        "usages": [
-          {
-            "buildNumber": 40,
-            "changelog": false,
-            "fullName": "my-team/my-app/main",
-            "kind": "primaryBranch",
-            "multibranch": {
-              "fullName": "my-team/my-app",
-              "name": "my-app",
-              "url": "https://ci.example.com/job/my-team/job/my-app/"
-            },
-            "trusted": false,
-            "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
-            "version": "1.0"
-          }
-        ],
-        "variables": [],
-        "versions": [
-          "1.0"
-        ]
-      },
-      "itemFamily": "sharedlibraries",
-      "metadata": {
-        "title": "other-lib"
-      },
-      "name": "6a3a2a1d20443f478eff174a87f44b2423273e46e6c4e41e660eec6652c6de26",
+      "name": "<jenkins-id plugin pipeline-stage-view>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
@@ -296,7 +263,91 @@
       "metadata": {
         "title": "my-lib"
       },
-      "name": "b835ba574955ebc256b518431f5686351286a4fe496493b476b393fbe8e748d7",
+      "name": "<jenkins-id sharedlibrary my-lib>",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "name": "other-lib",
+        "usages": [
+          {
+            "buildNumber": 40,
+            "changelog": false,
+            "fullName": "my-team/my-app/main",
+            "kind": "primaryBranch",
+            "multibranch": {
+              "fullName": "my-team/my-app",
+              "name": "my-app",
+              "url": "https://ci.example.com/job/my-team/job/my-app/"
+            },
+            "trusted": false,
+            "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
+            "version": "1.0"
+          }
+        ],
+        "variables": [],
+        "versions": [
+          "1.0"
+        ]
+      },
+      "itemFamily": "sharedlibraries",
+      "metadata": {
+        "title": "other-lib"
+      },
+      "name": "<jenkins-id sharedlibrary other-lib>",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "build": {
+          "duration": 42000,
+          "number": 40,
+          "result": "SUCCESS",
+          "stages": [
+            {
+              "agent": "agent-1",
+              "children": [],
+              "durationMillis": 41000,
+              "id": "5",
+              "name": "Build",
+              "parallel": false,
+              "startTimeMillis": 1767265201000,
+              "status": "success",
+              "synthetic": false
+            }
+          ],
+          "stagesSource": "pipeline-graph-view",
+          "timestamp": 1767265200000,
+          "url": "https://ci.example.com/job/my-team/job/my-app/job/main/40/"
+        },
+        "buildable": true,
+        "fullName": "my-team/my-app/main",
+        "kind": "primaryBranch",
+        "libraries": [
+          {
+            "name": "my-lib",
+            "trusted": true,
+            "version": "v2"
+          },
+          {
+            "name": "other-lib",
+            "trusted": false,
+            "version": "1.0"
+          }
+        ],
+        "name": "main",
+        "url": "https://ci.example.com/job/my-team/job/my-app/job/main/"
+      },
+      "itemFamily": "workflows",
+      "metadata": {
+        "description": "",
+        "title": "my-app (main)"
+      },
+      "name": "<jenkins-id workflow my-team/my-app>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
@@ -432,7 +483,7 @@
         "description": "Service pipeline",
         "title": "my-service"
       },
-      "name": "6227882135f2c586e59434e334025296a033baa2159aa4a4115111592c1e677d",
+      "name": "<jenkins-id workflow my-team/my-service>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
@@ -452,166 +503,115 @@
         "description": "",
         "title": "root-pipeline"
       },
-      "name": "db21706da1e3342452789235fa5334c455530acfdc7178e48c6cb97f94fe14c5",
-      "operation": "upsert",
-      "operationTime": "<time>"
-    },
-    {
-      "apiVersion": "jenkins.mia-platform.eu/v1",
-      "data": {
-        "build": {
-          "duration": 42000,
-          "number": 40,
-          "result": "SUCCESS",
-          "stages": [
-            {
-              "agent": "agent-1",
-              "children": [],
-              "durationMillis": 41000,
-              "id": "5",
-              "name": "Build",
-              "parallel": false,
-              "startTimeMillis": 1767265201000,
-              "status": "success",
-              "synthetic": false
-            }
-          ],
-          "stagesSource": "pipeline-graph-view",
-          "timestamp": 1767265200000,
-          "url": "https://ci.example.com/job/my-team/job/my-app/job/main/40/"
-        },
-        "buildable": true,
-        "fullName": "my-team/my-app/main",
-        "kind": "primaryBranch",
-        "libraries": [
-          {
-            "name": "my-lib",
-            "trusted": true,
-            "version": "v2"
-          },
-          {
-            "name": "other-lib",
-            "trusted": false,
-            "version": "1.0"
-          }
-        ],
-        "name": "main",
-        "url": "https://ci.example.com/job/my-team/job/my-app/job/main/"
-      },
-      "itemFamily": "workflows",
-      "metadata": {
-        "description": "",
-        "title": "my-app (main)"
-      },
-      "name": "efc0fc5cc457a7ce5a27d8e32fbedac4cb45af56bfa2278f4683784ff4b6bf3c",
+      "name": "<jenkins-id workflow root-pipeline>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
     {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
-        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:1f93dc7e5bd8b998d6ab90b6046b4bc93604b68015a91d8832caca0ffefd576c",
-        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:<jenkins-id folder my-org>",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:<jenkins-id instance>",
         "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
       },
       "itemFamily": "relationships",
-      "name": "04bf0a1291928a8dc4ec7cb5546cd5c516c482a94a54e8de81b9c7f84e597f0e",
+      "name": "<jenkins-part-of folder my-org>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
     {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
-        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:a19f1569905c57bd107832f1b68840c31f38bf6649ad35d87bb0e091018fe71f",
-        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:<jenkins-id folder my-team>",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:<jenkins-id instance>",
         "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
       },
       "itemFamily": "relationships",
-      "name": "0d5727be11b96bbe81f8240ed95c561e555e31b60ff9b9668c4aebe69e86671c",
+      "name": "<jenkins-part-of folder my-team>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
     {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
-        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:7a19039ad736bc809f7f76f6704af833f51a5d6b1f1229b5dd148d38eeb5192d",
-        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:1f93dc7e5bd8b998d6ab90b6046b4bc93604b68015a91d8832caca0ffefd576c",
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:<jenkins-id multibranch my-org/my-repo>",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:<jenkins-id folder my-org>",
         "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
       },
       "itemFamily": "relationships",
-      "name": "1964c013404a1ef397e069a4ffb716090f03349fe301dd0036ec079212e29dc8",
+      "name": "<jenkins-part-of multibranch my-org/my-repo>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
     {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
-        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:254147e3ae7f16cc695f6fb7c062ec3a1742a0935066f3e56aa12968657c8fb6",
-        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:a19f1569905c57bd107832f1b68840c31f38bf6649ad35d87bb0e091018fe71f",
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:<jenkins-id multibranch my-team/my-app>",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:<jenkins-id folder my-team>",
         "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
       },
       "itemFamily": "relationships",
-      "name": "252518411bd4af3b250bb3ca1f76072b11e3788c45afda69883626ae0d977693",
+      "name": "<jenkins-part-of multibranch my-team/my-app>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
     {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
-        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:6227882135f2c586e59434e334025296a033baa2159aa4a4115111592c1e677d",
-        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:a19f1569905c57bd107832f1b68840c31f38bf6649ad35d87bb0e091018fe71f",
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Plugin:<jenkins-id plugin credentials>",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:<jenkins-id instance>",
         "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
       },
       "itemFamily": "relationships",
-      "name": "3ad4a658c291fa8ac42b3f67b4e6d568ebaf73d37372eb1f53e8608a6b8bc6e1",
+      "name": "<jenkins-part-of plugin credentials>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
     {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
-        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Plugin:ac6c8ab39118f548a57420cd199633d3b02bd85cccd335ccaa0d82ec73fad557",
-        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Plugin:<jenkins-id plugin pipeline-stage-view>",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:<jenkins-id instance>",
         "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
       },
       "itemFamily": "relationships",
-      "name": "6dd2327c524b696433e0c5fb5646656d6453da7a656381019aea5b10dcf6669f",
+      "name": "<jenkins-part-of plugin pipeline-stage-view>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
     {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
-        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:db21706da1e3342452789235fa5334c455530acfdc7178e48c6cb97f94fe14c5",
-        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:<jenkins-id workflow my-team/my-app>",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:<jenkins-id multibranch my-team/my-app>",
         "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
       },
       "itemFamily": "relationships",
-      "name": "90ec24d42707ca175ca4691d396fc88d5ac8507f36b9b9a84ef262bc30acda11",
+      "name": "<jenkins-part-of workflow my-team/my-app>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
     {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
-        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Plugin:6cb0e5e8c07601d283f645f7aea8605d7979943c2007eefffde62e0a97c9c27c",
-        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:724855be2c46351845f4370c6cc8bccd8ac70426d4dc224d12a138b4c6ec3260",
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:<jenkins-id workflow my-team/my-service>",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:<jenkins-id folder my-team>",
         "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
       },
       "itemFamily": "relationships",
-      "name": "9fe0c7fee051656fd6047e09fcbb85e10049df6fe9ab87721e827af6441834a0",
+      "name": "<jenkins-part-of workflow my-team/my-service>",
       "operation": "upsert",
       "operationTime": "<time>"
     },
     {
       "apiVersion": "mia-platform.eu/v1",
       "data": {
-        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:efc0fc5cc457a7ce5a27d8e32fbedac4cb45af56bfa2278f4683784ff4b6bf3c",
-        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:254147e3ae7f16cc695f6fb7c062ec3a1742a0935066f3e56aa12968657c8fb6",
+        "sourceRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:<jenkins-id workflow root-pipeline>",
+        "targetRef": "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:<jenkins-id instance>",
         "typeRef": "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"
       },
       "itemFamily": "relationships",
-      "name": "e397c4b61933f0b3711a46471956a5fc61a3eda5f105ae33ec05ceeef39cf07e",
+      "name": "<jenkins-part-of workflow root-pipeline>",
       "operation": "upsert",
       "operationTime": "<time>"
     }

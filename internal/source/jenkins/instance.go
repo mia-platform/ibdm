@@ -41,5 +41,5 @@ func (s *Source) syncInstance(ctx context.Context, results chan<- source.Data) e
 		},
 	}
 
-	return send(ctx, results, instanceType, values)
+	return send(ctx, results, s.controller, instanceType, values)
 }

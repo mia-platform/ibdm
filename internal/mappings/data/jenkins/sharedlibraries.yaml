@@ -4,7 +4,7 @@ type: sharedlibrary
 syncable: true
 mappings:
   identifier: |-
-    {{ printf "jenkins-sharedlibrary-%s" .library.name | sha256sum }}
+    {{ toJSON (list "jenkins-sharedlibrary" .controller.key .library.name) | sha256sum }}
   metadata:
     title: '{{ .library.name | toJSON }}'
   spec:

@@ -5,9 +5,9 @@ syncable: true
 mappings:
   identifier: |-
     {{ if eq .workflow.kind "primaryBranch" -}}
-      {{ printf "jenkins-workflow-%s" .multibranch.fullName | sha256sum }}
+      {{ toJSON (list "jenkins-workflow" .controller.key .multibranch.fullName) | sha256sum }}
     {{- else -}}
-      {{ printf "jenkins-workflow-%s" .workflow.fullName | sha256sum }}
+      {{ toJSON (list "jenkins-workflow" .controller.key .workflow.fullName) | sha256sum }}
     {{- end }}
   metadata:
     title: |-
@@ -34,28 +34,28 @@ mappings:
         {{- $src := "" -}}
         {{- $tgt := "" -}}
         {{- if eq .workflow.kind "primaryBranch" -}}
-          {{- $src = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:%s" (printf "jenkins-workflow-%s" .multibranch.fullName | sha256sum) -}}
-          {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:%s" (printf "jenkins-multibranch-%s" .multibranch.fullName | sha256sum) -}}
+          {{- $src = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:%s" (toJSON (list "jenkins-workflow" .controller.key .multibranch.fullName) | sha256sum) -}}
+          {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:%s" (toJSON (list "jenkins-multibranch" .controller.key .multibranch.fullName) | sha256sum) -}}
         {{- else -}}
-          {{- $src = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:%s" (printf "jenkins-workflow-%s" .workflow.fullName | sha256sum) -}}
-          {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:%s" ("jenkins-instance" | sha256sum) -}}
+          {{- $src = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:%s" (toJSON (list "jenkins-workflow" .controller.key .workflow.fullName) | sha256sum) -}}
+          {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:%s" (toJSON (list "jenkins-instance" .controller.key) | sha256sum) -}}
           {{- if eq .parent.kind "folder" -}}
-            {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:%s" (printf "jenkins-folder-%s" .parent.fullName | sha256sum) -}}
+            {{- $tgt = printf "urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:%s" (toJSON (list "jenkins-folder" .controller.key .parent.fullName) | sha256sum) -}}
           {{- end -}}
         {{- end -}}
         {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
       sourceRef: |-
         {{ if eq .workflow.kind "primaryBranch" -}}
-          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:{{ printf "jenkins-workflow-%s" .multibranch.fullName | sha256sum }}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:{{ toJSON (list "jenkins-workflow" .controller.key .multibranch.fullName) | sha256sum }}
         {{- else -}}
-          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:{{ printf "jenkins-workflow-%s" .workflow.fullName | sha256sum }}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Workflow:{{ toJSON (list "jenkins-workflow" .controller.key .workflow.fullName) | sha256sum }}
         {{- end }}
       targetRef: |-
         {{ if eq .workflow.kind "primaryBranch" -}}
-          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:{{ printf "jenkins-multibranch-%s" .multibranch.fullName | sha256sum }}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Multibranch:{{ toJSON (list "jenkins-multibranch" .controller.key .multibranch.fullName) | sha256sum }}
         {{- else if eq .parent.kind "folder" -}}
-          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:{{ printf "jenkins-folder-%s" .parent.fullName | sha256sum }}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Folder:{{ toJSON (list "jenkins-folder" .controller.key .parent.fullName) | sha256sum }}
         {{- else -}}
-          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:{{ "jenkins-instance" | sha256sum }}
+          urn:mia-platform-catalog:jenkins.mia-platform.eu:v1:Instance:{{ toJSON (list "jenkins-instance" .controller.key) | sha256sum }}
         {{- end }}
       typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

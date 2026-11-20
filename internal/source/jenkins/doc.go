@@ -23,4 +23,9 @@
 // is either instance or folder. The primary branch workflow of a multibranch project carries a
 // multibranch key instead. The other references to a container, the parent of the credential
 // usages and the folder of the credential stores, share the same shape.
+//
+// Every data type carries a controller key shaped as {key, url}, derived from JENKINS_URL: url is
+// the configured URL without trailing slash, and key is that URL without scheme and default port,
+// with a lowercase host. Jenkins names are unique only within one controller, so the mappings
+// combine them with key to identify the items.
 package jenkins

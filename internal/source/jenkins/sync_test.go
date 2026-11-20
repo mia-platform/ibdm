@@ -6,6 +6,7 @@ package jenkins
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,6 +24,7 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 	fake := newFakeJenkins(fixtureRoutes())
 	src := newTestSource(t, fake)
 	rootURL := src.client.baseURL + "/"
+	controller := map[string]any{keyControllerKey: strings.TrimPrefix(src.client.baseURL, "http://"), keyURL: src.client.baseURL}
 
 	typesToSync := make(map[string]source.MappingExtras)
 	for _, dataType := range allTypes {
@@ -37,6 +39,7 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 	for _, d := range data {
 		assert.Equal(t, source.DataOperationUpsert, d.Operation)
 		assert.Equal(t, testFixedTime, d.Time)
+		assert.Equal(t, controller, d.Values[controllerValuesKey], "every %s carries the controller", d.Type)
 	}
 
 	grouped := byType(t, data)
@@ -57,6 +60,7 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 				"description": "Welcome to the my-org build controller.",
 				"mode":        "NORMAL",
 			},
+			controllerValuesKey: controller,
 		}, grouped[instanceType][0].Values)
 	})
 
@@ -67,14 +71,16 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 				keyName: "my-team", keyFullName: "my-team", "displayName": "My Team", "description": "Pipelines of my team",
 				keyURL: "https://ci.example.com/job/my-team/", keyKind: folderKindFolder, "objectUrl": "",
 			},
-			"parent": map[string]any{keyKind: parentKindInstance, keyFullName: "", keyURL: rootURL},
+			"parent":            map[string]any{keyKind: parentKindInstance, keyFullName: "", keyURL: rootURL},
+			controllerValuesKey: controller,
 		}, grouped[folderType][0].Values)
 		assert.Equal(t, map[string]any{
 			"folder": map[string]any{
 				keyName: "my-org", keyFullName: "my-org", "displayName": "my-org", "description": "",
 				keyURL: "https://ci.example.com/job/my-org/", keyKind: folderKindOrganization, "objectUrl": "https://git.example.com/my-org",
 			},
-			"parent": map[string]any{keyKind: parentKindInstance, keyFullName: "", keyURL: rootURL},
+			"parent":            map[string]any{keyKind: parentKindInstance, keyFullName: "", keyURL: rootURL},
+			controllerValuesKey: controller,
 		}, grouped[folderType][1].Values)
 	})
 
@@ -93,7 +99,8 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 				"pullRequestCount": 1,
 				"tagCount":         0,
 			},
-			"parent": map[string]any{keyKind: parentKindFolder, keyFullName: "my-team", keyURL: "https://ci.example.com/job/my-team/"},
+			"parent":            map[string]any{keyKind: parentKindFolder, keyFullName: "my-team", keyURL: "https://ci.example.com/job/my-team/"},
+			controllerValuesKey: controller,
 		}, grouped[multibranchType][0].Values)
 		assert.Equal(t, map[string]any{
 			"multibranch": map[string]any{
@@ -102,7 +109,8 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 				"health":        []map[string]any{},
 				"repositoryUrl": "",
 			},
-			"parent": map[string]any{keyKind: parentKindFolder, keyFullName: "my-org", keyURL: "https://ci.example.com/job/my-org/"},
+			"parent":            map[string]any{keyKind: parentKindFolder, keyFullName: "my-org", keyURL: "https://ci.example.com/job/my-org/"},
+			controllerValuesKey: controller,
 		}, grouped[multibranchType][1].Values)
 	})
 
@@ -141,6 +149,7 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 					},
 				},
 			},
+			controllerValuesKey: controller,
 		}, grouped[workflowType][0].Values)
 	})
 
@@ -167,6 +176,7 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 					},
 				},
 			},
+			controllerValuesKey: controller,
 		}, grouped[workflowType][1].Values)
 	})
 
@@ -177,8 +187,9 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 				keyName: "root-pipeline", keyFullName: "root-pipeline", "displayName": "root-pipeline", "description": "",
 				keyURL: "https://ci.example.com/job/root-pipeline/", "buildable": true, keyKind: workflowKindStandalone,
 			},
-			"libraries": []map[string]any{},
-			"parent":    map[string]any{keyKind: parentKindInstance, keyFullName: "", keyURL: rootURL},
+			"libraries":         []map[string]any{},
+			"parent":            map[string]any{keyKind: parentKindInstance, keyFullName: "", keyURL: rootURL},
+			controllerValuesKey: controller,
 		}, grouped[workflowType][2].Values)
 	})
 
@@ -197,6 +208,7 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 					"version": "v2", "trusted": true, "changelog": true, "buildNumber": int64(40), "multibranch": multibranch,
 				},
 			},
+			controllerValuesKey: controller,
 		}, grouped[sharedLibraryType][0].Values)
 		assert.Equal(t, "other-lib", grouped[sharedLibraryType][1].Values["library"].(map[string]any)[keyName])
 	})
@@ -219,6 +231,7 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 					"branches": []string{"main", "PR-7"},
 				},
 			},
+			controllerValuesKey: controller,
 		}, grouped[credentialType][0].Values)
 		assert.Equal(t, map[string]any{
 			"credential": map[string]any{"id": "team-token", "displayName": "Team token", "typeName": "Secret text", "description": ""},
@@ -226,7 +239,8 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 				keyKind: storeKindFolder, "domain": "_",
 				"folder": map[string]any{keyKind: containerKindFolder, keyFullName: "my-team", keyURL: "https://ci.example.com/job/my-team/"},
 			},
-			"usages": []map[string]any{},
+			"usages":            []map[string]any{},
+			controllerValuesKey: controller,
 		}, grouped[credentialType][1].Values)
 	})
 
@@ -239,6 +253,7 @@ func TestStartSyncProcessEmitsEveryType(t *testing.T) {
 				"requiredCoreVersion": "2.555.1",
 				"dependencies":        []map[string]any{{"shortName": "structs", "version": "350.v3b_30f09f2363", "optional": false}},
 			},
+			controllerValuesKey: controller,
 		}, grouped[pluginType][0].Values)
 		assert.Equal(t, "pipeline-stage-view", grouped[pluginType][1].Values["plugin"].(map[string]any)["shortName"])
 	})

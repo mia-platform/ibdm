@@ -73,7 +73,7 @@ func (w *walker) handleMultibranch(ctx context.Context, item jobItem, segments [
 
 	primary := primaryBranch(listing)
 	if w.opts.emitMultibranch {
-		if err := send(ctx, w.results, multibranchType, multibranchValues(item, parent, listing, primary)); err != nil {
+		if err := send(ctx, w.results, w.controller, multibranchType, multibranchValues(item, parent, listing, primary)); err != nil {
 			return err
 		}
 	}

@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/mia-platform/ibdm/internal/source"
 )
 
@@ -96,14 +98,19 @@ func (f *fakeJenkins) requestedURIs() []string {
 	return slices.Clone(f.uris)
 }
 
-// newTestSource returns a Source whose client targets a test server serving handler.
+// newTestSource returns a Source whose client targets a test server serving handler, and whose
+// controller is configured with the URL of that server.
 func newTestSource(t *testing.T, handler http.Handler) *Source {
 	t.Helper()
 
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 
+	controller, err := newControllerRef(server.URL)
+	require.NoError(t, err)
+
 	return &Source{
+		controller: controller,
 		client: &client{
 			baseURL:    server.URL,
 			username:   testUsername,

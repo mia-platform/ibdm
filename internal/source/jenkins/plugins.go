@@ -71,7 +71,7 @@ func (s *Source) syncPlugins(ctx context.Context, results chan<- source.Data) er
 				"dependencies":        dependencies,
 			},
 		}
-		if err := send(ctx, results, pluginType, values); err != nil {
+		if err := send(ctx, results, s.controller, pluginType, values); err != nil {
 			return err
 		}
 	}

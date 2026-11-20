@@ -172,11 +172,12 @@ func (o walkOptions) needsPrimaryBranch() bool {
 
 // walker walks the folder tree of the controller, emitting items and filling the inventory.
 type walker struct {
-	client  *client
-	results chan<- source.Data
-	opts    walkOptions
-	inv     *inventory
-	log     logger.Logger
+	client     *client
+	controller controllerRef
+	results    chan<- source.Data
+	opts       walkOptions
+	inv        *inventory
+	log        logger.Logger
 
 	// stageAPIs records which stage plugins are usable, for the whole walk.
 	stageAPIs stageAPIs
@@ -186,9 +187,10 @@ type walker struct {
 // returned; failures on nested containers are logged and the walk continues.
 func (s *Source) walkJobs(ctx context.Context, opts walkOptions, results chan<- source.Data) (*inventory, error) {
 	w := &walker{
-		client:  s.client,
-		results: results,
-		opts:    opts,
+		client:     s.client,
+		controller: s.controller,
+		results:    results,
+		opts:       opts,
 		inv: &inventory{
 			index:     make(map[string]indexEntry),
 			libraries: newLibraryCollector(),
@@ -250,7 +252,7 @@ func (w *walker) handleFolder(ctx context.Context, item jobItem, segments []stri
 	w.inv.containers = append(w.inv.containers, container{kind: containerKindFolder, segments: segments, fullName: item.FullName, url: item.URL})
 
 	if w.opts.emitFolders {
-		if err := send(ctx, w.results, folderType, folderValues(item, parent)); err != nil {
+		if err := send(ctx, w.results, w.controller, folderType, folderValues(item, parent)); err != nil {
 			return err
 		}
 	}
@@ -311,7 +313,7 @@ func (w *walker) handleWorkflow(ctx context.Context, item jobItem, segments []st
 		values["build"] = w.buildValues(ctx, segments, build)
 	}
 
-	return send(ctx, w.results, workflowType, values)
+	return send(ctx, w.results, w.controller, workflowType, values)
 }
 
 // buildValues returns the last completed build of a workflow with its stages, when available.
@@ -383,8 +385,10 @@ func healthValues(reports []healthReport) []map[string]any {
 	return out
 }
 
-// send pushes an upsert of dataType onto results, giving up when ctx is done.
-func send(ctx context.Context, results chan<- source.Data, dataType string, values map[string]any) error {
+// send pushes an upsert of dataType onto results, giving up when ctx is done. It adds the
+// controller reference to values, so that every data type carries it.
+func send(ctx context.Context, results chan<- source.Data, controller controllerRef, dataType string, values map[string]any) error {
+	values[controllerValuesKey] = controller.values()
 	data := source.Data{
 		Type:      dataType,
 		Operation: source.DataOperationUpsert,

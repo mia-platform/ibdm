@@ -3,39 +3,6 @@
     {
       "apiVersion": "jenkins.mia-platform.eu/v1",
       "data": {
-        "name": "other-lib",
-        "usages": [
-          {
-            "buildNumber": 40,
-            "changelog": false,
-            "fullName": "my-team/my-app/main",
-            "kind": "primaryBranch",
-            "multibranch": {
-              "fullName": "my-team/my-app",
-              "name": "my-app",
-              "url": "https://ci.example.com/job/my-team/job/my-app/"
-            },
-            "trusted": false,
-            "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
-            "version": "1.0"
-          }
-        ],
-        "variables": [],
-        "versions": [
-          "1.0"
-        ]
-      },
-      "itemFamily": "sharedlibraries",
-      "metadata": {
-        "title": "other-lib"
-      },
-      "name": "6a3a2a1d20443f478eff174a87f44b2423273e46e6c4e41e660eec6652c6de26",
-      "operation": "upsert",
-      "operationTime": "<time>"
-    },
-    {
-      "apiVersion": "jenkins.mia-platform.eu/v1",
-      "data": {
         "name": "my-lib",
         "usages": [
           {
@@ -75,7 +42,40 @@
       "metadata": {
         "title": "my-lib"
       },
-      "name": "b835ba574955ebc256b518431f5686351286a4fe496493b476b393fbe8e748d7",
+      "name": "<jenkins-id sharedlibrary my-lib>",
+      "operation": "upsert",
+      "operationTime": "<time>"
+    },
+    {
+      "apiVersion": "jenkins.mia-platform.eu/v1",
+      "data": {
+        "name": "other-lib",
+        "usages": [
+          {
+            "buildNumber": 40,
+            "changelog": false,
+            "fullName": "my-team/my-app/main",
+            "kind": "primaryBranch",
+            "multibranch": {
+              "fullName": "my-team/my-app",
+              "name": "my-app",
+              "url": "https://ci.example.com/job/my-team/job/my-app/"
+            },
+            "trusted": false,
+            "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
+            "version": "1.0"
+          }
+        ],
+        "variables": [],
+        "versions": [
+          "1.0"
+        ]
+      },
+      "itemFamily": "sharedlibraries",
+      "metadata": {
+        "title": "other-lib"
+      },
+      "name": "<jenkins-id sharedlibrary other-lib>",
       "operation": "upsert",
       "operationTime": "<time>"
     }

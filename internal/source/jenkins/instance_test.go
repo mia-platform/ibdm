@@ -61,6 +61,7 @@ func TestSyncInstance(t *testing.T) {
 					"description": tc.expectedMsg,
 					"mode":        "EXCLUSIVE",
 				},
+				controllerValuesKey: src.controller.values(),
 			}, data[0].Values)
 		})
 	}

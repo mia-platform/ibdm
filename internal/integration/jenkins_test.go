@@ -6,7 +6,11 @@
 package integration
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +32,98 @@ const (
 	jenkinsMyServiceGraphPath    = "/job/my-team/job/my-service/12/stages/tree"
 	jenkinsSystemStorePath       = "/credentials/store/system/api/json"
 	jenkinsPluginManagerPath     = "/pluginManager/api/json"
+	jenkinsURNPrefix             = urnPrefix + "jenkins.mia-platform.eu:v1:"
 )
+
+// jenkinsFixtureItem is an item of the upstream fixtures. Its mapping hashes the JSON list of
+// parts, with the controller key inserted after the first part. parent names the item its part-of
+// relationship points at, empty when it has none.
+type jenkinsFixtureItem struct {
+	name    string
+	urnKind string
+	parts   []string
+	parent  string
+}
+
+// jenkinsFixtureItems lists every item of the upstream fixtures: their identifiers hash the
+// address of the fake, so the golden files store placeholders.
+var jenkinsFixtureItems = []jenkinsFixtureItem{
+	{name: "instance", urnKind: "Instance", parts: []string{"jenkins-instance"}},
+	{name: "folder my-team", urnKind: "Folder", parts: []string{"jenkins-folder", "my-team"}, parent: "instance"},
+	{name: "folder my-org", urnKind: "Folder", parts: []string{"jenkins-folder", "my-org"}, parent: "instance"},
+	{name: "multibranch my-team/my-app", urnKind: "Multibranch", parts: []string{"jenkins-multibranch", "my-team/my-app"}, parent: "folder my-team"},
+	{name: "multibranch my-org/my-repo", urnKind: "Multibranch", parts: []string{"jenkins-multibranch", "my-org/my-repo"}, parent: "folder my-org"},
+	{name: "workflow my-team/my-service", urnKind: "Workflow", parts: []string{"jenkins-workflow", "my-team/my-service"}, parent: "folder my-team"},
+	{name: "workflow root-pipeline", urnKind: "Workflow", parts: []string{"jenkins-workflow", "root-pipeline"}, parent: "instance"},
+	{name: "workflow my-team/my-app", urnKind: "Workflow", parts: []string{"jenkins-workflow", "my-team/my-app"}, parent: "multibranch my-team/my-app"},
+	{name: "sharedlibrary my-lib", parts: []string{"jenkins-sharedlibrary", "my-lib"}},
+	{name: "sharedlibrary other-lib", parts: []string{"jenkins-sharedlibrary", "other-lib"}},
+	{name: "credential deploy-key", parts: []string{"jenkins-credential", "system", "", "_", "deploy-key"}},
+	{name: "credential team-token", parts: []string{"jenkins-credential", "folder", "my-team", "_", "team-token"}},
+	{name: "plugin credentials", urnKind: "Plugin", parts: []string{"jenkins-plugin", "credentials"}, parent: "instance"},
+	{name: "plugin pipeline-stage-view", urnKind: "Plugin", parts: []string{"jenkins-plugin", "pipeline-stage-view"}, parent: "instance"},
+}
+
+// jenkinsSum returns the hexadecimal SHA-256 of content, as the sha256sum mapping function does.
+func jenkinsSum(content string) string {
+	sum := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(sum[:])
+}
+
+// jenkinsIdentifiers computes the identifier of every fixture item and of its part-of
+// relationship, as the Jenkins mappings render them for controllerKey, bound to a stable
+// placeholder.
+func jenkinsIdentifiers(t *testing.T, controllerKey string) map[string]string {
+	t.Helper()
+
+	itemIDs := make(map[string]string, len(jenkinsFixtureItems))
+	urns := make(map[string]string, len(jenkinsFixtureItems))
+	for _, item := range jenkinsFixtureItems {
+		parts := append([]string{item.parts[0], controllerKey}, item.parts[1:]...)
+		encoded, err := json.Marshal(parts)
+		require.NoError(t, err)
+		itemIDs[item.name] = jenkinsSum(string(encoded))
+		urns[item.name] = jenkinsURNPrefix + item.urnKind + ":" + itemIDs[item.name]
+	}
+
+	identifiers := make(map[string]string, 2*len(jenkinsFixtureItems))
+	for _, item := range jenkinsFixtureItems {
+		identifiers[itemIDs[item.name]] = "<jenkins-id " + item.name + ">"
+		if item.parent == "" {
+			continue
+		}
+		relationshipID := jenkinsSum(urns[item.name] + "-" + jenkinsPartOfTypeRef + "-" + urns[item.parent])
+		identifiers[relationshipID] = "<jenkins-part-of " + item.name + ">"
+	}
+	return identifiers
+}
+
+// assertJenkinsIdentifiers checks that every item name and every relationship end is an
+// identifier computed by jenkinsIdentifiers, and returns the old, new pairs that turn them into
+// placeholders.
+func assertJenkinsIdentifiers(t *testing.T, items []map[string]any, upstream *fakeUpstream) []string {
+	t.Helper()
+
+	identifiers := jenkinsIdentifiers(t, hostOf(t, upstream.baseURL()))
+	for _, item := range items {
+		assert.Contains(t, identifiers, item["name"], "identifier of %v", item)
+		data, ok := item["data"].(map[string]any)
+		if !ok || item["itemFamily"] != "relationships" {
+			continue
+		}
+		for _, end := range []string{"sourceRef", "targetRef"} {
+			ref, ok := data[end].(string)
+			require.True(t, ok, "%s of %v", end, item)
+			assert.Contains(t, identifiers, ref[strings.LastIndex(ref, ":")+1:], "%s of %v", end, item)
+		}
+	}
+
+	replacements := make([]string, 0, 2*len(identifiers))
+	for identifier, placeholder := range identifiers {
+		replacements = append(replacements, identifier, placeholder)
+	}
+	return replacements
+}
 
 // jenkinsEnv points the Jenkins source at upstream and the Catalog destination at catalog.
 func jenkinsEnv(upstream *fakeUpstream, catalog *fakeCatalog) map[string]string {
@@ -154,7 +249,8 @@ func TestJenkinsSync(t *testing.T) {
 			assert.Zero(t, countLogsAtLevel(result.logs, levelError), "stderr:\n%s", result.stderr)
 
 			test.check(t, catalog.received(), upstream)
-			assertGolden(t, test.golden, catalog, upstream)
+			replacements := assertJenkinsIdentifiers(t, catalog.received(), upstream)
+			assertGolden(t, test.golden, catalog, upstream, replacements...)
 		})
 	}
 }

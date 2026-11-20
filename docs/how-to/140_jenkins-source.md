@@ -73,7 +73,7 @@ All configuration is read from environment variables.
 
 | Env Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `JENKINS_URL` | Yes | _(empty)_ | URL of the controller, with scheme and an optional path (e.g. `https://ci.example.com` or `https://ci.example.com/jenkins`). It must not include user information, a query or a fragment. |
+| `JENKINS_URL` | Yes | _(empty)_ | URL of the controller, with scheme and an optional path (e.g. `https://ci.example.com` or `https://ci.example.com/jenkins`). It must not include user information, a query or a fragment. It also identifies the controller in the Catalog: see [Items Are Identified by the Controller URL](#items-are-identified-by-the-controller-url). |
 | `JENKINS_USERNAME` | Yes | _(empty)_ | Jenkins user that owns the API token. Sent as the HTTP Basic Auth username. |
 | `JENKINS_API_TOKEN` | Yes | _(empty)_ | [API token](https://www.jenkins.io/doc/book/system-administration/authenticating-scripted-clients/) of the user. Sent as the HTTP Basic Auth password and never logged. |
 | `JENKINS_HTTP_TIMEOUT` | No | `30s` | Timeout for HTTP requests, parsed as a Go `time.Duration`. Must be positive. |
@@ -93,7 +93,7 @@ The user only sees what its permissions allow. The minimum permissions are:
 | Overall/Administer or Overall/SystemRead | the `plugin` data type; optional for detecting the stage plugins |
 
 When the user lacks the permission to list the plugins, the sync logs the missing permission at
-Error level, emits no `plugin` item and still succeeds with the other data types. Any other failure
+Warn level, emits no `plugin` item and still succeeds with the other data types. Any other failure
 listing the plugins is reported as an error.
 
 Every request is built from `JENKINS_URL`: the URLs returned by Jenkins are only reported in the
@@ -116,8 +116,13 @@ is set to ignore the language of the request answers in its own language instead
 | `credential` | ✅ |
 | `plugin` | ✅ |
 
-The integration assumes one Jenkins controller per Catalog: the data carry the Jenkins names
-(`fullName`, credential id, plugin and library name) without a reference to the controller.
+Every data type carries a `controller` key shaped as `{key, url}`: `url` is `JENKINS_URL` without its
+trailing slash, and `key` is `JENKINS_URL` normalised as described in
+[Items Are Identified by the Controller URL](#items-are-identified-by-the-controller-url), for
+example `ci.example.com/jenkins`. Both come from the configuration, never from the URLs in the Jenkins
+responses, which follow the root URL setting of the controller. The Jenkins names (`fullName`,
+credential id, plugin and library name) are unique only within one controller: the internal mappings
+combine them with `controller.key`.
 
 Items with a parent carry a `parent` key shaped as `{kind, fullName, url}`, where `kind` is
 `instance` for the items at the top level of the controller, or `folder` for the items inside a
@@ -140,6 +145,7 @@ One entry for the controller.
 - `instance`: `url`, `version` (read from the `X-Jenkins` response header), `description` (the system
   message of the controller, empty when it is not set), `mode` (the usage mode of the built-in node,
   `NORMAL` or `EXCLUSIVE`).
+- `controller`: `key`, `url`.
 
 ### `folder`
 
@@ -149,6 +155,7 @@ One entry per folder and organization folder, at any depth.
   `organization`), `objectUrl` (the URL of the SCM organization of an organization folder, empty
   otherwise).
 - `parent`.
+- `controller`: `key`, `url`.
 
 ### `multibranch`
 
@@ -158,6 +165,7 @@ One entry per multibranch project.
   `{score, description}`), `repositoryUrl`, `primaryBranch`, `branchCount`, `pullRequestCount`,
   `tagCount`.
 - `parent`.
+- `controller`: `key`, `url`.
 
 `primaryBranch` holds `name`, `fullName` and `url` of the branch the SCM marks as primary,
 and is absent when no branch is marked. `branchCount`, `pullRequestCount` and `tagCount` are read
@@ -181,6 +189,7 @@ skipped.
   `timestamp`, `duration`, `url`, and, when a stage plugin is available, `stages` and
   `stagesSource` (`pipeline-graph-view` or `pipeline-stage-view`).
 - `libraries`: the shared libraries loaded by the build, as `{name, version, trusted}`.
+- `controller`: `key`, `url`.
 
 `build.stages` is always a flat list, each stage before its children, in execution order. Every
 stage carries:
@@ -228,6 +237,7 @@ by name.
   library defines).
 - `usages`: one entry per workflow loading it, with `kind`, `fullName`, `url`, `version`, `trusted`,
   `changelog`, `buildNumber` and, for primary branch workflows, `multibranch`.
+- `controller`: `key`, `url`.
 
 ### `credential`
 
@@ -241,6 +251,7 @@ requested.
   `multibranch` for a multibranch project.
 - `usages`: the jobs that used the credential, as `{kind, fullName, url, parent}`, where `parent` is
   the container of the job, shaped as the `parent` of the items.
+- `controller`: `key`, `url`.
 
 A usage by a standalone workflow has `kind: workflow`. Usages by the branches of a multibranch
 project are reported once per project, with `kind: multibranch` and the job names of the branches in
@@ -256,6 +267,7 @@ One entry per installed plugin.
 
 - `plugin`: `shortName`, `longName`, `version`, `active`, `enabled`, `hasUpdate`, `url`,
   `requiredCoreVersion`, `dependencies` (list of `{shortName, version, optional}`).
+- `controller`: `key`, `url`.
 
 ## Pipeline Graph View and Pipeline: Stage View
 
@@ -352,11 +364,12 @@ the instance at the top level of the controller; the primary branch workflow _is
 multibranch project; a plugin _is part of_ the instance. Credentials and shared libraries have no
 relationship: the jobs and folders they refer to are listed in `usages` and `store`.
 
-Item names are the SHA-256 of a key that is stable across syncs:
+Item names are the SHA-256 of a key that is stable across syncs. Every key starts with
+`controller.key`, so the items of different controllers never collide, followed by:
 
 | Item | Key |
 | --- | --- |
-| instance | a constant: one controller per Catalog |
+| instance | nothing else: one item per controller |
 | folder, multibranch project | `fullName` |
 | standalone workflow | `fullName` |
 | primary branch workflow | `fullName` of the multibranch project, so a new primary branch, such as `master` becoming `main`, updates the same item |
@@ -391,7 +404,7 @@ A failure listing the root of the controller, reading the system credentials sto
 plugins or reading the controller itself stops that step only: the other steps still run, and the
 sync returns every failure once they have. When the system credentials store fails, the folder
 credentials stores are still read and their credentials emitted. A plugin list refused for lack of
-permission is not a failure: it is logged at Error level and the sync goes on.
+permission is not a failure: it is logged at Warn level and the sync goes on.
 
 ## Limitations
 
@@ -425,8 +438,8 @@ available through the Configuration as Code export, which needs administrative p
 therefore reports the libraries loaded by the last completed builds, which has two consequences:
 
 - a library that is configured but that no last completed build loaded is not reported;
-- libraries with the same name defined in different folders are grouped in a single item, because
-  the build records the name of a library, not where it is defined.
+- libraries with the same name defined in different folders of a controller are grouped in a single
+  item, because the build records the name of a library, not where it is defined.
 
 The repository of a library is not reported either.
 
@@ -463,8 +476,27 @@ structures, such as a misconfigured proxy returning a folder as a child of itsel
 one request. Real controllers usually have 2 to 5 levels, and an organization folder with its
 multibranch projects only takes 2, because the branches are not walked.
 
-### One Controller per Catalog
+### Items Are Identified by the Controller URL
 
-The data carry the Jenkins names, such as the `fullName` of a job or the id of a credential, without a
-reference to the controller. Two controllers writing to the same Catalog produce colliding items when
-they hold jobs, credentials, libraries or plugins with the same names.
+The Jenkins names, such as the `fullName` of a job or the id of a credential, are unique only within
+one controller. The internal mappings combine them with the controller key, derived from
+`JENKINS_URL`:
+
+- the scheme is dropped, so moving from `http` to `https` keeps the same items;
+- the host is lowercased;
+- the default port of the scheme, `:80` for `http` and `:443` for `https`, is dropped, any other port
+  is kept;
+- the path is kept as is, so `https://ci.example.com/jenkins` and `https://ci.example.com/other` are
+  different controllers;
+- the trailing slash is removed.
+
+For example, `HTTPS://CI.Example.com:443/jenkins/` and `https://ci.example.com/jenkins` both give the
+key `ci.example.com/jenkins`. Several controllers can therefore write to the same Catalog, with two
+consequences:
+
+- changing `JENKINS_URL` to an address with a different key, such as a new domain, a different path
+  or an internal address of the same controller, creates a new set of items, and the old ones stay
+  in the Catalog, as described in [Items Are Never Deleted](#items-are-never-deleted);
+- two controllers reached through the same address, such as the same in-cluster service name in two
+  Kubernetes clusters, get the same key and their items collide: reach each controller through a
+  distinct address.

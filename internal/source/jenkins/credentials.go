@@ -115,7 +115,7 @@ func (s *Source) syncStore(ctx context.Context, inv *inventory, store storeRef, 
 
 	for _, domain := range domains {
 		for _, credential := range domain.Credentials {
-			if err := send(ctx, results, credentialType, credentialValues(ctx, inv, store, domain.URLName, credential)); err != nil {
+			if err := send(ctx, results, s.controller, credentialType, credentialValues(ctx, inv, store, domain.URLName, credential)); err != nil {
 				return err
 			}
 		}
