@@ -229,7 +229,7 @@ func TestBundledMappingsConformance(t *testing.T) {
 			require.NoError(t, err)
 			total += len(configs)
 		}
-		require.Equal(t, 60, total, "update this count and the documentation when bundled mappings are added or removed")
+		require.Equal(t, 67, total, "update this count and the documentation when bundled mappings are added or removed")
 	})
 }
 

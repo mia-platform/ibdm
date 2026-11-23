@@ -1,0 +1,12 @@
+{
+  "status": "ok",
+  "data": {
+    "complete": true,
+    "stages": [
+      {"id": "5", "name": "Build", "state": "success", "type": "STAGE", "title": "",
+       "pauseDurationMillis": 0, "startTimeMillis": 1767265201000, "totalDurationMillis": 41000,
+       "children": [], "isSequential": false, "synthetic": false, "placeholder": false,
+       "agent": "agent-1", "url": "/job/my-team/job/my-app/job/main/40/stages/?selected-node=5"}
+    ]
+  }
+}

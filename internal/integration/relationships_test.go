@@ -20,8 +20,11 @@ const urnPrefix = "urn:mia-platform-catalog:"
 var itemKinds = map[string]string{
 	"accesstokens":         "AccessToken",
 	"clusters":             "Cluster",
+	"credentials":          "Credential",
 	"customresources":      "CustomResource",
 	"dockerimages":         "DockerImage",
+	"folders":              "Folder",
+	"instances":            "Instance",
 	"issues":               "Issue",
 	"k8scertificates":      "K8sCertificate",
 	"k8sclusters":          "K8sCluster",
@@ -33,15 +36,19 @@ var itemKinds = map[string]string{
 	"k8spods":              "K8sPod",
 	"k8sservices":          "K8sService",
 	"k8sstatefulsets":      "K8sStatefulSet",
+	"multibranches":        "Multibranch",
 	"pipelines":            "Pipeline",
+	"plugins":              "Plugin",
 	"projects":             "Project",
 	"repositories":         "Repository",
 	"revisions":            "Revision",
 	"runs":                 "Run",
 	"services":             "Service",
+	"sharedlibraries":      "SharedLibrary",
 	"traefikingressroutes": "TraefikIngressRoute",
 	"vulnerabilities":      "Vulnerability",
 	"workflowruns":         "WorkflowRun",
+	"workflows":            "Workflow",
 }
 
 // itemURN builds the URN a relationship uses to point at item.

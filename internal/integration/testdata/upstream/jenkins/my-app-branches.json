@@ -1,0 +1,31 @@
+{
+  "_class": "org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject",
+  "jobs": [
+    {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+      "name": "main",
+      "fullName": "my-team/my-app/main",
+      "url": "https://ci.example.com/job/my-team/job/my-app/job/main/",
+      "actions": [{"_class": "jenkins.scm.api.metadata.PrimaryInstanceMetadataAction"}, {"_class": "jenkins.scm.api.metadata.ObjectMetadataAction"}]
+    },
+    {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+      "name": "feature%2Flogin",
+      "fullName": "my-team/my-app/feature%2Flogin",
+      "url": "https://ci.example.com/job/my-team/job/my-app/job/feature%252Flogin/",
+      "actions": [{"_class": "jenkins.scm.api.metadata.ObjectMetadataAction"}]
+    },
+    {
+      "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+      "name": "PR-7",
+      "fullName": "my-team/my-app/PR-7",
+      "url": "https://ci.example.com/job/my-team/job/my-app/job/PR-7/",
+      "actions": [{"_class": "jenkins.scm.api.metadata.ContributorMetadataAction"}]
+    }
+  ],
+  "views": [
+    {"name": "default", "jobs": [{"name": "main"}, {"name": "feature%2Flogin"}]},
+    {"name": "change-requests", "jobs": [{"name": "PR-7"}]},
+    {"name": "tags", "jobs": []}
+  ]
+}
