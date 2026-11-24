@@ -1,0 +1,58 @@
+{
+	"assetType": "compute.googleapis.com/Router",
+	"name": "//compute.googleapis.com/projects/example-project/regions/europe-west4/routers/my-manual-router",
+	"resource": {
+		"data": {
+			"bgp": {
+				"advertiseMode": "DEFAULT",
+				"asn": 64514,
+				"keepaliveInterval": 20,
+				"keepaliveIntervalSec": 20
+			},
+			"creationTimestamp": "2024-02-01T04:00:00.000-07:00",
+			"description": "Router with manual NAT",
+			"name": "my-manual-router",
+			"nats": [
+				{
+					"drainNatIps": [
+						"https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west4/addresses/my-old-nat-ip"
+					],
+					"enableDynamicPortAllocation": true,
+					"maxPortsPerVm": 4096,
+					"minPortsPerVm": 64,
+					"name": "my-manual-nat",
+					"natIpAllocateOption": "MANUAL_ONLY",
+					"natIps": [
+						"https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west4/addresses/my-nat-ip-1",
+						"https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west4/addresses/my-nat-ip-2"
+					],
+					"sourceSubnetworkIpRangesToNat": "LIST_OF_SUBNETWORKS",
+					"subnetworks": [
+						{
+							"name": "https://www.googleapis.com/compute/v1/projects/example-project/regions/europe-west4/subnetworks/my-subnet",
+							"sourceIpRangesToNat": [
+								"ALL_IP_RANGES"
+							]
+						}
+					]
+				},
+				{
+					"name": "my-second-nat",
+					"natIpAllocateOption": "AUTO_ONLY"
+				}
+			],
+			"network": "https://www.googleapis.com/compute/v1/projects/example-project/global/networks/my-network"
+		},
+		"discoveryName": "Router",
+		"location": "europe-west4",
+		"parent": "//cloudresourcemanager.googleapis.com/projects/123456789012",
+		"version": "v1",
+		"discoveryDocumentUri": "https://www.googleapis.com/discovery/v1/apis/compute/v1/rest"
+	},
+	"updateTime": "2026-07-03T19:00:00Z",
+	"ancestors": [
+		"projects/123456789012",
+		"folders/234567890123",
+		"organizations/345678901234"
+	]
+}

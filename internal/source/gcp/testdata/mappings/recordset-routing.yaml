@@ -1,0 +1,21 @@
+assetType: dns.googleapis.com/ResourceRecordSet
+name: //dns.googleapis.com/projects/123456789012/locations/global/managedZones/1111222233334444555/rrsets/lb.example.com./A
+resource:
+  data:
+    name: lb.example.com.
+    routingPolicy:
+      wrr:
+        items:
+        - rrdatas:
+          - 203.0.113.60
+          weight: 1
+        - rrdatas:
+          - 203.0.113.61
+          weight: 2
+    ttl: 60
+    type: A
+  discoveryName: ResourceRecordSet
+  location: global
+  parent: //dns.googleapis.com/projects/123456789012/locations/global/managedZones/1111222233334444555
+  version: v2
+updateTime: '2026-06-30T20:51:59.710374Z'

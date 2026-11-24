@@ -1,0 +1,83 @@
+apiVersion: gcp.mia-platform.eu/v1
+itemFamily: routers
+type: compute.googleapis.com/Router
+syncable: true
+mappings:
+  identifier: |-
+    {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+    {{- printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) }}
+  metadata:
+    title: "{{ .resource.data.name }}"
+  spec:
+    name: "{{ .resource.data.name }}"
+    description: "{{ get \"description\" .resource.data \"\" | quote }}"
+    network: "{{ get \"network\" .resource.data \"\" | trimPrefix \"https://www.googleapis.com/compute/v1/\" | quote }}"
+    bgp: "{{ pick (get \"bgp\" .resource.data (object)) \"asn\" \"advertiseMode\" \"keepaliveInterval\" | toJSON }}"
+    natCount: "{{ len (get \"nats\" .resource.data (list)) }}"
+    nats: |-
+      {{ $list := list -}}
+      {{- range get "nats" .resource.data (list) -}}
+        {{- $nat := pick . "name" "type" "sourceSubnetworkIpRangesToNat" "natIpAllocateOption" "subnetworks" "autoNetworkTier" "minPortsPerVm" "maxPortsPerVm" "enableDynamicPortAllocation" "enableEndpointIndependentMapping" "endpointTypes" "logConfig" -}}
+        {{- $natIPs := list -}}
+        {{- range get "natIps" . (list) -}}
+          {{- $natIPs = append $natIPs (trimPrefix "https://www.googleapis.com/compute/v1/" .) -}}
+        {{- end -}}
+        {{- $drainIPs := list -}}
+        {{- range get "drainNatIps" . (list) -}}
+          {{- $drainIPs = append $drainIPs (trimPrefix "https://www.googleapis.com/compute/v1/" .) -}}
+        {{- end -}}
+        {{- $nat = set "natIps" $natIPs $nat -}}
+        {{- $nat = set "drainNatIps" $drainIPs $nat -}}
+        {{- $list = append $list $nat -}}
+      {{- end -}}
+      {{- $list | toJSON }}
+    creationTimestamp: "{{ .resource.data.creationTimestamp | quote }}"
+    location: "{{ .resource.location }}"
+  extra:
+    - apiVersion: mia-platform.eu/v1
+      itemFamily: relationships
+      deletePolicy: "cascade"
+      createIf: |-
+        {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+        {{- $router := printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) -}}
+        {{- $network := get "network" .resource.data "" | trimPrefix "https://www.googleapis.com/compute/v1/" | split "/" -}}
+        {{- $networkID := "" -}}
+        {{- if eq (len $network) 5 -}}
+          {{- $networkID = printf "%s-%s" (index $network 1) (index $network 4) -}}
+        {{- end -}}
+        {{- if ne $networkID "" -}}
+          true
+        {{- else -}}
+          false
+        {{- end }}
+      identifier: |-
+        {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+        {{- $router := printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) -}}
+        {{- $network := get "network" .resource.data "" | trimPrefix "https://www.googleapis.com/compute/v1/" | split "/" -}}
+        {{- $networkID := "" -}}
+        {{- if eq (len $network) 5 -}}
+          {{- $networkID = printf "%s-%s" (index $network 1) (index $network 4) -}}
+        {{- end -}}
+        {{- $src := printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Router:%s" $router -}}
+        {{- $type := "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu" -}}
+        {{- $tgt := printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Network:%s" $networkID -}}
+        {{- printf "%s-%s-%s" $src $type $tgt | sha256sum }}
+      sourceRef: |-
+        {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+        {{- $router := printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) -}}
+        {{- $network := get "network" .resource.data "" | trimPrefix "https://www.googleapis.com/compute/v1/" | split "/" -}}
+        {{- $networkID := "" -}}
+        {{- if eq (len $network) 5 -}}
+          {{- $networkID = printf "%s-%s" (index $network 1) (index $network 4) -}}
+        {{- end -}}
+        {{- printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Router:%s" $router }}
+      targetRef: |-
+        {{ $components := trimPrefix "//compute.googleapis.com/" .name | split "/" -}}
+        {{- $router := printf "%s-%s-%s" (index $components 1) (index $components 3) (last $components) -}}
+        {{- $network := get "network" .resource.data "" | trimPrefix "https://www.googleapis.com/compute/v1/" | split "/" -}}
+        {{- $networkID := "" -}}
+        {{- if eq (len $network) 5 -}}
+          {{- $networkID = printf "%s-%s" (index $network 1) (index $network 4) -}}
+        {{- end -}}
+        {{- printf "urn:mia-platform-catalog:gcp.mia-platform.eu:v1:Network:%s" $networkID }}
+      typeRef: "urn:mia-platform-catalog:mia-platform.eu:v1:RelationshipType:part-of.mia-platform.eu"

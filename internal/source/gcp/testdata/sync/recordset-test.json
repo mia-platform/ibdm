@@ -1,0 +1,28 @@
+{
+	"update_time": {
+		"seconds": 1782852719,
+		"nanos": 710374000
+	},
+	"name": "//dns.googleapis.com/projects/123456789012/locations/global/managedZones/1111222233334444555/rrsets/git.example.com./A",
+	"asset_type": "dns.googleapis.com/ResourceRecordSet",
+	"resource": {
+		"version": "v2",
+		"discovery_document_uri": "https://www.googleapis.com/discovery/v1/apis/dns/v2/rest",
+		"discovery_name": "ResourceRecordSet",
+		"parent": "//dns.googleapis.com/projects/123456789012/locations/global/managedZones/1111222233334444555",
+		"data": {
+			"name": "git.example.com.",
+			"rrdatas": [
+				"203.0.113.50"
+			],
+			"ttl": 3600,
+			"type": "A"
+		},
+		"location": "global"
+	},
+	"ancestors": [
+		"projects/123456789012",
+		"folders/234567890123",
+		"organizations/345678901234"
+	]
+}
