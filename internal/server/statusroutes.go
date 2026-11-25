@@ -4,7 +4,14 @@
 package server
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"net/http"
+
+	"github.com/mia-platform/ibdm/internal/logger"
+)
+
+const (
+	// statusRoutesPrefix is the path prefix shared by the status routes.
+	statusRoutesPrefix = "/-/"
 )
 
 // statusResponse type.
@@ -14,32 +21,19 @@ type statusResponse struct {
 	Version string `json:"version"`
 }
 
-// statusRoutes add status routes to router.
-func statusRoutes(app *fiber.App, serviceName, serviceVersion string) {
-	app.Get("/-/healthz", func(c *fiber.Ctx) error {
-		status := statusResponse{
-			Status:  "OK",
-			Name:    serviceName,
-			Version: serviceVersion,
-		}
-		return c.JSON(status)
+// statusRoutes registers the health and readiness routes on mux.
+func statusRoutes(mux *http.ServeMux, serviceName, serviceVersion string) {
+	status := statusResponse{
+		Status:  "OK",
+		Name:    serviceName,
+		Version: serviceVersion,
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, logger.FromContext(r.Context()), http.StatusOK, status)
 	})
 
-	app.Get("/-/ready", func(c *fiber.Ctx) error {
-		status := statusResponse{
-			Status:  "OK",
-			Name:    serviceName,
-			Version: serviceVersion,
-		}
-		return c.JSON(status)
-	})
-
-	app.Get("/-/check-up", func(c *fiber.Ctx) error {
-		status := statusResponse{
-			Status:  "OK",
-			Name:    serviceName,
-			Version: serviceVersion,
-		}
-		return c.JSON(status)
-	})
+	for _, route := range []string{"healthz", "ready", "check-up"} {
+		mux.Handle(http.MethodGet+" "+statusRoutesPrefix+route, handler)
+	}
 }

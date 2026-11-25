@@ -597,6 +597,28 @@ func TestStreamPipelineWebhook(t *testing.T) {
 	}
 }
 
+func TestStreamPipelineWebhookRouteError(t *testing.T) {
+	t.Parallel()
+
+	destination := fakedestination.NewFakeDestination(t)
+	webhookSource := fakesource.NewFakeUnclosableWebhookSource(t, http.MethodPost, "/webhook", func(context.Context, map[string]source.MappingExtras, chan<- source.Data) error {
+		return nil
+	})
+	pipeline, err := New(t.Context(), webhookSource, map[string][]DataMapper{}, destination)
+	require.NoError(t, err)
+
+	fakeServer := fakeserver.NewFakeServer(t, http.MethodPost, "/webhook").FailAddRoute(server.ErrInvalidRoute)
+	pipeline.serverCreator = func(context.Context) (server.Server, error) {
+		return fakeServer, nil
+	}
+
+	err = pipeline.Start(t.Context())
+
+	require.ErrorIs(t, err, server.ErrInvalidRoute)
+	assert.Empty(t, destination.SentData)
+	assert.Empty(t, destination.DeletedData)
+}
+
 func TestStreamPipelineCancellation(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())

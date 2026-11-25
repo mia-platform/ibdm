@@ -5,59 +5,53 @@ package server
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mia-platform/ibdm/internal/info"
 )
 
 func TestStatusRoutes(t *testing.T) {
-	app := fiber.New()
-	serviceName := "ibdm"
-	serviceVersion := info.Version
-	statusRoutes(app, serviceName, serviceVersion)
+	t.Parallel()
 
-	t.Run("/-/healthz - ok", func(t *testing.T) {
-		expectedResponse := fmt.Sprintf("{\"status\":\"OK\",\"name\":\"%s\",\"version\":\"%s\"}", serviceName, serviceVersion)
-		request := httptest.NewRequest(http.MethodGet, "/-/healthz", nil)
-		response, err := app.Test(request)
-		require.NoError(t, err)
+	srv, _ := newTestServer(t)
+	expectedResponse := fmt.Sprintf(`{"status":"OK","name":"%s","version":"%s"}`, serviceName, info.Version)
 
-		defer response.Body.Close()
-		require.Equal(t, http.StatusOK, response.StatusCode, "The response statusCode should be 200")
-		body, readBodyError := io.ReadAll(response.Body)
-		require.NoError(t, readBodyError)
-		require.Equal(t, expectedResponse, string(body), "The response body should be the expected one")
+	for _, path := range []string{"/-/healthz", "/-/ready", "/-/check-up"} {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			t.Run(method+" "+path, func(t *testing.T) {
+				t.Parallel()
+
+				response := serve(srv, httptest.NewRequestWithContext(t.Context(), method, path, nil))
+
+				require.Equal(t, http.StatusOK, response.Code)
+				require.Equal(t, "application/json", response.Header().Get("Content-Type"))
+				if method == http.MethodGet {
+					require.Equal(t, expectedResponse, response.Body.String())
+				}
+			})
+		}
+	}
+
+	t.Run("wrong method", func(t *testing.T) {
+		t.Parallel()
+
+		response := serve(srv, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/-/healthz", strings.NewReader("{}")))
+		require.Equal(t, http.StatusMethodNotAllowed, response.Code)
 	})
+}
 
-	t.Run("/-/ready - ok", func(t *testing.T) {
-		expectedResponse := fmt.Sprintf("{\"status\":\"OK\",\"name\":\"%s\",\"version\":\"%s\"}", serviceName, serviceVersion)
-		request := httptest.NewRequest(http.MethodGet, "/-/ready", nil)
-		response, err := app.Test(request)
-		require.NoError(t, err)
+func TestStatusRoutesAreNotLogged(t *testing.T) {
+	t.Parallel()
 
-		defer response.Body.Close()
-		require.Equal(t, http.StatusOK, response.StatusCode, "The response statusCode should be 200")
-		body, readBodyError := io.ReadAll(response.Body)
-		require.NoError(t, readBodyError)
-		require.Equal(t, expectedResponse, string(body), "The response body should be the expected one")
-	})
+	srv, logs := newTestServer(t)
+	for _, path := range []string{"/-/healthz", "/-/ready", "/-/check-up"} {
+		require.Equal(t, http.StatusOK, serve(srv, httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)).Code)
+	}
 
-	t.Run("/-/check-up - ok", func(t *testing.T) {
-		expectedResponse := fmt.Sprintf("{\"status\":\"OK\",\"name\":\"%s\",\"version\":\"%s\"}", serviceName, serviceVersion)
-		request := httptest.NewRequest(http.MethodGet, "/-/check-up", nil)
-		response, err := app.Test(request)
-		require.NoError(t, err)
-
-		defer response.Body.Close()
-		require.Equal(t, http.StatusOK, response.StatusCode, "The response statusCode should be 200")
-		body, readBodyError := io.ReadAll(response.Body)
-		require.NoError(t, readBodyError)
-		require.Equal(t, expectedResponse, string(body), "The response body should be the expected one")
-	})
+	require.Empty(t, logs.String())
 }

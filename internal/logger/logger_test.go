@@ -5,10 +5,12 @@ package logger
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogger(t *testing.T) {
@@ -56,4 +58,29 @@ func TestLevelStrings(t *testing.T) {
 	assert.Equal(t, WARN, LevelFromString("WARN"))
 	assert.Equal(t, ERROR, LevelFromString("ERROR"))
 	assert.Equal(t, INFO, LevelFromString("INVALID"))
+}
+
+func TestLoggerWith(t *testing.T) {
+	t.Parallel()
+
+	buffer := new(bytes.Buffer)
+	logger := NewLogger(buffer).With("requestId", "019f1cb8-0000-7000-8000-000000000004")
+	logger.WithName("ibdm:source:fake").Info("renamed logger keeps the fields")
+
+	var line map[string]any
+	require.NoError(t, json.Unmarshal(buffer.Bytes(), &line))
+	assert.Equal(t, "ibdm:source:fake", line["@module"])
+	assert.Equal(t, "019f1cb8-0000-7000-8000-000000000004", line["requestId"])
+}
+
+func TestLoggerWithoutFields(t *testing.T) {
+	t.Parallel()
+
+	buffer := new(bytes.Buffer)
+	NewLogger(buffer).WithName("ibdm:source:fake").Info("logged outside any request")
+
+	var line map[string]any
+	require.NoError(t, json.Unmarshal(buffer.Bytes(), &line))
+	assert.Equal(t, "logged outside any request", line["@message"])
+	assert.NotContains(t, line, "requestId", "a logger never given the field must not write it")
 }

@@ -110,7 +110,9 @@ func (p *Pipeline) Start(ctx context.Context) error {
 				return err
 			}
 			log.Trace("registering webhook")
-			server.AddRoute(webhook.Method, webhook.Path, webhook.Handler)
+			if err := server.AddRoute(webhook.Method, webhook.Path, webhook.Handler); err != nil {
+				return err
+			}
 			log.Trace("registered webhook, starting server")
 			log.Trace("starting server")
 			return server.Start()

@@ -22,24 +22,45 @@ func TestLoadEnvironmentVariables(t *testing.T) {
 		_, err := LoadServerConfig()
 		require.Error(t, err)
 	})
+
+	t.Run("default body limit is 4 MiB", func(t *testing.T) {
+		envVars, err := LoadServerConfig()
+		require.NoError(t, err)
+		require.Equal(t, int64(4*1024*1024), envVars.MaxBodySize)
+	})
+
+	t.Run("custom body limit", func(t *testing.T) {
+		t.Setenv("HTTP_MAX_BODY_SIZE", "26214400")
+		envVars, err := LoadServerConfig()
+		require.NoError(t, err)
+		require.Equal(t, int64(26214400), envVars.MaxBodySize)
+	})
+
+	for _, value := range []string{"0", "-1", "large"} {
+		t.Run("invalid body limit "+value, func(t *testing.T) {
+			t.Setenv("HTTP_MAX_BODY_SIZE", value)
+			_, err := LoadServerConfig()
+			require.ErrorIs(t, err, ErrEnvVariablesNotValid)
+		})
+	}
 }
 func TestLoadValidateEnvironmentVariables(t *testing.T) {
 	t.Parallel()
 	t.Run("Environment variables validation", func(t *testing.T) {
 		t.Parallel()
-		envVars := &config{HTTPPort: -1}
+		envVars := &config{HTTPPort: -1, MaxBodySize: 1}
 		err := validateEnvironmentVariables(envVars)
 		require.Error(t, err)
 	})
 	t.Run("Environment variables validation", func(t *testing.T) {
 		t.Parallel()
-		envVars := &config{HTTPPort: 655350}
+		envVars := &config{HTTPPort: 655350, MaxBodySize: 1}
 		err := validateEnvironmentVariables(envVars)
 		require.Error(t, err)
 	})
 	t.Run("Environment variables validation", func(t *testing.T) {
 		t.Parallel()
-		envVars := &config{HTTPPort: 3000}
+		envVars := &config{HTTPPort: 3000, MaxBodySize: 1}
 		err := validateEnvironmentVariables(envVars)
 		require.NoError(t, err)
 	})
